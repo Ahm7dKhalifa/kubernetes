@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Jobs — The Complete Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0f14;
+    --surface: #151921;
+    --surface2: #1b2130;
+    --border: #252d3d;
+    --text: #d1d5e0;
+    --text-dim: #7a839a;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f97316;
+    --yellow: #eab308;
+    --purple: #a855f7;
+    --pink: #ec4899;
+    --code-bg: #111520;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 16px;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 20px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+  nav .logo {
+    font-family: 'Fraunces', serif;
+    font-weight: 900; font-size: 20px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  nav .subtitle { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 28px; }
+  nav ul { list-style: none; }
+  nav ul li { margin-bottom: 2px; }
+  nav ul li a {
+    display: block; padding: 7px 12px; border-radius: 8px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px; font-weight: 500;
+    transition: all .2s;
+  }
+  nav ul li a:hover { color: #fff; background: var(--surface2); }
+  nav .sec-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent); margin: 18px 0 8px 12px; font-weight: 600;
+  }
+
+  /* ── MAIN ── */
+  main {
+    margin-left: 260px;
+    max-width: 900px;
+    padding: 50px 60px 100px;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    padding: 60px 0 50px;
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -50px; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(59,130,246,.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero .k8s-icon { width: 80px; height: 80px; margin-bottom: 24px; }
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 48px; font-weight: 900;
+    background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1.1; margin-bottom: 16px;
+  }
+  .hero p { color: var(--text-dim); font-size: 18px; max-width: 520px; margin: 0 auto; }
+
+  /* ── SECTIONS ── */
+  section { margin-bottom: 56px; scroll-margin-top: 30px; }
+  h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 30px; font-weight: 700; color: #fff;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+  }
+  h2 .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; color: var(--accent); margin-right: 8px;
+    background: rgba(59,130,246,.12); padding: 3px 10px; border-radius: 6px;
+  }
+  h3 { font-size: 20px; font-weight: 700; color: #e0e4ec; margin: 32px 0 12px; }
+  h4 { font-size: 16px; font-weight: 600; color: var(--accent2); margin: 20px 0 8px; }
+  p { margin-bottom: 14px; }
+  strong { color: #fff; }
+  ul, ol { margin: 10px 0 16px 24px; }
+  li { margin-bottom: 6px; }
+
+  /* ── CALLOUT ── */
+  .callout {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 16px 20px; margin: 20px 0;
+  }
+  .callout.green { border-left-color: var(--green); }
+  .callout.orange { border-left-color: var(--orange); }
+  .callout.red { border-left-color: var(--red); }
+  .callout .label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+    font-weight: 700; margin-bottom: 6px;
+  }
+  .callout.green .label { color: var(--green); }
+  .callout.orange .label { color: var(--orange); }
+  .callout.red .label { color: var(--red); }
+  .callout .label.blue { color: var(--accent); }
+
+  /* ── CODE ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+  }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  p code, li code, td code {
+    background: var(--surface2);
+    padding: 2px 7px; border-radius: 5px;
+    color: var(--accent2); font-size: 13px;
+  }
+  pre .comment { color: #5a6580; }
+  pre .key { color: var(--accent); }
+  pre .val { color: var(--green); }
+  pre .str { color: var(--yellow); }
+  pre .num { color: var(--orange); }
+
+  /* ── DIAGRAM ── */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 30px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .diagram-title {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent); font-weight: 700; margin-bottom: 20px;
+    text-align: center;
+  }
+  .diagram svg { display: block; margin: 0 auto; }
+
+  /* ── TABLE ── */
+  table {
+    width: 100%; border-collapse: collapse;
+    margin: 16px 0 24px; font-size: 14px;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent2); font-weight: 600;
+    text-align: left; padding: 10px 14px;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(59,130,246,.04); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .badge.blue { background: rgba(59,130,246,.15); color: var(--accent); }
+  .badge.green { background: rgba(34,197,94,.15); color: var(--green); }
+  .badge.orange { background: rgba(249,115,22,.15); color: var(--orange); }
+  .badge.purple { background: rgba(168,85,247,.15); color: var(--purple); }
+
+  /* ── COMPARISON GRID ── */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .compare-card h4 { margin-top: 0; }
+
+  /* ── FLOW STEPS ── */
+  .flow-steps { display: flex; gap: 0; align-items: stretch; margin: 24px 0; flex-wrap: wrap; }
+  .flow-step {
+    flex: 1; min-width: 120px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px; text-align: center;
+  }
+  .flow-step .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 24px; font-weight: 700; color: var(--accent); line-height: 1;
+  }
+  .flow-step .step-label { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+  .flow-arrow { display: flex; align-items: center; padding: 0 4px; color: var(--border); font-size: 24px; }
+
+  @media (max-width: 960px) {
+    nav { display: none; }
+    main { margin-left: 0; padding: 30px 24px 80px; }
+    .hero h1 { font-size: 34px; }
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ SIDEBAR NAV ════════ -->
+<nav>
+  <div class="logo">⎈ K8s Jobs</div>
+  <div class="subtitle">Complete Guide</div>
+  <div class="sec-label">Section 1 — Introduction</div>
+  <ul>
+    <li><a href="#what-is-job">What is a Job?</a></li>
+    <li><a href="#benefits">Benefits & When to Use</a></li>
+    <li><a href="#job-types">Job Types</a></li>
+  </ul>
+  <div class="sec-label">Section 2 — Job Management</div>
+  <ul>
+    <li><a href="#yaml">Job YAML File</a></li>
+    <li><a href="#completions">Job Completions</a></li>
+    <li><a href="#parallelism">Job Parallelism</a></li>
+    <li><a href="#fixed-vs-queue">Fixed vs Work Queue</a></li>
+    <li><a href="#pod-failures">Pod & Container Failures</a></li>
+    <li><a href="#backoff">Backoff Failure Policy</a></li>
+    <li><a href="#pod-failure-policy">Pod Failure Policy</a></li>
+    <li><a href="#termination">Termination & Cleanup</a></li>
+    <li><a href="#patterns">Job Patterns</a></li>
+  </ul>
+</nav>
+
+<!-- ════════ MAIN CONTENT ════════ -->
+<main>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <svg class="k8s-icon" viewBox="0 0 80 80" fill="none">
+    <circle cx="40" cy="40" r="38" stroke="url(#g1)" stroke-width="2" fill="rgba(59,130,246,.08)"/>
+    <path d="M40 18 L40 62 M22 30 L58 50 M58 30 L22 50" stroke="url(#g1)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="40" cy="18" r="5" fill="#3b82f6"/>
+    <circle cx="40" cy="62" r="5" fill="#06b6d4"/>
+    <circle cx="22" cy="30" r="5" fill="#3b82f6"/>
+    <circle cx="58" cy="50" r="5" fill="#06b6d4"/>
+    <circle cx="58" cy="30" r="5" fill="#3b82f6"/>
+    <circle cx="22" cy="50" r="5" fill="#06b6d4"/>
+    <circle cx="40" cy="40" r="8" fill="#3b82f6"/>
+    <defs><linearGradient id="g1" x1="0" y1="0" x2="80" y2="80"><stop stop-color="#3b82f6"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+  </svg>
+  <h1>Kubernetes Jobs</h1>
+  <p>A deep-dive guide to running, managing, and mastering batch workloads in Kubernetes.</p>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║      SECTION 1 : INTRODUCTION            ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+
+<section id="what-is-job">
+  <h2><span class="num">01</span> What is a Job?</h2>
+
+  <p>A <strong>Job</strong> is a Kubernetes resource that creates one or more Pods and ensures they <strong>run to successful completion</strong>. Unlike a Deployment (which keeps Pods running forever), a Job's mission is to finish a task and stop.</p>
+
+  <div class="callout green">
+    <div class="label">Think of it this way</div>
+    <p style="margin:0">A <strong>Deployment</strong> is like a 24/7 store — always open. A <strong>Job</strong> is like a delivery truck — it arrives, drops off the package, and leaves.</p>
+  </div>
+
+  <!-- DIAGRAM: Job vs Deployment -->
+  <div class="diagram">
+    <div class="diagram-title">Job vs Deployment — Lifecycle Comparison</div>
+    <svg width="700" height="180" viewBox="0 0 700 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="20" width="310" height="65" rx="10" fill="#1b2130" stroke="#252d3d"/>
+      <text x="36" y="45" font-family="JetBrains Mono" font-size="11" fill="#a855f7" font-weight="600">DEPLOYMENT</text>
+      <text x="36" y="65" font-family="DM Sans" font-size="12" fill="#7a839a">Pods restart forever → always running</text>
+      <line x1="350" y1="52" x2="650" y2="52" stroke="#a855f7" stroke-width="2"/>
+      <circle cx="350" cy="52" r="4" fill="#a855f7"/>
+      <text x="660" y="56" font-family="JetBrains Mono" font-size="10" fill="#a855f7">∞</text>
+      <rect x="20" y="105" width="310" height="65" rx="10" fill="#1b2130" stroke="#252d3d"/>
+      <text x="36" y="130" font-family="JetBrains Mono" font-size="11" fill="#3b82f6" font-weight="600">JOB</text>
+      <text x="36" y="150" font-family="DM Sans" font-size="12" fill="#7a839a">Pods run to completion → then stop</text>
+      <line x1="350" y1="137" x2="560" y2="137" stroke="#3b82f6" stroke-width="2"/>
+      <circle cx="350" cy="137" r="4" fill="#3b82f6"/>
+      <rect x="558" y="129" width="16" height="16" rx="3" fill="#22c55e"/>
+      <text x="562" y="141" font-family="DM Sans" font-size="10" fill="#fff">✓</text>
+      <text x="586" y="141" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Done</text>
+    </svg>
+  </div>
+
+  <h3>How a Job Works (Step by Step)</h3>
+
+  <div class="flow-steps">
+    <div class="flow-step"><div class="step-num">1</div><div class="step-label">You submit<br>a Job YAML</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">2</div><div class="step-label">Job Controller<br>creates Pod(s)</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">3</div><div class="step-label">Pod runs<br>your task</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">4</div><div class="step-label">Pod exits<br>with code 0</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">5</div><div class="step-label">Job marked<br><span style="color:#22c55e">Complete ✓</span></div></div>
+  </div>
+
+  <p>The <strong>Job Controller</strong> (running inside the kube-controller-manager) watches for Job objects. When it finds one, it creates the required Pod(s). If a Pod fails, the controller can create a replacement — up to a configurable retry limit.</p>
+</section>
+
+<!-- ── BENEFITS ── -->
+<section id="benefits">
+  <h2><span class="num">02</span> Benefits &amp; When to Use</h2>
+
+  <h3>Key Benefits</h3>
+  <table>
+    <tr><th style="width:200px">Benefit</th><th>Description</th></tr>
+    <tr><td><strong>Guaranteed Completion</strong></td><td>Kubernetes tracks success and retries failed Pods automatically — your task will finish.</td></tr>
+    <tr><td><strong>Parallelism</strong></td><td>Run multiple Pods in parallel to process work faster, with fine-grained control.</td></tr>
+    <tr><td><strong>Resource Efficiency</strong></td><td>Pods are freed after completion — no idle resources wasted.</td></tr>
+    <tr><td><strong>Retry &amp; Fault Tolerance</strong></td><td>Built-in backoff policies, failure limits, and configurable retry behavior.</td></tr>
+    <tr><td><strong>Composability</strong></td><td>Combine with CronJobs for scheduling, or build complex pipelines with workflow engines.</td></tr>
+  </table>
+
+  <h3>When to Use Jobs</h3>
+  <div class="callout">
+    <div class="label blue">Perfect Use Cases</div>
+    <p style="margin:0">Database migrations &bull; Batch data processing &bull; Report generation &bull; Sending bulk emails &bull; Image/video encoding &bull; ETL pipelines &bull; Machine learning training runs &bull; Backup and restore operations &bull; One-off admin tasks</p>
+  </div>
+</section>
+
+<!-- ── JOB TYPES ── -->
+<section id="job-types">
+  <h2><span class="num">03</span> Job Types</h2>
+
+  <p>Kubernetes offers three types of Job behavior, controlled by two fields: <code>completions</code> and <code>parallelism</code>.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">Three Types of Jobs</div>
+    <svg width="720" height="260" viewBox="0 0 720 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Type 1 -->
+      <rect x="10" y="10" width="220" height="240" rx="12" fill="#1b2130" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="30" y="42" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">Non-Parallel Job</text>
+      <text x="30" y="62" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">completions: 1</text>
+      <text x="30" y="78" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">parallelism: 1</text>
+      <line x1="30" y1="92" x2="210" y2="92" stroke="#252d3d"/>
+      <text x="30" y="115" font-family="DM Sans" font-size="12" fill="#7a839a">Runs exactly one Pod.</text>
+      <text x="30" y="135" font-family="DM Sans" font-size="12" fill="#7a839a">Simplest form.</text>
+      <rect x="80" y="160" width="70" height="40" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="98" y="185" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">Pod</text>
+      <text x="88" y="225" font-family="DM Sans" font-size="11" fill="#22c55e">→ Done ✓</text>
+
+      <!-- Type 2 -->
+      <rect x="250" y="10" width="220" height="240" rx="12" fill="#1b2130" stroke="#06b6d4" stroke-width="1.5"/>
+      <text x="270" y="42" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">Fixed Completion</text>
+      <text x="270" y="62" font-family="JetBrains Mono" font-size="10" fill="#06b6d4">completions: N</text>
+      <text x="270" y="78" font-family="JetBrains Mono" font-size="10" fill="#06b6d4">parallelism: M</text>
+      <line x1="270" y1="92" x2="450" y2="92" stroke="#252d3d"/>
+      <text x="270" y="115" font-family="DM Sans" font-size="12" fill="#7a839a">Must succeed N times.</text>
+      <text x="270" y="135" font-family="DM Sans" font-size="12" fill="#7a839a">Runs M Pods at once.</text>
+      <rect x="270" y="160" width="50" height="40" rx="8" fill="rgba(6,182,212,.15)" stroke="#06b6d4"/>
+      <rect x="330" y="160" width="50" height="40" rx="8" fill="rgba(6,182,212,.15)" stroke="#06b6d4"/>
+      <rect x="390" y="160" width="50" height="40" rx="8" fill="rgba(6,182,212,.15)" stroke="#06b6d4"/>
+      <text x="282" y="185" font-family="JetBrains Mono" font-size="9" fill="#06b6d4">Pod1</text>
+      <text x="342" y="185" font-family="JetBrains Mono" font-size="9" fill="#06b6d4">Pod2</text>
+      <text x="402" y="185" font-family="JetBrains Mono" font-size="9" fill="#06b6d4">Pod3</text>
+      <text x="310" y="225" font-family="DM Sans" font-size="11" fill="#22c55e">N successes ✓</text>
+
+      <!-- Type 3 -->
+      <rect x="490" y="10" width="220" height="240" rx="12" fill="#1b2130" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="510" y="42" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">Work Queue</text>
+      <text x="510" y="62" font-family="JetBrains Mono" font-size="10" fill="#a855f7">completions: unset</text>
+      <text x="510" y="78" font-family="JetBrains Mono" font-size="10" fill="#a855f7">parallelism: M</text>
+      <line x1="510" y1="92" x2="690" y2="92" stroke="#252d3d"/>
+      <text x="510" y="115" font-family="DM Sans" font-size="12" fill="#7a839a">Pods pull from a queue.</text>
+      <text x="510" y="135" font-family="DM Sans" font-size="12" fill="#7a839a">Done when queue empty.</text>
+      <rect x="530" y="155" width="120" height="30" rx="6" fill="rgba(168,85,247,.12)" stroke="#a855f7"/>
+      <text x="560" y="175" font-family="JetBrains Mono" font-size="10" fill="#a855f7">Queue</text>
+      <rect x="530" y="195" width="50" height="30" rx="6" fill="rgba(168,85,247,.15)" stroke="#a855f7"/>
+      <rect x="590" y="195" width="50" height="30" rx="6" fill="rgba(168,85,247,.15)" stroke="#a855f7"/>
+      <text x="538" y="215" font-family="JetBrains Mono" font-size="9" fill="#a855f7">Pod1</text>
+      <text x="598" y="215" font-family="JetBrains Mono" font-size="9" fill="#a855f7">Pod2</text>
+      <text x="548" y="245" font-family="DM Sans" font-size="11" fill="#22c55e">Queue empty ✓</text>
+    </svg>
+  </div>
+
+  <table>
+    <tr><th>Type</th><th>completions</th><th>parallelism</th><th>Use When</th></tr>
+    <tr>
+      <td><span class="badge blue">Non-Parallel</span></td>
+      <td><code>1</code> (default)</td><td><code>1</code> (default)</td>
+      <td>Simple one-off task: backup, migration</td>
+    </tr>
+    <tr>
+      <td><span class="badge green">Fixed Completion</span></td>
+      <td><code>N</code></td><td><code>M</code></td>
+      <td>Process a known number of items in parallel</td>
+    </tr>
+    <tr>
+      <td><span class="badge purple">Work Queue</span></td>
+      <td><em>unset</em></td><td><code>M</code></td>
+      <td>Pods coordinate via external queue (RabbitMQ, Redis, etc.)</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║     SECTION 2 : JOB MANAGEMENT           ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+
+<section id="yaml">
+  <h2><span class="num">04</span> Job YAML File</h2>
+  <p>Here is a complete, annotated Job manifest covering all important fields:</p>
+
+<pre><code><span class="key">apiVersion:</span> <span class="val">batch/v1</span>
+<span class="key">kind:</span> <span class="val">Job</span>
+<span class="key">metadata:</span>
+  <span class="key">name:</span> <span class="str">data-processing-job</span>
+  <span class="key">labels:</span>
+    <span class="key">app:</span> <span class="str">batch-processor</span>
+<span class="key">spec:</span>
+
+  <span class="comment"># ── Completion Settings ──</span>
+  <span class="key">completions:</span> <span class="num">5</span>           <span class="comment"># Total successful completions needed</span>
+  <span class="key">parallelism:</span> <span class="num">2</span>           <span class="comment"># Max Pods running at the same time</span>
+  <span class="key">completionMode:</span> <span class="val">Indexed</span>  <span class="comment"># Each Pod gets a unique index (0..N-1)</span>
+
+  <span class="comment"># ── Failure Handling ──</span>
+  <span class="key">backoffLimit:</span> <span class="num">4</span>           <span class="comment"># Max retries before marking Job as Failed</span>
+  <span class="key">activeDeadlineSeconds:</span> <span class="num">600</span> <span class="comment"># Timeout: kill Job after 10 minutes</span>
+
+  <span class="comment"># ── Cleanup ──</span>
+  <span class="key">ttlSecondsAfterFinished:</span> <span class="num">3600</span> <span class="comment"># Auto-delete Job 1 hour after done</span>
+  <span class="key">suspend:</span> <span class="val">false</span>            <span class="comment"># Set to true to pause the Job</span>
+
+  <span class="comment"># ── Pod Template ──</span>
+  <span class="key">template:</span>
+    <span class="key">metadata:</span>
+      <span class="key">labels:</span>
+        <span class="key">app:</span> <span class="str">batch-processor</span>
+    <span class="key">spec:</span>
+      <span class="key">restartPolicy:</span> <span class="val">Never</span>   <span class="comment"># Must be Never or OnFailure (not Always!)</span>
+      <span class="key">containers:</span>
+      - <span class="key">name:</span> <span class="str">worker</span>
+        <span class="key">image:</span> <span class="str">myapp/processor:v2</span>
+        <span class="key">command:</span> [<span class="str">"python"</span>, <span class="str">"process.py"</span>]
+        <span class="key">resources:</span>
+          <span class="key">requests:</span>
+            <span class="key">cpu:</span> <span class="str">"500m"</span>
+            <span class="key">memory:</span> <span class="str">"256Mi"</span>
+          <span class="key">limits:</span>
+            <span class="key">cpu:</span> <span class="str">"1"</span>
+            <span class="key">memory:</span> <span class="str">"512Mi"</span></code></pre>
+
+  <div class="callout orange">
+    <div class="label">Important Rule</div>
+    <p style="margin:0"><code>restartPolicy</code> in a Job must be <code>Never</code> or <code>OnFailure</code>. You cannot use <code>Always</code> because the Pod is supposed to terminate after completing its work.</p>
+  </div>
+</section>
+
+<!-- ── COMPLETIONS ── -->
+<section id="completions">
+  <h2><span class="num">05</span> Job Completions</h2>
+  <p>The <code>completions</code> field tells Kubernetes: <em>"This Job is done only when <strong>N</strong> Pods have exited successfully (exit code 0)."</em></p>
+
+  <h3>Completion Modes</h3>
+  <div class="compare-grid">
+    <div class="compare-card">
+      <h4>NonIndexed (default)</h4>
+      <p>Each successful Pod is counted equally. Pods are interchangeable — no identity. The Job is complete when the <strong>total count of succeeded Pods ≥ completions</strong>.</p>
+    </div>
+    <div class="compare-card">
+      <h4>Indexed</h4>
+      <p>Each Pod gets a unique index from <code>0</code> to <code>completions - 1</code> via the <code>JOB_COMPLETION_INDEX</code> env variable. The Job is done when <strong>every index has one success</strong>. Great for sharded processing.</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Completions = 4, Parallelism = 2 — Timeline</div>
+    <svg width="680" height="160" viewBox="0 0 680 160" fill="none">
+      <line x1="40" y1="130" x2="640" y2="130" stroke="#252d3d" stroke-width="1"/>
+      <text x="630" y="148" font-family="JetBrains Mono" font-size="10" fill="#7a839a">time →</text>
+      <text x="60" y="25" font-family="DM Sans" font-size="11" fill="#7a839a">Wave 1 (2 parallel)</text>
+      <rect x="60" y="40" width="140" height="35" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="100" y="62" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">Pod #0 ✓</text>
+      <rect x="60" y="85" width="120" height="35" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="90" y="107" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">Pod #1 ✓</text>
+      <text x="210" y="25" font-family="DM Sans" font-size="11" fill="#7a839a">Wave 2 (2 parallel)</text>
+      <rect x="210" y="40" width="160" height="35" rx="8" fill="rgba(6,182,212,.15)" stroke="#06b6d4"/>
+      <text x="255" y="62" font-family="JetBrains Mono" font-size="11" fill="#06b6d4">Pod #2 ✓</text>
+      <rect x="190" y="85" width="130" height="35" rx="8" fill="rgba(6,182,212,.15)" stroke="#06b6d4"/>
+      <text x="220" y="107" font-family="JetBrains Mono" font-size="11" fill="#06b6d4">Pod #3 ✓</text>
+      <line x1="380" y1="30" x2="380" y2="125" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="390" y="42" font-family="JetBrains Mono" font-size="11" fill="#22c55e" font-weight="600">Job Complete!</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ── PARALLELISM ── -->
+<section id="parallelism">
+  <h2><span class="num">06</span> Job Parallelism</h2>
+  <p>The <code>parallelism</code> field controls the <strong>maximum number of Pods running at the same time</strong>. Kubernetes will never schedule more than this many Pods concurrently for the Job.</p>
+
+  <table>
+    <tr><th>parallelism</th><th>Behavior</th></tr>
+    <tr><td><code>1</code> (default)</td><td>One Pod at a time — sequential execution.</td></tr>
+    <tr><td><code>N</code></td><td>Up to N Pods run concurrently. New Pods launch as others complete.</td></tr>
+    <tr><td><code>0</code></td><td>Job is paused — no Pods are scheduled.</td></tr>
+  </table>
+
+  <div class="callout">
+    <div class="label blue">How They Work Together</div>
+    <p style="margin:0">If <code>completions: 10</code> and <code>parallelism: 3</code>, Kubernetes runs up to 3 Pods at a time. As each succeeds, a new one is launched — until 10 total have succeeded. Think of it like a pool with a max capacity of 3 workers.</p>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Parallelism Pool — completions: 6, parallelism: 3</div>
+    <svg width="600" height="200" viewBox="0 0 600 200" fill="none">
+      <rect x="30" y="20" width="200" height="160" rx="12" fill="rgba(59,130,246,.06)" stroke="#3b82f6" stroke-dasharray="5 4"/>
+      <text x="65" y="15" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">Running Pool (max 3)</text>
+      <rect x="55" y="40" width="150" height="32" rx="6" fill="rgba(59,130,246,.18)" stroke="#3b82f6"/>
+      <text x="95" y="61" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">Pod A ⏳</text>
+      <rect x="55" y="82" width="150" height="32" rx="6" fill="rgba(59,130,246,.18)" stroke="#3b82f6"/>
+      <text x="95" y="103" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">Pod B ⏳</text>
+      <rect x="55" y="124" width="150" height="32" rx="6" fill="rgba(59,130,246,.18)" stroke="#3b82f6"/>
+      <text x="95" y="145" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">Pod C ⏳</text>
+      <text x="250" y="60" font-family="DM Sans" font-size="20" fill="#252d3d">→</text>
+      <text x="250" y="105" font-family="DM Sans" font-size="20" fill="#252d3d">→</text>
+      <text x="250" y="147" font-family="DM Sans" font-size="20" fill="#252d3d">→</text>
+      <rect x="290" y="30" width="130" height="130" rx="12" fill="rgba(34,197,94,.06)" stroke="#22c55e" stroke-dasharray="5 4"/>
+      <text x="310" y="22" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Completed</text>
+      <text x="320" y="65" font-family="JetBrains Mono" font-size="11" fill="#22c55e">✓ Pod 1</text>
+      <text x="320" y="90" font-family="JetBrains Mono" font-size="11" fill="#22c55e">✓ Pod 2</text>
+      <text x="320" y="115" font-family="JetBrains Mono" font-size="11" fill="#22c55e">✓ Pod 3</text>
+      <text x="320" y="145" font-family="JetBrains Mono" font-size="11" fill="#7a839a">… 3 more</text>
+      <rect x="450" y="50" width="130" height="90" rx="12" fill="rgba(234,179,8,.06)" stroke="#eab308" stroke-dasharray="5 4"/>
+      <text x="470" y="42" font-family="JetBrains Mono" font-size="10" fill="#eab308">Waiting</text>
+      <text x="475" y="85" font-family="JetBrains Mono" font-size="11" fill="#eab308">Pod D 💤</text>
+      <text x="475" y="110" font-family="JetBrains Mono" font-size="11" fill="#eab308">Pod E 💤</text>
+      <text x="475" y="130" font-family="JetBrains Mono" font-size="11" fill="#eab308">Pod F 💤</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ── FIXED vs WORK QUEUE ── -->
+<section id="fixed-vs-queue">
+  <h2><span class="num">07</span> Fixed Completion vs Work Queue Jobs</h2>
+  <p>These are the two main patterns for parallel Jobs. The difference is <strong>who decides when the work is done</strong>.</p>
+
+  <div class="compare-grid">
+    <div class="compare-card" style="border-top: 3px solid var(--accent2);">
+      <h4 style="color:var(--accent2)">Fixed Completion Count</h4>
+      <p><strong>Kubernetes decides.</strong> You set <code>completions: N</code>. The Job Controller tracks successes and stops when N Pods have exited successfully.</p>
+      <p><strong>Best for:</strong> Processing a known, fixed number of items (100 images, 50 reports).</p>
+<pre><code><span class="key">completions:</span> <span class="num">100</span>
+<span class="key">parallelism:</span> <span class="num">10</span></code></pre>
+    </div>
+    <div class="compare-card" style="border-top: 3px solid var(--purple);">
+      <h4 style="color:var(--purple)">Work Queue</h4>
+      <p><strong>Your Pods decide.</strong> Leave <code>completions</code> unset. Each Pod pulls from an external queue (Redis, RabbitMQ, SQS). When a Pod finds the queue empty, it exits successfully.</p>
+      <p><strong>Best for:</strong> Unknown or dynamic workloads, event-driven processing.</p>
+<pre><code><span class="comment"># completions is NOT set</span>
+<span class="key">parallelism:</span> <span class="num">5</span></code></pre>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Work Queue Pattern — Workflow</div>
+    <svg width="680" height="180" viewBox="0 0 680 180" fill="none">
+      <rect x="20" y="40" width="160" height="100" rx="12" fill="rgba(168,85,247,.1)" stroke="#a855f7"/>
+      <text x="55" y="30" font-family="JetBrains Mono" font-size="11" fill="#a855f7" font-weight="600">Message Queue</text>
+      <text x="40" y="70" font-family="JetBrains Mono" font-size="10" fill="#a855f7">📩 task-1</text>
+      <text x="40" y="90" font-family="JetBrains Mono" font-size="10" fill="#a855f7">📩 task-2</text>
+      <text x="40" y="110" font-family="JetBrains Mono" font-size="10" fill="#a855f7">📩 task-3</text>
+      <text x="40" y="130" font-family="JetBrains Mono" font-size="10" fill="#7a839a">📩 … more</text>
+      <path d="M190 70 L260 55" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arrowP)"/>
+      <path d="M190 90 L260 90" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arrowP)"/>
+      <path d="M190 110 L260 125" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arrowP)"/>
+      <defs><marker id="arrowP" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#a855f7"/></marker></defs>
+      <rect x="270" y="35" width="120" height="35" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="293" y="57" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">Worker Pod 1</text>
+      <rect x="270" y="78" width="120" height="35" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="293" y="100" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">Worker Pod 2</text>
+      <rect x="270" y="121" width="120" height="35" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="293" y="143" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">Worker Pod 3</text>
+      <text x="410" y="95" font-family="DM Sans" font-size="22" fill="#252d3d">→</text>
+      <rect x="440" y="60" width="220" height="60" rx="12" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="470" y="85" font-family="JetBrains Mono" font-size="11" fill="#22c55e">Queue empty → all Pods</text>
+      <text x="470" y="105" font-family="JetBrains Mono" font-size="11" fill="#22c55e">exit(0) → Job Complete ✓</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ── POD & CONTAINER FAILURES ── -->
+<section id="pod-failures">
+  <h2><span class="num">08</span> Handling Pod &amp; Container Failures</h2>
+  <p>Things fail — that's reality. Kubernetes provides multiple layers to handle failures inside a Job.</p>
+
+  <h3>Two Failure Scenarios</h3>
+  <table>
+    <tr><th>Scenario</th><th>What Happens</th><th>Controlled By</th></tr>
+    <tr>
+      <td><strong>Container fails</strong><br><span style="color:var(--text-dim);font-size:12px">(non-zero exit code)</span></td>
+      <td>If <code>restartPolicy: OnFailure</code>, kubelet restarts the container <em>in the same Pod</em>. If <code>Never</code>, the Pod is marked Failed and a <em>new Pod</em> is created.</td>
+      <td><code>restartPolicy</code></td>
+    </tr>
+    <tr>
+      <td><strong>Pod fails</strong><br><span style="color:var(--text-dim);font-size:12px">(node crash, eviction, OOM)</span></td>
+      <td>Job Controller detects the failure and creates a <em>replacement Pod</em> (up to backoffLimit).</td>
+      <td><code>backoffLimit</code></td>
+    </tr>
+  </table>
+
+  <div class="diagram">
+    <div class="diagram-title">Failure Handling Decision Tree</div>
+    <svg width="680" height="280" viewBox="0 0 680 280" fill="none">
+      <rect x="240" y="10" width="200" height="40" rx="10" fill="rgba(239,68,68,.15)" stroke="#ef4444"/>
+      <text x="272" y="35" font-family="JetBrains Mono" font-size="12" fill="#ef4444">Pod / Container Fails</text>
+      <line x1="290" y1="50" x2="150" y2="90" stroke="#252d3d" stroke-width="1.5"/>
+      <line x1="390" y1="50" x2="530" y2="90" stroke="#252d3d" stroke-width="1.5"/>
+      <rect x="50" y="90" width="200" height="40" rx="10" fill="rgba(234,179,8,.12)" stroke="#eab308"/>
+      <text x="62" y="115" font-family="JetBrains Mono" font-size="11" fill="#eab308">restartPolicy: OnFailure</text>
+      <line x1="150" y1="130" x2="150" y2="165" stroke="#252d3d" stroke-width="1.5"/>
+      <rect x="50" y="165" width="200" height="50" rx="10" fill="rgba(59,130,246,.1)" stroke="#3b82f6"/>
+      <text x="62" y="187" font-family="DM Sans" font-size="12" fill="#3b82f6">Kubelet restarts container</text>
+      <text x="62" y="204" font-family="DM Sans" font-size="11" fill="#7a839a">Same Pod, same node</text>
+      <rect x="430" y="90" width="200" height="40" rx="10" fill="rgba(249,115,22,.12)" stroke="#f97316"/>
+      <text x="452" y="115" font-family="JetBrains Mono" font-size="11" fill="#f97316">restartPolicy: Never</text>
+      <line x1="530" y1="130" x2="530" y2="165" stroke="#252d3d" stroke-width="1.5"/>
+      <rect x="430" y="165" width="200" height="50" rx="10" fill="rgba(59,130,246,.1)" stroke="#3b82f6"/>
+      <text x="442" y="187" font-family="DM Sans" font-size="12" fill="#3b82f6">Job Controller creates</text>
+      <text x="442" y="204" font-family="DM Sans" font-size="11" fill="#3b82f6">a new replacement Pod</text>
+      <line x1="150" y1="215" x2="340" y2="250" stroke="#252d3d"/>
+      <line x1="530" y1="215" x2="340" y2="250" stroke="#252d3d"/>
+      <rect x="240" y="240" width="200" height="35" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="250" y="263" font-family="JetBrains Mono" font-size="11" fill="#22c55e">Until backoffLimit reached</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ── BACKOFF ── -->
+<section id="backoff">
+  <h2><span class="num">09</span> Pod Backoff Failure Policy</h2>
+  <p>When a Pod fails, the Job Controller doesn't immediately retry — it uses <strong>exponential backoff</strong>. Each retry waits longer: 10s → 20s → 40s → … up to a cap of 6 minutes.</p>
+
+<pre><code><span class="key">spec:</span>
+  <span class="key">backoffLimit:</span> <span class="num">6</span>   <span class="comment"># Default. After 6 failures → Job is Failed</span></code></pre>
+
+  <div class="diagram">
+    <div class="diagram-title">Exponential Backoff Timeline (backoffLimit: 6)</div>
+    <svg width="700" height="130" viewBox="0 0 700 130" fill="none">
+      <line x1="30" y1="90" x2="670" y2="90" stroke="#252d3d"/>
+      <circle cx="60" cy="90" r="16" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+      <text x="54" y="94" font-family="JetBrains Mono" font-size="10" fill="#ef4444">✗</text>
+      <text x="42" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Fail #1</text>
+      <text x="48" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">10s</text>
+      <circle cx="140" cy="90" r="16" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+      <text x="134" y="94" font-family="JetBrains Mono" font-size="10" fill="#ef4444">✗</text>
+      <text x="122" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Fail #2</text>
+      <text x="128" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">20s</text>
+      <circle cx="240" cy="90" r="16" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+      <text x="234" y="94" font-family="JetBrains Mono" font-size="10" fill="#ef4444">✗</text>
+      <text x="222" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Fail #3</text>
+      <text x="228" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">40s</text>
+      <circle cx="360" cy="90" r="16" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+      <text x="354" y="94" font-family="JetBrains Mono" font-size="10" fill="#ef4444">✗</text>
+      <text x="342" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Fail #4</text>
+      <text x="345" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">80s</text>
+      <circle cx="480" cy="90" r="16" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+      <text x="474" y="94" font-family="JetBrains Mono" font-size="10" fill="#ef4444">✗</text>
+      <text x="462" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Fail #5</text>
+      <text x="463" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">160s</text>
+      <circle cx="600" cy="90" r="16" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+      <text x="594" y="94" font-family="JetBrains Mono" font-size="10" fill="#ef4444">✗</text>
+      <text x="582" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Fail #6</text>
+      <text x="583" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">320s</text>
+      <rect x="560" y="20" width="120" height="28" rx="6" fill="rgba(239,68,68,.15)" stroke="#ef4444"/>
+      <text x="573" y="39" font-family="JetBrains Mono" font-size="10" fill="#ef4444">JOB FAILED ✗</text>
+    </svg>
+  </div>
+
+  <div class="callout red">
+    <div class="label">Watch Out</div>
+    <p style="margin:0">With <code>restartPolicy: OnFailure</code>, in-Pod container restarts <strong>also count toward <code>backoffLimit</code></strong>. If a container crash-loops 6 times inside one Pod, the entire Job is marked Failed.</p>
+  </div>
+</section>
+
+<!-- ── POD FAILURE POLICY ── -->
+<section id="pod-failure-policy">
+  <h2><span class="num">10</span> Pod Failure Policy</h2>
+  <p>Introduced in Kubernetes v1.26 (stable in v1.31), <code>podFailurePolicy</code> gives you <strong>fine-grained control</strong> over what happens when a Pod fails — based on exit codes or Pod conditions.</p>
+
+  <h3>Why Do We Need This?</h3>
+  <p>Without it, every failure counts the same — a bug crash and a transient OOM both eat a retry. With <code>podFailurePolicy</code> you can say: <em>"If exit code = 42, don't retry — fail immediately"</em> or <em>"If it's an eviction, ignore it."</em></p>
+
+<pre><code><span class="key">spec:</span>
+  <span class="key">backoffLimit:</span> <span class="num">6</span>
+  <span class="key">podFailurePolicy:</span>
+    <span class="key">rules:</span>
+
+    <span class="comment"># Rule 1: Exit code 42 = permanent bug → FailJob immediately</span>
+    - <span class="key">action:</span> <span class="val">FailJob</span>
+      <span class="key">onExitCodes:</span>
+        <span class="key">containerName:</span> <span class="str">worker</span>
+        <span class="key">operator:</span> <span class="val">In</span>
+        <span class="key">values:</span> [<span class="num">42</span>]
+
+    <span class="comment"># Rule 2: Eviction → Ignore, don't count as failure</span>
+    - <span class="key">action:</span> <span class="val">Ignore</span>
+      <span class="key">onPodConditions:</span>
+      - <span class="key">type:</span> <span class="val">DisruptionTarget</span>
+
+    <span class="comment"># Rule 3: Everything else → Count and retry normally</span>
+    - <span class="key">action:</span> <span class="val">Count</span>
+      <span class="key">onExitCodes:</span>
+        <span class="key">operator:</span> <span class="val">NotIn</span>
+        <span class="key">values:</span> [<span class="num">0</span>]</code></pre>
+
+  <table>
+    <tr><th>Action</th><th>Meaning</th></tr>
+    <tr><td><span class="badge orange">FailJob</span></td><td>Immediately mark the entire Job as Failed. No more retries.</td></tr>
+    <tr><td><span class="badge green">Ignore</span></td><td>Don't count this failure — Pod is replaced without consuming backoffLimit.</td></tr>
+    <tr><td><span class="badge blue">Count</span></td><td>Normal behavior — counts toward backoffLimit.</td></tr>
+    <tr><td><span class="badge purple">FailIndex</span></td><td>(Indexed Jobs only) Mark the specific index as failed without failing the whole Job.</td></tr>
+  </table>
+</section>
+
+<!-- ── TERMINATION & CLEANUP ── -->
+<section id="termination">
+  <h2><span class="num">11</span> Job Termination &amp; Cleanup</h2>
+  <p>When a Job finishes, the Pods <strong>remain in the cluster</strong> (in Completed or Failed state) so you can inspect logs. But they take up resources. Here's how to control cleanup:</p>
+
+  <table>
+    <tr><th>Field</th><th>What It Does</th></tr>
+    <tr><td><code>activeDeadlineSeconds</code></td><td>Sets a <strong>maximum runtime</strong> for the entire Job. Once exceeded, all Pods are terminated and the Job fails. Counts from the first Pod start.</td></tr>
+    <tr><td><code>backoffLimit</code></td><td>Maximum total failures allowed before the Job is marked Failed.</td></tr>
+    <tr><td><code>ttlSecondsAfterFinished</code></td><td>Automatically <strong>deletes the Job</strong> (and its Pods) N seconds after completion. Set to <code>0</code> for immediate cleanup.</td></tr>
+    <tr><td><code>suspend</code></td><td>Set to <code>true</code> to pause. Running Pods are deleted. Set back to <code>false</code> to resume.</td></tr>
+  </table>
+
+  <div class="diagram">
+    <div class="diagram-title">Job Lifecycle — From Create to Cleanup</div>
+    <svg width="700" height="110" viewBox="0 0 700 110" fill="none">
+      <defs><marker id="arrowG" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#252d3d"/></marker></defs>
+      <rect x="10" y="35" width="100" height="40" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="24" y="60" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">Created</text>
+      <path d="M115 55 L145 55" stroke="#252d3d" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <rect x="150" y="35" width="100" height="40" rx="8" fill="rgba(234,179,8,.12)" stroke="#eab308"/>
+      <text x="167" y="60" font-family="JetBrains Mono" font-size="10" fill="#eab308">Running</text>
+      <path d="M255 55 L285 55" stroke="#252d3d" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <rect x="290" y="20" width="120" height="30" rx="6" fill="rgba(34,197,94,.12)" stroke="#22c55e"/>
+      <text x="305" y="40" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Complete ✓</text>
+      <rect x="290" y="60" width="120" height="30" rx="6" fill="rgba(239,68,68,.12)" stroke="#ef4444"/>
+      <text x="313" y="80" font-family="JetBrains Mono" font-size="10" fill="#ef4444">Failed ✗</text>
+      <path d="M415 45 L445 45" stroke="#252d3d" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <rect x="450" y="25" width="130" height="40" rx="8" fill="rgba(168,85,247,.1)" stroke="#a855f7"/>
+      <text x="460" y="50" font-family="JetBrains Mono" font-size="10" fill="#a855f7">TTL Countdown</text>
+      <path d="M585 45 L615 45" stroke="#252d3d" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <rect x="620" y="25" width="60" height="40" rx="8" fill="rgba(239,68,68,.08)" stroke="#ef4444" stroke-dasharray="4 3"/>
+      <text x="632" y="50" font-family="JetBrains Mono" font-size="10" fill="#ef4444">Delete</text>
+    </svg>
+  </div>
+
+  <div class="callout orange">
+    <div class="label">Pro Tip</div>
+    <p style="margin:0">Always set <code>ttlSecondsAfterFinished</code> in production. Without it, completed Jobs (and their Pods) pile up forever and clutter your cluster.</p>
+  </div>
+</section>
+
+<!-- ── JOB PATTERNS ── -->
+<section id="patterns">
+  <h2><span class="num">12</span> Job Patterns</h2>
+  <p>Here's a quick-reference matrix of the most common Job patterns and when to use each one.</p>
+
+  <table>
+    <tr><th>Pattern</th><th>completions</th><th>parallelism</th><th>Description</th></tr>
+    <tr><td><strong>Single Job</strong></td><td>1</td><td>1</td><td>Run one Pod once. Good for: migrations, one-off scripts.</td></tr>
+    <tr><td><strong>Fixed Count, Sequential</strong></td><td>N</td><td>1</td><td>Run N tasks one at a time. Good when tasks share a limited resource.</td></tr>
+    <tr><td><strong>Fixed Count, Parallel</strong></td><td>N</td><td>M</td><td>Run N tasks, M at a time. Most common batch processing pattern.</td></tr>
+    <tr><td><strong>Work Queue, Parallel</strong></td><td>—</td><td>M</td><td>Pods pull from external queue. Great for event-driven workloads.</td></tr>
+    <tr><td><strong>Indexed Job</strong></td><td>N</td><td>M</td><td>Each Pod gets unique index. Ideal for sharded workloads (shard 0..N-1).</td></tr>
+    <tr><td><strong>CronJob</strong></td><td colspan="3">Wraps a Job inside a cron schedule. Creates a new Job on each trigger (e.g., every night at 2am).</td></tr>
+  </table>
+
+  <div class="diagram">
+    <div class="diagram-title">CronJob → Job → Pod Relationship</div>
+    <svg width="600" height="120" viewBox="0 0 600 120" fill="none">
+      <rect x="20" y="30" width="140" height="50" rx="10" fill="rgba(168,85,247,.12)" stroke="#a855f7"/>
+      <text x="44" y="52" font-family="JetBrains Mono" font-size="12" fill="#a855f7" font-weight="600">CronJob</text>
+      <text x="40" y="70" font-family="DM Sans" font-size="10" fill="#7a839a">schedule: "0 2 * * *"</text>
+      <text x="175" y="60" font-family="DM Sans" font-size="14" fill="#252d3d">creates →</text>
+      <rect x="240" y="30" width="140" height="50" rx="10" fill="rgba(59,130,246,.12)" stroke="#3b82f6"/>
+      <text x="282" y="52" font-family="JetBrains Mono" font-size="12" fill="#3b82f6" font-weight="600">Job</text>
+      <text x="260" y="70" font-family="DM Sans" font-size="10" fill="#7a839a">auto-generated name</text>
+      <text x="395" y="60" font-family="DM Sans" font-size="14" fill="#252d3d">creates →</text>
+      <rect x="450" y="15" width="120" height="35" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="485" y="37" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Pod ✓</text>
+      <rect x="450" y="58" width="120" height="35" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="485" y="80" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Pod ✓</text>
+    </svg>
+  </div>
+
+  <h3>Quick Commands Reference</h3>
+<pre><code><span class="comment"># Create a Job</span>
+kubectl apply -f job.yaml
+
+<span class="comment"># Watch Job progress</span>
+kubectl get jobs --watch
+
+<span class="comment"># See Pods created by a Job</span>
+kubectl get pods --selector=job-name=data-processing-job
+
+<span class="comment"># View logs from a Job Pod</span>
+kubectl logs job/data-processing-job
+
+<span class="comment"># Delete a Job (and its Pods)</span>
+kubectl delete job data-processing-job
+
+<span class="comment"># Suspend a running Job</span>
+kubectl patch job/data-processing-job --type=strategic \
+  -p '{"spec":{"suspend":true}}'
+
+<span class="comment"># Resume a suspended Job</span>
+kubectl patch job/data-processing-job --type=strategic \
+  -p '{"spec":{"suspend":false}}'</code></pre>
+
+  <div class="callout green">
+    <div class="label">Summary</div>
+    <p style="margin:0">Kubernetes Jobs are your go-to for <strong>any task that should run to completion</strong>. Combine <code>completions</code>, <code>parallelism</code>, <code>backoffLimit</code>, and <code>podFailurePolicy</code> to build resilient, efficient batch workloads — from simple one-shot scripts to massive parallel processing pipelines.</p>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

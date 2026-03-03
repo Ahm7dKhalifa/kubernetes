@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kubernetes Jobs – Complete Guide</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        background-color: #f4f6f8;
+        color: #333;
+        line-height: 1.7;
+    }
+    h1, h2, h3 {
+        color: #0b5394;
+    }
+    .section {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .diagram {
+        background: #eef5ff;
+        padding: 15px;
+        border-radius: 6px;
+        font-family: monospace;
+        white-space: pre;
+        overflow-x: auto;
+    }
+    .yaml {
+        background: #1e1e1e;
+        color: #00ff88;
+        padding: 15px;
+        border-radius: 6px;
+        font-family: monospace;
+        white-space: pre;
+        overflow-x: auto;
+    }
+    .highlight {
+        background: #fff3cd;
+        padding: 10px;
+        border-left: 5px solid #ffc107;
+        margin: 10px 0;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Kubernetes Jobs – Deep & Simple Explanation</h1>
+
+<div class="section">
+<h2>Section 1: Introduction</h2>
+
+<h3>1. What is a Job?</h3>
+<p>
+A <strong>Kubernetes Job</strong> is a controller that ensures a Pod runs 
+to completion successfully.
+</p>
+
+<div class="highlight">
+Unlike Deployment (which runs forever),  
+Job runs a task once (or multiple times) and then stops.
+</div>
+
+<h3>Real Life Example</h3>
+<ul>
+<li>Database migration</li>
+<li>Backup process</li>
+<li>Sending batch emails</li>
+<li>Data processing task</li>
+</ul>
+
+<hr>
+
+<h3>2. Job Benefits</h3>
+<ul>
+<li>✔ Ensures task completes successfully</li>
+<li>✔ Automatically retries failed Pods</li>
+<li>✔ Can run multiple Pods in parallel</li>
+<li>✔ Handles crash recovery</li>
+<li>✔ Works well for batch processing</li>
+</ul>
+
+<hr>
+
+<h3>3. Job Types</h3>
+
+<h4>1️⃣ Non-parallel Job</h4>
+Runs one Pod once.
+
+<h4>2️⃣ Parallel Job with Fixed Completion</h4>
+Runs multiple Pods until a number of successful completions is reached.
+
+<h4>3️⃣ Work Queue Job</h4>
+Multiple Pods process tasks from shared queue.
+
+</div>
+
+<div class="section">
+<h2>Section 2: Job Management</h2>
+
+<h3>Job Workflow Diagram</h3>
+
+<div class="diagram">
+User applies YAML
+       |
+       v
+Kubernetes API Server
+       |
+       v
+Job Controller
+       |
+       v
+Creates Pod(s)
+       |
+       v
+Pods Execute Task
+       |
+       v
+Success? ----No----> Retry (Backoff Policy)
+   |
+  Yes
+   |
+   v
+Job Completed
+</div>
+
+<hr>
+
+<h3>1. Basic Job YAML File</h3>
+
+<div class="yaml">
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: example-job
+spec:
+  completions: 3
+  parallelism: 2
+  backoffLimit: 4
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: worker
+        image: busybox
+        command: ["sh", "-c", "echo Hello Kubernetes"]
+</div>
+
+<h3>Important Fields Explained</h3>
+
+<ul>
+<li><strong>completions:</strong> Total successful Pods needed</li>
+<li><strong>parallelism:</strong> How many Pods run at same time</li>
+<li><strong>backoffLimit:</strong> Number of retries before failing</li>
+<li><strong>restartPolicy:</strong> Must be Never or OnFailure</li>
+</ul>
+
+<hr>
+
+<h3>2. Completions & Parallelism Explained</h3>
+
+<h4>Example:</h4>
+
+<div class="highlight">
+completions: 6  
+parallelism: 2
+</div>
+
+Meaning:
+
+<div class="diagram">
+Time →
+
+Pod1  ████ Done
+Pod2  ████ Done
+
+Pod3  ████ Done
+Pod4  ████ Done
+
+Pod5  ████ Done
+Pod6  ████ Done
+</div>
+
+Only 2 run at same time until total 6 succeed.
+
+<hr>
+
+<h3>3. Fixed Completion vs Work Queue</h3>
+
+<h4>Fixed Completion</h4>
+Each Pod performs identical task.
+
+<h4>Work Queue</h4>
+Pods pull tasks from queue (like Kafka, Redis, SQS).
+
+<div class="diagram">
+          Shared Queue
+         /      |      \
+      Pod1    Pod2    Pod3
+      |         |       |
+   Process    Process  Process
+</div>
+
+<hr>
+
+<h3>4. Handling Pod & Container Failures</h3>
+
+If Pod fails:
+
+Kubernetes will:
+1. Create new Pod
+2. Retry until backoffLimit reached
+
+<h4>Restart Policy</h4>
+- Never → new Pod created
+- OnFailure → container restarts in same Pod
+
+<hr>
+
+<h3>5. Backoff Failure Policy</h3>
+
+Backoff means:
+Kubernetes waits longer between retries.
+
+Example:
+Retry 1 → after 10s  
+Retry 2 → after 20s  
+Retry 3 → after 40s  
+
+If backoffLimit reached → Job marked Failed.
+
+<hr>
+
+<h3>6. Pod Failure Policy (Advanced)</h3>
+
+You can define rules:
+- Retry only on specific exit codes
+- Fail job immediately on certain errors
+
+Example:
+
+<div class="yaml">
+podFailurePolicy:
+  rules:
+  - action: FailJob
+    onExitCodes:
+      operator: In
+      values: [1]
+</div>
+
+Meaning:
+If container exits with code 1 → fail whole job.
+
+<hr>
+
+<h3>7. Job Termination & Cleanup</h3>
+
+After completion:
+
+Pods remain by default.
+
+You can auto-delete:
+
+<div class="yaml">
+ttlSecondsAfterFinished: 100
+</div>
+
+This deletes job 100 seconds after completion.
+
+<hr>
+
+<h3>8. Job Patterns</h3>
+
+<h4>1️⃣ One-time Task</h4>
+Simple job, runs once.
+
+<h4>2️⃣ Parallel Batch Processing</h4>
+Process large dataset in chunks.
+
+<h4>3️⃣ Work Queue Consumer</h4>
+Pods consume tasks dynamically.
+
+<h4>4️⃣ CronJob</h4>
+Runs Jobs on schedule.
+
+Example:
+
+<div class="yaml">
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: daily-backup
+spec:
+  schedule: "0 2 * * *"
+</div>
+
+</div>
+
+<div class="section">
+<h2>Summary</h2>
+
+<ul>
+<li>Job = Run task until completion</li>
+<li>Deployment = Run forever</li>
+<li>Use completions for total runs</li>
+<li>Use parallelism for concurrency</li>
+<li>Use backoffLimit for retries</li>
+<li>Use ttlSecondsAfterFinished for cleanup</li>
+</ul>
+
+<div class="highlight">
+Kubernetes Job is ideal for batch processing, migrations, and background tasks.
+</div>
+
+</div>
+
+</body>
+</html>
