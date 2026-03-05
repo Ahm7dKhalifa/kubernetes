@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes CronJobs — The Complete Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0f14;
+    --surface: #151921;
+    --surface2: #1b2130;
+    --border: #252d3d;
+    --text: #d1d5e0;
+    --text-dim: #7a839a;
+    --accent: #8b5cf6;
+    --accent2: #06b6d4;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f97316;
+    --yellow: #eab308;
+    --purple: #a855f7;
+    --blue: #3b82f6;
+    --pink: #ec4899;
+    --code-bg: #111520;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 16px;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 20px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+  nav .logo {
+    font-family: 'Fraunces', serif;
+    font-weight: 900; font-size: 20px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  nav .subtitle { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 28px; }
+  nav ul { list-style: none; }
+  nav ul li { margin-bottom: 2px; }
+  nav ul li a {
+    display: block; padding: 7px 12px; border-radius: 8px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px; font-weight: 500;
+    transition: all .2s;
+  }
+  nav ul li a:hover { color: #fff; background: var(--surface2); }
+  nav .sec-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent); margin: 18px 0 8px 12px; font-weight: 600;
+  }
+
+  /* ── MAIN ── */
+  main {
+    margin-left: 260px;
+    max-width: 900px;
+    padding: 50px 60px 100px;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    padding: 60px 0 50px;
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -50px; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(139,92,246,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero .icon { width: 80px; height: 80px; margin-bottom: 24px; }
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 48px; font-weight: 900;
+    background: linear-gradient(135deg, #fff 0%, var(--pink) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1.1; margin-bottom: 16px;
+  }
+  .hero p { color: var(--text-dim); font-size: 18px; max-width: 560px; margin: 0 auto; }
+
+  /* ── SECTIONS ── */
+  section { margin-bottom: 56px; scroll-margin-top: 30px; }
+  h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 30px; font-weight: 700; color: #fff;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+  }
+  h2 .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; color: var(--accent); margin-right: 8px;
+    background: rgba(139,92,246,.12); padding: 3px 10px; border-radius: 6px;
+  }
+  h3 { font-size: 20px; font-weight: 700; color: #e0e4ec; margin: 32px 0 12px; }
+  h4 { font-size: 16px; font-weight: 600; color: var(--accent2); margin: 20px 0 8px; }
+  p { margin-bottom: 14px; }
+  strong { color: #fff; }
+  ul, ol { margin: 10px 0 16px 24px; }
+  li { margin-bottom: 6px; }
+
+  /* ── CALLOUT ── */
+  .callout {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 16px 20px; margin: 20px 0;
+  }
+  .callout.green { border-left-color: var(--green); }
+  .callout.orange { border-left-color: var(--orange); }
+  .callout.red { border-left-color: var(--red); }
+  .callout.blue { border-left-color: var(--blue); }
+  .callout .label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+    font-weight: 700; margin-bottom: 6px;
+  }
+  .callout.green .label { color: var(--green); }
+  .callout.orange .label { color: var(--orange); }
+  .callout.red .label { color: var(--red); }
+  .callout.blue .label { color: var(--blue); }
+  .callout .label.purple { color: var(--accent); }
+  .callout .label.blue { color: var(--blue); }
+
+  /* ── CODE ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+  }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  p code, li code, td code {
+    background: var(--surface2);
+    padding: 2px 7px; border-radius: 5px;
+    color: var(--accent2); font-size: 13px;
+  }
+  pre .comment { color: #5a6580; }
+  pre .key { color: var(--accent); }
+  pre .val { color: var(--green); }
+  pre .str { color: var(--yellow); }
+  pre .num { color: var(--orange); }
+
+  /* ── DIAGRAM ── */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 30px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .diagram-title {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent); font-weight: 700; margin-bottom: 20px;
+    text-align: center;
+  }
+  .diagram svg { display: block; margin: 0 auto; }
+
+  /* ── TABLE ── */
+  table {
+    width: 100%; border-collapse: collapse;
+    margin: 16px 0 24px; font-size: 14px;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent2); font-weight: 600;
+    text-align: left; padding: 10px 14px;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(139,92,246,.04); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .badge.blue { background: rgba(59,130,246,.15); color: var(--blue); }
+  .badge.green { background: rgba(34,197,94,.15); color: var(--green); }
+  .badge.orange { background: rgba(249,115,22,.15); color: var(--orange); }
+  .badge.purple { background: rgba(168,85,247,.15); color: var(--purple); }
+  .badge.red { background: rgba(239,68,68,.15); color: var(--red); }
+
+  /* ── COMPARISON GRID ── */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .compare-card h4 { margin-top: 0; }
+
+  /* ── 3-COL GRID ── */
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 20px 0; }
+  .grid-3 .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px; text-align: center;
+  }
+  .grid-3 .card .big { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; line-height: 1; }
+  .grid-3 .card .lbl { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+
+  /* ── CRON GRID ── */
+  .cron-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    margin: 20px 0; text-align: center;
+  }
+  .cron-slot {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 8px;
+  }
+  .cron-slot .cron-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 26px; font-weight: 700; color: var(--accent);
+  }
+  .cron-slot .cron-label {
+    font-size: 11px; color: var(--text-dim); margin-top: 4px;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .cron-slot .cron-range {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--accent2); margin-top: 2px;
+  }
+
+  /* ── FLOW STEPS ── */
+  .flow-steps { display: flex; gap: 0; align-items: stretch; margin: 24px 0; flex-wrap: wrap; }
+  .flow-step {
+    flex: 1; min-width: 110px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px; text-align: center;
+  }
+  .flow-step .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 24px; font-weight: 700; color: var(--accent); line-height: 1;
+  }
+  .flow-step .step-label { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+  .flow-arrow { display: flex; align-items: center; padding: 0 4px; color: var(--border); font-size: 24px; }
+
+  @media (max-width: 960px) {
+    nav { display: none; }
+    main { margin-left: 0; padding: 30px 24px 80px; }
+    .hero h1 { font-size: 34px; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .cron-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+    .cron-slot { padding: 10px 4px; }
+    .cron-slot .cron-val { font-size: 20px; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ SIDEBAR NAV ════════ -->
+<nav>
+  <div class="logo">⏰ K8s CronJobs</div>
+  <div class="subtitle">Complete Guide</div>
+  <div class="sec-label">Section 1 — Introduction</div>
+  <ul>
+    <li><a href="#what-is-cronjob">What is a CronJob?</a></li>
+    <li><a href="#benefits">Benefits & When to Use</a></li>
+    <li><a href="#cronjob-vs-job">CronJob vs Job</a></li>
+  </ul>
+  <div class="sec-label">Section 2 — Cron Schedule</div>
+  <ul>
+    <li><a href="#cron-syntax">Cron Syntax Deep Dive</a></li>
+    <li><a href="#cron-examples">Common Schedules</a></li>
+    <li><a href="#timezone">Time Zones</a></li>
+  </ul>
+  <div class="sec-label">Section 3 — CronJob Management</div>
+  <ul>
+    <li><a href="#yaml">CronJob YAML File</a></li>
+    <li><a href="#concurrency">Concurrency Policy</a></li>
+    <li><a href="#history">Job History Limits</a></li>
+    <li><a href="#deadline">Starting Deadline</a></li>
+    <li><a href="#suspend">Suspend & Resume</a></li>
+    <li><a href="#failures">Failure Handling</a></li>
+    <li><a href="#patterns">Patterns & Best Practices</a></li>
+  </ul>
+</nav>
+
+<!-- ════════ MAIN CONTENT ════════ -->
+<main>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <svg class="icon" viewBox="0 0 80 80" fill="none">
+    <circle cx="40" cy="40" r="38" stroke="url(#cg1)" stroke-width="2" fill="rgba(139,92,246,.08)"/>
+    <circle cx="40" cy="40" r="26" stroke="url(#cg1)" stroke-width="1.5" fill="none" stroke-dasharray="4 3"/>
+    <!-- Clock hands -->
+    <line x1="40" y1="40" x2="40" y2="22" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="40" y1="40" x2="54" y2="34" stroke="#ec4899" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="40" cy="40" r="3" fill="#8b5cf6"/>
+    <!-- Hour marks -->
+    <circle cx="40" cy="16" r="2" fill="#8b5cf6"/>
+    <circle cx="64" cy="40" r="2" fill="#8b5cf6"/>
+    <circle cx="40" cy="64" r="2" fill="#8b5cf6"/>
+    <circle cx="16" cy="40" r="2" fill="#8b5cf6"/>
+    <!-- Repeat arrows -->
+    <path d="M62 18 Q70 26 66 36" stroke="#ec4899" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M66 36 L69 33 M66 36 L63 34" stroke="#ec4899" stroke-width="1.5" stroke-linecap="round"/>
+    <defs><linearGradient id="cg1" x1="0" y1="0" x2="80" y2="80"><stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs>
+  </svg>
+  <h1>Kubernetes CronJobs</h1>
+  <p>A deep-dive guide to scheduling, managing, and mastering time-based batch workloads in Kubernetes.</p>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║     SECTION 1 : INTRODUCTION             ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+
+<section id="what-is-cronjob">
+  <h2><span class="num">01</span> What is a CronJob?</h2>
+
+  <p>A <strong>CronJob</strong> is a Kubernetes resource that creates <strong>Job objects on a repeating schedule</strong>. It's the Kubernetes equivalent of Linux's <code>crontab</code> — but instead of running shell commands on a single server, it launches full Kubernetes Jobs across your cluster.</p>
+
+  <div class="callout green">
+    <div class="label">Think of it this way</div>
+    <p style="margin:0">A <strong>Job</strong> is a one-time delivery truck. A <strong>CronJob</strong> is the delivery company that dispatches a new truck every day at 8 AM.</p>
+  </div>
+
+  <h3>How a CronJob Works (Step by Step)</h3>
+
+  <div class="flow-steps">
+    <div class="flow-step"><div class="step-num">1</div><div class="step-label">You create a<br>CronJob resource</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">2</div><div class="step-label">CronJob Controller<br>watches the clock</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">3</div><div class="step-label">On schedule,<br>creates a <strong style="color:#3b82f6">Job</strong></div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">4</div><div class="step-label">Job creates<br><strong style="color:#06b6d4">Pod(s)</strong></div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">5</div><div class="step-label">Pod runs task,<br><span style="color:#22c55e">completes ✓</span></div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">6</div><div class="step-label">Repeat at<br>next trigger</div></div>
+  </div>
+
+  <!-- DIAGRAM: CronJob hierarchy -->
+  <div class="diagram">
+    <div class="diagram-title">CronJob → Job → Pod — Three-Level Hierarchy</div>
+    <svg width="720" height="240" viewBox="0 0 720 240" fill="none">
+      <!-- CronJob -->
+      <rect x="250" y="10" width="220" height="55" rx="12" fill="rgba(139,92,246,.12)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="290" y="32" font-family="JetBrains Mono" font-size="13" fill="#8b5cf6" font-weight="600">CronJob</text>
+      <text x="290" y="52" font-family="DM Sans" font-size="11" fill="#7a839a">schedule: "*/5 * * * *"</text>
+      <!-- Lines down -->
+      <line x1="310" y1="65" x2="140" y2="105" stroke="#252d3d" stroke-width="1.5"/>
+      <line x1="360" y1="65" x2="360" y2="105" stroke="#252d3d" stroke-width="1.5"/>
+      <line x1="410" y1="65" x2="580" y2="105" stroke="#252d3d" stroke-width="1.5"/>
+      <!-- Trigger labels -->
+      <text x="80" y="88" font-family="JetBrains Mono" font-size="9" fill="#7a839a">10:00 AM</text>
+      <text x="320" y="88" font-family="JetBrains Mono" font-size="9" fill="#7a839a">10:05 AM</text>
+      <text x="540" y="88" font-family="JetBrains Mono" font-size="9" fill="#7a839a">10:10 AM</text>
+      <!-- Jobs -->
+      <rect x="60" y="105" width="160" height="45" rx="10" fill="rgba(59,130,246,.12)" stroke="#3b82f6"/>
+      <text x="95" y="122" font-family="JetBrains Mono" font-size="11" fill="#3b82f6" font-weight="600">Job</text>
+      <text x="80" y="140" font-family="JetBrains Mono" font-size="9" fill="#7a839a">backup-28456320</text>
+      <rect x="280" y="105" width="160" height="45" rx="10" fill="rgba(59,130,246,.12)" stroke="#3b82f6"/>
+      <text x="315" y="122" font-family="JetBrains Mono" font-size="11" fill="#3b82f6" font-weight="600">Job</text>
+      <text x="300" y="140" font-family="JetBrains Mono" font-size="9" fill="#7a839a">backup-28456325</text>
+      <rect x="500" y="105" width="160" height="45" rx="10" fill="rgba(59,130,246,.12)" stroke="#3b82f6"/>
+      <text x="535" y="122" font-family="JetBrains Mono" font-size="11" fill="#3b82f6" font-weight="600">Job</text>
+      <text x="520" y="140" font-family="JetBrains Mono" font-size="9" fill="#7a839a">backup-28456330</text>
+      <!-- Lines to pods -->
+      <line x1="140" y1="150" x2="140" y2="185" stroke="#252d3d"/>
+      <line x1="360" y1="150" x2="360" y2="185" stroke="#252d3d"/>
+      <line x1="580" y1="150" x2="580" y2="185" stroke="#252d3d"/>
+      <!-- Pods -->
+      <rect x="90" y="185" width="100" height="38" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="110" y="209" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Pod ✓</text>
+      <rect x="310" y="185" width="100" height="38" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="330" y="209" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Pod ✓</text>
+      <rect x="530" y="185" width="100" height="38" rx="8" fill="rgba(234,179,8,.1)" stroke="#eab308"/>
+      <text x="550" y="209" font-family="JetBrains Mono" font-size="10" fill="#eab308">Pod ⏳</text>
+    </svg>
+  </div>
+
+  <p>The <strong>CronJob Controller</strong> (running inside kube-controller-manager) checks approximately every 10 seconds whether any CronJob is due. When a schedule triggers, it creates a new <strong>Job</strong> object — which in turn creates Pod(s) to do the actual work. Each trigger is independent; a new Job name is auto-generated each time.</p>
+</section>
+
+<!-- ── BENEFITS ── -->
+<section id="benefits">
+  <h2><span class="num">02</span> Benefits &amp; When to Use</h2>
+
+  <h3>Key Benefits</h3>
+  <table>
+    <tr><th style="width:210px">Benefit</th><th>Description</th></tr>
+    <tr><td><strong>Declarative Scheduling</strong></td><td>Define your schedule as code in YAML — version-controlled, reproducible, auditable.</td></tr>
+    <tr><td><strong>Cluster-Level Reliability</strong></td><td>Unlike a crontab on a single server, CronJobs survive node failures. The control plane ensures triggers happen.</td></tr>
+    <tr><td><strong>Built-in Concurrency Control</strong></td><td>Choose whether overlapping runs are allowed, forbidden, or replace the previous run.</td></tr>
+    <tr><td><strong>Automatic Cleanup</strong></td><td>History limits auto-delete old Jobs so your cluster doesn't fill up with stale resources.</td></tr>
+    <tr><td><strong>Full Job Features</strong></td><td>Every CronJob trigger creates a real Job — so you get retries, parallelism, backoff, and failure policies for free.</td></tr>
+  </table>
+
+  <h3>When to Use CronJobs</h3>
+  <div class="callout">
+    <div class="label purple">Perfect Use Cases</div>
+    <p style="margin:0">Nightly database backups &bull; Hourly log rotation &bull; Periodic report generation &bull; Scheduled data syncs &bull; Certificate renewal &bull; Cache warming &bull; Cleanup of stale resources &bull; Sending scheduled notifications &bull; Health check sweeps &bull; Periodic ML model retraining</p>
+  </div>
+</section>
+
+<!-- ── CRONJOB vs JOB ── -->
+<section id="cronjob-vs-job">
+  <h2><span class="num">03</span> CronJob vs Job</h2>
+
+  <div class="diagram">
+    <div class="diagram-title">CronJob vs Job — Side by Side</div>
+    <svg width="700" height="200" viewBox="0 0 700 200" fill="none">
+      <!-- Job -->
+      <rect x="20" y="20" width="310" height="160" rx="12" fill="#1b2130" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="40" y="48" font-family="JetBrains Mono" font-size="13" fill="#3b82f6" font-weight="600">Job</text>
+      <text x="40" y="75" font-family="DM Sans" font-size="13" fill="#d1d5e0">Runs <tspan font-weight="700" fill="#fff">once</tspan></text>
+      <text x="40" y="100" font-family="DM Sans" font-size="13" fill="#d1d5e0">Triggered by <tspan font-weight="700" fill="#fff">you</tspan> (kubectl apply)</text>
+      <text x="40" y="125" font-family="DM Sans" font-size="13" fill="#d1d5e0">Creates Pod(s) → completes → done</text>
+      <text x="40" y="155" font-family="DM Sans" font-size="12" fill="#7a839a">Kind: Job &nbsp;|&nbsp; API: batch/v1</text>
+      <!-- Timeline -->
+      <rect x="210" y="38" width="50" height="18" rx="4" fill="rgba(59,130,246,.2)" stroke="#3b82f6"/>
+      <text x="223" y="51" font-family="JetBrains Mono" font-size="9" fill="#3b82f6">×1</text>
+
+      <!-- CronJob -->
+      <rect x="370" y="20" width="310" height="160" rx="12" fill="#1b2130" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="390" y="48" font-family="JetBrains Mono" font-size="13" fill="#8b5cf6" font-weight="600">CronJob</text>
+      <text x="390" y="75" font-family="DM Sans" font-size="13" fill="#d1d5e0">Runs on a <tspan font-weight="700" fill="#fff">repeating schedule</tspan></text>
+      <text x="390" y="100" font-family="DM Sans" font-size="13" fill="#d1d5e0">Triggered by the <tspan font-weight="700" fill="#fff">clock</tspan> (automatically)</text>
+      <text x="390" y="125" font-family="DM Sans" font-size="13" fill="#d1d5e0">Creates a new Job each trigger</text>
+      <text x="390" y="155" font-family="DM Sans" font-size="12" fill="#7a839a">Kind: CronJob &nbsp;|&nbsp; API: batch/v1</text>
+      <!-- Repeat icon -->
+      <rect x="560" y="38" width="50" height="18" rx="4" fill="rgba(139,92,246,.2)" stroke="#8b5cf6"/>
+      <text x="570" y="51" font-family="JetBrains Mono" font-size="9" fill="#8b5cf6">×∞</text>
+    </svg>
+  </div>
+
+  <table>
+    <tr><th>Feature</th><th>Job</th><th>CronJob</th></tr>
+    <tr><td>Trigger</td><td>Manual (<code>kubectl apply</code>)</td><td>Automatic (cron schedule)</td></tr>
+    <tr><td>Runs</td><td>Once</td><td>Repeatedly</td></tr>
+    <tr><td>Creates</td><td>Pod(s)</td><td>Job(s) → Pod(s)</td></tr>
+    <tr><td>Schedule field</td><td>None</td><td><code>schedule: "* * * * *"</code></td></tr>
+    <tr><td>Concurrency control</td><td>N/A</td><td><code>concurrencyPolicy</code></td></tr>
+    <tr><td>History limits</td><td>N/A</td><td><code>successfulJobsHistoryLimit</code> / <code>failedJobsHistoryLimit</code></td></tr>
+    <tr><td>Use case</td><td>One-off batch task</td><td>Recurring batch task</td></tr>
+  </table>
+</section>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║     SECTION 2 : CRON SCHEDULE            ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+
+<section id="cron-syntax">
+  <h2><span class="num">04</span> Cron Syntax Deep Dive</h2>
+
+  <p>The <code>schedule</code> field uses standard <strong>cron expression</strong> syntax — five fields separated by spaces. Here's what each field means:</p>
+
+  <div class="cron-grid">
+    <div class="cron-slot">
+      <div class="cron-val">*</div>
+      <div class="cron-label">Minute</div>
+      <div class="cron-range">0 – 59</div>
+    </div>
+    <div class="cron-slot">
+      <div class="cron-val">*</div>
+      <div class="cron-label">Hour</div>
+      <div class="cron-range">0 – 23</div>
+    </div>
+    <div class="cron-slot">
+      <div class="cron-val">*</div>
+      <div class="cron-label">Day of Month</div>
+      <div class="cron-range">1 – 31</div>
+    </div>
+    <div class="cron-slot">
+      <div class="cron-val">*</div>
+      <div class="cron-label">Month</div>
+      <div class="cron-range">1 – 12</div>
+    </div>
+    <div class="cron-slot">
+      <div class="cron-val">*</div>
+      <div class="cron-label">Day of Week</div>
+      <div class="cron-range">0 – 6 (Sun=0)</div>
+    </div>
+  </div>
+
+  <h3>Special Characters</h3>
+  <table>
+    <tr><th style="width:80px">Symbol</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td><code>*</code></td><td>Every possible value</td><td><code>* * * * *</code> → every minute</td></tr>
+    <tr><td><code>,</code></td><td>List of values</td><td><code>0,30 * * * *</code> → at minute 0 and 30</td></tr>
+    <tr><td><code>-</code></td><td>Range of values</td><td><code>0 9-17 * * *</code> → every hour from 9 AM to 5 PM</td></tr>
+    <tr><td><code>/</code></td><td>Step / interval</td><td><code>*/15 * * * *</code> → every 15 minutes</td></tr>
+  </table>
+
+  <h3>How to Read a Cron Expression</h3>
+  <p>Read it from <strong>left to right</strong>: <em>minute — hour — day of month — month — day of week</em>. For example:</p>
+
+  <div class="diagram">
+    <div class="diagram-title">Reading "30 2 * * 1" — Step by Step</div>
+    <svg width="680" height="150" viewBox="0 0 680 150" fill="none">
+      <!-- 5 columns -->
+      <rect x="20" y="20" width="120" height="50" rx="8" fill="rgba(139,92,246,.12)" stroke="#8b5cf6"/>
+      <text x="48" y="42" font-family="JetBrains Mono" font-size="22" fill="#8b5cf6" font-weight="600">30</text>
+      <text x="42" y="60" font-family="DM Sans" font-size="10" fill="#7a839a">minute</text>
+
+      <rect x="155" y="20" width="120" height="50" rx="8" fill="rgba(139,92,246,.12)" stroke="#8b5cf6"/>
+      <text x="193" y="42" font-family="JetBrains Mono" font-size="22" fill="#8b5cf6" font-weight="600">2</text>
+      <text x="190" y="60" font-family="DM Sans" font-size="10" fill="#7a839a">hour</text>
+
+      <rect x="290" y="20" width="120" height="50" rx="8" fill="rgba(139,92,246,.08)" stroke="#252d3d"/>
+      <text x="335" y="42" font-family="JetBrains Mono" font-size="22" fill="#7a839a">*</text>
+      <text x="310" y="60" font-family="DM Sans" font-size="10" fill="#7a839a">day of month</text>
+
+      <rect x="425" y="20" width="120" height="50" rx="8" fill="rgba(139,92,246,.08)" stroke="#252d3d"/>
+      <text x="472" y="42" font-family="JetBrains Mono" font-size="22" fill="#7a839a">*</text>
+      <text x="460" y="60" font-family="DM Sans" font-size="10" fill="#7a839a">month</text>
+
+      <rect x="560" y="20" width="100" height="50" rx="8" fill="rgba(236,72,153,.12)" stroke="#ec4899"/>
+      <text x="598" y="42" font-family="JetBrains Mono" font-size="22" fill="#ec4899" font-weight="600">1</text>
+      <text x="576" y="60" font-family="DM Sans" font-size="10" fill="#7a839a">day of week</text>
+
+      <!-- Result -->
+      <rect x="120" y="95" width="440" height="42" rx="10" fill="rgba(34,197,94,.08)" stroke="#22c55e"/>
+      <text x="155" y="121" font-family="DM Sans" font-size="14" fill="#22c55e">= Every <tspan font-weight="700">Monday</tspan> at <tspan font-weight="700">2:30 AM</tspan></text>
+    </svg>
+  </div>
+</section>
+
+<!-- ── COMMON SCHEDULES ── -->
+<section id="cron-examples">
+  <h2><span class="num">05</span> Common Schedules</h2>
+
+  <table>
+    <tr><th>Schedule</th><th>Cron Expression</th><th>Meaning</th></tr>
+    <tr><td><strong>Every minute</strong></td><td><code>* * * * *</code></td><td>Runs every single minute (usually for testing)</td></tr>
+    <tr><td><strong>Every 5 minutes</strong></td><td><code>*/5 * * * *</code></td><td>At minute 0, 5, 10, 15… of every hour</td></tr>
+    <tr><td><strong>Every hour</strong></td><td><code>0 * * * *</code></td><td>At minute 0 of every hour</td></tr>
+    <tr><td><strong>Every day at midnight</strong></td><td><code>0 0 * * *</code></td><td>Once per day at 00:00</td></tr>
+    <tr><td><strong>Every day at 2:30 AM</strong></td><td><code>30 2 * * *</code></td><td>Nightly batch window</td></tr>
+    <tr><td><strong>Every Monday at 9 AM</strong></td><td><code>0 9 * * 1</code></td><td>Weekly report, start of week</td></tr>
+    <tr><td><strong>1st of every month</strong></td><td><code>0 0 1 * *</code></td><td>Monthly billing, cleanup</td></tr>
+    <tr><td><strong>Weekdays at 6 PM</strong></td><td><code>0 18 * * 1-5</code></td><td>End-of-business daily summary</td></tr>
+    <tr><td><strong>Every 15 min, business hrs</strong></td><td><code>*/15 9-17 * * 1-5</code></td><td>Frequent polling during work hours only</td></tr>
+    <tr><td><strong>Twice a day</strong></td><td><code>0 6,18 * * *</code></td><td>At 6 AM and 6 PM</td></tr>
+  </table>
+
+  <div class="callout orange">
+    <div class="label">Tip</div>
+    <p style="margin:0">Kubernetes also supports the shorthand macros: <code>@yearly</code>, <code>@monthly</code>, <code>@weekly</code>, <code>@daily</code>, <code>@hourly</code> — these are equivalent to their full cron expressions (e.g., <code>@daily</code> = <code>0 0 * * *</code>).</p>
+  </div>
+</section>
+
+<!-- ── TIMEZONE ── -->
+<section id="timezone">
+  <h2><span class="num">06</span> Time Zones</h2>
+
+  <p>By default, CronJob schedules are evaluated against the <strong>kube-controller-manager's time zone</strong> (usually UTC). Since Kubernetes v1.27 (stable), you can set a specific time zone using the <code>timeZone</code> field.</p>
+
+<pre><code><span class="key">apiVersion:</span> <span class="val">batch/v1</span>
+<span class="key">kind:</span> <span class="val">CronJob</span>
+<span class="key">metadata:</span>
+  <span class="key">name:</span> <span class="str">nightly-backup</span>
+<span class="key">spec:</span>
+  <span class="key">schedule:</span> <span class="str">"30 2 * * *"</span>
+  <span class="key">timeZone:</span> <span class="str">"America/New_York"</span>   <span class="comment"># ← Runs at 2:30 AM Eastern</span></code></pre>
+
+  <div class="callout blue">
+    <div class="label">How It Works</div>
+    <p style="margin:0">The <code>timeZone</code> field accepts any valid IANA time zone (e.g., <code>Europe/London</code>, <code>Asia/Tokyo</code>, <code>UTC</code>). It correctly handles daylight saving time transitions — so "2:30 AM New York" always means local 2:30 AM, whether EDT or EST.</p>
+  </div>
+
+  <div class="callout red">
+    <div class="label">Watch Out</div>
+    <p style="margin:0">If you don't set <code>timeZone</code>, the schedule runs in the controller-manager's timezone. In most cloud providers this is <strong>UTC</strong>, which can cause confusion when you expect "midnight" to mean your local midnight.</p>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║   SECTION 3 : CRONJOB MANAGEMENT         ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+
+<section id="yaml">
+  <h2><span class="num">07</span> CronJob YAML File</h2>
+  <p>Here is a complete, annotated CronJob manifest covering all important fields:</p>
+
+<pre><code><span class="key">apiVersion:</span> <span class="val">batch/v1</span>
+<span class="key">kind:</span> <span class="val">CronJob</span>
+<span class="key">metadata:</span>
+  <span class="key">name:</span> <span class="str">nightly-db-backup</span>
+  <span class="key">labels:</span>
+    <span class="key">app:</span> <span class="str">backup-system</span>
+<span class="key">spec:</span>
+
+  <span class="comment"># ── Schedule ──</span>
+  <span class="key">schedule:</span> <span class="str">"30 2 * * *"</span>            <span class="comment"># Every day at 2:30 AM</span>
+  <span class="key">timeZone:</span> <span class="str">"America/New_York"</span>      <span class="comment"># In Eastern time</span>
+
+  <span class="comment"># ── Concurrency ──</span>
+  <span class="key">concurrencyPolicy:</span> <span class="val">Forbid</span>         <span class="comment"># Don't start a new Job if previous is running</span>
+
+  <span class="comment"># ── Deadline ──</span>
+  <span class="key">startingDeadlineSeconds:</span> <span class="num">200</span>      <span class="comment"># If missed by 200s, skip this trigger</span>
+
+  <span class="comment"># ── History ──</span>
+  <span class="key">successfulJobsHistoryLimit:</span> <span class="num">3</span>    <span class="comment"># Keep last 3 successful Jobs</span>
+  <span class="key">failedJobsHistoryLimit:</span> <span class="num">5</span>        <span class="comment"># Keep last 5 failed Jobs</span>
+
+  <span class="comment"># ── Suspend ──</span>
+  <span class="key">suspend:</span> <span class="val">false</span>                   <span class="comment"># Set true to pause all future triggers</span>
+
+  <span class="comment"># ── Job Template (what the CronJob creates) ──</span>
+  <span class="key">jobTemplate:</span>
+    <span class="key">spec:</span>
+      <span class="key">backoffLimit:</span> <span class="num">3</span>
+      <span class="key">activeDeadlineSeconds:</span> <span class="num">1800</span>   <span class="comment"># Each Job must finish in 30 minutes</span>
+      <span class="key">ttlSecondsAfterFinished:</span> <span class="num">86400</span>
+      <span class="key">template:</span>
+        <span class="key">spec:</span>
+          <span class="key">restartPolicy:</span> <span class="val">OnFailure</span>
+          <span class="key">containers:</span>
+          - <span class="key">name:</span> <span class="str">backup</span>
+            <span class="key">image:</span> <span class="str">myapp/db-backup:v3</span>
+            <span class="key">command:</span> [<span class="str">"/bin/sh"</span>, <span class="str">"-c"</span>, <span class="str">"pg_dump ... | gzip > /backups/db.gz"</span>]
+            <span class="key">resources:</span>
+              <span class="key">requests:</span>
+                <span class="key">cpu:</span> <span class="str">"250m"</span>
+                <span class="key">memory:</span> <span class="str">"256Mi"</span>
+            <span class="key">volumeMounts:</span>
+            - <span class="key">name:</span> <span class="str">backup-vol</span>
+              <span class="key">mountPath:</span> <span class="str">/backups</span>
+          <span class="key">volumes:</span>
+          - <span class="key">name:</span> <span class="str">backup-vol</span>
+            <span class="key">persistentVolumeClaim:</span>
+              <span class="key">claimName:</span> <span class="str">backup-pvc</span></code></pre>
+
+  <div class="callout green">
+    <div class="label">Structure</div>
+    <p style="margin:0">A CronJob is essentially a <strong>wrapper around a Job</strong>. The outer <code>spec</code> defines scheduling behavior (schedule, concurrency, history). The inner <code>jobTemplate.spec</code> is a normal Job spec with all its usual fields (backoffLimit, parallelism, template, etc.).</p>
+  </div>
+</section>
+
+<!-- ── CONCURRENCY POLICY ── -->
+<section id="concurrency">
+  <h2><span class="num">08</span> Concurrency Policy</h2>
+
+  <p>What happens when a new trigger fires but the <strong>previous Job is still running</strong>? The <code>concurrencyPolicy</code> field controls this.</p>
+
+  <div class="grid-3">
+    <div class="card" style="border-top: 3px solid var(--green);">
+      <div class="big" style="color:var(--green)">Allow</div>
+      <div class="lbl">Default</div>
+      <p style="font-size:13px;margin-top:10px;text-align:left;color:var(--text-dim)">Multiple Jobs can run simultaneously. No limits on overlap.</p>
+    </div>
+    <div class="card" style="border-top: 3px solid var(--orange);">
+      <div class="big" style="color:var(--orange)">Forbid</div>
+      <div class="lbl">Skip if busy</div>
+      <p style="font-size:13px;margin-top:10px;text-align:left;color:var(--text-dim)">If a Job is still running, the new trigger is <strong>skipped</strong>. The missed run is not rescheduled.</p>
+    </div>
+    <div class="card" style="border-top: 3px solid var(--red);">
+      <div class="big" style="color:var(--red)">Replace</div>
+      <div class="lbl">Kill & restart</div>
+      <p style="font-size:13px;margin-top:10px;text-align:left;color:var(--text-dim)">The old running Job is <strong>terminated</strong> and a new one starts in its place.</p>
+    </div>
+  </div>
+
+  <!-- Concurrency diagram -->
+  <div class="diagram">
+    <div class="diagram-title">Concurrency Policy — Visual Comparison</div>
+    <svg width="700" height="300" viewBox="0 0 700 300" fill="none">
+      <!-- Time axis -->
+      <text x="120" y="15" font-family="JetBrains Mono" font-size="10" fill="#7a839a">Trigger 1</text>
+      <text x="320" y="15" font-family="JetBrains Mono" font-size="10" fill="#7a839a">Trigger 2</text>
+      <text x="520" y="15" font-family="JetBrains Mono" font-size="10" fill="#7a839a">Trigger 3</text>
+      <line x1="150" y1="20" x2="150" y2="290" stroke="#252d3d" stroke-dasharray="4 3"/>
+      <line x1="350" y1="20" x2="350" y2="290" stroke="#252d3d" stroke-dasharray="4 3"/>
+      <line x1="550" y1="20" x2="550" y2="290" stroke="#252d3d" stroke-dasharray="4 3"/>
+
+      <!-- Allow -->
+      <text x="10" y="65" font-family="JetBrains Mono" font-size="11" fill="#22c55e" font-weight="600">Allow</text>
+      <rect x="150" y="40" width="300" height="25" rx="6" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="270" y="57" font-family="JetBrains Mono" font-size="9" fill="#3b82f6">Job 1 (long running)</text>
+      <rect x="350" y="70" width="200" height="25" rx="6" fill="rgba(6,182,212,.15)" stroke="#06b6d4"/>
+      <text x="410" y="87" font-family="JetBrains Mono" font-size="9" fill="#06b6d4">Job 2 (overlaps!)</text>
+      <rect x="550" y="40" width="130" height="25" rx="6" fill="rgba(34,197,94,.15)" stroke="#22c55e"/>
+      <text x="580" y="57" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Job 3</text>
+
+      <!-- Forbid -->
+      <text x="10" y="155" font-family="JetBrains Mono" font-size="11" fill="#f97316" font-weight="600">Forbid</text>
+      <rect x="150" y="130" width="300" height="25" rx="6" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="270" y="147" font-family="JetBrains Mono" font-size="9" fill="#3b82f6">Job 1 (long running)</text>
+      <!-- Skipped -->
+      <text x="355" y="172" font-family="JetBrains Mono" font-size="9" fill="#f97316">✗ Skipped</text>
+      <rect x="550" y="130" width="130" height="25" rx="6" fill="rgba(34,197,94,.15)" stroke="#22c55e"/>
+      <text x="580" y="147" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Job 3</text>
+
+      <!-- Replace -->
+      <text x="10" y="245" font-family="JetBrains Mono" font-size="11" fill="#ef4444" font-weight="600">Replace</text>
+      <rect x="150" y="225" width="200" height="25" rx="6" fill="rgba(59,130,246,.1)" stroke="#3b82f6" stroke-dasharray="4 3"/>
+      <text x="210" y="242" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Job 1 (killed ✗)</text>
+      <rect x="350" y="225" width="200" height="25" rx="6" fill="rgba(6,182,212,.1)" stroke="#06b6d4" stroke-dasharray="4 3"/>
+      <text x="410" y="242" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Job 2 (killed ✗)</text>
+      <rect x="550" y="225" width="130" height="25" rx="6" fill="rgba(34,197,94,.15)" stroke="#22c55e"/>
+      <text x="580" y="242" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Job 3</text>
+      <text x="350" y="275" font-family="DM Sans" font-size="10" fill="#ef4444">← Each new trigger kills the old Job</text>
+    </svg>
+  </div>
+
+  <table>
+    <tr><th>Policy</th><th>When to Use</th></tr>
+    <tr><td><span class="badge green">Allow</span></td><td>Jobs are idempotent and independent — safe to run in parallel (e.g., stateless reports).</td></tr>
+    <tr><td><span class="badge orange">Forbid</span></td><td>Jobs must NOT overlap — running two at once causes conflicts (e.g., database backup, data sync).</td></tr>
+    <tr><td><span class="badge red">Replace</span></td><td>Only the latest run matters — kill the old one and start fresh (e.g., cache rebuild, latest snapshot).</td></tr>
+  </table>
+</section>
+
+<!-- ── HISTORY LIMITS ── -->
+<section id="history">
+  <h2><span class="num">09</span> Job History Limits</h2>
+
+  <p>Every time a CronJob triggers, it creates a new Job object. Over time, these pile up. History limits control how many old Jobs are <strong>kept for inspection</strong> and how many are <strong>automatically deleted</strong>.</p>
+
+<pre><code><span class="key">spec:</span>
+  <span class="key">successfulJobsHistoryLimit:</span> <span class="num">3</span>    <span class="comment"># Keep 3 most recent successful Jobs (default: 3)</span>
+  <span class="key">failedJobsHistoryLimit:</span> <span class="num">5</span>        <span class="comment"># Keep 5 most recent failed Jobs (default: 1)</span></code></pre>
+
+  <div class="diagram">
+    <div class="diagram-title">History Limit = 3 — Auto-Cleanup Visualization</div>
+    <svg width="700" height="140" viewBox="0 0 700 140" fill="none">
+      <!-- Old jobs being deleted -->
+      <rect x="20" y="40" width="90" height="40" rx="8" fill="rgba(239,68,68,.08)" stroke="#ef4444" stroke-dasharray="4 3"/>
+      <text x="32" y="56" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Mon Job</text>
+      <text x="42" y="72" font-family="JetBrains Mono" font-size="9" fill="#ef4444">deleted</text>
+
+      <rect x="125" y="40" width="90" height="40" rx="8" fill="rgba(239,68,68,.08)" stroke="#ef4444" stroke-dasharray="4 3"/>
+      <text x="137" y="56" font-family="JetBrains Mono" font-size="9" fill="#7a839a">Tue Job</text>
+      <text x="147" y="72" font-family="JetBrains Mono" font-size="9" fill="#ef4444">deleted</text>
+
+      <!-- Divider -->
+      <line x1="235" y1="30" x2="235" y2="90" stroke="#252d3d" stroke-dasharray="4 3"/>
+      <text x="240" y="105" font-family="DM Sans" font-size="10" fill="#7a839a">← older than limit</text>
+
+      <!-- Kept jobs -->
+      <rect x="260" y="40" width="120" height="40" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="278" y="56" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Wed Job ✓</text>
+      <text x="294" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">kept</text>
+
+      <rect x="400" y="40" width="120" height="40" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="418" y="56" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Thu Job ✓</text>
+      <text x="434" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">kept</text>
+
+      <rect x="540" y="40" width="120" height="40" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="558" y="56" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Fri Job ✓</text>
+      <text x="574" y="72" font-family="JetBrains Mono" font-size="9" fill="#7a839a">kept</text>
+
+      <text x="360" y="105" font-family="DM Sans" font-size="10" fill="#22c55e">← 3 most recent (within limit)</text>
+    </svg>
+  </div>
+
+  <div class="callout orange">
+    <div class="label">Pro Tip</div>
+    <p style="margin:0">Set <code>failedJobsHistoryLimit</code> to at least <code>3-5</code> so you can debug recent failures. Setting it to <code>0</code> means failed Jobs are deleted immediately — you'll lose their logs before you can inspect them.</p>
+  </div>
+</section>
+
+<!-- ── STARTING DEADLINE ── -->
+<section id="deadline">
+  <h2><span class="num">10</span> Starting Deadline</h2>
+
+  <p>The <code>startingDeadlineSeconds</code> field defines a <strong>grace period</strong>: if the controller misses a scheduled trigger (due to downtime, high load, etc.), how many seconds late can it still start the Job?</p>
+
+<pre><code><span class="key">spec:</span>
+  <span class="key">startingDeadlineSeconds:</span> <span class="num">300</span>  <span class="comment"># 5 minutes grace period</span></code></pre>
+
+  <div class="diagram">
+    <div class="diagram-title">Starting Deadline — Missed Trigger Behavior</div>
+    <svg width="700" height="190" viewBox="0 0 700 190" fill="none">
+      <!-- Timeline -->
+      <line x1="30" y1="60" x2="670" y2="60" stroke="#252d3d" stroke-width="1"/>
+      <text x="640" y="78" font-family="JetBrains Mono" font-size="10" fill="#7a839a">time →</text>
+
+      <!-- Scheduled time -->
+      <line x1="150" y1="30" x2="150" y2="70" stroke="#8b5cf6" stroke-width="2"/>
+      <text x="100" y="22" font-family="JetBrains Mono" font-size="10" fill="#8b5cf6">2:30 AM</text>
+      <text x="92" y="90" font-family="DM Sans" font-size="10" fill="#8b5cf6">Scheduled trigger</text>
+
+      <!-- Deadline window -->
+      <rect x="150" y="45" width="200" height="30" rx="0" fill="rgba(234,179,8,.08)"/>
+      <line x1="350" y1="30" x2="350" y2="70" stroke="#eab308" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="200" y="42" font-family="JetBrains Mono" font-size="9" fill="#eab308">← deadline window (300s) →</text>
+      <text x="355" y="22" font-family="JetBrains Mono" font-size="10" fill="#eab308">2:35 AM</text>
+
+      <!-- Scenario 1: within deadline -->
+      <circle cx="280" cy="130" r="4" fill="#22c55e"/>
+      <text x="295" y="134" font-family="DM Sans" font-size="11" fill="#22c55e">Controller wakes at 2:33 → <tspan font-weight="700">Job starts</tspan> ✓</text>
+      <line x1="280" y1="70" x2="280" y2="126" stroke="#22c55e" stroke-dasharray="3 3"/>
+
+      <!-- Scenario 2: past deadline -->
+      <circle cx="450" cy="165" r="4" fill="#ef4444"/>
+      <text x="465" y="169" font-family="DM Sans" font-size="11" fill="#ef4444">Controller wakes at 2:40 → <tspan font-weight="700">Skipped</tspan> ✗</text>
+      <line x1="450" y1="70" x2="450" y2="161" stroke="#ef4444" stroke-dasharray="3 3"/>
+    </svg>
+  </div>
+
+  <div class="callout">
+    <div class="label purple">Key Behavior</div>
+    <p style="margin:0">If <code>startingDeadlineSeconds</code> is <strong>not set</strong>, the CronJob controller counts how many triggers were missed. If it counts <strong>100+ missed triggers</strong>, it stops trying and logs an error: <em>"Cannot determine if job needs to be started. Too many missed start times."</em></p>
+  </div>
+</section>
+
+<!-- ── SUSPEND ── -->
+<section id="suspend">
+  <h2><span class="num">11</span> Suspend &amp; Resume</h2>
+
+  <p>You can pause a CronJob without deleting it by setting <code>suspend: true</code>. No new Jobs will be created while suspended. Already-running Jobs continue to completion.</p>
+
+<pre><code><span class="comment"># Suspend (stop future triggers)</span>
+kubectl patch cronjob/nightly-db-backup -p '{"spec":{"suspend":true}}'
+
+<span class="comment"># Resume (re-enable triggers)</span>
+kubectl patch cronjob/nightly-db-backup -p '{"spec":{"suspend":false}}'</code></pre>
+
+  <div class="diagram">
+    <div class="diagram-title">Suspend Timeline</div>
+    <svg width="700" height="120" viewBox="0 0 700 120" fill="none">
+      <line x1="30" y1="55" x2="670" y2="55" stroke="#252d3d"/>
+      <!-- Active period -->
+      <rect x="50" y="35" width="160" height="40" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="80" y="60" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Active (triggers fire)</text>
+      <!-- Suspended period -->
+      <rect x="230" y="35" width="200" height="40" rx="8" fill="rgba(239,68,68,.08)" stroke="#ef4444" stroke-dasharray="4 3"/>
+      <text x="260" y="52" font-family="JetBrains Mono" font-size="10" fill="#ef4444">Suspended</text>
+      <text x="258" y="68" font-family="DM Sans" font-size="9" fill="#7a839a">triggers are skipped</text>
+      <!-- Resume -->
+      <rect x="450" y="35" width="200" height="40" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="490" y="60" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Active again ✓</text>
+      <!-- Labels -->
+      <text x="215" y="100" font-family="JetBrains Mono" font-size="9" fill="#ef4444">suspend: true</text>
+      <text x="438" y="100" font-family="JetBrains Mono" font-size="9" fill="#22c55e">suspend: false</text>
+    </svg>
+  </div>
+
+  <div class="callout blue">
+    <div class="label">Missed Triggers During Suspension</div>
+    <p style="margin:0">Any triggers that fire during suspension are counted as <strong>missed</strong>. When you resume, the controller checks if any should still be started (subject to <code>startingDeadlineSeconds</code>). If too many were missed (100+), it won't catch up.</p>
+  </div>
+</section>
+
+<!-- ── FAILURES ── -->
+<section id="failures">
+  <h2><span class="num">12</span> Failure Handling</h2>
+
+  <p>CronJobs have <strong>two layers</strong> of failure handling: the CronJob level (schedule-related) and the Job level (execution-related).</p>
+
+  <div class="compare-grid">
+    <div class="compare-card" style="border-top: 3px solid var(--accent);">
+      <h4 style="color:var(--accent)">CronJob-Level Failures</h4>
+      <p>These are about the <strong>schedule</strong> itself:</p>
+      <p><strong>Missed triggers</strong> — Controller was down or overloaded. Controlled by <code>startingDeadlineSeconds</code>.</p>
+      <p><strong>Concurrent conflict</strong> — Previous Job still running. Controlled by <code>concurrencyPolicy</code>.</p>
+      <p><strong>100+ missed</strong> — Controller gives up and logs an error.</p>
+    </div>
+    <div class="compare-card" style="border-top: 3px solid var(--blue);">
+      <h4 style="color:var(--blue)">Job-Level Failures</h4>
+      <p>These are about <strong>Pod execution</strong> (inherited from Job spec):</p>
+      <p><strong>Pod crashes</strong> — Controlled by <code>backoffLimit</code> and <code>restartPolicy</code>.</p>
+      <p><strong>Timeout</strong> — Controlled by <code>activeDeadlineSeconds</code>.</p>
+      <p><strong>Specific exit codes</strong> — Controlled by <code>podFailurePolicy</code>.</p>
+    </div>
+  </div>
+
+  <!-- Failure flow -->
+  <div class="diagram">
+    <div class="diagram-title">CronJob Trigger Decision Flow</div>
+    <svg width="700" height="300" viewBox="0 0 700 300" fill="none">
+      <!-- Start -->
+      <rect x="260" y="5" width="180" height="40" rx="10" fill="rgba(139,92,246,.15)" stroke="#8b5cf6"/>
+      <text x="290" y="30" font-family="JetBrains Mono" font-size="11" fill="#8b5cf6">Schedule triggers ⏰</text>
+
+      <line x1="350" y1="45" x2="350" y2="75" stroke="#252d3d" stroke-width="1.5"/>
+
+      <!-- Suspended? -->
+      <rect x="270" y="75" width="160" height="35" rx="8" fill="rgba(234,179,8,.1)" stroke="#eab308"/>
+      <text x="300" y="97" font-family="JetBrains Mono" font-size="10" fill="#eab308">Suspended?</text>
+      <line x1="430" y1="92" x2="520" y2="92" stroke="#252d3d"/>
+      <text x="530" y="96" font-family="JetBrains Mono" font-size="10" fill="#ef4444">Yes → Skip ✗</text>
+
+      <line x1="350" y1="110" x2="350" y2="135" stroke="#252d3d"/>
+      <text x="355" y="128" font-family="DM Sans" font-size="9" fill="#22c55e">No ↓</text>
+
+      <!-- Past deadline? -->
+      <rect x="250" y="135" width="200" height="35" rx="8" fill="rgba(234,179,8,.1)" stroke="#eab308"/>
+      <text x="272" y="157" font-family="JetBrains Mono" font-size="10" fill="#eab308">Past startingDeadline?</text>
+      <line x1="450" y1="152" x2="520" y2="152" stroke="#252d3d"/>
+      <text x="530" y="156" font-family="JetBrains Mono" font-size="10" fill="#ef4444">Yes → Skip ✗</text>
+
+      <line x1="350" y1="170" x2="350" y2="195" stroke="#252d3d"/>
+      <text x="355" y="188" font-family="DM Sans" font-size="9" fill="#22c55e">No ↓</text>
+
+      <!-- Concurrency check -->
+      <rect x="230" y="195" width="240" height="35" rx="8" fill="rgba(234,179,8,.1)" stroke="#eab308"/>
+      <text x="252" y="217" font-family="JetBrains Mono" font-size="10" fill="#eab308">concurrencyPolicy conflict?</text>
+      <line x1="470" y1="212" x2="520" y2="212" stroke="#252d3d"/>
+      <text x="530" y="216" font-family="JetBrains Mono" font-size="10" fill="#f97316">Forbid → Skip</text>
+
+      <line x1="350" y1="230" x2="350" y2="255" stroke="#252d3d"/>
+      <text x="355" y="248" font-family="DM Sans" font-size="9" fill="#22c55e">No conflict ↓</text>
+
+      <!-- Create Job -->
+      <rect x="270" y="255" width="160" height="40" rx="10" fill="rgba(34,197,94,.12)" stroke="#22c55e"/>
+      <text x="290" y="280" font-family="JetBrains Mono" font-size="11" fill="#22c55e">Create Job ✓</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ── PATTERNS & BEST PRACTICES ── -->
+<section id="patterns">
+  <h2><span class="num">13</span> Patterns &amp; Best Practices</h2>
+
+  <h3>Common CronJob Patterns</h3>
+  <table>
+    <tr><th>Pattern</th><th>Schedule</th><th>Key Settings</th></tr>
+    <tr>
+      <td><strong>Nightly Backup</strong></td>
+      <td><code>30 2 * * *</code></td>
+      <td><code>concurrencyPolicy: Forbid</code>, <code>activeDeadlineSeconds: 3600</code></td>
+    </tr>
+    <tr>
+      <td><strong>Hourly Report</strong></td>
+      <td><code>0 * * * *</code></td>
+      <td><code>concurrencyPolicy: Allow</code>, <code>ttlSecondsAfterFinished: 7200</code></td>
+    </tr>
+    <tr>
+      <td><strong>Cache Rebuild</strong></td>
+      <td><code>*/10 * * * *</code></td>
+      <td><code>concurrencyPolicy: Replace</code> (only latest matters)</td>
+    </tr>
+    <tr>
+      <td><strong>Monthly Cleanup</strong></td>
+      <td><code>0 0 1 * *</code></td>
+      <td><code>startingDeadlineSeconds: 43200</code> (12h window)</td>
+    </tr>
+    <tr>
+      <td><strong>Business Hours Sync</strong></td>
+      <td><code>*/15 9-17 * * 1-5</code></td>
+      <td><code>concurrencyPolicy: Forbid</code>, <code>timeZone</code> set</td>
+    </tr>
+  </table>
+
+  <h3>Best Practices</h3>
+
+  <div class="callout green">
+    <div class="label">Do</div>
+    <p style="margin-bottom:8px"><strong>Always set <code>timeZone</code></strong> — Don't rely on the controller's default timezone. Be explicit.</p>
+    <p style="margin-bottom:8px"><strong>Set <code>startingDeadlineSeconds</code></strong> — Without it, 100+ missed triggers = permanent failure.</p>
+    <p style="margin-bottom:8px"><strong>Use <code>concurrencyPolicy: Forbid</code></strong> for any Job that touches shared state (databases, files).</p>
+    <p style="margin-bottom:8px"><strong>Set <code>activeDeadlineSeconds</code></strong> on the Job template — prevent runaway Jobs from blocking the next trigger.</p>
+    <p style="margin-bottom:8px"><strong>Make Jobs idempotent</strong> — since missed or double-triggered runs can happen, your task should be safe to run multiple times.</p>
+    <p style="margin:0"><strong>Keep <code>failedJobsHistoryLimit ≥ 3</code></strong> — so you can always debug recent failures.</p>
+  </div>
+
+  <div class="callout red">
+    <div class="label">Avoid</div>
+    <p style="margin-bottom:8px"><strong>Don't schedule at exact popular times</strong> — e.g., <code>0 0 * * *</code> (midnight) creates a thundering herd. Offset: <code>17 3 * * *</code>.</p>
+    <p style="margin-bottom:8px"><strong>Don't use sub-minute schedules</strong> — CronJobs have a minimum granularity of <strong>1 minute</strong>. For sub-minute needs, use a Deployment with a sleep loop.</p>
+    <p style="margin:0"><strong>Don't forget resource limits</strong> — CronJob Pods without limits can starve other workloads during trigger storms.</p>
+  </div>
+
+  <h3>Quick Commands Reference</h3>
+<pre><code><span class="comment"># Create a CronJob</span>
+kubectl apply -f cronjob.yaml
+
+<span class="comment"># List CronJobs</span>
+kubectl get cronjobs
+
+<span class="comment"># See CronJob details (last trigger time, active Jobs)</span>
+kubectl describe cronjob/nightly-db-backup
+
+<span class="comment"># List Jobs created by a CronJob</span>
+kubectl get jobs --selector=job-name -l app=backup-system
+
+<span class="comment"># Manually trigger a CronJob right now</span>
+kubectl create job --from=cronjob/nightly-db-backup manual-run-001
+
+<span class="comment"># Suspend a CronJob</span>
+kubectl patch cronjob/nightly-db-backup -p '{"spec":{"suspend":true}}'
+
+<span class="comment"># Resume a CronJob</span>
+kubectl patch cronjob/nightly-db-backup -p '{"spec":{"suspend":false}}'
+
+<span class="comment"># Delete a CronJob (deletes all child Jobs and Pods too)</span>
+kubectl delete cronjob nightly-db-backup
+
+<span class="comment"># View logs of the most recent CronJob run</span>
+kubectl logs job/$(kubectl get jobs --sort-by=.metadata.creationTimestamp \
+  -o jsonpath='{.items[-1].metadata.name}')</code></pre>
+
+  <div class="callout green" style="margin-top:30px;">
+    <div class="label">Summary</div>
+    <p style="margin:0">Kubernetes CronJobs are the foundation for <strong>all scheduled batch work</strong> in your cluster. Master the cron syntax, choose the right <code>concurrencyPolicy</code>, set proper deadlines and history limits, and always make your Jobs idempotent. With these pieces in place, you get reliable, self-managing, production-grade scheduled workloads.</p>
+  </div>
+</section>
+
+</main>
+</body>
+</html>
