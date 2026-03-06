@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes ReplicaSets — The Complete SRE Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0e14;
+    --surface: #121720;
+    --surface2: #1a2030;
+    --border: #222d3e;
+    --text: #cdd5e0;
+    --text-dim: #6b7a90;
+    --accent: #f59e0b;
+    --accent2: #fb923c;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f97316;
+    --yellow: #eab308;
+    --purple: #a855f7;
+    --blue: #3b82f6;
+    --teal: #14b8a6;
+    --pink: #ec4899;
+    --code-bg: #0e1320;
+    --radius: 12px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:16px}
+
+  nav{position:fixed;top:0;left:0;width:266px;height:100vh;background:var(--surface);border-right:1px solid var(--border);padding:24px 18px;overflow-y:auto;z-index:100}
+  nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:20px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+  nav .subtitle{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:24px}
+  nav ul{list-style:none}
+  nav ul li{margin-bottom:1px}
+  nav ul li a{display:block;padding:6px 11px;border-radius:7px;color:var(--text-dim);text-decoration:none;font-size:12.5px;font-weight:500;transition:all .2s}
+  nav ul li a:hover{color:#fff;background:var(--surface2)}
+  nav .sec-label{font-size:9px;text-transform:uppercase;letter-spacing:2.5px;color:var(--accent);margin:16px 0 6px 11px;font-weight:700}
+
+  main{margin-left:266px;max-width:920px;padding:44px 56px 100px}
+
+  .hero{text-align:center;padding:55px 0 45px;position:relative}
+  .hero::before{content:'';position:absolute;top:-50px;left:50%;transform:translateX(-50%);width:500px;height:500px;background:radial-gradient(circle,rgba(245,158,11,.1) 0%,transparent 70%);pointer-events:none}
+  .hero .icon{width:84px;height:84px;margin-bottom:22px}
+  .hero h1{font-family:'Fraunces',serif;font-size:48px;font-weight:900;background:linear-gradient(135deg,#fff 0%,var(--accent) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.1;margin-bottom:14px}
+  .hero p{color:var(--text-dim);font-size:18px;max-width:580px;margin:0 auto}
+  .hero .sre-badge{display:inline-block;margin-top:16px;padding:5px 16px;border-radius:20px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px}
+
+  section{margin-bottom:52px;scroll-margin-top:28px}
+  h2{font-family:'Fraunces',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:18px;padding-bottom:11px;border-bottom:2px solid var(--border)}
+  h2 .num{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);margin-right:8px;background:rgba(245,158,11,.12);padding:3px 9px;border-radius:6px}
+  h3{font-size:19px;font-weight:700;color:#e0e4ec;margin:28px 0 10px}
+  h4{font-size:15px;font-weight:600;color:var(--accent2);margin:18px 0 7px}
+  p{margin-bottom:13px}
+  strong{color:#fff}
+  ul,ol{margin:8px 0 14px 22px}
+  li{margin-bottom:5px}
+
+  .callout{background:var(--surface);border-left:3px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;padding:15px 18px;margin:18px 0}
+  .callout.green{border-left-color:var(--green)}
+  .callout.orange{border-left-color:var(--orange)}
+  .callout.red{border-left-color:var(--red)}
+  .callout.blue{border-left-color:var(--blue)}
+  .callout.purple{border-left-color:var(--purple)}
+  .callout .label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:5px}
+  .callout.green .label{color:var(--green)}
+  .callout.orange .label{color:var(--orange)}
+  .callout.red .label{color:var(--red)}
+  .callout.blue .label{color:var(--blue)}
+  .callout.purple .label{color:var(--purple)}
+  .callout .label.amber{color:var(--accent)}
+
+  .sre-box{background:linear-gradient(135deg,rgba(245,158,11,.05),rgba(251,146,60,.03));border:1px solid rgba(245,158,11,.2);border-radius:var(--radius);padding:18px 20px;margin:20px 0}
+  .sre-box .sre-tag{display:inline-block;padding:2px 8px;border-radius:4px;background:rgba(245,158,11,.15);color:var(--accent);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;overflow-x:auto;margin:14px 0 18px;font-size:13px;line-height:1.65}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px}
+  p code,li code,td code{background:var(--surface2);padding:2px 6px;border-radius:5px;color:var(--accent2);font-size:12.5px}
+  pre .comment{color:#5a6580}
+  pre .key{color:var(--accent)}
+  pre .val{color:var(--green)}
+  pre .str{color:var(--yellow)}
+  pre .num{color:var(--orange)}
+
+  .diagram{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;margin:22px 0;overflow-x:auto}
+  .diagram-title{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-weight:700;margin-bottom:18px;text-align:center}
+  .diagram svg{display:block;margin:0 auto}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0 22px;font-size:13.5px}
+  th{background:var(--surface2);color:var(--accent2);font-weight:600;text-align:left;padding:9px 13px;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+  td{padding:9px 13px;border-bottom:1px solid var(--border)}
+  tr:hover td{background:rgba(245,158,11,.03)}
+
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+  .badge.blue{background:rgba(59,130,246,.15);color:var(--blue)}
+  .badge.green{background:rgba(34,197,94,.15);color:var(--green)}
+  .badge.orange{background:rgba(249,115,22,.15);color:var(--orange)}
+  .badge.purple{background:rgba(168,85,247,.15);color:var(--purple)}
+  .badge.red{background:rgba(239,68,68,.15);color:var(--red)}
+  .badge.amber{background:rgba(245,158,11,.15);color:var(--accent)}
+
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:18px 0}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+  .card h4{margin-top:0}
+
+  .flow-steps{display:flex;gap:0;align-items:stretch;margin:22px 0;flex-wrap:wrap}
+  .flow-step{flex:1;min-width:100px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
+  .flow-step .step-num{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--accent);line-height:1}
+  .flow-step .step-label{font-size:12px;color:var(--text-dim);margin-top:5px}
+  .flow-arrow{display:flex;align-items:center;padding:0 3px;color:var(--border);font-size:22px}
+
+  @media(max-width:1020px){
+    nav{display:none}
+    main{margin-left:0;padding:28px 20px 80px}
+    .hero h1{font-size:34px}
+    .compare-grid,.grid-3{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ SIDEBAR NAV ════════ -->
+<nav>
+  <div class="logo">⊞ K8s ReplicaSets</div>
+  <div class="subtitle">Complete SRE Guide</div>
+  <div class="sec-label">Introduction</div>
+  <ul>
+    <li><a href="#what-is-rs">What is a ReplicaSet?</a></li>
+    <li><a href="#why-replica">Why Replicas?</a></li>
+    <li><a href="#rs-vs-others">ReplicaSet vs Others</a></li>
+  </ul>
+  <div class="sec-label">YAML &amp; Structure</div>
+  <ul>
+    <li><a href="#yaml">ReplicaSet YAML File</a></li>
+    <li><a href="#three-pillars">The 3 Pillars</a></li>
+  </ul>
+  <div class="sec-label">Management</div>
+  <ul>
+    <li><a href="#create">Create &amp; Replace</a></li>
+    <li><a href="#scale">Scaling</a></li>
+    <li><a href="#scale-down-algo">Scale-Down Algorithm</a></li>
+    <li><a href="#deletion-cost">Pod Deletion Cost</a></li>
+    <li><a href="#delete">Deleting ReplicaSets</a></li>
+  </ul>
+  <div class="sec-label">Advanced Scenarios</div>
+  <ul>
+    <li><a href="#orphan">Orphan Pods (Delete RS only)</a></li>
+    <li><a href="#isolate">Isolating Pods</a></li>
+    <li><a href="#label-matching">Label Matching Edge Cases</a></li>
+  </ul>
+  <div class="sec-label">SRE Practices</div>
+  <ul>
+    <li><a href="#reconciliation">Reconciliation Loop</a></li>
+    <li><a href="#sre-monitoring">Monitoring &amp; Alerts</a></li>
+    <li><a href="#sre-checklist">Best Practices Checklist</a></li>
+  </ul>
+</nav>
+
+<!-- ════════ MAIN ════════ -->
+<main>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <svg class="icon" viewBox="0 0 84 84" fill="none">
+    <rect x="4" y="4" width="76" height="76" rx="16" stroke="url(#rg1)" stroke-width="2" fill="rgba(245,158,11,.05)"/>
+    <rect x="14" y="24" width="22" height="36" rx="6" fill="rgba(245,158,11,.2)" stroke="#f59e0b"/>
+    <rect x="42" y="24" width="22" height="36" rx="6" fill="rgba(245,158,11,.2)" stroke="#f59e0b"/>
+    <rect x="28" y="16" width="22" height="36" rx="6" fill="rgba(251,146,60,.25)" stroke="#fb923c"/>
+    <text x="16" y="14" font-family="JetBrains Mono" font-size="7" fill="#f59e0b" font-weight="600">REPLICA</text>
+    <text x="14" y="74" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">×3</text>
+    <defs><linearGradient id="rg1" x1="0" y1="0" x2="84" y2="84"><stop stop-color="#f59e0b"/><stop offset="1" stop-color="#fb923c"/></linearGradient></defs>
+  </svg>
+  <h1>Kubernetes ReplicaSets</h1>
+  <p>The complete deep-dive into ReplicaSets — from label-based ownership and scaling algorithms to advanced isolation patterns and SRE operational principles.</p>
+  <div class="sre-badge">SRE-Focused &nbsp;·&nbsp; Self-Healing &nbsp;·&nbsp; Scaling</div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════╗ -->
+<!-- ║         SECTION 1 : INTRODUCTION               ║ -->
+<!-- ╚══════════════════════════════════════════════╝ -->
+
+<section id="what-is-rs">
+  <h2><span class="num">01</span> What is a ReplicaSet?</h2>
+
+  <p>A <strong>ReplicaSet</strong> is a Kubernetes controller whose sole purpose is to <strong>maintain a stable set of identical Pod replicas running at all times</strong>. You tell it "I want 3 Pods" — it makes sure exactly 3 exist, no more, no less.</p>
+
+  <div class="callout green">
+    <div class="label">Think of it this way</div>
+    <p style="margin:0">A ReplicaSet is like a <strong>thermostat</strong>. You set the desired temperature (replica count), and it constantly adjusts — turning on heaters (creating Pods) or turning them off (deleting Pods) — to maintain the exact number you specified.</p>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">ReplicaSet — The Reconciliation Loop</div>
+    <svg width="720" height="200" viewBox="0 0 720 200" fill="none">
+      <!-- Desired state -->
+      <rect x="20" y="30" width="180" height="70" rx="12" fill="rgba(245,158,11,.1)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="40" y="55" font-family="JetBrains Mono" font-size="12" fill="#f59e0b" font-weight="600">Desired State</text>
+      <text x="40" y="80" font-family="JetBrains Mono" font-size="20" fill="#fff" font-weight="700">replicas: 3</text>
+
+      <!-- Compare -->
+      <text x="220" y="72" font-family="DM Sans" font-size="30" fill="#222d3e">⟷</text>
+
+      <!-- Actual state -->
+      <rect x="270" y="30" width="180" height="70" rx="12" fill="rgba(59,130,246,.1)" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="290" y="55" font-family="JetBrains Mono" font-size="12" fill="#3b82f6" font-weight="600">Actual State</text>
+      <text x="290" y="80" font-family="JetBrains Mono" font-size="20" fill="#fff" font-weight="700">running: ?</text>
+
+      <!-- Arrows to actions -->
+      <path d="M455 50 L530 35" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+      <path d="M455 75 L530 90" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+      <path d="M455 62 L530 62" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+
+      <!-- Actions -->
+      <rect x="535" y="15" width="170" height="35" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="548" y="37" font-family="JetBrains Mono" font-size="11" fill="#22c55e">running < 3 → Create</text>
+
+      <rect x="535" y="58" width="170" height="35" rx="8" fill="rgba(59,130,246,.1)" stroke="#3b82f6"/>
+      <text x="548" y="80" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">running = 3 → Nothing</text>
+
+      <rect x="535" y="100" width="170" height="35" rx="8" fill="rgba(239,68,68,.1)" stroke="#ef4444"/>
+      <text x="548" y="122" font-family="JetBrains Mono" font-size="11" fill="#ef4444">running > 3 → Delete</text>
+
+      <!-- Loop arrow -->
+      <path d="M360 105 C360 170 110 170 110 105" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#aRS2)"/>
+      <text x="190" y="175" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">Continuous reconciliation loop</text>
+
+      <defs>
+        <marker id="aRS" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#222d3e"/></marker>
+        <marker id="aRS2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#f59e0b"/></marker>
+      </defs>
+    </svg>
+  </div>
+
+  <p>This is called the <strong>reconciliation loop</strong> — the ReplicaSet controller continuously compares the desired state (spec) with the actual state (running Pods), and takes action to converge them. This is the core principle of Kubernetes: <em>declarative desired state + control loop = self-healing</em>.</p>
+</section>
+
+<!-- ── WHY REPLICA ── -->
+<section id="why-replica">
+  <h2><span class="num">02</span> Why Do We Need Replicas?</h2>
+
+  <div class="grid-3">
+    <div class="card" style="border-top:3px solid var(--green);text-align:center">
+      <div style="font-size:36px;margin-bottom:8px">🛡️</div>
+      <h4 style="color:var(--green)">High Availability</h4>
+      <p style="font-size:13px">If one Pod dies, the others keep serving traffic. With 3 replicas, you survive any single failure with zero downtime.</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--blue);text-align:center">
+      <div style="font-size:36px;margin-bottom:8px">⚖️</div>
+      <h4 style="color:var(--blue)">Load Balancing</h4>
+      <p style="font-size:13px">A Service distributes traffic across all replica Pods. More replicas = more throughput. Each Pod handles a fraction of the total load.</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--accent);text-align:center">
+      <div style="font-size:36px;margin-bottom:8px">📈</div>
+      <h4 style="color:var(--accent)">Scaling</h4>
+      <p style="font-size:13px">Scale up when demand increases, scale down when it drops. Change one number and Kubernetes handles the rest — instantly.</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Replicas + Service = High Availability + Load Balancing</div>
+    <svg width="700" height="200" viewBox="0 0 700 200" fill="none">
+      <!-- Users -->
+      <text x="20" y="80" font-family="DM Sans" font-size="12" fill="#6b7a90">Users</text>
+      <rect x="20" y="90" width="70" height="35" rx="8" fill="rgba(168,85,247,.1)" stroke="#a855f7"/>
+      <text x="33" y="112" font-family="JetBrains Mono" font-size="10" fill="#a855f7">Traffic</text>
+
+      <!-- Arrow to service -->
+      <path d="M95 107 L155 107" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+
+      <!-- Service -->
+      <rect x="160" y="75" width="140" height="65" rx="12" fill="rgba(59,130,246,.1)" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="180" y="100" font-family="JetBrains Mono" font-size="12" fill="#3b82f6" font-weight="600">Service</text>
+      <text x="180" y="120" font-family="DM Sans" font-size="10" fill="#6b7a90">Load Balancer</text>
+
+      <!-- Arrows to pods -->
+      <path d="M305 90 L370 55" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+      <path d="M305 107 L370 107" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+      <path d="M305 125 L370 155" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+
+      <!-- Pods -->
+      <rect x="375" y="30" width="120" height="42" rx="8" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="395" y="48" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">Pod 1</text>
+      <text x="395" y="63" font-family="DM Sans" font-size="9" fill="#6b7a90">node-a</text>
+
+      <rect x="375" y="85" width="120" height="42" rx="8" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="395" y="103" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">Pod 2</text>
+      <text x="395" y="118" font-family="DM Sans" font-size="9" fill="#6b7a90">node-b</text>
+
+      <rect x="375" y="140" width="120" height="42" rx="8" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="395" y="158" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">Pod 3</text>
+      <text x="395" y="173" font-family="DM Sans" font-size="9" fill="#6b7a90">node-c</text>
+
+      <!-- RS wrapper -->
+      <rect x="360" y="18" width="150" height="176" rx="14" fill="none" stroke="#f59e0b" stroke-dasharray="5 4"/>
+      <text x="365" y="14" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">ReplicaSet (replicas: 3)</text>
+
+      <!-- Failed pod -->
+      <rect x="555" y="85" width="130" height="42" rx="8" fill="rgba(239,68,68,.08)" stroke="#ef4444" stroke-dasharray="4 3"/>
+      <text x="568" y="103" font-family="JetBrains Mono" font-size="9" fill="#ef4444">Pod 2 dies ✗</text>
+      <text x="568" y="118" font-family="DM Sans" font-size="9" fill="#6b7a90">→ RS creates Pod 4</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ── RS vs OTHERS ── -->
+<section id="rs-vs-others">
+  <h2><span class="num">03</span> ReplicaSet vs Deployment vs ReplicationController</h2>
+
+  <table>
+    <tr><th>Feature</th><th>ReplicationController</th><th>ReplicaSet</th><th>Deployment</th></tr>
+    <tr><td>API Version</td><td><code>v1</code> (legacy)</td><td><code>apps/v1</code></td><td><code>apps/v1</code></td></tr>
+    <tr><td>Label Selector</td><td>Equality only (<code>=</code>, <code>!=</code>)</td><td>Set-based (<code>In</code>, <code>NotIn</code>, <code>Exists</code>)</td><td>Set-based (inherits RS)</td></tr>
+    <tr><td>Rolling Updates</td><td>Manual</td><td>Manual</td><td><strong>Built-in</strong> ✓</td></tr>
+    <tr><td>Rollback</td><td>No</td><td>No</td><td><strong>Built-in</strong> ✓</td></tr>
+    <tr><td>Use in Production</td><td><span class="badge red">Deprecated</span></td><td><span class="badge orange">Only via Deployment</span></td><td><span class="badge green">Recommended</span></td></tr>
+  </table>
+
+  <div class="callout orange">
+    <div class="label">Key Takeaway</div>
+    <p style="margin:0">You should almost <strong>never create a ReplicaSet directly</strong>. Instead, use a <strong>Deployment</strong>, which creates and manages ReplicaSets for you — adding rolling updates, rollback, and revision history. Understanding ReplicaSets is essential because they are the engine inside every Deployment.</p>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Deployment → ReplicaSet → Pods — The Chain of Ownership</div>
+    <svg width="700" height="120" viewBox="0 0 700 120" fill="none">
+      <rect x="20" y="30" width="150" height="55" rx="10" fill="rgba(168,85,247,.1)" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="40" y="55" font-family="JetBrains Mono" font-size="13" fill="#a855f7" font-weight="600">Deployment</text>
+      <text x="40" y="73" font-family="DM Sans" font-size="10" fill="#6b7a90">Manages rollouts</text>
+
+      <path d="M175 58 L225 58" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+      <text x="178" y="50" font-family="DM Sans" font-size="9" fill="#6b7a90">creates</text>
+
+      <rect x="230" y="30" width="150" height="55" rx="10" fill="rgba(245,158,11,.1)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="250" y="55" font-family="JetBrains Mono" font-size="13" fill="#f59e0b" font-weight="600">ReplicaSet</text>
+      <text x="250" y="73" font-family="DM Sans" font-size="10" fill="#6b7a90">Manages replica count</text>
+
+      <path d="M385 58 L425 58" stroke="#222d3e" stroke-width="1.5" marker-end="url(#aRS)"/>
+      <text x="388" y="50" font-family="DM Sans" font-size="9" fill="#6b7a90">creates</text>
+
+      <rect x="430" y="15" width="80" height="32" rx="7" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="450" y="35" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Pod</text>
+      <rect x="430" y="52" width="80" height="32" rx="7" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="450" y="72" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Pod</text>
+      <rect x="430" y="88" width="80" height="32" rx="7" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="450" y="108" font-family="JetBrains Mono" font-size="10" fill="#22c55e">Pod</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════╗ -->
+<!-- ║       SECTION : YAML & STRUCTURE               ║ -->
+<!-- ╚══════════════════════════════════════════════╝ -->
+
+<section id="yaml">
+  <h2><span class="num">04</span> ReplicaSet YAML File</h2>
+
+<pre><code><span class="key">apiVersion:</span> <span class="val">apps/v1</span>
+<span class="key">kind:</span> <span class="val">ReplicaSet</span>
+<span class="key">metadata:</span>
+  <span class="key">name:</span> <span class="str">web-rs</span>
+  <span class="key">labels:</span>
+    <span class="key">app:</span> <span class="str">web</span>
+    <span class="key">tier:</span> <span class="str">frontend</span>
+<span class="key">spec:</span>
+
+  <span class="comment"># ╔══════════════════════════════╗</span>
+  <span class="comment"># ║   PILLAR 1 — REPLICAS       ║</span>
+  <span class="comment"># ╚══════════════════════════════╝</span>
+  <span class="key">replicas:</span> <span class="num">3</span>                     <span class="comment"># Desired number of identical Pods</span>
+
+  <span class="comment"># ╔══════════════════════════════╗</span>
+  <span class="comment"># ║   PILLAR 2 — SELECTOR       ║</span>
+  <span class="comment"># ╚══════════════════════════════╝</span>
+  <span class="key">selector:</span>                        <span class="comment"># Which Pods does this RS own?</span>
+    <span class="key">matchLabels:</span>
+      <span class="key">app:</span> <span class="str">web</span>
+
+  <span class="comment"># ╔══════════════════════════════╗</span>
+  <span class="comment"># ║   PILLAR 3 — TEMPLATE       ║</span>
+  <span class="comment"># ╚══════════════════════════════╝</span>
+  <span class="key">template:</span>                        <span class="comment"># Pod definition (what to create)</span>
+    <span class="key">metadata:</span>
+      <span class="key">labels:</span>
+        <span class="key">app:</span> <span class="str">web</span>                <span class="comment"># ⚠ MUST match selector above!</span>
+    <span class="key">spec:</span>
+      <span class="key">containers:</span>
+      - <span class="key">name:</span> <span class="str">nginx</span>
+        <span class="key">image:</span> <span class="str">nginx:1.25</span>
+        <span class="key">ports:</span>
+        - <span class="key">containerPort:</span> <span class="num">80</span>
+        <span class="key">resources:</span>
+          <span class="key">requests:</span>
+            <span class="key">cpu:</span> <span class="str">"250m"</span>
+            <span class="key">memory:</span> <span class="str">"128Mi"</span></code></pre>
+</section>
+
+<section id="three-pillars">
+  <h2><span class="num">05</span> The Three Pillars of a ReplicaSet</h2>
+
+  <p>Every ReplicaSet spec is built on exactly <strong>three fields</strong>. Understanding them deeply is key to understanding how Kubernetes manages Pods.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">The Three Pillars</div>
+    <svg width="720" height="280" viewBox="0 0 720 280" fill="none">
+      <!-- Pillar 1: Replicas -->
+      <rect x="10" y="10" width="225" height="260" rx="12" fill="#1a2030" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="30" y="38" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">① Replicas</text>
+      <text x="30" y="56" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">spec.replicas</text>
+      <line x1="30" y1="68" x2="215" y2="68" stroke="#222d3e"/>
+      <text x="30" y="90" font-family="DM Sans" font-size="12" fill="#cdd5e0">HOW MANY Pods?</text>
+      <text x="30" y="118" font-family="DM Sans" font-size="12" fill="#6b7a90">The desired count.</text>
+      <text x="30" y="138" font-family="DM Sans" font-size="12" fill="#6b7a90">RS constantly ensures</text>
+      <text x="30" y="158" font-family="DM Sans" font-size="12" fill="#6b7a90">this exact number of</text>
+      <text x="30" y="178" font-family="DM Sans" font-size="12" fill="#6b7a90">matching Pods exist.</text>
+      <rect x="30" y="200" width="190" height="50" rx="8" fill="rgba(245,158,11,.08)"/>
+      <text x="50" y="222" font-family="JetBrains Mono" font-size="18" fill="#f59e0b" font-weight="700">replicas: 3</text>
+      <text x="60" y="242" font-family="DM Sans" font-size="10" fill="#6b7a90">→ always 3 Pods</text>
+
+      <!-- Pillar 2: Selector -->
+      <rect x="248" y="10" width="225" height="260" rx="12" fill="#1a2030" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="268" y="38" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">② Selector</text>
+      <text x="268" y="56" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">spec.selector</text>
+      <line x1="268" y1="68" x2="453" y2="68" stroke="#222d3e"/>
+      <text x="268" y="90" font-family="DM Sans" font-size="12" fill="#cdd5e0">WHICH Pods to own?</text>
+      <text x="268" y="118" font-family="DM Sans" font-size="12" fill="#6b7a90">Label query that identifies</text>
+      <text x="268" y="138" font-family="DM Sans" font-size="12" fill="#6b7a90">which Pods belong to</text>
+      <text x="268" y="158" font-family="DM Sans" font-size="12" fill="#6b7a90">this RS. Uses set-based</text>
+      <text x="268" y="178" font-family="DM Sans" font-size="12" fill="#6b7a90">matching (In, NotIn).</text>
+      <rect x="268" y="200" width="190" height="50" rx="8" fill="rgba(59,130,246,.08)"/>
+      <text x="278" y="222" font-family="JetBrains Mono" font-size="12" fill="#3b82f6">matchLabels:</text>
+      <text x="288" y="242" font-family="JetBrains Mono" font-size="12" fill="#3b82f6">  app: web</text>
+
+      <!-- Pillar 3: Template -->
+      <rect x="486" y="10" width="225" height="260" rx="12" fill="#1a2030" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="506" y="38" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">③ Template</text>
+      <text x="506" y="56" font-family="JetBrains Mono" font-size="10" fill="#22c55e">spec.template</text>
+      <line x1="506" y1="68" x2="691" y2="68" stroke="#222d3e"/>
+      <text x="506" y="90" font-family="DM Sans" font-size="12" fill="#cdd5e0">WHAT to create?</text>
+      <text x="506" y="118" font-family="DM Sans" font-size="12" fill="#6b7a90">The Pod blueprint.</text>
+      <text x="506" y="138" font-family="DM Sans" font-size="12" fill="#6b7a90">A full Pod spec (minus</text>
+      <text x="506" y="158" font-family="DM Sans" font-size="12" fill="#6b7a90">apiVersion/kind). RS</text>
+      <text x="506" y="178" font-family="DM Sans" font-size="12" fill="#6b7a90">stamps this for new Pods.</text>
+      <rect x="506" y="200" width="190" height="50" rx="8" fill="rgba(34,197,94,.08)"/>
+      <text x="516" y="220" font-family="JetBrains Mono" font-size="10" fill="#22c55e">containers:</text>
+      <text x="516" y="238" font-family="JetBrains Mono" font-size="10" fill="#22c55e">- image: nginx:1.25</text>
+    </svg>
+  </div>
+
+  <div class="callout red">
+    <div class="label">Critical Rule</div>
+    <p style="margin:0">The template's <code>metadata.labels</code> <strong>must match</strong> the <code>selector.matchLabels</code>. If they don't, the API server rejects the ReplicaSet. This is because the RS uses the selector to find its Pods — if the template produces Pods with different labels, the RS would never recognize them as its own.</p>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════╗ -->
+<!-- ║         SECTION : MANAGEMENT                    ║ -->
+<!-- ╚══════════════════════════════════════════════╝ -->
+
+<section id="create">
+  <h2><span class="num">06</span> Create, Update &amp; Replace</h2>
+
+<pre><code><span class="comment"># Create a ReplicaSet</span>
+kubectl apply -f replicaset.yaml
+
+<span class="comment"># Update (edit YAML, then re-apply)</span>
+kubectl apply -f replicaset.yaml
+
+<span class="comment"># Replace (destructive — deletes and recreates)</span>
+kubectl replace -f replicaset.yaml
+
+<span class="comment"># Edit in-place (opens editor)</span>
+kubectl edit rs web-rs
+
+<span class="comment"># Get ReplicaSets</span>
+kubectl get rs
+kubectl get rs web-rs -o wide
+kubectl describe rs web-rs</code></pre>
+
+  <div class="callout orange">
+    <div class="label">Template Changes Don't Affect Existing Pods</div>
+    <p style="margin:0">If you update the Pod template (e.g., change the image), <strong>existing Pods are NOT updated</strong>. The new template only applies to <strong>newly created Pods</strong>. This is why you use Deployments — they trigger a rolling update by creating a new ReplicaSet with the new template, while scaling down the old one.</p>
+  </div>
+</section>
+
+<!-- ── SCALING ── -->
+<section id="scale">
+  <h2><span class="num">07</span> Scaling</h2>
+
+  <p>There are multiple ways to scale a ReplicaSet up or down:</p>
+
+  <h3>Method 1 — Edit the YAML File</h3>
+<pre><code><span class="comment"># Change replicas in the YAML file, then apply</span>
+kubectl apply -f replicaset.yaml</code></pre>
+
+  <h3>Method 2 — Imperative Scale Command (In-Memory)</h3>
+<pre><code><span class="comment"># Scale to 5 replicas (doesn't update the YAML file)</span>
+kubectl scale rs web-rs --replicas=5
+
+<span class="comment"># Conditional scale (only if current count matches)</span>
+kubectl scale rs web-rs --current-replicas=3 --replicas=5</code></pre>
+
+  <div class="callout blue">
+    <div class="label">In-Memory vs File-Based</div>
+    <p style="margin:0">The <code>kubectl scale</code> command changes the replica count <strong>directly in the cluster</strong> without modifying your YAML file. This creates <em>drift</em> between your files and the actual state. For production, always edit the file and <code>kubectl apply</code> — or better yet, use GitOps so the YAML in git is the source of truth.</p>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Scale Up — From 2 to 4 Replicas</div>
+    <svg width="700" height="130" viewBox="0 0 700 130" fill="none">
+      <!-- Before -->
+      <text x="30" y="18" font-family="JetBrains Mono" font-size="10" fill="#6b7a90">Before: replicas=2</text>
+      <rect x="30" y="28" width="85" height="38" rx="8" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="50" y="52" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">Pod 1</text>
+      <rect x="125" y="28" width="85" height="38" rx="8" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="145" y="52" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">Pod 2</text>
+
+      <text x="240" y="52" font-family="DM Sans" font-size="22" fill="#222d3e">→</text>
+      <text x="245" y="90" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">scale --replicas=4</text>
+
+      <!-- After -->
+      <text x="310" y="18" font-family="JetBrains Mono" font-size="10" fill="#22c55e">After: replicas=4</text>
+      <rect x="310" y="28" width="85" height="38" rx="8" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="330" y="52" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">Pod 1</text>
+      <rect x="405" y="28" width="85" height="38" rx="8" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="425" y="52" font-family="JetBrains Mono" font-size="10" fill="#f59e0b">Pod 2</text>
+      <rect x="500" y="28" width="85" height="38" rx="8" fill="rgba(34,197,94,.15)" stroke="#22c55e"/>
+      <text x="515" y="45" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Pod 3</text>
+      <text x="520" y="60" font-family="DM Sans" font-size="8" fill="#6b7a90">new ✓</text>
+      <rect x="595" y="28" width="85" height="38" rx="8" fill="rgba(34,197,94,.15)" stroke="#22c55e"/>
+      <text x="610" y="45" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Pod 4</text>
+      <text x="615" y="60" font-family="DM Sans" font-size="8" fill="#6b7a90">new ✓</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ── SCALE DOWN ALGO ── -->
+<section id="scale-down-algo">
+  <h2><span class="num">08</span> Scale-Down Algorithm</h2>
+
+  <p>When scaling down, Kubernetes doesn't delete Pods randomly. It uses a <strong>priority-based algorithm</strong> to decide which Pods to remove first:</p>
+
+  <div class="flow-steps">
+    <div class="flow-step"><div class="step-num">1</div><div class="step-label"><strong>Pending</strong> &amp;<br>Unschedulable first</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">2</div><div class="step-label">Pods with<br><strong>lower deletion cost</strong><br>annotation</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">3</div><div class="step-label">Pods on nodes<br>with <strong>more replicas</strong><br>(spread evenly)</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">4</div><div class="step-label">Pods with<br><strong>more recent</strong><br>creation time</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="step-num">5</div><div class="step-label"><strong>Random</strong><br>if still tied</div></div>
+  </div>
+
+  <table>
+    <tr><th>Priority</th><th>Rule</th><th>Reason</th></tr>
+    <tr><td>1st (highest)</td><td>Pending / Unschedulable Pods</td><td>They aren't doing useful work yet</td></tr>
+    <tr><td>2nd</td><td>Lower <code>controller.kubernetes.io/pod-deletion-cost</code></td><td>User-defined hint (see below)</td></tr>
+    <tr><td>3rd</td><td>Pods on nodes with more replicas</td><td>Maintain even distribution across nodes</td></tr>
+    <tr><td>4th</td><td>More recently created Pods</td><td>Older Pods have "seniority" — they've been stable longer</td></tr>
+    <tr><td>5th</td><td>Random</td><td>Final tiebreaker</td></tr>
+  </table>
+</section>
+
+<!-- ── DELETION COST ── -->
+<section id="deletion-cost">
+  <h2><span class="num">09</span> Pod Deletion Cost</h2>
+
+  <p>You can influence scale-down priority by annotating Pods with a <strong>deletion cost</strong>. Pods with <strong>lower cost are deleted first</strong>. Pods with higher cost are protected.</p>
+
+<pre><code><span class="comment"># Set high cost on a Pod to protect it during scale-down</span>
+kubectl annotate pod web-rs-abc123 \
+  controller.kubernetes.io/pod-deletion-cost="100"
+
+<span class="comment"># Set low cost to mark a Pod as expendable</span>
+kubectl annotate pod web-rs-xyz789 \
+  controller.kubernetes.io/pod-deletion-cost="-50"</code></pre>
+
+  <table>
+    <tr><th>Cost Value</th><th>Behavior</th><th>Use Case</th></tr>
+    <tr><td>Negative (<code>-50</code>)</td><td>Deleted first during scale-down</td><td>Pods with empty caches, new Pods not yet warm</td></tr>
+    <tr><td>Default (<code>0</code>)</td><td>Normal priority</td><td>Most Pods</td></tr>
+    <tr><td>Positive (<code>100</code>)</td><td>Protected — deleted last</td><td>Pods with warm caches, Pods doing important long work</td></tr>
+  </table>
+
+  <div class="sre-box">
+    <div class="sre-tag">SRE Principle — Warm Pods are Valuable</div>
+    <p style="margin:0">A Pod that has been running for hours has warm caches, established connections, and loaded data. Deleting it costs real performance until the replacement warms up. Use deletion cost annotations to protect warm Pods during scale-down. Combine with <strong>Pod readiness gates</strong> and <strong>preStop hooks</strong> for graceful transitions.</p>
+  </div>
+</section>
+
+<!-- ── DELETE ── -->
+<section id="delete">
+  <h2><span class="num">10</span> Deleting ReplicaSets</h2>
+
+<pre><code><span class="comment"># Delete the RS and all its Pods (default behavior)</span>
+kubectl delete rs web-rs
+
+<span class="comment"># Delete RS but keep Pods alive (orphan them)</span>
+kubectl delete rs web-rs --cascade=orphan
+
+<span class="comment"># Delete using the file</span>
+kubectl delete -f replicaset.yaml</code></pre>
+
+  <p>By default, deleting a ReplicaSet triggers a <strong>cascading delete</strong> — the garbage collector removes all Pods owned by the RS. Use <code>--cascade=orphan</code> to keep the Pods running (see advanced scenarios below).</p>
+</section>
+
+<!-- ╔══════════════════════════════════════════════╗ -->
+<!-- ║       SECTION : ADVANCED SCENARIOS              ║ -->
+<!-- ╚══════════════════════════════════════════════╝ -->
+
+<section id="orphan">
+  <h2><span class="num">11</span> Orphan Pods — Delete RS Without Deleting Pods</h2>
+
+  <p>Sometimes you want to delete a ReplicaSet but <strong>keep its Pods running</strong>. This is called <strong>orphaning</strong>.</p>
+
+<pre><code>kubectl delete rs web-rs --cascade=orphan</code></pre>
+
+  <div class="diagram">
+    <div class="diagram-title">Orphaning — Before and After</div>
+    <svg width="700" height="160" viewBox="0 0 700 160" fill="none">
+      <!-- Before -->
+      <text x="30" y="15" font-family="JetBrains Mono" font-size="10" fill="#6b7a90">Before: RS owns 3 Pods</text>
+      <rect x="20" y="25" width="250" height="120" rx="12" fill="none" stroke="#f59e0b" stroke-dasharray="5 4"/>
+      <text x="30" y="42" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">ReplicaSet web-rs</text>
+      <rect x="40" y="55" width="65" height="30" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="52" y="74" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod1</text>
+      <rect x="115" y="55" width="65" height="30" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="127" y="74" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod2</text>
+      <rect x="190" y="55" width="65" height="30" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="202" y="74" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod3</text>
+      <text x="40" y="115" font-family="DM Sans" font-size="10" fill="#6b7a90">ownerReference → web-rs</text>
+
+      <text x="295" y="70" font-family="DM Sans" font-size="14" fill="#222d3e">→ --cascade=orphan →</text>
+
+      <!-- After -->
+      <text x="440" y="15" font-family="JetBrains Mono" font-size="10" fill="#22c55e">After: Pods alive, no owner</text>
+      <rect x="440" y="55" width="65" height="30" rx="6" fill="rgba(34,197,94,.12)" stroke="#22c55e"/>
+      <text x="452" y="74" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Pod1</text>
+      <rect x="515" y="55" width="65" height="30" rx="6" fill="rgba(34,197,94,.12)" stroke="#22c55e"/>
+      <text x="527" y="74" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Pod2</text>
+      <rect x="590" y="55" width="65" height="30" rx="6" fill="rgba(34,197,94,.12)" stroke="#22c55e"/>
+      <text x="602" y="74" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Pod3</text>
+      <text x="440" y="110" font-family="DM Sans" font-size="10" fill="#6b7a90">ownerReference → none</text>
+      <text x="440" y="128" font-family="DM Sans" font-size="10" fill="#f59e0b">RS deleted ✗ — Pods still running ✓</text>
+    </svg>
+  </div>
+
+  <p><strong>Use case:</strong> You want to switch a set of Pods to be managed by a different controller (e.g., migrate from bare RS to a Deployment) without any downtime. Orphan the Pods, then create the new controller with a matching selector — it adopts them.</p>
+</section>
+
+<!-- ── ISOLATE ── -->
+<section id="isolate">
+  <h2><span class="num">12</span> Isolating Pods from a ReplicaSet</h2>
+
+  <p>You can <strong>remove a Pod from a ReplicaSet's control</strong> by changing its labels so it no longer matches the selector. The RS sees the Pod count drop and creates a replacement — while the old Pod keeps running for debugging.</p>
+
+<pre><code><span class="comment"># Remove the "app" label from a Pod → RS loses track of it</span>
+kubectl label pod web-rs-abc123 app-
+
+<span class="comment"># The RS now sees only 2 matching Pods (out of 3 desired)</span>
+<span class="comment"># → RS creates a new Pod to replace the "missing" one</span>
+<span class="comment"># → The isolated Pod keeps running for debugging</span></code></pre>
+
+  <div class="diagram">
+    <div class="diagram-title">Pod Isolation — Debug Without Disruption</div>
+    <svg width="720" height="180" viewBox="0 0 720 180" fill="none">
+      <!-- RS scope -->
+      <rect x="20" y="20" width="300" height="130" rx="12" fill="none" stroke="#f59e0b" stroke-dasharray="5 4"/>
+      <text x="30" y="40" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">ReplicaSet selector: app=web</text>
+
+      <rect x="40" y="55" width="75" height="38" rx="7" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="52" y="73" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod 1</text>
+      <text x="48" y="86" font-family="JetBrains Mono" font-size="7" fill="#6b7a90">app=web</text>
+
+      <rect x="130" y="55" width="75" height="38" rx="7" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="142" y="73" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod 2</text>
+      <text x="138" y="86" font-family="JetBrains Mono" font-size="7" fill="#6b7a90">app=web</text>
+
+      <!-- New pod created -->
+      <rect x="225" y="55" width="75" height="38" rx="7" fill="rgba(34,197,94,.15)" stroke="#22c55e"/>
+      <text x="232" y="70" font-family="JetBrains Mono" font-size="8" fill="#22c55e">Pod 4</text>
+      <text x="232" y="83" font-family="JetBrains Mono" font-size="7" fill="#22c55e">NEW ✓</text>
+
+      <text x="60" y="125" font-family="DM Sans" font-size="10" fill="#f59e0b">RS sees 2 Pods → creates Pod 4</text>
+
+      <!-- Isolated pod -->
+      <rect x="420" y="55" width="120" height="55" rx="10" fill="rgba(168,85,247,.1)" stroke="#a855f7"/>
+      <text x="435" y="74" font-family="JetBrains Mono" font-size="10" fill="#a855f7">Pod 3</text>
+      <text x="435" y="90" font-family="JetBrains Mono" font-size="8" fill="#a855f7">app=debug ✏️</text>
+      <text x="435" y="102" font-family="DM Sans" font-size="8" fill="#6b7a90">isolated, still running</text>
+
+      <!-- Arrow showing isolation -->
+      <path d="M340 75 L415 75" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#aIso)"/>
+      <text x="345" y="65" font-family="JetBrains Mono" font-size="8" fill="#a855f7">label removed</text>
+
+      <text x="420" y="140" font-family="DM Sans" font-size="11" fill="#a855f7">You can now debug this Pod</text>
+      <text x="420" y="156" font-family="DM Sans" font-size="11" fill="#6b7a90">without affecting the RS count</text>
+
+      <defs><marker id="aIso" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#a855f7"/></marker></defs>
+    </svg>
+  </div>
+
+  <div class="sre-box">
+    <div class="sre-tag">SRE Principle — Isolate, Don't Destroy</div>
+    <p style="margin:0">When a Pod is misbehaving in production, your first instinct might be to delete it. <strong>Don't.</strong> Instead, isolate it by removing its labels. The RS replaces it automatically (maintaining availability), and you keep the broken Pod alive for debugging — its logs, memory state, and filesystem are preserved. This is the Kubernetes equivalent of "cordon and investigate."</p>
+  </div>
+</section>
+
+<!-- ── LABEL MATCHING ── -->
+<section id="label-matching">
+  <h2><span class="num">13</span> Label Matching Edge Cases</h2>
+
+  <p>The ReplicaSet's selector uses labels to find its Pods. This creates some interesting (and sometimes surprising) behaviors when existing Pods match the selector.</p>
+
+  <h3>Case 1 — Pods Created After ReplicaSet</h3>
+  <p>If you manually create a Pod whose labels match an existing RS's selector, the RS <strong>adopts</strong> that Pod. If the RS now has more Pods than desired, it will <strong>delete the excess</strong> — including possibly the one you just created.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">Case 1 — RS Adopts &amp; Kills Excess Pods</div>
+    <svg width="700" height="140" viewBox="0 0 700 140" fill="none">
+      <text x="20" y="18" font-family="JetBrains Mono" font-size="10" fill="#6b7a90">RS has 3/3 Pods. You create a 4th with app=web</text>
+      <rect x="20" y="30" width="70" height="32" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="36" y="50" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod1</text>
+      <rect x="100" y="30" width="70" height="32" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="116" y="50" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod2</text>
+      <rect x="180" y="30" width="70" height="32" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="196" y="50" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod3</text>
+
+      <!-- New pod -->
+      <rect x="270" y="30" width="80" height="32" rx="6" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+      <text x="278" y="44" font-family="JetBrains Mono" font-size="8" fill="#3b82f6">NewPod</text>
+      <text x="278" y="56" font-family="JetBrains Mono" font-size="7" fill="#3b82f6">app=web</text>
+
+      <text x="370" y="52" font-family="DM Sans" font-size="16" fill="#222d3e">→</text>
+
+      <!-- Result -->
+      <text x="400" y="18" font-family="JetBrains Mono" font-size="10" fill="#ef4444">RS sees 4 Pods (wants 3) → deletes 1</text>
+      <rect x="400" y="30" width="70" height="32" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="416" y="50" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod1</text>
+      <rect x="480" y="30" width="70" height="32" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="496" y="50" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod2</text>
+      <rect x="560" y="30" width="70" height="32" rx="6" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="576" y="50" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">Pod3</text>
+      <rect x="560" y="75" width="80" height="28" rx="6" fill="rgba(239,68,68,.08)" stroke="#ef4444" stroke-dasharray="4 3"/>
+      <text x="568" y="93" font-family="JetBrains Mono" font-size="8" fill="#ef4444">NewPod deleted ✗</text>
+    </svg>
+  </div>
+
+  <h3>Case 2 — Pods Created Before ReplicaSet</h3>
+  <p>If Pods already exist with labels matching a new RS's selector, the RS <strong>adopts those existing Pods</strong> via the <code>ownerReferences</code> field. If the existing Pod count already meets the desired replica count, the RS won't create new ones.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">Case 2 — RS Adopts Pre-Existing Pods</div>
+    <svg width="700" height="140" viewBox="0 0 700 140" fill="none">
+      <text x="20" y="18" font-family="JetBrains Mono" font-size="10" fill="#6b7a90">2 naked Pods exist with app=web. You create RS (replicas: 3)</text>
+
+      <!-- Existing pods -->
+      <rect x="20" y="30" width="85" height="38" rx="7" fill="rgba(168,85,247,.1)" stroke="#a855f7"/>
+      <text x="30" y="48" font-family="JetBrains Mono" font-size="9" fill="#a855f7">ExistPod1</text>
+      <text x="32" y="62" font-family="JetBrains Mono" font-size="7" fill="#6b7a90">app=web</text>
+      <rect x="115" y="30" width="85" height="38" rx="7" fill="rgba(168,85,247,.1)" stroke="#a855f7"/>
+      <text x="125" y="48" font-family="JetBrains Mono" font-size="9" fill="#a855f7">ExistPod2</text>
+      <text x="127" y="62" font-family="JetBrains Mono" font-size="7" fill="#6b7a90">app=web</text>
+
+      <text x="225" y="55" font-family="DM Sans" font-size="16" fill="#222d3e">→</text>
+      <text x="220" y="85" font-family="JetBrains Mono" font-size="8" fill="#f59e0b">RS created</text>
+
+      <!-- RS boundary -->
+      <rect x="275" y="15" width="380" height="110" rx="12" fill="none" stroke="#f59e0b" stroke-dasharray="5 4"/>
+      <text x="285" y="32" font-family="JetBrains Mono" font-size="9" fill="#f59e0b">ReplicaSet web-rs (replicas: 3)</text>
+
+      <rect x="290" y="45" width="85" height="38" rx="7" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="296" y="63" font-family="JetBrains Mono" font-size="8" fill="#f59e0b">ExistPod1</text>
+      <text x="296" y="76" font-family="JetBrains Mono" font-size="7" fill="#22c55e">adopted ✓</text>
+
+      <rect x="385" y="45" width="85" height="38" rx="7" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="391" y="63" font-family="JetBrains Mono" font-size="8" fill="#f59e0b">ExistPod2</text>
+      <text x="391" y="76" font-family="JetBrains Mono" font-size="7" fill="#22c55e">adopted ✓</text>
+
+      <rect x="480" y="45" width="85" height="38" rx="7" fill="rgba(34,197,94,.15)" stroke="#22c55e"/>
+      <text x="495" y="60" font-family="JetBrains Mono" font-size="8" fill="#22c55e">NewPod3</text>
+      <text x="493" y="76" font-family="JetBrains Mono" font-size="7" fill="#22c55e">created ✓</text>
+
+      <text x="290" y="110" font-family="DM Sans" font-size="10" fill="#f59e0b">RS adopted 2, created 1 more to reach 3</text>
+    </svg>
+  </div>
+
+  <div class="callout red">
+    <div class="label">Warning</div>
+    <p style="margin:0">Adopted Pods may have <strong>different container specs</strong> than the RS template — the RS only matches on <strong>labels</strong>, not on image, command, or any other field. This can cause inconsistency. This is another reason to always use Deployments and avoid creating naked Pods with production labels.</p>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════╗ -->
+<!-- ║       SECTION : SRE PRACTICES                    ║ -->
+<!-- ╚══════════════════════════════════════════════╝ -->
+
+<section id="reconciliation">
+  <h2><span class="num">14</span> The Reconciliation Loop — Deep Dive</h2>
+
+  <p>The ReplicaSet controller runs a <strong>continuous reconciliation loop</strong> inside the kube-controller-manager. Understanding this loop is fundamental to operating Kubernetes reliably.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">Reconciliation Loop — Internal Mechanics</div>
+    <svg width="720" height="280" viewBox="0 0 720 280" fill="none">
+      <!-- Watch -->
+      <rect x="260" y="5" width="200" height="40" rx="10" fill="rgba(245,158,11,.12)" stroke="#f59e0b"/>
+      <text x="280" y="30" font-family="JetBrains Mono" font-size="11" fill="#f59e0b">Watch Pod events ⚡</text>
+
+      <line x1="360" y1="45" x2="360" y2="70" stroke="#222d3e" stroke-width="1.5"/>
+
+      <!-- List matching -->
+      <rect x="240" y="70" width="240" height="40" rx="10" fill="rgba(59,130,246,.1)" stroke="#3b82f6"/>
+      <text x="260" y="95" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">List Pods matching selector</text>
+
+      <line x1="360" y1="110" x2="360" y2="135" stroke="#222d3e" stroke-width="1.5"/>
+
+      <!-- Compare -->
+      <rect x="240" y="135" width="240" height="40" rx="10" fill="rgba(234,179,8,.1)" stroke="#eab308"/>
+      <text x="260" y="160" font-family="JetBrains Mono" font-size="11" fill="#eab308">Compare: actual vs desired</text>
+
+      <!-- Branch -->
+      <line x1="260" y1="175" x2="120" y2="215" stroke="#222d3e" stroke-width="1.5"/>
+      <line x1="360" y1="175" x2="360" y2="215" stroke="#222d3e" stroke-width="1.5"/>
+      <line x1="460" y1="175" x2="600" y2="215" stroke="#222d3e" stroke-width="1.5"/>
+
+      <rect x="40" y="215" width="160" height="40" rx="8" fill="rgba(34,197,94,.1)" stroke="#22c55e"/>
+      <text x="52" y="240" font-family="JetBrains Mono" font-size="10" fill="#22c55e">actual < desired</text>
+      <text x="52" y="256" font-family="DM Sans" font-size="9" fill="#22c55e">→ Create Pods</text>
+
+      <rect x="280" y="215" width="160" height="40" rx="8" fill="rgba(59,130,246,.1)" stroke="#3b82f6"/>
+      <text x="295" y="240" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">actual = desired</text>
+      <text x="295" y="256" font-family="DM Sans" font-size="9" fill="#3b82f6">→ Do nothing ✓</text>
+
+      <rect x="520" y="215" width="160" height="40" rx="8" fill="rgba(239,68,68,.1)" stroke="#ef4444"/>
+      <text x="535" y="240" font-family="JetBrains Mono" font-size="10" fill="#ef4444">actual > desired</text>
+      <text x="535" y="256" font-family="DM Sans" font-size="9" fill="#ef4444">→ Delete Pods</text>
+    </svg>
+  </div>
+
+  <div class="sre-box">
+    <div class="sre-tag">SRE Principle — Level-Triggered, Not Edge-Triggered</div>
+    <p style="margin:0">Kubernetes controllers are <strong>level-triggered</strong>: they act on the current state, not on events. Even if the controller misses a Pod deletion event, the next reconciliation loop catches the discrepancy. This is why Kubernetes self-heals — the loop runs <em>continuously</em>, not just in response to events. As an SRE, trust the loop but <strong>monitor convergence time</strong> — if desired ≠ actual for more than a few minutes, something is blocking reconciliation.</p>
+  </div>
+</section>
+
+<section id="sre-monitoring">
+  <h2><span class="num">15</span> Monitoring &amp; Alerting</h2>
+
+  <h3>Key Prometheus Metrics</h3>
+  <table>
+    <tr><th>Metric</th><th>What It Tells You</th><th>Alert When</th></tr>
+    <tr><td><code>kube_replicaset_status_replicas</code></td><td>Current number of Pods</td><td>Differs from desired for > 5min</td></tr>
+    <tr><td><code>kube_replicaset_status_ready_replicas</code></td><td>How many are Ready</td><td>Ready < desired for > 3min</td></tr>
+    <tr><td><code>kube_replicaset_spec_replicas</code></td><td>Desired replica count</td><td>Unexpected changes (drift detection)</td></tr>
+    <tr><td><code>kube_replicaset_status_fully_labeled_replicas</code></td><td>Pods matching all labels</td><td>Differs from total (label mismatch)</td></tr>
+    <tr><td><code>kube_pod_container_status_restarts_total</code></td><td>Container restart count per Pod</td><td>> 3 restarts in 10min</td></tr>
+    <tr><td><code>kube_pod_status_phase</code></td><td>Pod phase (Pending/Running/Failed)</td><td>Any Pod stuck in Pending > 5min</td></tr>
+  </table>
+
+  <h3>Grafana Dashboard Essentials</h3>
+  <div class="grid-3">
+    <div class="card" style="text-align:center;border-top:3px solid var(--accent)">
+      <div style="font-family:'JetBrains Mono';font-size:28px;font-weight:700;color:var(--accent)">3/3</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Desired vs Actual</div>
+    </div>
+    <div class="card" style="text-align:center;border-top:3px solid var(--green)">
+      <div style="font-family:'JetBrains Mono';font-size:28px;font-weight:700;color:var(--green)">100%</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ready Ratio</div>
+    </div>
+    <div class="card" style="text-align:center;border-top:3px solid var(--red)">
+      <div style="font-family:'JetBrains Mono';font-size:28px;font-weight:700;color:var(--red)">0</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">CrashLoopBackOff Pods</div>
+    </div>
+  </div>
+</section>
+
+<section id="sre-checklist">
+  <h2><span class="num">16</span> Best Practices Checklist</h2>
+
+  <div class="callout green">
+    <div class="label">Architecture</div>
+    <p style="margin-bottom:6px">✅ Always use Deployments (never create ReplicaSets directly)</p>
+    <p style="margin-bottom:6px">✅ Minimum 2-3 replicas for any production service</p>
+    <p style="margin-bottom:6px">✅ Use <code>podAntiAffinity</code> to spread Pods across nodes/zones</p>
+    <p style="margin:0">✅ Use <code>topologySpreadConstraints</code> for even distribution</p>
+  </div>
+
+  <div class="callout blue">
+    <div class="label">Labels &amp; Selectors</div>
+    <p style="margin-bottom:6px">✅ Use unique, specific label combinations for selectors</p>
+    <p style="margin-bottom:6px">✅ Never reuse labels across different controllers</p>
+    <p style="margin-bottom:6px">✅ Include <code>app</code>, <code>version</code>, and <code>component</code> labels</p>
+    <p style="margin:0">✅ Be aware of adoption behavior — stray Pods can be claimed</p>
+  </div>
+
+  <div class="callout orange">
+    <div class="label">Scaling &amp; Resources</div>
+    <p style="margin-bottom:6px">✅ Set resource requests on all containers (affects scheduling)</p>
+    <p style="margin-bottom:6px">✅ Use HPA (Horizontal Pod Autoscaler) for automatic scaling</p>
+    <p style="margin-bottom:6px">✅ Set PodDisruptionBudgets for voluntary disruption protection</p>
+    <p style="margin:0">✅ Use deletion cost annotations to protect warm Pods</p>
+  </div>
+
+  <div class="callout purple">
+    <div class="label">Observability</div>
+    <p style="margin-bottom:6px">✅ Alert when ready replicas < desired for > 3-5 minutes</p>
+    <p style="margin-bottom:6px">✅ Monitor convergence time (how long desired ≠ actual)</p>
+    <p style="margin-bottom:6px">✅ Track restart counts across all Pods in the ReplicaSet</p>
+    <p style="margin:0">✅ Use <code>kubectl get rs -o wide</code> as a quick health check</p>
+  </div>
+
+  <h3>Quick Commands Reference</h3>
+<pre><code><span class="comment"># ── STATUS ──</span>
+kubectl get rs -o wide                              <span class="comment"># List all ReplicaSets</span>
+kubectl describe rs web-rs                          <span class="comment"># Details + events</span>
+kubectl get pods -l app=web                         <span class="comment"># Pods owned by RS</span>
+
+<span class="comment"># ── SCALING ──</span>
+kubectl scale rs web-rs --replicas=5                <span class="comment"># Scale imperatively</span>
+kubectl autoscale rs web-rs --min=2 --max=10        <span class="comment"># HPA</span>
+
+<span class="comment"># ── DEBUGGING ──</span>
+kubectl label pod web-rs-abc123 app-                <span class="comment"># Isolate Pod</span>
+kubectl label pod web-rs-abc123 app=web             <span class="comment"># Re-attach Pod</span>
+
+<span class="comment"># ── CLEANUP ──</span>
+kubectl delete rs web-rs                            <span class="comment"># Delete RS + Pods</span>
+kubectl delete rs web-rs --cascade=orphan           <span class="comment"># Delete RS only</span>
+
+<span class="comment"># ── INSPECTION ──</span>
+kubectl get rs web-rs -o jsonpath='{.status}'       <span class="comment"># Raw status</span>
+kubectl get pods -l app=web -o wide --show-labels   <span class="comment"># Pods with labels</span></code></pre>
+
+  <div class="sre-box" style="margin-top:30px">
+    <div class="sre-tag">Final SRE Wisdom</div>
+    <p style="margin:0">ReplicaSets embody the fundamental Kubernetes promise: <strong>declare what you want, and the system makes it so</strong>. As an SRE, your job isn't to manage individual Pods — it's to define the right desired state (replica count, resources, labels, probes) and then <strong>monitor that convergence happens reliably</strong>. When the reconciliation loop is healthy, your system self-heals. When it stalls, that's your incident. Invest your effort in monitoring the gap between desired and actual state — that's where all reliability lives.</p>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

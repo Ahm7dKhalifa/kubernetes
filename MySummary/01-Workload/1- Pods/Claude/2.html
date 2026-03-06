@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Pods — The Ultimate Deep-Dive SRE Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0f12;--surface:#131921;--surface2:#1a2230;--border:#232e3d;--text:#cdd5e0;--dim:#6e7b91;--accent:#10b981;--accent2:#06b6d4;--green:#22c55e;--red:#ef4444;--orange:#f97316;--yellow:#eab308;--purple:#a855f7;--blue:#3b82f6;--teal:#14b8a6;--pink:#ec4899;--code-bg:#0f1520;--r:12px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.78;font-size:15.5px}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;width:272px;height:100vh;background:var(--surface);border-right:1px solid var(--border);padding:22px 16px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#1a2230 transparent}
+nav::-webkit-scrollbar{width:5px}nav::-webkit-scrollbar-thumb{background:#1a2230;border-radius:5px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:19px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+nav .sub{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:20px}
+nav ul{list-style:none}nav ul li a{display:block;padding:5px 10px;border-radius:6px;color:var(--dim);text-decoration:none;font-size:12px;font-weight:500;transition:.2s}
+nav ul li a:hover{color:#fff;background:var(--surface2)}
+nav .sl{font-size:8.5px;text-transform:uppercase;letter-spacing:2.5px;color:var(--accent);margin:14px 0 5px 10px;font-weight:700}
+
+/* MAIN */
+main{margin-left:272px;max-width:940px;padding:40px 52px 100px}
+
+/* HERO */
+.hero{text-align:center;padding:50px 0 40px;position:relative}
+.hero::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(16,185,129,.09) 0%,transparent 65%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:52px;font-weight:900;background:linear-gradient(135deg,#fff 0%,var(--teal) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:14px}
+.hero p{color:var(--dim);font-size:17px;max-width:620px;margin:0 auto 16px}
+.hero .badge{display:inline-block;padding:5px 16px;border-radius:20px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px}
+
+/* SECTIONS */
+section{margin-bottom:50px;scroll-margin-top:26px}
+h2{font-family:'Fraunces',serif;font-size:27px;font-weight:700;color:#fff;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--border)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);margin-right:7px;background:rgba(16,185,129,.12);padding:2px 8px;border-radius:5px}
+h3{font-size:18px;font-weight:700;color:#e0e4ec;margin:26px 0 10px}
+h4{font-size:15px;font-weight:600;color:var(--accent2);margin:16px 0 6px}
+p{margin-bottom:12px}strong{color:#fff}
+ul,ol{margin:6px 0 12px 20px}li{margin-bottom:4px}
+
+/* CALLOUT */
+.c{background:var(--surface);border-left:3px solid var(--accent);border-radius:0 var(--r) var(--r) 0;padding:14px 17px;margin:16px 0}
+.c.g{border-left-color:var(--green)}.c.o{border-left-color:var(--orange)}.c.r{border-left-color:var(--red)}.c.b{border-left-color:var(--blue)}.c.p{border-left-color:var(--purple)}
+.c .l{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:4px}
+.c.g .l{color:var(--green)}.c.o .l{color:var(--orange)}.c.r .l{color:var(--red)}.c.b .l{color:var(--blue)}.c.p .l{color:var(--purple)}.c .l.t{color:var(--accent)}
+
+/* SRE BOX */
+.sre{background:linear-gradient(135deg,rgba(16,185,129,.05),rgba(6,182,212,.03));border:1px solid rgba(16,185,129,.18);border-radius:var(--r);padding:16px 18px;margin:18px 0}
+.sre .tag{display:inline-block;padding:2px 7px;border-radius:4px;background:rgba(16,185,129,.14);color:var(--accent);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
+
+/* CODE */
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;overflow-x:auto;margin:12px 0 16px;font-size:12.5px;line-height:1.65}
+code{font-family:'JetBrains Mono',monospace;font-size:12px}
+p code,li code,td code{background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--accent2);font-size:12px}
+pre .cm{color:#5a6580}.k{color:var(--accent)}.v{color:var(--green)}.s{color:var(--yellow)}.nm{color:var(--orange)}
+
+/* DIAGRAM */
+.d{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:26px;margin:20px 0;overflow-x:auto}
+.dt{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-weight:700;margin-bottom:16px;text-align:center}
+.d svg{display:block;margin:0 auto}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:13px}
+th{background:var(--surface2);color:var(--accent2);font-weight:600;text-align:left;padding:8px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:1px}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:hover td{background:rgba(16,185,129,.02)}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.badge.bl{background:rgba(59,130,246,.15);color:var(--blue)}.badge.gn{background:rgba(34,197,94,.15);color:var(--green)}.badge.og{background:rgba(249,115,22,.15);color:var(--orange)}.badge.pp{background:rgba(168,85,247,.15);color:var(--purple)}.badge.rd{background:rgba(239,68,68,.15);color:var(--red)}.badge.tl{background:rgba(20,184,166,.15);color:var(--teal)}.badge.yl{background:rgba(234,179,8,.15);color:var(--yellow)}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:16px 0}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin:16px 0}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:11px;margin:16px 0}
+.cd{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.cd h4{margin-top:0}
+
+.fs{display:flex;gap:0;align-items:stretch;margin:20px 0;flex-wrap:wrap}
+.fst{flex:1;min-width:90px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center}
+.fst .fn{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);line-height:1}
+.fst .fl{font-size:11px;color:var(--dim);margin-top:4px}
+.fa{display:flex;align-items:center;padding:0 2px;color:var(--border);font-size:20px}
+
+@media(max-width:1020px){nav{display:none}main{margin-left:0;padding:24px 18px 80px}.hero h1{font-size:34px}.g2,.g3{grid-template-columns:1fr}.g4{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+<div class="logo">⬡ K8s Pods</div>
+<div class="sub">Ultimate Deep-Dive SRE Guide</div>
+
+<div class="sl">Part 1 — Fundamentals</div>
+<ul>
+<li><a href="#what">What is a Pod?</a></li>
+<li><a href="#internals">Pod Internals</a></li>
+<li><a href="#pod-types">Pod Types</a></li>
+<li><a href="#multi-patterns">Multi-Container Patterns</a></li>
+</ul>
+<div class="sl">Part 2 — Pod Management</div>
+<ul>
+<li><a href="#create">Creating Pods</a></li>
+<li><a href="#update">Updating Pods</a></li>
+<li><a href="#mutable">Mutable vs Immutable Fields</a></li>
+<li><a href="#delete">Deleting Pods</a></li>
+<li><a href="#graceful">Graceful Shutdown Deep Dive</a></li>
+</ul>
+<div class="sl">Part 3 — Lifecycle</div>
+<ul>
+<li><a href="#pod-phases">Pod Phases</a></li>
+<li><a href="#pod-conditions">Pod Conditions</a></li>
+<li><a href="#container-states">Container States</a></li>
+<li><a href="#hooks">Lifecycle Hooks</a></li>
+</ul>
+<div class="sl">Part 4 — Failure Handling</div>
+<ul>
+<li><a href="#fail-reasons">Failure Reasons</a></li>
+<li><a href="#debug">Debugging Failures</a></li>
+<li><a href="#crash-loop">Crash Loop Lifecycle</a></li>
+<li><a href="#restart">Restart Policy</a></li>
+<li><a href="#restart-details">Restart Mechanics</a></li>
+</ul>
+<div class="sl">Part 5 — Health Probes</div>
+<ul>
+<li><a href="#probe-what">What Are Probes?</a></li>
+<li><a href="#probe-mech">Check Mechanisms</a></li>
+<li><a href="#probe-outcome">Probe Outcomes</a></li>
+<li><a href="#probe-types">The Three Probe Types</a></li>
+<li><a href="#probe-config">Probe Configuration</a></li>
+<li><a href="#probe-best">Probe Best Practices</a></li>
+</ul>
+<div class="sl">Part 6 — Container Types</div>
+<ul>
+<li><a href="#init">Init Containers</a></li>
+<li><a href="#sidecar">Sidecar Containers</a></li>
+<li><a href="#app-cont">App Containers</a></li>
+<li><a href="#ephemeral">Ephemeral Containers</a></li>
+</ul>
+<div class="sl">Part 7 — Resources</div>
+<ul>
+<li><a href="#req-lim">Requests vs Limits</a></li>
+<li><a href="#calc">Resource Calculation</a></li>
+<li><a href="#qos">QoS Classes</a></li>
+</ul>
+<div class="sl">Part 8 — Disruption</div>
+<ul>
+<li><a href="#disrupt">Disruption Types</a></li>
+<li><a href="#pdb">Pod Disruption Budgets</a></li>
+<li><a href="#pdb-works">How PDBs Work</a></li>
+</ul>
+<div class="sl">Part 9 — SRE Operations</div>
+<ul>
+<li><a href="#sre-mon">Monitoring &amp; Observability</a></li>
+<li><a href="#sre-golden">Four Golden Signals</a></li>
+<li><a href="#sre-check">Production Checklist</a></li>
+<li><a href="#sre-cmd">Command Reference</a></li>
+</ul>
+</nav>
+
+<main>
+
+<!-- ══════════════ HERO ══════════════ -->
+<div class="hero">
+<h1>Kubernetes Pods</h1>
+<p>The ultimate deep-dive — every concept, every detail, every field explained simply and thoroughly. Built for SREs who need to understand Pods inside and out.</p>
+<div class="badge">30+ Sections &nbsp;·&nbsp; SRE-Focused &nbsp;·&nbsp; In-Depth</div>
+</div>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 1 — FUNDAMENTALS                           ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="what">
+<h2><span class="n">01</span> What is a Pod?</h2>
+
+<p>A <strong>Pod</strong> is the <strong>smallest and most basic deployable unit</strong> in Kubernetes. It's a thin wrapper around one or more containers that tells Kubernetes: "treat these containers as a single, atomic unit."</p>
+
+<p>Kubernetes does <strong>not</strong> run containers directly. Every container in Kubernetes lives inside a Pod. Even a single container runs inside a Pod — it's just a Pod with one container.</p>
+
+<div class="c g">
+<div class="l">Simple Analogy</div>
+<p style="margin:0">Think of a Pod as a <strong>shared apartment</strong>. The containers are the roommates. They share the same <strong>address</strong> (IP), the same <strong>living space</strong> (volumes), and they <strong>move in and out together</strong> (lifecycle). Kubernetes manages apartments, not individual people.</p>
+</div>
+
+<h3>What Makes a Pod Special?</h3>
+<p>A Pod provides a <strong>shared execution environment</strong> for its containers. This means all containers inside a Pod share:</p>
+
+<table>
+<tr><th>Shared Resource</th><th>What This Means</th><th>Practical Impact</th></tr>
+<tr><td><strong>Network Namespace</strong></td><td>All containers share the same IP address and port space</td><td>Container A can reach Container B via <code>localhost:PORT</code>. No need for service discovery between containers in the same Pod.</td></tr>
+<tr><td><strong>Storage Volumes</strong></td><td>Volumes defined in the Pod spec can be mounted by any container</td><td>A log-shipper sidecar can read log files written by the app container. Both mount the same <code>emptyDir</code> volume.</td></tr>
+<tr><td><strong>IPC Namespace</strong></td><td>Containers can communicate using System V IPC or POSIX message queues</td><td>Useful for legacy apps that use shared memory for inter-process communication.</td></tr>
+<tr><td><strong>PID Namespace</strong> (optional)</td><td>When <code>shareProcessNamespace: true</code>, containers can see each other's processes</td><td>A debug sidecar can inspect or signal the app process. Used for process monitoring.</td></tr>
+<tr><td><strong>Lifecycle</strong></td><td>All containers are scheduled to the same node and start/stop together</td><td>If the Pod is deleted, all containers are terminated. If the node fails, all containers fail.</td></tr>
+<tr><td><strong>Hostname</strong></td><td>All containers see the same hostname (= Pod name)</td><td><code>hostname</code> command returns the Pod's name in every container.</td></tr>
+</table>
+
+<h3>What a Pod is NOT</h3>
+<p>A Pod is <strong>not a virtual machine</strong>. It does not have its own OS, kernel, or full networking stack. It's a Kubernetes abstraction that groups containers sharing Linux namespaces and cgroups. Each container is still an isolated process — they just share some namespace boundaries.</p>
+
+<h3>Key Characteristics</h3>
+<table>
+<tr><th>Property</th><th>Detail</th></tr>
+<tr><td><strong>Ephemeral</strong></td><td>Pods are designed to be <strong>disposable</strong>. They can be killed, evicted, or rescheduled at any time. You should never treat a Pod as permanent storage or as a long-lived identity.</td></tr>
+<tr><td><strong>Unique Identity</strong></td><td>Each Pod gets a unique name (e.g., <code>web-7d4b9c6f5-x2k9m</code>) and a cluster-internal IP address. When a Pod is replaced, the new Pod gets a <strong>new name and new IP</strong>.</td></tr>
+<tr><td><strong>Single Node</strong></td><td>All containers in a Pod are always co-located on the <strong>same node</strong>. They cannot span multiple nodes.</td></tr>
+<tr><td><strong>OwnerReference</strong></td><td>Pods created by controllers (Deployment, Job, etc.) have an <code>ownerReferences</code> field pointing to the controller. This is how Kubernetes knows which controller manages which Pods.</td></tr>
+</table>
+
+<div class="sre">
+<div class="tag">SRE Principle — Cattle, Not Pets</div>
+<p style="margin:0">Pods are <strong>cattle, not pets</strong>. You don't give them unique names, you don't SSH into them to fix issues, and you don't care which specific Pod is serving a request. If a Pod is unhealthy, you replace it — not repair it. This mindset is the foundation of reliable, scalable operations in Kubernetes.</p>
+</div>
+</section>
+
+<!-- ── INTERNALS ── -->
+<section id="internals">
+<h2><span class="n">02</span> Pod Internals — Under the Hood</h2>
+
+<p>When Kubernetes creates a Pod, it actually creates a hidden infrastructure container first, then starts your containers inside its namespace. Understanding this helps debug networking and lifecycle issues.</p>
+
+<div class="d">
+<div class="dt">Pod Internal Architecture</div>
+<svg width="720" height="260" viewBox="0 0 720 260" fill="none">
+<rect x="40" y="10" width="640" height="240" rx="16" fill="rgba(16,185,129,.03)" stroke="#10b981" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="60" y="35" font-family="JetBrains Mono" font-size="11" fill="#10b981" font-weight="600">Pod: my-app-7d4b9 (Node: worker-02, IP: 10.244.1.23)</text>
+
+<!-- Pause container -->
+<rect x="60" y="50" width="200" height="55" rx="10" fill="rgba(107,114,128,.1)" stroke="#6b7280"/>
+<text x="80" y="72" font-family="JetBrains Mono" font-size="10" fill="#6b7280" font-weight="600">pause container</text>
+<text x="80" y="90" font-family="DM Sans" font-size="10" fill="#6e7b91">Holds network namespace</text>
+
+<!-- App container -->
+<rect x="60" y="120" width="200" height="70" rx="10" fill="rgba(16,185,129,.1)" stroke="#10b981"/>
+<text x="80" y="142" font-family="JetBrains Mono" font-size="11" fill="#10b981" font-weight="600">App Container</text>
+<text x="80" y="160" font-family="DM Sans" font-size="10" fill="#6e7b91">nginx:1.25</text>
+<text x="80" y="176" font-family="JetBrains Mono" font-size="9" fill="#6e7b91">PID 1: nginx master</text>
+
+<!-- Sidecar container -->
+<rect x="280" y="120" width="200" height="70" rx="10" fill="rgba(6,182,212,.1)" stroke="#06b6d4"/>
+<text x="300" y="142" font-family="JetBrains Mono" font-size="11" fill="#06b6d4" font-weight="600">Sidecar Container</text>
+<text x="300" y="160" font-family="DM Sans" font-size="10" fill="#6e7b91">fluent-bit:latest</text>
+<text x="300" y="176" font-family="JetBrains Mono" font-size="9" fill="#6e7b91">PID 1: fluent-bit</text>
+
+<!-- Shared resources -->
+<rect x="60" y="205" width="420" height="35" rx="8" fill="rgba(59,130,246,.06)" stroke="#3b82f6" stroke-dasharray="4 3"/>
+<text x="160" y="227" font-family="JetBrains Mono" font-size="10" fill="#3b82f6">Shared Network: eth0 → 10.244.1.23 (via pause container)</text>
+
+<!-- Volume -->
+<rect x="500" y="120" width="160" height="70" rx="10" fill="rgba(168,85,247,.08)" stroke="#a855f7"/>
+<text x="515" y="142" font-family="JetBrains Mono" font-size="10" fill="#a855f7" font-weight="600">Shared Volume</text>
+<text x="515" y="160" font-family="DM Sans" font-size="10" fill="#6e7b91">/var/log → emptyDir</text>
+<text x="515" y="176" font-family="DM Sans" font-size="10" fill="#6e7b91">Mounted by both</text>
+
+<!-- Connections -->
+<line x1="160" y1="190" x2="160" y2="205" stroke="#3b82f6" stroke-dasharray="3 2"/>
+<line x1="380" y1="190" x2="380" y2="205" stroke="#3b82f6" stroke-dasharray="3 2"/>
+<path d="M260 155 L280 155" stroke="#232e3d" stroke-dasharray="3 2"/>
+<path d="M480 155 L500 155" stroke="#a855f7" stroke-dasharray="3 2"/>
+<path d="M260 155 L270 155" stroke="#232e3d"/>
+</svg>
+</div>
+
+<h3>The Pause Container</h3>
+<p>Every Pod has a hidden <strong>pause container</strong> (also called the "infrastructure container"). It's the first thing created and the last to be destroyed. Its job is to <strong>hold the network namespace alive</strong>. If your app container crashes and restarts, the network namespace (and therefore the IP address) persists because the pause container is still running. This is why Pods keep their IP even when containers restart.</p>
+
+<h3>How Containers Communicate Inside a Pod</h3>
+<table>
+<tr><th>Method</th><th>How</th><th>Example</th></tr>
+<tr><td><strong>localhost</strong></td><td>Same network namespace → containers reach each other on <code>127.0.0.1</code></td><td>App on <code>:8080</code>, sidecar scrapes <code>localhost:8080/metrics</code></td></tr>
+<tr><td><strong>Shared Volume</strong></td><td>Both containers mount the same volume at different paths</td><td>App writes to <code>/var/log/app.log</code>, sidecar reads and ships it</td></tr>
+<tr><td><strong>Shared Process Space</strong></td><td>With <code>shareProcessNamespace: true</code></td><td>Debug container can run <code>kill -USR1 &lt;app-pid&gt;</code> to trigger heap dump</td></tr>
+</table>
+</section>
+
+<!-- ── POD TYPES ── -->
+<section id="pod-types">
+<h2><span class="n">03</span> Pod Types (by Container Count)</h2>
+
+<div class="g2">
+<div class="cd" style="border-top:3px solid var(--accent)">
+<h4 style="color:var(--accent)">Single-Container Pod</h4>
+<p>The <strong>most common and recommended</strong> pattern. One Pod = one container = one process. This keeps things simple — the Pod lifecycle equals the container lifecycle.</p>
+<p style="font-size:13px;color:var(--dim)"><strong>When to use:</strong> Almost always. Each microservice, API, worker, or web server should be its own single-container Pod.</p>
+<p style="font-size:13px;color:var(--dim)"><strong>Rule of thumb:</strong> If you'd run it as a separate process on a VM, it should be a separate Pod in Kubernetes.</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--accent2)">
+<h4 style="color:var(--accent2)">Multi-Container Pod</h4>
+<p>Multiple containers that are <strong>tightly coupled</strong> and must share resources. Use only when containers genuinely need to be co-located — they share data, communicate via localhost, or have dependent lifecycles.</p>
+<p style="font-size:13px;color:var(--dim)"><strong>When to use:</strong> Only when containers must share network, storage, or lifecycle. If they can work independently, use separate Pods.</p>
+<p style="font-size:13px;color:var(--dim)"><strong>Warning:</strong> Adding containers to a Pod increases blast radius — if the Pod is evicted, ALL containers die.</p>
+</div>
+</div>
+</section>
+
+<!-- ── MULTI-CONTAINER PATTERNS ── -->
+<section id="multi-patterns">
+<h2><span class="n">04</span> Multi-Container Design Patterns</h2>
+
+<div class="d">
+<div class="dt">Three Classic Multi-Container Patterns</div>
+<svg width="720" height="220" viewBox="0 0 720 220" fill="none">
+<rect x="10" y="10" width="225" height="200" rx="12" fill="#1a2230" stroke="#10b981" stroke-width="1.5"/>
+<text x="68" y="36" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">Sidecar</text>
+<rect x="30" y="55" width="80" height="50" rx="8" fill="rgba(16,185,129,.15)" stroke="#10b981"/>
+<text x="42" y="78" font-family="JetBrains Mono" font-size="10" fill="#10b981">Main App</text>
+<rect x="130" y="55" width="85" height="50" rx="8" fill="rgba(6,182,212,.15)" stroke="#06b6d4"/>
+<text x="138" y="72" font-family="JetBrains Mono" font-size="9" fill="#06b6d4">Log</text>
+<text x="138" y="86" font-family="JetBrains Mono" font-size="9" fill="#06b6d4">Shipper</text>
+<path d="M110 80 L130 80" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aP)"/>
+<text x="30" y="130" font-family="DM Sans" font-size="11" fill="#6e7b91">Extends main container</text>
+<text x="30" y="148" font-family="DM Sans" font-size="11" fill="#6e7b91">with extra functionality</text>
+<text x="30" y="175" font-family="DM Sans" font-size="11" fill="#cdd5e0">Examples:</text>
+<text x="30" y="195" font-family="DM Sans" font-size="10" fill="#6e7b91">Log shipper, monitoring</text>
+<text x="30" y="205" font-family="DM Sans" font-size="10" fill="#6e7b91">agent, config reloader</text>
+
+<rect x="248" y="10" width="225" height="200" rx="12" fill="#1a2230" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="310" y="36" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">Adapter</text>
+<rect x="268" y="55" width="80" height="50" rx="8" fill="rgba(16,185,129,.15)" stroke="#10b981"/>
+<text x="280" y="78" font-family="JetBrains Mono" font-size="10" fill="#10b981">Main App</text>
+<rect x="368" y="55" width="85" height="50" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6"/>
+<text x="376" y="72" font-family="JetBrains Mono" font-size="9" fill="#3b82f6">Format</text>
+<text x="376" y="86" font-family="JetBrains Mono" font-size="9" fill="#3b82f6">Converter</text>
+<path d="M348 80 L368 80" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aP)"/>
+<text x="268" y="130" font-family="DM Sans" font-size="11" fill="#6e7b91">Standardizes output</text>
+<text x="268" y="148" font-family="DM Sans" font-size="11" fill="#6e7b91">to a common format</text>
+<text x="268" y="175" font-family="DM Sans" font-size="11" fill="#cdd5e0">Examples:</text>
+<text x="268" y="195" font-family="DM Sans" font-size="10" fill="#6e7b91">Prometheus exporter,</text>
+<text x="268" y="205" font-family="DM Sans" font-size="10" fill="#6e7b91">log format normalizer</text>
+
+<rect x="486" y="10" width="225" height="200" rx="12" fill="#1a2230" stroke="#a855f7" stroke-width="1.5"/>
+<text x="536" y="36" font-family="Fraunces" font-size="15" fill="#fff" font-weight="700">Ambassador</text>
+<rect x="506" y="55" width="80" height="50" rx="8" fill="rgba(16,185,129,.15)" stroke="#10b981"/>
+<text x="518" y="78" font-family="JetBrains Mono" font-size="10" fill="#10b981">Main App</text>
+<rect x="606" y="55" width="85" height="50" rx="8" fill="rgba(168,85,247,.15)" stroke="#a855f7"/>
+<text x="618" y="72" font-family="JetBrains Mono" font-size="9" fill="#a855f7">Proxy</text>
+<text x="618" y="86" font-family="JetBrains Mono" font-size="9" fill="#a855f7">Router</text>
+<path d="M586 80 L606 80" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aP)"/>
+<text x="506" y="130" font-family="DM Sans" font-size="11" fill="#6e7b91">Proxies connections to</text>
+<text x="506" y="148" font-family="DM Sans" font-size="11" fill="#6e7b91">the outside world</text>
+<text x="506" y="175" font-family="DM Sans" font-size="11" fill="#cdd5e0">Examples:</text>
+<text x="506" y="195" font-family="DM Sans" font-size="10" fill="#6e7b91">Service mesh proxy,</text>
+<text x="506" y="205" font-family="DM Sans" font-size="10" fill="#6e7b91">DB connection pooler</text>
+
+<defs><marker id="aP" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#232e3d"/></marker></defs>
+</svg>
+</div>
+
+<table>
+<tr><th>Pattern</th><th>Direction</th><th>Purpose</th><th>Real-World Examples</th></tr>
+<tr><td><strong>Sidecar</strong></td><td>App → Sidecar</td><td>Add capabilities to the main app without modifying it</td><td>Fluent Bit (log shipping), Envoy (service mesh), Vault Agent (secrets injection)</td></tr>
+<tr><td><strong>Adapter</strong></td><td>App → Adapter → External</td><td>Transform output to match an external system's expected format</td><td>Prometheus exporter that converts custom metrics to Prometheus format</td></tr>
+<tr><td><strong>Ambassador</strong></td><td>App → Ambassador → External</td><td>Proxy connections to external services, handling auth/routing</td><td>Cloud SQL Proxy, Redis sentinel proxy, API gateway</td></tr>
+</table>
+</section>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 2 — POD MANAGEMENT                         ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="create">
+<h2><span class="n">05</span> Creating Pods</h2>
+
+<h3>Method 1 — Individual Pod (Direct / Naked)</h3>
+<p>Creating a standalone Pod directly — <strong>only for testing and debugging</strong>.</p>
+
+<pre><code><span class="cm"># Declarative (YAML file)</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">my-app</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">env:</span> <span class="s">dev</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">web</span>
+    <span class="k">image:</span> <span class="s">nginx:1.25</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span>
+    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">cpu:</span> <span class="s">"250m"</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span></code></pre>
+
+<pre><code><span class="cm"># Imperative (one-liner)</span>
+kubectl run my-app --image=nginx:1.25 --port=80
+
+<span class="cm"># Generate YAML without creating (dry-run)</span>
+kubectl run my-app --image=nginx:1.25 --dry-run=client -o yaml > pod.yaml</code></pre>
+
+<div class="sre">
+<div class="tag">SRE Principle — Never Run Naked Pods in Production</div>
+<p style="margin:0">A naked Pod (one created directly, not by a controller) will <strong>not be rescheduled</strong> if a node fails, crashes, or is drained. It simply disappears. In production, always create Pods through a controller (Deployment, StatefulSet, DaemonSet, Job). The controller watches for missing Pods and recreates them — this is how Kubernetes self-heals.</p>
+</div>
+
+<h3>Method 2 — Via Controllers (Production)</h3>
+<p>In production, Pods are always created <strong>indirectly</strong> through higher-level controllers:</p>
+
+<table>
+<tr><th>Controller</th><th>Creates Pods For</th><th>Key Feature</th><th>Self-Heals?</th></tr>
+<tr><td><strong>Deployment</strong></td><td>Stateless services</td><td>Rolling updates, rollbacks, replica scaling</td><td>✅ Yes</td></tr>
+<tr><td><strong>StatefulSet</strong></td><td>Stateful services</td><td>Stable identity (name + storage), ordered startup</td><td>✅ Yes</td></tr>
+<tr><td><strong>DaemonSet</strong></td><td>One Pod per node</td><td>Node-level agents (monitoring, logging, CNI)</td><td>✅ Yes</td></tr>
+<tr><td><strong>Job</strong></td><td>Batch tasks</td><td>Run to completion, retries, parallelism</td><td>✅ Yes</td></tr>
+<tr><td><strong>CronJob</strong></td><td>Scheduled tasks</td><td>Cron schedule → creates Jobs → creates Pods</td><td>✅ Yes</td></tr>
+<tr><td><strong>ReplicaSet</strong></td><td>Replica management</td><td>Ensures N replicas (used internally by Deployment)</td><td>✅ Yes</td></tr>
+</table>
+</section>
+
+<!-- ── UPDATE ── -->
+<section id="update">
+<h2><span class="n">06</span> Updating Pods</h2>
+
+<p>Pods are <strong>mostly immutable</strong>. Once created, you cannot change most fields. The way to "update" a Pod is to <strong>replace it with a new one</strong>.</p>
+
+<h3>Update Strategy 1 — Rolling Update (Default for Deployments)</h3>
+<p>Gradually replaces old Pods with new ones. At every step, some old and some new Pods are running. <strong>Zero downtime.</strong></p>
+
+<div class="d">
+<div class="dt">Rolling Update — Visual Timeline</div>
+<svg width="720" height="180" viewBox="0 0 720 180" fill="none">
+<text x="20" y="15" font-family="JetBrains Mono" font-size="9" fill="#6e7b91">Time →</text>
+<line x1="20" y1="140" x2="700" y2="140" stroke="#232e3d"/>
+
+<text x="30" y="35" font-family="JetBrains Mono" font-size="9" fill="#6e7b91">Step 1: All v1</text>
+<rect x="30" y="45" width="50" height="26" rx="5" fill="rgba(249,115,22,.15)" stroke="#f97316"/><text x="40" y="62" font-family="JetBrains Mono" font-size="8" fill="#f97316">v1</text>
+<rect x="85" y="45" width="50" height="26" rx="5" fill="rgba(249,115,22,.15)" stroke="#f97316"/><text x="95" y="62" font-family="JetBrains Mono" font-size="8" fill="#f97316">v1</text>
+<rect x="30" y="76" width="50" height="26" rx="5" fill="rgba(249,115,22,.15)" stroke="#f97316"/><text x="40" y="93" font-family="JetBrains Mono" font-size="8" fill="#f97316">v1</text>
+
+<text x="170" y="35" font-family="JetBrains Mono" font-size="9" fill="#6e7b91">Step 2: 1 new</text>
+<rect x="170" y="45" width="50" height="26" rx="5" fill="rgba(249,115,22,.15)" stroke="#f97316"/><text x="180" y="62" font-family="JetBrains Mono" font-size="8" fill="#f97316">v1</text>
+<rect x="225" y="45" width="50" height="26" rx="5" fill="rgba(249,115,22,.15)" stroke="#f97316"/><text x="235" y="62" font-family="JetBrains Mono" font-size="8" fill="#f97316">v1</text>
+<rect x="170" y="76" width="50" height="26" rx="5" fill="rgba(16,185,129,.15)" stroke="#10b981"/><text x="180" y="93" font-family="JetBrains Mono" font-size="8" fill="#10b981">v2</text>
+
+<text x="310" y="35" font-family="JetBrains Mono" font-size="9" fill="#6e7b91">Step 3: 2 new</text>
+<rect x="310" y="45" width="50" height="26" rx="5" fill="rgba(249,115,22,.15)" stroke="#f97316"/><text x="320" y="62" font-family="JetBrains Mono" font-size="8" fill="#f97316">v1</text>
+<rect x="365" y="45" width="50" height="26" rx="5" fill="rgba(16,185,129,.15)" stroke="#10b981"/><text x="375" y="62" font-family="JetBrains Mono" font-size="8" fill="#10b981">v2</text>
+<rect x="310" y="76" width="50" height="26" rx="5" fill="rgba(16,185,129,.15)" stroke="#10b981"/><text x="320" y="93" font-family="JetBrains Mono" font-size="8" fill="#10b981">v2</text>
+
+<text x="450" y="35" font-family="JetBrains Mono" font-size="9" fill="#22c55e">Step 4: All v2 ✓</text>
+<rect x="450" y="45" width="50" height="26" rx="5" fill="rgba(16,185,129,.15)" stroke="#10b981"/><text x="460" y="62" font-family="JetBrains Mono" font-size="8" fill="#10b981">v2</text>
+<rect x="505" y="45" width="50" height="26" rx="5" fill="rgba(16,185,129,.15)" stroke="#10b981"/><text x="515" y="62" font-family="JetBrains Mono" font-size="8" fill="#10b981">v2</text>
+<rect x="450" y="76" width="50" height="26" rx="5" fill="rgba(16,185,129,.15)" stroke="#10b981"/><text x="460" y="93" font-family="JetBrains Mono" font-size="8" fill="#10b981">v2</text>
+
+<rect x="590" y="42" width="100" height="60" rx="8" fill="rgba(59,130,246,.06)" stroke="#3b82f6" stroke-dasharray="4 3"/>
+<text x="600" y="62" font-family="JetBrains Mono" font-size="9" fill="#3b82f6">Rollback:</text>
+<text x="600" y="80" font-family="JetBrains Mono" font-size="8" fill="#3b82f6">kubectl rollout</text>
+<text x="600" y="93" font-family="JetBrains Mono" font-size="8" fill="#3b82f6">undo deploy/app</text>
+
+<text x="30" y="160" font-family="JetBrains Mono" font-size="9" fill="#f97316">maxSurge: 1 (allow 1 extra Pod during update)</text>
+<text x="30" y="175" font-family="JetBrains Mono" font-size="9" fill="#f97316">maxUnavailable: 0 (never go below desired count)</text>
+</svg>
+</div>
+
+<h3>Update Strategy 2 — Recreate</h3>
+<p>Kills <strong>all</strong> old Pods first, then creates all new Pods. Causes a gap where zero Pods are running. Use only when your app cannot have two versions running simultaneously (e.g., incompatible DB schema).</p>
+
+<h3>Update Strategy 3 — Rollback</h3>
+<pre><code><span class="cm"># Check rollout history</span>
+kubectl rollout history deployment/my-app
+
+<span class="cm"># Rollback to the previous version</span>
+kubectl rollout undo deployment/my-app
+
+<span class="cm"># Rollback to a specific revision</span>
+kubectl rollout undo deployment/my-app --to-revision=3</code></pre>
+</section>
+
+<section id="mutable">
+<h2><span class="n">07</span> Mutable vs Immutable Pod Fields</h2>
+
+<p>Understanding which fields you <strong>can</strong> and <strong>cannot</strong> change on a running Pod is essential:</p>
+
+<table>
+<tr><th>Field</th><th>Mutable?</th><th>Notes</th></tr>
+<tr><td><code>spec.containers[*].image</code></td><td><span class="badge rd">No</span></td><td>Change requires Pod replacement (via Deployment update)</td></tr>
+<tr><td><code>spec.containers[*].resources</code></td><td><span class="badge yl">Partial</span></td><td>With In-Place Resource Resize (v1.27+), CPU/mem can be changed</td></tr>
+<tr><td><code>spec.activeDeadlineSeconds</code></td><td><span class="badge gn">Yes</span></td><td>Can be reduced (not increased) on running Pod</td></tr>
+<tr><td><code>spec.tolerations</code></td><td><span class="badge gn">Yes</span></td><td>New tolerations can be added (not removed)</td></tr>
+<tr><td><code>metadata.labels</code></td><td><span class="badge gn">Yes</span></td><td>Can be freely added, changed, or removed</td></tr>
+<tr><td><code>metadata.annotations</code></td><td><span class="badge gn">Yes</span></td><td>Can be freely modified</td></tr>
+<tr><td><code>spec.containers[*].command</code></td><td><span class="badge rd">No</span></td><td>Immutable after creation</td></tr>
+<tr><td><code>spec.containers[*].ports</code></td><td><span class="badge rd">No</span></td><td>Immutable after creation</td></tr>
+<tr><td><code>spec.containers[*].volumeMounts</code></td><td><span class="badge rd">No</span></td><td>Immutable after creation</td></tr>
+<tr><td><code>spec.nodeName</code></td><td><span class="badge rd">No</span></td><td>Pod cannot be moved to another node</td></tr>
+<tr><td><code>spec.serviceAccountName</code></td><td><span class="badge rd">No</span></td><td>Immutable after creation</td></tr>
+</table>
+</section>
+
+<!-- ── DELETE ── -->
+<section id="delete">
+<h2><span class="n">08</span> Deleting Pods</h2>
+
+<pre><code><span class="cm"># Graceful delete (default 30s grace period)</span>
+kubectl delete pod my-app
+
+<span class="cm"># Custom grace period</span>
+kubectl delete pod my-app --grace-period=60
+
+<span class="cm"># Force delete (skip graceful shutdown — DANGEROUS)</span>
+kubectl delete pod my-app --grace-period=0 --force
+
+<span class="cm"># Delete all pods in a namespace</span>
+kubectl delete pods --all -n my-namespace</code></pre>
+
+<div class="c r">
+<div class="l">Never Force-Delete Unless Absolutely Necessary</div>
+<p style="margin:0">Force-deleting a Pod (<code>--grace-period=0 --force</code>) removes the Pod from the API server <strong>immediately</strong> without waiting for the kubelet to confirm the containers have stopped. The containers may still be running on the node. This can cause data corruption, split-brain issues, or duplicate processing. Only use it when the node is confirmed unreachable.</p>
+</div>
+</section>
+
+<section id="graceful">
+<h2><span class="n">09</span> Graceful Shutdown — Deep Dive</h2>
+
+<p>When a Pod is deleted, Kubernetes follows a <strong>precise, ordered shutdown sequence</strong>. Understanding every step is critical for SREs to prevent data loss and request failures.</p>
+
+<div class="d">
+<div class="dt">The Complete Graceful Shutdown Sequence</div>
+<svg width="720" height="370" viewBox="0 0 720 370" fill="none">
+<defs><marker id="aG" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#232e3d"/></marker></defs>
+
+<rect x="240" y="5" width="240" height="38" rx="8" fill="rgba(59,130,246,.1)" stroke="#3b82f6"/>
+<text x="278" y="28" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">kubectl delete pod/my-app</text>
+<path d="M360 43 L360 63" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aG)"/>
+
+<rect x="200" y="65" width="320" height="38" rx="8" fill="rgba(245,158,11,.08)" stroke="#eab308"/>
+<text x="218" y="82" font-family="JetBrains Mono" font-size="10" fill="#eab308">① Pod status → Terminating</text>
+<text x="218" y="96" font-family="DM Sans" font-size="9" fill="#6e7b91">Pod removed from Service endpoints (no new traffic)</text>
+<path d="M360 103 L360 118" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aG)"/>
+
+<rect x="200" y="120" width="320" height="38" rx="8" fill="rgba(168,85,247,.08)" stroke="#a855f7"/>
+<text x="218" y="137" font-family="JetBrains Mono" font-size="10" fill="#a855f7">② preStop hook runs (if configured)</text>
+<text x="218" y="151" font-family="DM Sans" font-size="9" fill="#6e7b91">e.g., sleep 5, drain connections, deregister</text>
+<path d="M360 158 L360 173" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aG)"/>
+
+<rect x="200" y="175" width="320" height="38" rx="8" fill="rgba(239,68,68,.08)" stroke="#ef4444"/>
+<text x="218" y="192" font-family="JetBrains Mono" font-size="10" fill="#ef4444">③ SIGTERM sent to PID 1 in each container</text>
+<text x="218" y="206" font-family="DM Sans" font-size="9" fill="#6e7b91">App should catch this and shut down gracefully</text>
+<path d="M360 213 L360 228" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aG)"/>
+
+<rect x="200" y="230" width="320" height="38" rx="8" fill="rgba(234,179,8,.08)" stroke="#eab308"/>
+<text x="218" y="247" font-family="JetBrains Mono" font-size="10" fill="#eab308">④ Grace period countdown (default: 30s)</text>
+<text x="218" y="261" font-family="DM Sans" font-size="9" fill="#6e7b91">Kubernetes waits for container to exit</text>
+<path d="M360 268 L360 283" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aG)"/>
+
+<rect x="200" y="285" width="320" height="38" rx="8" fill="rgba(239,68,68,.12)" stroke="#ef4444"/>
+<text x="218" y="302" font-family="JetBrains Mono" font-size="10" fill="#ef4444">⑤ SIGKILL sent if still alive after grace period</text>
+<text x="218" y="316" font-family="DM Sans" font-size="9" fill="#6e7b91">Forceful termination — no more chances</text>
+<path d="M360 323 L360 338" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aG)"/>
+
+<rect x="230" y="340" width="260" height="28" rx="8" fill="rgba(107,114,128,.1)" stroke="#6b7280"/>
+<text x="268" y="359" font-family="JetBrains Mono" font-size="10" fill="#6b7280">⑥ Pod object removed from API</text>
+</svg>
+</div>
+
+<h3>Key Details</h3>
+<table>
+<tr><th>Step</th><th>Detail</th><th>SRE Impact</th></tr>
+<tr><td><strong>Endpoint removal</strong></td><td>The Pod is removed from Service endpoints <strong>in parallel</strong> with the SIGTERM. There's a brief window where traffic may still arrive after SIGTERM.</td><td>Add a <code>preStop: sleep 5</code> to give the endpoints time to propagate before the app starts shutting down.</td></tr>
+<tr><td><strong>preStop hook</strong></td><td>Runs synchronously before SIGTERM. Can be an <code>exec</code> command or <code>httpGet</code>. Its execution time counts toward the grace period.</td><td>Use to drain connections, deregister from service discovery, or complete in-flight work.</td></tr>
+<tr><td><strong>SIGTERM</strong></td><td>Sent to PID 1 in each container. If PID 1 is a shell (bash), it does NOT forward signals to child processes — your app never receives SIGTERM!</td><td>Use <code>exec</code> form in Dockerfile (<code>CMD ["app"]</code>) not shell form (<code>CMD app</code>). Or use <code>tini</code> as PID 1.</td></tr>
+<tr><td><strong>Grace period</strong></td><td>Default: 30 seconds. Configurable via <code>terminationGracePeriodSeconds</code>. The preStop hook + SIGTERM wait time both count toward this.</td><td>If your app needs 60s to drain, set <code>terminationGracePeriodSeconds: 75</code> (60s drain + 15s buffer).</td></tr>
+<tr><td><strong>SIGKILL</strong></td><td>Sent only if the container is still alive after the grace period. Cannot be caught or handled.</td><td>If containers are regularly being SIGKILLed, increase the grace period or fix the app's shutdown logic.</td></tr>
+</table>
+
+<div class="sre">
+<div class="tag">SRE Principle — Test Your Graceful Shutdown</div>
+<p style="margin:0">Most production incidents involving "connection reset" or "502 errors during deploy" are caused by poor graceful shutdown handling. <strong>Always test:</strong> (1) Your app catches SIGTERM, (2) it finishes in-flight requests, (3) it closes database connections, (4) it exits within the grace period. Run <code>kubectl delete pod</code> during load testing and verify zero errors.</p>
+</div>
+</section>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 3 — LIFECYCLE                              ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="pod-phases">
+<h2><span class="n">10</span> Pod Lifecycle — Phases</h2>
+
+<p>Every Pod has a <code>status.phase</code> field that represents its high-level position in the lifecycle. There are exactly <strong>5 phases</strong>:</p>
+
+<div class="d">
+<div class="dt">Pod Phase State Machine</div>
+<svg width="720" height="200" viewBox="0 0 720 200" fill="none">
+<defs><marker id="aPh" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#232e3d"/></marker></defs>
+
+<rect x="20" y="70" width="110" height="45" rx="10" fill="rgba(234,179,8,.12)" stroke="#eab308"/>
+<text x="38" y="97" font-family="JetBrains Mono" font-size="11" fill="#eab308">Pending</text>
+
+<path d="M135 92 L180 92" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aPh)"/>
+
+<rect x="185" y="70" width="110" height="45" rx="10" fill="rgba(59,130,246,.12)" stroke="#3b82f6"/>
+<text x="203" y="97" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">Running</text>
+
+<path d="M300 80 L370 45" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aPh)"/>
+<path d="M300 105 L370 140" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aPh)"/>
+
+<rect x="375" y="20" width="130" height="45" rx="10" fill="rgba(34,197,94,.12)" stroke="#22c55e"/>
+<text x="393" y="47" font-family="JetBrains Mono" font-size="11" fill="#22c55e">Succeeded</text>
+
+<rect x="375" y="120" width="110" height="45" rx="10" fill="rgba(239,68,68,.12)" stroke="#ef4444"/>
+<text x="400" y="147" font-family="JetBrains Mono" font-size="11" fill="#ef4444">Failed</text>
+
+<rect x="560" y="70" width="120" height="45" rx="10" fill="rgba(107,114,128,.1)" stroke="#6b7280"/>
+<text x="578" y="97" font-family="JetBrains Mono" font-size="11" fill="#6b7280">Unknown</text>
+<text x="565" y="135" font-family="DM Sans" font-size="10" fill="#6e7b91">Node unreachable</text>
+</svg>
+</div>
+
+<table>
+<tr><th>Phase</th><th>Meaning</th><th>Common Causes</th><th>SRE Action</th></tr>
+<tr><td><span class="badge yl">Pending</span></td><td>Pod accepted by API server but not yet running. Containers not yet started.</td><td>Image pulling, waiting for scheduling, waiting for volumes to be attached, insufficient node resources, node affinity mismatch</td><td><code>kubectl describe pod</code> → check Events section. Look for <code>FailedScheduling</code>, <code>ImagePullBackOff</code>, or <code>Unschedulable</code>.</td></tr>
+<tr><td><span class="badge bl">Running</span></td><td>Pod bound to a node. At least one container is running, or in the process of starting/restarting.</td><td>Normal operation. Note: "Running" doesn't mean "healthy" — a container could be crash-looping (repeatedly starting and failing).</td><td>Check readiness status. A Running Pod with 0/1 Ready means it's running but failing health checks.</td></tr>
+<tr><td><span class="badge gn">Succeeded</span></td><td>All containers exited with code 0. Terminal state. Pod will not restart.</td><td>Batch Jobs completing successfully. Run-to-completion workloads.</td><td>Verify output, check logs. For Jobs, this is the desired end state.</td></tr>
+<tr><td><span class="badge rd">Failed</span></td><td>All containers terminated. At least one exited non-zero or was killed by the system.</td><td>Application crash, OOM kill, deadline exceeded, misconfiguration.</td><td><code>kubectl logs pod --previous</code> for crash logs. Check exit code via <code>kubectl get pod -o jsonpath='{.status.containerStatuses}'</code></td></tr>
+<tr><td><span class="badge" style="background:rgba(107,114,128,.15);color:#6b7280">Unknown</span></td><td>Pod status cannot be determined. Usually means the kubelet on the Pod's node is not reporting.</td><td>Node crash, network partition, kubelet failure.</td><td>Check node status: <code>kubectl get nodes</code>. Check kubelet logs on the node.</td></tr>
+</table>
+</section>
+
+<section id="pod-conditions">
+<h2><span class="n">11</span> Pod Conditions</h2>
+
+<p>While phases give a high-level summary, <strong>conditions</strong> give detailed boolean status checks. Check them via <code>kubectl get pod -o jsonpath='{.status.conditions}'</code>.</p>
+
+<table>
+<tr><th>Condition</th><th>Meaning When True</th><th>Why It Matters</th></tr>
+<tr><td><code>PodScheduled</code></td><td>Pod has been assigned to a node</td><td>If False, Pod is stuck in scheduling (check node resources, affinity rules, taints)</td></tr>
+<tr><td><code>Initialized</code></td><td>All init containers have completed successfully</td><td>If False, an init container is still running or failed (check init container logs)</td></tr>
+<tr><td><code>ContainersReady</code></td><td>All containers in the Pod have passed readiness probes</td><td>If False, at least one container is not ready — Pod won't receive Service traffic</td></tr>
+<tr><td><code>Ready</code></td><td>Pod is ready to serve traffic (all containers ready + readiness gates)</td><td>This is what Services watch — only Ready Pods get traffic</td></tr>
+<tr><td><code>DisruptionTarget</code></td><td>Pod is about to be evicted (voluntary disruption)</td><td>Useful for <code>podFailurePolicy</code> — ignore eviction failures in Jobs</td></tr>
+</table>
+</section>
+
+<section id="container-states">
+<h2><span class="n">12</span> Container States</h2>
+
+<p>Each container inside a Pod has its own state, independent of the Pod phase. Check via <code>status.containerStatuses[].state</code>.</p>
+
+<div class="g3">
+<div class="cd" style="border-top:3px solid var(--yellow)">
+<h4 style="color:var(--yellow)">Waiting</h4>
+<p style="font-size:13px">Container is not yet running. Kubernetes is performing prerequisite operations.</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Common reasons:</strong></p>
+<p style="font-size:12px;color:var(--dim)"><code>ContainerCreating</code> — Setting up volumes, network</p>
+<p style="font-size:12px;color:var(--dim)"><code>ImagePullBackOff</code> — Can't pull image</p>
+<p style="font-size:12px;color:var(--dim)"><code>CrashLoopBackOff</code> — Waiting before restart</p>
+<p style="font-size:12px;color:var(--dim)"><code>CreateContainerConfigError</code> — Missing Secret/ConfigMap</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--blue)">
+<h4 style="color:var(--blue)">Running</h4>
+<p style="font-size:13px">Container is executing. The <code>postStart</code> hook has completed (if defined).</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Key fields:</strong></p>
+<p style="font-size:12px;color:var(--dim)"><code>startedAt</code> — When the container started</p>
+<p style="font-size:12px;color:var(--dim)"><code>containerID</code> — Runtime container ID</p>
+<p style="font-size:12px;color:var(--dim)">Note: Running doesn't mean healthy. The container could be deadlocked.</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--red)">
+<h4 style="color:var(--red)">Terminated</h4>
+<p style="font-size:13px">Container finished execution — either succeeded (exit 0) or failed.</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Key fields:</strong></p>
+<p style="font-size:12px;color:var(--dim)"><code>exitCode</code> — 0=success, 137=OOMKilled, 143=SIGTERM</p>
+<p style="font-size:12px;color:var(--dim)"><code>reason</code> — OOMKilled, Error, Completed</p>
+<p style="font-size:12px;color:var(--dim)"><code>finishedAt</code> — When it terminated</p>
+</div>
+</div>
+
+<h3>Exit Code Reference</h3>
+<table>
+<tr><th>Exit Code</th><th>Meaning</th><th>Common Cause</th></tr>
+<tr><td><code>0</code></td><td>Success</td><td>Process completed normally</td></tr>
+<tr><td><code>1</code></td><td>General error</td><td>Application exception, unhandled error</td></tr>
+<tr><td><code>2</code></td><td>Shell misuse</td><td>Invalid command-line arguments, missing command</td></tr>
+<tr><td><code>126</code></td><td>Command not executable</td><td>Permission denied on entrypoint</td></tr>
+<tr><td><code>127</code></td><td>Command not found</td><td>Wrong binary path in CMD/ENTRYPOINT</td></tr>
+<tr><td><code>137</code></td><td>SIGKILL (128+9)</td><td><strong>OOMKilled</strong> — container exceeded memory limit</td></tr>
+<tr><td><code>143</code></td><td>SIGTERM (128+15)</td><td>Graceful shutdown — Pod was deleted</td></tr>
+<tr><td><code>139</code></td><td>SIGSEGV (128+11)</td><td>Segmentation fault — memory access violation</td></tr>
+</table>
+</section>
+
+<section id="hooks">
+<h2><span class="n">13</span> Lifecycle Hooks</h2>
+
+<p>Kubernetes provides two lifecycle hooks that run code at specific moments in a container's life:</p>
+
+<div class="g2">
+<div class="cd" style="border-top:3px solid var(--green)">
+<h4 style="color:var(--green)">postStart</h4>
+<p style="font-size:13px"><strong>When:</strong> Immediately after the container is created — runs <strong>in parallel</strong> with the container's entrypoint (not guaranteed to run before it).</p>
+<p style="font-size:13px"><strong>Behavior:</strong> If the hook fails, the container is killed and restarted (subject to restart policy).</p>
+<p style="font-size:13px"><strong>Use cases:</strong> Register with service discovery, warm caches, send "started" notification.</p>
+<pre style="font-size:11px;padding:10px"><code><span class="k">lifecycle:</span>
+  <span class="k">postStart:</span>
+    <span class="k">exec:</span>
+      <span class="k">command:</span> [<span class="s">"/bin/sh"</span>, <span class="s">"-c"</span>, <span class="s">"curl -X POST http://registry/register"</span>]</code></pre>
+</div>
+<div class="cd" style="border-top:3px solid var(--red)">
+<h4 style="color:var(--red)">preStop</h4>
+<p style="font-size:13px"><strong>When:</strong> Immediately before the container receives SIGTERM. Runs <strong>synchronously</strong> — SIGTERM waits for it to complete.</p>
+<p style="font-size:13px"><strong>Behavior:</strong> Execution time counts toward <code>terminationGracePeriodSeconds</code>. If the hook hangs, SIGKILL still fires after grace period.</p>
+<p style="font-size:13px"><strong>Use cases:</strong> Drain connections, deregister, flush data, sleep to allow endpoint propagation.</p>
+<pre style="font-size:11px;padding:10px"><code><span class="k">lifecycle:</span>
+  <span class="k">preStop:</span>
+    <span class="k">exec:</span>
+      <span class="k">command:</span> [<span class="s">"/bin/sh"</span>, <span class="s">"-c"</span>, <span class="s">"sleep 10 && nginx -s quit"</span>]</code></pre>
+</div>
+</div>
+</section>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 4 — FAILURE HANDLING                       ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="fail-reasons">
+<h2><span class="n">14</span> Failure Reasons — Complete Catalog</h2>
+
+<table>
+<tr><th>Category</th><th>Specific Causes</th><th>Symptoms</th><th>How to Detect</th></tr>
+<tr><td><strong>Application Crash</strong></td><td>Unhandled exception, panic, segfault, null pointer, stack overflow</td><td>Container exits with code 1, 139, or other non-zero</td><td><code>kubectl logs pod --previous</code></td></tr>
+<tr><td><strong>OOM Killed</strong></td><td>Container exceeds memory limit → Linux kernel kills it</td><td>Exit code 137, reason: OOMKilled</td><td><code>kubectl describe pod</code> → look for <code>OOMKilled</code></td></tr>
+<tr><td><strong>Liveness Probe Fail</strong></td><td>App hung, deadlocked, infinite loop, or probe misconfigured</td><td>Container restarts, Events show "Liveness probe failed"</td><td><code>kubectl describe pod</code> → Events</td></tr>
+<tr><td><strong>Image Pull Error</strong></td><td>Wrong image name/tag, registry auth failed, network issue, rate limit</td><td><code>ImagePullBackOff</code> or <code>ErrImagePull</code></td><td><code>kubectl describe pod</code> → Events</td></tr>
+<tr><td><strong>Config Error</strong></td><td>Missing ConfigMap/Secret, wrong env var name, bad volume mount</td><td><code>CreateContainerConfigError</code>, Pod stuck in Pending</td><td><code>kubectl describe pod</code> → Events</td></tr>
+<tr><td><strong>Resource Starvation</strong></td><td>Insufficient CPU/memory on all nodes, pod affinity unsatisfiable</td><td>Pending state, <code>FailedScheduling</code> event</td><td><code>kubectl get events</code></td></tr>
+<tr><td><strong>Dependency Failure</strong></td><td>Database down, external API unreachable, DNS failure</td><td>Readiness probe fails, app logs show connection errors</td><td><code>kubectl logs pod</code></td></tr>
+<tr><td><strong>Volume Mount Error</strong></td><td>PVC not bound, wrong access mode, CSI driver issue</td><td>Pod stuck in <code>ContainerCreating</code></td><td><code>kubectl describe pod</code>, <code>kubectl get pvc</code></td></tr>
+<tr><td><strong>Security Violation</strong></td><td>SecurityContext denied, PodSecurity admission failure</td><td>Pod creation rejected or container won't start</td><td><code>kubectl describe pod</code> → Events, API server audit logs</td></tr>
+<tr><td><strong>Deadline Exceeded</strong></td><td>Pod's <code>activeDeadlineSeconds</code> reached</td><td>Pod marked Failed, all containers terminated</td><td>Check <code>status.reason: DeadlineExceeded</code></td></tr>
+</table>
+</section>
+
+<section id="debug">
+<h2><span class="n">15</span> Debugging Failures — The SRE Ladder</h2>
+
+<p>When a Pod is failing, follow this <strong>systematic top-down approach</strong>:</p>
+
+<pre><code><span class="cm"># ── STEP 1: What's the overall status? ──</span>
+kubectl get pods -o wide
+<span class="cm"># Look at STATUS, RESTARTS, AGE, NODE columns</span>
+
+<span class="cm"># ── STEP 2: What do the events say? ──</span>
+kubectl describe pod my-app
+<span class="cm"># Scroll to "Events:" section — gold mine for scheduling, pull, probe issues</span>
+
+<span class="cm"># ── STEP 3: What do the logs say? ──</span>
+kubectl logs pod/my-app                     <span class="cm"># Current container logs</span>
+kubectl logs pod/my-app --previous          <span class="cm"># Last crashed container logs ← CRITICAL</span>
+kubectl logs pod/my-app -c sidecar          <span class="cm"># Specific container in multi-container Pod</span>
+kubectl logs pod/my-app --all-containers    <span class="cm"># All containers at once</span>
+
+<span class="cm"># ── STEP 4: What's the exit code? ──</span>
+kubectl get pod my-app -o jsonpath='{.status.containerStatuses[0].lastState.terminated.exitCode}'
+<span class="cm"># 137 = OOMKilled, 143 = SIGTERM, 1 = app error</span>
+
+<span class="cm"># ── STEP 5: Is it a resource issue? ──</span>
+kubectl top pods                            <span class="cm"># Current CPU/memory usage</span>
+kubectl describe node &lt;node-name&gt;           <span class="cm"># Node resource pressure</span>
+
+<span class="cm"># ── STEP 6: Shell into a running container ──</span>
+kubectl exec -it pod/my-app -- /bin/sh
+<span class="cm"># Check filesystem, network, env vars, processes</span>
+
+<span class="cm"># ── STEP 7: Attach ephemeral debug container ──</span>
+kubectl debug -it pod/my-app --image=busybox --target=web
+<span class="cm"># For crashed pods — shares namespace for inspection</span>
+
+<span class="cm"># ── STEP 8: Copy Pod with debug tools ──</span>
+kubectl debug pod/my-app -it --image=ubuntu --copy-to=debug-pod --share-processes
+<span class="cm"># Creates a copy of the pod with a debug container attached</span></code></pre>
+</section>
+
+<section id="crash-loop">
+<h2><span class="n">16</span> Crash Loop Lifecycle — In Depth</h2>
+
+<p>When a container keeps failing and restarting, it enters <strong>CrashLoopBackOff</strong>. The kubelet uses <strong>exponential backoff</strong> to delay each successive restart attempt.</p>
+
+<div class="d">
+<div class="dt">CrashLoopBackOff — Complete Backoff Timeline</div>
+<svg width="720" height="180" viewBox="0 0 720 180" fill="none">
+<line x1="20" y1="85" x2="710" y2="85" stroke="#232e3d"/>
+
+<circle cx="50" cy="85" r="14" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+<text x="44" y="89" font-family="JetBrains Mono" font-size="9" fill="#ef4444">✗</text>
+<text x="30" y="68" font-family="JetBrains Mono" font-size="8" fill="#6e7b91">Crash 1</text>
+<text x="33" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">wait 10s</text>
+
+<circle cx="140" cy="85" r="14" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+<text x="134" y="89" font-family="JetBrains Mono" font-size="9" fill="#ef4444">✗</text>
+<text x="120" y="68" font-family="JetBrains Mono" font-size="8" fill="#6e7b91">Crash 2</text>
+<text x="123" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">wait 20s</text>
+
+<circle cx="250" cy="85" r="14" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+<text x="244" y="89" font-family="JetBrains Mono" font-size="9" fill="#ef4444">✗</text>
+<text x="230" y="68" font-family="JetBrains Mono" font-size="8" fill="#6e7b91">Crash 3</text>
+<text x="233" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">wait 40s</text>
+
+<circle cx="380" cy="85" r="14" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+<text x="374" y="89" font-family="JetBrains Mono" font-size="9" fill="#ef4444">✗</text>
+<text x="360" y="68" font-family="JetBrains Mono" font-size="8" fill="#6e7b91">Crash 4</text>
+<text x="360" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">wait 80s</text>
+
+<circle cx="510" cy="85" r="14" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+<text x="504" y="89" font-family="JetBrains Mono" font-size="9" fill="#ef4444">✗</text>
+<text x="490" y="68" font-family="JetBrains Mono" font-size="8" fill="#6e7b91">Crash 5</text>
+<text x="488" y="115" font-family="JetBrains Mono" font-size="9" fill="#eab308">wait 160s</text>
+
+<circle cx="650" cy="85" r="14" fill="rgba(239,68,68,.2)" stroke="#ef4444"/>
+<text x="644" y="89" font-family="JetBrains Mono" font-size="9" fill="#ef4444">✗</text>
+<text x="630" y="68" font-family="JetBrains Mono" font-size="8" fill="#6e7b91">Crash 6+</text>
+<text x="623" y="115" font-family="JetBrains Mono" font-size="9" fill="#ef4444">wait 300s (max)</text>
+
+<rect x="140" y="140" width="440" height="24" rx="5" fill="rgba(234,179,8,.06)"/>
+<text x="180" y="157" font-family="JetBrains Mono" font-size="10" fill="#eab308">Formula: min(10s × 2^(attempt-1), 300s) — caps at 5 minutes</text>
+</svg>
+</div>
+
+<h3>Backoff Reset Rule</h3>
+<p>The backoff timer <strong>resets to 10s</strong> after the container runs successfully for <strong>10 consecutive minutes</strong>. If it crashes again after that, the backoff starts over from 10s.</p>
+
+<h3>CrashLoopBackOff is Not a Phase</h3>
+<p>Important distinction: <code>CrashLoopBackOff</code> is a container <strong>waiting reason</strong>, not a Pod phase. The Pod is still in <code>Running</code> phase — it's the container inside that's in <code>Waiting</code> state with reason <code>CrashLoopBackOff</code>.</p>
+</section>
+
+<section id="restart">
+<h2><span class="n">17</span> Restart Policy</h2>
+
+<p>The <code>restartPolicy</code> field tells the kubelet what to do when a container exits. It is set at the <strong>Pod level</strong> and applies to <strong>all containers</strong> in the Pod.</p>
+
+<div class="g3">
+<div class="cd" style="border-top:3px solid var(--green)">
+<div style="font-family:'JetBrains Mono';font-size:17px;font-weight:700;color:var(--green)">Always</div>
+<div style="font-size:11px;color:var(--dim)">Default policy</div>
+<p style="font-size:13px;margin-top:8px">Always restart the container, regardless of exit code (0 or non-zero). Even if the container succeeds, it gets restarted.</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Used by:</strong> Deployments, DaemonSets, StatefulSets</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Reason:</strong> Services must run forever</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--orange)">
+<div style="font-family:'JetBrains Mono';font-size:17px;font-weight:700;color:var(--orange)">OnFailure</div>
+<div style="font-size:11px;color:var(--dim)">Retry on error only</div>
+<p style="font-size:13px;margin-top:8px">Restart only if the container exits with a non-zero exit code. If it exits with 0 (success), the container stays stopped.</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Used by:</strong> Jobs (in-pod retry)</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Reason:</strong> Retry failures, stop on success</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--red)">
+<div style="font-family:'JetBrains Mono';font-size:17px;font-weight:700;color:var(--red)">Never</div>
+<div style="font-size:11px;color:var(--dim)">One-shot execution</div>
+<p style="font-size:13px;margin-top:8px">Never restart the container, regardless of exit code. The Pod stays in Succeeded or Failed status forever.</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Used by:</strong> Jobs (new Pod per retry)</p>
+<p style="font-size:12px;color:var(--dim)"><strong>Reason:</strong> Let Job Controller create replacement Pods</p>
+</div>
+</div>
+
+<table>
+<tr><th>Container Exits With</th><th>restartPolicy: Always</th><th>restartPolicy: OnFailure</th><th>restartPolicy: Never</th></tr>
+<tr><td>Exit code 0 (success)</td><td>Restart ✓</td><td>Stay stopped ✗</td><td>Stay stopped ✗</td></tr>
+<tr><td>Exit code 1 (error)</td><td>Restart ✓</td><td>Restart ✓</td><td>Stay stopped ✗</td></tr>
+<tr><td>Exit code 137 (OOMKilled)</td><td>Restart ✓</td><td>Restart ✓</td><td>Stay stopped ✗</td></tr>
+</table>
+</section>
+
+<section id="restart-details">
+<h2><span class="n">18</span> Restart Mechanics — Deep Details</h2>
+
+<h3>Restart Scope — Pod Level, Not Container Level</h3>
+<p><code>restartPolicy</code> is set at the <strong>Pod level</strong>, not per-container. You cannot have one container with <code>Always</code> and another with <code>Never</code> in the same Pod. All containers follow the same policy.</p>
+
+<p><strong>Exception:</strong> Native sidecar containers (init containers with <code>restartPolicy: Always</code>) can have their own restart behavior independent of the Pod-level policy. This is the only case where individual container restart behavior differs.</p>
+
+<h3>In-Place Restart (Same Pod)</h3>
+<p>When a container is restarted (due to crash or liveness probe failure), it's restarted <strong>in the same Pod on the same node</strong>. The Pod keeps its name, IP, and volumes. Only the container process is killed and re-created. This is called <strong>in-place restart</strong>.</p>
+
+<h3>Restart Delay (Exponential Backoff)</h3>
+<table>
+<tr><th>Property</th><th>Value</th></tr>
+<tr><td>Initial delay</td><td>10 seconds</td></tr>
+<tr><td>Multiplier</td><td>×2 each failure (10s → 20s → 40s → 80s → 160s → 300s)</td></tr>
+<tr><td>Maximum delay</td><td>5 minutes (300 seconds)</td></tr>
+<tr><td>Reset condition</td><td>Container runs successfully for 10 minutes → backoff resets to 10s</td></tr>
+<tr><td>Configurable?</td><td>No — these values are hardcoded in the kubelet. You cannot customize them.</td></tr>
+</table>
+
+<h3>Restart Count</h3>
+<p>The restart count is tracked in <code>status.containerStatuses[].restartCount</code>. There is <strong>no maximum retry count</strong> for restart policies — Kubernetes will keep restarting the container forever (with backoff). The only limits are <code>backoffLimit</code> (for Jobs) and <code>activeDeadlineSeconds</code>.</p>
+
+<div class="sre">
+<div class="tag">SRE Principle — Restart ≠ Resolution</div>
+<p style="margin:0">A restart only masks the symptom. If a container restarts 50 times, that's 50 opportunities you missed to fix the root cause. <strong>Alert on restart count.</strong> Set up a Prometheus alert: <code>increase(kube_pod_container_status_restarts_total[10m]) > 3</code>. Treat frequent restarts as incidents, not "self-healing."</p>
+</div>
+</section>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 5 — HEALTH PROBES                          ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="probe-what">
+<h2><span class="n">19</span> What Are Probes?</h2>
+
+<p>A <strong>probe</strong> is a periodic diagnostic check performed by the <strong>kubelet</strong> against a container. The kubelet calls a handler on the container at a configurable interval, and based on the result, takes action (restart the container, remove from Service, etc.).</p>
+
+<p>Probes answer the question: <em>"Is this container actually working, or is it just 'running' but broken inside?"</em></p>
+
+<div class="sre">
+<div class="tag">SRE Principle — Don't Trust, Verify</div>
+<p style="margin:0">A container being in "Running" state only means the process hasn't exited. It could be deadlocked, have a broken database connection, be stuck in an infinite loop, or have a full disk. Probes are your automated verification — the equivalent of a human checking "are you actually working?" every few seconds. <strong>Never deploy to production without all three probe types configured.</strong></p>
+</div>
+</section>
+
+<section id="probe-mech">
+<h2><span class="n">20</span> Check Mechanisms</h2>
+
+<table>
+<tr><th>Mechanism</th><th>How It Works</th><th>Success Criteria</th><th>Best For</th></tr>
+<tr><td><strong>httpGet</strong></td><td>Kubelet sends an HTTP GET request to a specified path and port on the container</td><td>HTTP status code 200–399</td><td>Web apps, APIs, any service with an HTTP endpoint</td></tr>
+<tr><td><strong>tcpSocket</strong></td><td>Kubelet attempts to open a TCP connection to a specified port on the container</td><td>Connection is established (TCP handshake succeeds)</td><td>Databases, message queues, any non-HTTP TCP service</td></tr>
+<tr><td><strong>exec</strong></td><td>Kubelet runs a command inside the container</td><td>Command exits with code 0</td><td>Custom health checks, file existence checks, process checks</td></tr>
+<tr><td><strong>gRPC</strong></td><td>Kubelet performs a gRPC health check against a specified port</td><td>Response status is <code>SERVING</code></td><td>gRPC microservices implementing the gRPC Health Checking Protocol</td></tr>
+</table>
+
+<pre><code><span class="cm"># httpGet example</span>
+<span class="k">httpGet:</span>
+  <span class="k">path:</span> <span class="s">/healthz</span>
+  <span class="k">port:</span> <span class="nm">8080</span>
+  <span class="k">httpHeaders:</span>
+  - <span class="k">name:</span> <span class="s">X-Custom-Header</span>
+    <span class="k">value:</span> <span class="s">probe</span>
+
+<span class="cm"># tcpSocket example</span>
+<span class="k">tcpSocket:</span>
+  <span class="k">port:</span> <span class="nm">3306</span>
+
+<span class="cm"># exec example</span>
+<span class="k">exec:</span>
+  <span class="k">command:</span>
+  - <span class="s">cat</span>
+  - <span class="s">/tmp/healthy</span>
+
+<span class="cm"># gRPC example</span>
+<span class="k">grpc:</span>
+  <span class="k">port:</span> <span class="nm">50051</span>
+  <span class="k">service:</span> <span class="s">my-service</span></code></pre>
+</section>
+
+<section id="probe-outcome">
+<h2><span class="n">21</span> Probe Outcomes</h2>
+
+<div class="g3">
+<div class="cd" style="border-top:3px solid var(--green);text-align:center">
+<div style="font-family:'JetBrains Mono';font-size:22px;font-weight:700;color:var(--green)">Success</div>
+<p style="font-size:12px;margin-top:6px">Container passed the diagnostic check. No action taken.</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--red);text-align:center">
+<div style="font-family:'JetBrains Mono';font-size:22px;font-weight:700;color:var(--red)">Failure</div>
+<p style="font-size:12px;margin-top:6px">Container failed the check. Action depends on probe type (restart or remove from traffic).</p>
+</div>
+<div class="cd" style="border-top:3px solid #6b7280;text-align:center">
+<div style="font-family:'JetBrains Mono';font-size:22px;font-weight:700;color:#6b7280">Unknown</div>
+<p style="font-size:12px;margin-top:6px">The probe itself failed (e.g., timeout). No action taken — treated like a failure for threshold counting.</p>
+</div>
+</div>
+</section>
+
+<section id="probe-types">
+<h2><span class="n">22</span> The Three Probe Types</h2>
+
+<div class="d">
+<div class="dt">Startup → Liveness → Readiness — How They Interact</div>
+<svg width="720" height="160" viewBox="0 0 720 160" fill="none">
+<line x1="30" y1="80" x2="690" y2="80" stroke="#232e3d"/>
+<text x="680" y="98" font-family="JetBrains Mono" font-size="9" fill="#6e7b91">time →</text>
+
+<!-- Startup phase -->
+<rect x="40" y="35" width="180" height="30" rx="6" fill="rgba(234,179,8,.12)" stroke="#eab308"/>
+<text x="65" y="55" font-family="JetBrains Mono" font-size="10" fill="#eab308">Startup Probe</text>
+<text x="40" y="100" font-family="DM Sans" font-size="9" fill="#eab308">Liveness + Readiness DISABLED</text>
+
+<line x1="225" y1="50" x2="225" y2="80" stroke="#22c55e" stroke-width="2"/>
+<text x="228" y="45" font-family="JetBrains Mono" font-size="8" fill="#22c55e">Startup passes ✓</text>
+
+<!-- Liveness -->
+<rect x="240" y="25" width="440" height="25" rx="5" fill="rgba(239,68,68,.08)" stroke="#ef4444"/>
+<text x="400" y="42" font-family="JetBrains Mono" font-size="10" fill="#ef4444">Liveness Probe (entire runtime)</text>
+
+<!-- Readiness -->
+<rect x="240" y="60" width="440" height="25" rx="5" fill="rgba(16,185,129,.08)" stroke="#10b981"/>
+<text x="390" y="77" font-family="JetBrains Mono" font-size="10" fill="#10b981">Readiness Probe (entire runtime)</text>
+
+<text x="240" y="115" font-family="DM Sans" font-size="9" fill="#6e7b91">Both probes active simultaneously from this point</text>
+</svg>
+</div>
+
+<table>
+<tr><th></th><th>Startup Probe</th><th>Liveness Probe</th><th>Readiness Probe</th></tr>
+<tr><td><strong>Question</strong></td><td>"Has your app finished starting?"</td><td>"Is your process still alive?"</td><td>"Can you handle traffic right now?"</td></tr>
+<tr><td><strong>When active</strong></td><td>Only during container startup</td><td>After startup probe passes (entire runtime)</td><td>After startup probe passes (entire runtime)</td></tr>
+<tr><td><strong>On failure</strong></td><td>Container is <strong>killed and restarted</strong></td><td>Container is <strong>killed and restarted</strong></td><td>Pod is <strong>removed from Service endpoints</strong> (no restart)</td></tr>
+<tr><td><strong>Blocks others?</strong></td><td>Yes — liveness and readiness are <strong>disabled</strong> until startup passes</td><td>No</td><td>No</td></tr>
+<tr><td><strong>Why it exists</strong></td><td>Protects slow-starting apps from being killed by liveness before they're ready</td><td>Detects deadlocks, hangs, and unrecoverable states that only a restart can fix</td><td>Temporarily removes unhealthy Pods from traffic without killing them</td></tr>
+<tr><td><strong>Best for</strong></td><td>Java/JVM warmup, large dataset loading, legacy apps with slow init</td><td>Detecting deadlocks where the process is alive but not functioning</td><td>DB connection lost temporarily, high load, dependency down briefly</td></tr>
+</table>
+</section>
+
+<section id="probe-config">
+<h2><span class="n">23</span> Probe Configuration — Every Field Explained</h2>
+
+<pre><code><span class="k">startupProbe:</span>
+  <span class="k">httpGet:</span>
+    <span class="k">path:</span> <span class="s">/healthz</span>
+    <span class="k">port:</span> <span class="nm">8080</span>
+  <span class="k">initialDelaySeconds:</span> <span class="nm">0</span>     <span class="cm"># Wait before first probe (default: 0)</span>
+  <span class="k">periodSeconds:</span> <span class="nm">10</span>          <span class="cm"># Time between probes (default: 10)</span>
+  <span class="k">timeoutSeconds:</span> <span class="nm">3</span>          <span class="cm"># Max wait for response (default: 1)</span>
+  <span class="k">successThreshold:</span> <span class="nm">1</span>        <span class="cm"># Successes needed to pass (default: 1)</span>
+  <span class="k">failureThreshold:</span> <span class="nm">30</span>       <span class="cm"># Failures before action (default: 3)</span>
+  <span class="cm"># Total startup window: 30 × 10s = 300s = 5 minutes</span></code></pre>
+
+<table>
+<tr><th>Field</th><th>Default</th><th>Description</th><th>Tuning Guide</th></tr>
+<tr><td><code>initialDelaySeconds</code></td><td>0</td><td>Wait this many seconds after container starts before running the first probe</td><td>Use for apps that need a fixed warmup time. With startup probes, you rarely need this.</td></tr>
+<tr><td><code>periodSeconds</code></td><td>10</td><td>How often to run the probe</td><td>Liveness: 10–30s. Readiness: 5–10s (needs faster response to traffic changes).</td></tr>
+<tr><td><code>timeoutSeconds</code></td><td>1</td><td>Max time to wait for a probe response before counting it as failure</td><td>Set to 2–5s. Too low → false positives during load spikes. Too high → slow failure detection.</td></tr>
+<tr><td><code>successThreshold</code></td><td>1</td><td>Number of consecutive successes before the probe is considered passing</td><td>For liveness/startup: must be 1. For readiness: 1–2 (prevent flapping).</td></tr>
+<tr><td><code>failureThreshold</code></td><td>3</td><td>Number of consecutive failures before taking action (restart or remove from traffic)</td><td>Liveness: 3–5 (avoid killing containers on brief glitches). Startup: 30+ (allow slow starts).</td></tr>
+</table>
+</section>
+
+<section id="probe-best">
+<h2><span class="n">24</span> Probe Best Practices</h2>
+
+<div class="sre">
+<div class="tag">SRE Principle — Liveness ≠ Readiness</div>
+<p style="margin-bottom:8px"><strong>Liveness checks should be SIMPLE:</strong> "Is the process alive and not deadlocked?" Check an internal endpoint that doesn't touch external dependencies. If the DB is down, restarting your app won't fix it — but a bad liveness probe will keep restarting it uselessly.</p>
+<p style="margin-bottom:8px"><strong>Readiness checks should be COMPLETE:</strong> "Can this Pod serve traffic right now?" Check database connectivity, cache availability, dependent services. A failing readiness probe removes the Pod from traffic without killing it — giving it time to recover.</p>
+<p style="margin:0"><strong>Use separate endpoints:</strong> <code>/healthz</code> for liveness (lightweight, no dependencies), <code>/ready</code> for readiness (checks dependencies).</p>
+</div>
+
+<div class="c r">
+<div class="l">Common Probe Mistakes</div>
+<p style="margin-bottom:6px">❌ <strong>Liveness probe checks external dependency</strong> — DB goes down → liveness fails → all Pods restart → thundering herd → cascading failure</p>
+<p style="margin-bottom:6px">❌ <strong>Probe too aggressive</strong> — <code>periodSeconds: 1, failureThreshold: 1</code> kills containers that are briefly busy</p>
+<p style="margin-bottom:6px">❌ <strong>No startup probe for slow apps</strong> — JVM takes 90s to start, liveness kills it at 30s, CrashLoopBackOff</p>
+<p style="margin-bottom:6px">❌ <strong>Readiness probe never fails</strong> — always returns 200, so broken Pods keep receiving traffic</p>
+<p style="margin:0">❌ <strong>Probe endpoint does heavy computation</strong> — health check causes the very overload it's trying to detect</p>
+</div>
+</section>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 6 — CONTAINER TYPES                        ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="init">
+<h2><span class="n">25</span> Init Containers</h2>
+
+<p>Init containers are specialized containers that run <strong>before</strong> app containers start. They run <strong>one at a time, in order</strong>, and each must complete successfully before the next begins.</p>
+
+<div class="d">
+<div class="dt">Init Container Execution Flow</div>
+<svg width="720" height="120" viewBox="0 0 720 120" fill="none">
+<defs><marker id="aI" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#232e3d"/></marker></defs>
+
+<rect x="10" y="30" width="115" height="50" rx="8" fill="rgba(234,179,8,.12)" stroke="#eab308"/>
+<text x="22" y="50" font-family="JetBrains Mono" font-size="9" fill="#eab308">Init 1</text>
+<text x="22" y="66" font-family="DM Sans" font-size="8" fill="#6e7b91">wait-for-db ✓</text>
+<path d="M130 55 L155 55" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aI)"/>
+
+<rect x="160" y="30" width="115" height="50" rx="8" fill="rgba(234,179,8,.12)" stroke="#eab308"/>
+<text x="172" y="50" font-family="JetBrains Mono" font-size="9" fill="#eab308">Init 2</text>
+<text x="172" y="66" font-family="DM Sans" font-size="8" fill="#6e7b91">run-migrations ✓</text>
+<path d="M280 55 L305 55" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aI)"/>
+
+<rect x="310" y="30" width="115" height="50" rx="8" fill="rgba(234,179,8,.12)" stroke="#eab308"/>
+<text x="322" y="50" font-family="JetBrains Mono" font-size="9" fill="#eab308">Init 3</text>
+<text x="322" y="66" font-family="DM Sans" font-size="8" fill="#6e7b91">download-config ✓</text>
+<path d="M430 55 L460 55" stroke="#232e3d" stroke-width="1.5" marker-end="url(#aI)"/>
+
+<text x="465" y="42" font-family="JetBrains Mono" font-size="9" fill="#22c55e">All init done ✓</text>
+
+<rect x="465" y="50" width="235" height="50" rx="8" fill="rgba(16,185,129,.1)" stroke="#10b981"/>
+<text x="480" y="70" font-family="JetBrains Mono" font-size="10" fill="#10b981" font-weight="600">App + Sidecar Containers Start</text>
+<text x="480" y="86" font-family="DM Sans" font-size="9" fill="#6e7b91">All app containers start in parallel</text>
+</svg>
+</div>
+
+<h3>Key Rules</h3>
+<table>
+<tr><th>Rule</th><th>Detail</th></tr>
+<tr><td>Sequential execution</td><td>Init containers run one-by-one. Init 2 doesn't start until Init 1 succeeds.</td></tr>
+<tr><td>Must succeed</td><td>If any init container fails, Kubernetes retries it (subject to Pod restart policy). The Pod cannot proceed.</td></tr>
+<tr><td>Run to completion</td><td>Each init container must exit successfully (code 0). They are not long-running.</td></tr>
+<tr><td>No probes</td><td>Init containers do not support liveness, readiness, or startup probes.</td></tr>
+<tr><td>Resource calculation</td><td>Init container resources are calculated separately (MAX of all inits, not SUM).</td></tr>
+</table>
+
+<h3>Common Use Cases</h3>
+<table>
+<tr><th>Use Case</th><th>Init Container Example</th></tr>
+<tr><td>Wait for dependency</td><td><code>until nslookup my-db; do sleep 2; done</code></td></tr>
+<tr><td>Run database migrations</td><td><code>flyway migrate</code> or <code>alembic upgrade head</code></td></tr>
+<tr><td>Download config/secrets</td><td><code>aws s3 cp s3://bucket/config.yaml /config/</code></td></tr>
+<tr><td>Set file permissions</td><td><code>chown -R 1000:1000 /data</code> (runs as root)</td></tr>
+<tr><td>Generate TLS certificates</td><td>Run cert generation tool, save to shared volume</td></tr>
+<tr><td>Clone git repo</td><td><code>git clone https://... /app/src</code></td></tr>
+</table>
+</section>
+
+<section id="sidecar">
+<h2><span class="n">26</span> Sidecar Containers (Native)</h2>
+
+<p>Since Kubernetes v1.29 (stable v1.31), <strong>native sidecar containers</strong> are init containers with <code>restartPolicy: Always</code>. They start during the init phase but <strong>run for the entire Pod lifetime</strong>.</p>
+
+<pre><code><span class="k">initContainers:</span>
+- <span class="k">name:</span> <span class="s">log-agent</span>
+  <span class="k">image:</span> <span class="s">fluent-bit:latest</span>
+  <span class="k">restartPolicy:</span> <span class="v">Always</span>       <span class="cm"># ← This single field makes it a sidecar</span>
+  <span class="k">volumeMounts:</span>
+  - <span class="k">name:</span> <span class="s">logs</span>
+    <span class="k">mountPath:</span> <span class="s">/var/log/app</span></code></pre>
+
+<table>
+<tr><th>Property</th><th>Regular Init Container</th><th>Native Sidecar</th></tr>
+<tr><td>Runs when?</td><td>During init phase, then stops</td><td>Starts during init, runs for entire Pod life</td></tr>
+<tr><td>Must complete?</td><td>Yes — must exit 0</td><td>No — runs continuously</td></tr>
+<tr><td>Restart on failure?</td><td>Retried (Pod restart policy)</td><td>Always restarted (independent of Pod policy)</td></tr>
+<tr><td>Startup order</td><td>Sequential with other inits</td><td>Starts in order, but doesn't block next init</td></tr>
+<tr><td>Shutdown order</td><td>N/A (already stopped)</td><td>Shut down AFTER app containers</td></tr>
+<tr><td>Probes supported?</td><td>No</td><td>Yes (startup, liveness, readiness)</td></tr>
+</table>
+</section>
+
+<section id="app-cont">
+<h2><span class="n">27</span> App Containers</h2>
+<p>App containers are the "normal" containers defined in <code>spec.containers[]</code>. They run your application code. All app containers in a Pod start <strong>simultaneously</strong> (in parallel), not sequentially. They are the core of what your Pod does.</p>
+</section>
+
+<section id="ephemeral">
+<h2><span class="n">28</span> Ephemeral Containers</h2>
+
+<p>Ephemeral containers are <strong>temporary debug containers</strong> you inject into a running Pod on-the-fly. They are NOT defined in the Pod spec — you add them using <code>kubectl debug</code>.</p>
+
+<pre><code><span class="cm"># Attach a debug container to a running pod</span>
+kubectl debug -it my-app --image=busybox --target=web
+
+<span class="cm"># Copy the pod and add a debug container</span>
+kubectl debug my-app -it --image=ubuntu --copy-to=debug-pod --share-processes</code></pre>
+
+<table>
+<tr><th>Property</th><th>Detail</th></tr>
+<tr><td>When to use</td><td>Debugging production Pods that don't have shell/debug tools</td></tr>
+<tr><td>Lifecycle</td><td>Once added, cannot be removed or restarted. Lasts until Pod is deleted.</td></tr>
+<tr><td>Resources</td><td>No resource limits are enforced</td></tr>
+<tr><td>Probes</td><td>Not supported</td></tr>
+<tr><td>Ports</td><td>Not supported</td></tr>
+<tr><td>Namespace sharing</td><td>Shares Pod's network, IPC, and optionally PID namespace</td></tr>
+</table>
+
+<div class="sre">
+<div class="tag">SRE Principle — Debug Without Disrupting</div>
+<p style="margin:0">Ephemeral containers let you debug production Pods <strong>without restarting them</strong>. This preserves the exact state that caused the issue — memory, file handles, network connections. Use distroless or minimal images in production, then attach a full debug image (with curl, netcat, strace) only when needed.</p>
+</div>
+</section>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 7 — RESOURCES                              ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="req-lim">
+<h2><span class="n">29</span> Requests vs Limits</h2>
+
+<div class="g2">
+<div class="cd" style="border-top:3px solid var(--blue)">
+<h4 style="color:var(--blue)">Requests</h4>
+<p style="font-size:13px"><strong>Guaranteed minimum.</strong> The scheduler uses requests to decide which node has enough room. The container is guaranteed to get at least this much.</p>
+<p style="font-size:12px;color:var(--dim)">If a node has 4 CPU and existing Pods request 3.5 CPU total, only Pods requesting ≤ 0.5 CPU can be scheduled there.</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--red)">
+<h4 style="color:var(--red)">Limits</h4>
+<p style="font-size:13px"><strong>Hard ceiling.</strong> The container cannot use more than this. If it tries to exceed the memory limit, it gets OOM-killed. CPU is throttled (not killed).</p>
+<p style="font-size:12px;color:var(--dim)">Memory limit exceeded → container killed (exit 137). CPU limit exceeded → container throttled (slowed down, not killed).</p>
+</div>
+</div>
+</section>
+
+<section id="calc">
+<h2><span class="n">30</span> Pod Resource Calculation</h2>
+
+<p>When a Pod has multiple container types, Kubernetes calculates the <strong>effective Pod resource request</strong> using this formula:</p>
+
+<div class="d">
+<div class="dt">Resource Calculation Formula</div>
+<svg width="720" height="170" viewBox="0 0 720 170" fill="none">
+<rect x="10" y="10" width="700" height="150" rx="14" fill="#131921" stroke="#232e3d"/>
+<text x="30" y="40" font-family="Fraunces" font-size="14" fill="#fff" font-weight="700">Effective Pod Resources =</text>
+
+<rect x="30" y="55" width="310" height="45" rx="8" fill="rgba(234,179,8,.08)" stroke="#eab308"/>
+<text x="45" y="82" font-family="JetBrains Mono" font-size="11" fill="#eab308">MAX( each init container )</text>
+
+<text x="355" y="82" font-family="Fraunces" font-size="18" fill="#6e7b91">vs</text>
+
+<rect x="380" y="55" width="310" height="45" rx="8" fill="rgba(16,185,129,.08)" stroke="#10b981"/>
+<text x="395" y="82" font-family="JetBrains Mono" font-size="11" fill="#10b981">SUM( all app + sidecar containers )</text>
+
+<rect x="140" y="115" width="440" height="35" rx="8" fill="rgba(59,130,246,.08)" stroke="#3b82f6"/>
+<text x="160" y="138" font-family="JetBrains Mono" font-size="11" fill="#3b82f6">Pod = MAX( max_init, sum_app_sidecar ) for each resource</text>
+</svg>
+</div>
+
+<p><strong>Why MAX for init containers?</strong> Init containers run sequentially (one at a time), so only the largest one matters — they never overlap. <strong>Why SUM for app + sidecar?</strong> They all run simultaneously, so their resources are additive.</p>
+</section>
+
+<section id="qos">
+<h2><span class="n">31</span> Quality of Service (QoS) Classes</h2>
+
+<p>Kubernetes assigns a QoS class to each Pod based on resource configuration. This determines <strong>eviction priority</strong> when the node is under memory pressure.</p>
+
+<div class="g3">
+<div class="cd" style="border-top:3px solid var(--green)">
+<div style="font-family:'JetBrains Mono';font-size:16px;font-weight:700;color:var(--green)">Guaranteed</div>
+<div style="font-size:10px;color:var(--dim)">Last evicted · Highest priority</div>
+<p style="font-size:12px;margin-top:8px">Every container has <strong>equal</strong> requests and limits for both CPU and memory. <code>requests == limits</code>.</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--yellow)">
+<div style="font-family:'JetBrains Mono';font-size:16px;font-weight:700;color:var(--yellow)">Burstable</div>
+<div style="font-size:10px;color:var(--dim)">Middle priority</div>
+<p style="font-size:12px;margin-top:8px">At least one container has requests or limits set, but they're <strong>not equal</strong>. Can use more than requested (burst).</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--red)">
+<div style="font-family:'JetBrains Mono';font-size:16px;font-weight:700;color:var(--red)">BestEffort</div>
+<div style="font-size:10px;color:var(--dim)">First evicted · Lowest priority</div>
+<p style="font-size:12px;margin-top:8px"><strong>No</strong> requests or limits set on any container. Gets whatever is leftover. Evicted first.</p>
+</div>
+</div>
+
+<div class="sre">
+<div class="tag">SRE Principle — Always Set Resource Requests</div>
+<p style="margin:0">In production, <strong>every container must have at least resource requests</strong>. Without them, the scheduler guesses, nodes get overcommitted, and your critical Pods get evicted first (BestEffort). For mission-critical workloads, use <code>Guaranteed</code> QoS (requests = limits). For most services, <code>Burstable</code> is the sweet spot — set requests based on typical usage and limits based on peak.</p>
+</div>
+</section>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 8 — DISRUPTION                             ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="disrupt">
+<h2><span class="n">32</span> Disruption Types</h2>
+
+<div class="g2">
+<div class="cd" style="border-top:3px solid var(--orange)">
+<h4 style="color:var(--orange)">Voluntary Disruptions</h4>
+<p><strong>Controlled</strong> — initiated by human or automation:</p>
+<p style="font-size:13px;color:var(--dim)"><code>kubectl drain node</code> for maintenance · Cluster upgrade · Deployment rolling update · Manual Pod deletion · Autoscaler scale-down · Cloud provider maintenance window</p>
+<p style="font-size:12px;color:var(--green)"><strong>Protection:</strong> PodDisruptionBudgets (PDBs)</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--red)">
+<h4 style="color:var(--red)">Involuntary Disruptions</h4>
+<p><strong>Uncontrolled</strong> — unexpected failures:</p>
+<p style="font-size:13px;color:var(--dim)">Hardware failure · Kernel panic · Cloud VM termination · Network partition · OOM kill by node kernel · Power outage · Disk failure</p>
+<p style="font-size:12px;color:var(--orange)"><strong>Protection:</strong> Replicas + spread across nodes/zones + QoS classes</p>
+</div>
+</div>
+</section>
+
+<section id="pdb">
+<h2><span class="n">33</span> Pod Disruption Budgets (PDBs)</h2>
+
+<p>A PDB limits how many Pods in a workload can be <strong>simultaneously unavailable during voluntary disruptions</strong>.</p>
+
+<pre><code><span class="k">apiVersion:</span> <span class="v">policy/v1</span>
+<span class="k">kind:</span> <span class="v">PodDisruptionBudget</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-pdb</span>
+<span class="k">spec:</span>
+  <span class="cm"># Option 1: Minimum Pods that must stay running</span>
+  <span class="k">minAvailable:</span> <span class="nm">2</span>
+  <span class="cm"># OR Option 2: Maximum Pods that can be down at once</span>
+  <span class="cm"># maxUnavailable: 1</span>
+  <span class="cm"># Can also use percentages: minAvailable: "50%"</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span></code></pre>
+
+<table>
+<tr><th>Field</th><th>Meaning</th><th>Example with 5 replicas</th></tr>
+<tr><td><code>minAvailable: 3</code></td><td>At least 3 Pods must be running at all times</td><td>At most 2 can be disrupted at once</td></tr>
+<tr><td><code>maxUnavailable: 1</code></td><td>At most 1 Pod can be down at a time</td><td>4 must always be running</td></tr>
+<tr><td><code>minAvailable: "80%"</code></td><td>At least 80% of Pods must be running</td><td>At least 4 of 5 must be up</td></tr>
+</table>
+</section>
+
+<section id="pdb-works">
+<h2><span class="n">34</span> How PDBs Work</h2>
+
+<div class="d">
+<div class="dt">PDB Enforcement During Node Drain</div>
+<svg width="720" height="200" viewBox="0 0 720 200" fill="none">
+<rect x="20" y="15" width="200" height="170" rx="12" fill="rgba(239,68,68,.04)" stroke="#ef4444" stroke-dasharray="4 3"/>
+<text x="35" y="35" font-family="JetBrains Mono" font-size="9" fill="#ef4444">Node A (being drained)</text>
+<rect x="40" y="50" width="70" height="30" rx="6" fill="rgba(239,68,68,.1)" stroke="#ef4444" stroke-dasharray="3 2"/>
+<text x="48" y="69" font-family="JetBrains Mono" font-size="8" fill="#ef4444">Pod1 ✗</text>
+<rect x="40" y="90" width="70" height="30" rx="6" fill="rgba(245,158,11,.12)" stroke="#eab308"/>
+<text x="48" y="109" font-family="JetBrains Mono" font-size="8" fill="#eab308">Pod2 ⏳</text>
+<text x="130" y="70" font-family="DM Sans" font-size="9" fill="#ef4444">evicted</text>
+<text x="130" y="107" font-family="DM Sans" font-size="9" fill="#eab308">PDB blocks!</text>
+<text x="35" y="155" font-family="DM Sans" font-size="10" fill="#6e7b91">API server checks PDB</text>
+<text x="35" y="170" font-family="DM Sans" font-size="10" fill="#6e7b91">before each eviction</text>
+
+<text x="240" y="100" font-family="DM Sans" font-size="16" fill="#232e3d">→</text>
+
+<rect x="280" y="15" width="170" height="170" rx="12" fill="rgba(16,185,129,.04)" stroke="#10b981"/>
+<text x="295" y="35" font-family="JetBrains Mono" font-size="9" fill="#6e7b91">Node B</text>
+<rect x="300" y="50" width="70" height="30" rx="6" fill="rgba(16,185,129,.12)" stroke="#10b981"/>
+<text x="308" y="69" font-family="JetBrains Mono" font-size="8" fill="#10b981">Pod3 ✓</text>
+<rect x="300" y="90" width="70" height="30" rx="6" fill="rgba(16,185,129,.12)" stroke="#10b981"/>
+<text x="308" y="109" font-family="JetBrains Mono" font-size="8" fill="#10b981">Pod1 ✓</text>
+<text x="380" y="107" font-family="DM Sans" font-size="9" fill="#22c55e">rescheduled</text>
+<text x="295" y="155" font-family="DM Sans" font-size="10" fill="#22c55e">Pod1 runs here now.</text>
+<text x="295" y="170" font-family="DM Sans" font-size="10" fill="#22c55e">Drain can now continue.</text>
+
+<rect x="500" y="40" width="200" height="80" rx="10" fill="rgba(245,158,11,.06)" stroke="#eab308"/>
+<text x="515" y="62" font-family="JetBrains Mono" font-size="10" fill="#eab308">PDB: minAvailable: 2</text>
+<text x="515" y="82" font-family="DM Sans" font-size="10" fill="#6e7b91">Total replicas: 3</text>
+<text x="515" y="100" font-family="DM Sans" font-size="10" fill="#6e7b91">→ Only 1 can be down</text>
+</svg>
+</div>
+
+<div class="c r">
+<div class="l">PDB Limitation</div>
+<p style="margin:0">PDBs <strong>only protect against voluntary disruptions</strong>. They cannot prevent involuntary disruptions like hardware crashes, kernel panics, or OOM kills. For those, you need multiple replicas spread across nodes and availability zones.</p>
+</div>
+
+<h3>Essential PDB Use Cases</h3>
+<table>
+<tr><th>Application Type</th><th>Recommended PDB</th><th>Reason</th></tr>
+<tr><td>Quorum systems (etcd, ZooKeeper)</td><td><code>minAvailable: (N/2)+1</code></td><td>Must maintain quorum to function</td></tr>
+<tr><td>Web apps (3+ replicas)</td><td><code>maxUnavailable: 1</code></td><td>Maintain capacity during rolling drain</td></tr>
+<tr><td>Stateful singletons</td><td><code>minAvailable: 1</code></td><td>Ensure at least one instance is always up</td></tr>
+<tr><td>Batch workers</td><td>Often no PDB needed</td><td>Jobs can tolerate restarts</td></tr>
+</table>
+</section>
+
+<!-- ╔═══════════════════════════════════════════════════╗ -->
+<!-- ║   PART 9 — SRE OPERATIONS                         ║ -->
+<!-- ╚═══════════════════════════════════════════════════╝ -->
+
+<section id="sre-mon">
+<h2><span class="n">35</span> Monitoring &amp; Observability</h2>
+
+<h3>Key Prometheus Metrics to Alert On</h3>
+<table>
+<tr><th>Metric</th><th>What It Tells You</th><th>Alert Threshold</th></tr>
+<tr><td><code>kube_pod_container_status_restarts_total</code></td><td>Container restart count</td><td>> 3 restarts in 10min</td></tr>
+<tr><td><code>kube_pod_status_phase{phase="Pending"}</code></td><td>Pods stuck in Pending</td><td>Any Pod in Pending > 5min</td></tr>
+<tr><td><code>container_memory_usage_bytes / container_spec_memory_limit_bytes</code></td><td>Memory utilization ratio</td><td>> 90% of limit = OOM risk</td></tr>
+<tr><td><code>container_cpu_cfs_throttled_periods_total</code></td><td>CPU throttling frequency</td><td>Throttled > 25% of periods</td></tr>
+<tr><td><code>kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}</code></td><td>Crash-looping containers</td><td>Any occurrence = alert</td></tr>
+<tr><td><code>container_oom_events_total</code></td><td>OOM kill events</td><td>Any occurrence = alert</td></tr>
+<tr><td><code>kube_pod_container_status_terminated_reason{reason="OOMKilled"}</code></td><td>OOM termination reason</td><td>Track frequency over time</td></tr>
+<tr><td><code>kube_pod_container_status_terminated_reason{reason="Error"}</code></td><td>Error termination</td><td>Track frequency and set thresholds</td></tr>
+</table>
+
+<div class="sre">
+<div class="tag">SRE Principle — Observability Layers</div>
+<p style="margin-bottom:6px"><strong>Layer 1 — Metrics:</strong> Prometheus + Grafana for real-time dashboards. Alert on golden signals and Pod-level metrics.</p>
+<p style="margin-bottom:6px"><strong>Layer 2 — Logs:</strong> Structured JSON logging to stdout/stderr, shipped via sidecar (Fluent Bit/Fluentd) to central store. Always include request ID, trace ID, Pod name.</p>
+<p style="margin-bottom:6px"><strong>Layer 3 — Traces:</strong> Distributed tracing (Jaeger/Tempo/Zipkin) to follow requests across Pods and services.</p>
+<p style="margin:0"><strong>Layer 4 — Events:</strong> Kubernetes Events (scheduling, pulling, probing, killing) — export with <code>kube-event-exporter</code> to your logging backend.</p>
+</div>
+</section>
+
+<section id="sre-golden">
+<h2><span class="n">36</span> Four Golden Signals</h2>
+<div class="g4">
+<div class="cd" style="text-align:center;border-top:3px solid var(--accent)">
+<div style="font-family:'JetBrains Mono';font-size:20px;font-weight:700;color:var(--accent)">Latency</div>
+<p style="font-size:11px;margin-top:6px">How long requests take. Track p50, p95, p99.</p>
+</div>
+<div class="cd" style="text-align:center;border-top:3px solid var(--blue)">
+<div style="font-family:'JetBrains Mono';font-size:20px;font-weight:700;color:var(--blue)">Traffic</div>
+<p style="font-size:11px;margin-top:6px">Request volume per second to the Pod.</p>
+</div>
+<div class="cd" style="text-align:center;border-top:3px solid var(--red)">
+<div style="font-family:'JetBrains Mono';font-size:20px;font-weight:700;color:var(--red)">Errors</div>
+<p style="font-size:11px;margin-top:6px">Error rate: 5xx, timeouts, failed requests.</p>
+</div>
+<div class="cd" style="text-align:center;border-top:3px solid var(--yellow)">
+<div style="font-family:'JetBrains Mono';font-size:20px;font-weight:700;color:var(--yellow)">Saturation</div>
+<p style="font-size:11px;margin-top:6px">CPU/memory utilization vs limits.</p>
+</div>
+</div>
+</section>
+
+<section id="sre-check">
+<h2><span class="n">37</span> Production Readiness Checklist</h2>
+
+<div class="c g">
+<div class="l">Health &amp; Probes</div>
+<p style="margin-bottom:4px">✅ Startup probe for apps with init time > 10s</p>
+<p style="margin-bottom:4px">✅ Liveness probe on <code>/healthz</code> (no external dependencies)</p>
+<p style="margin-bottom:4px">✅ Readiness probe on <code>/ready</code> (checks dependencies)</p>
+<p style="margin:0">✅ Separate endpoints for liveness vs readiness</p>
+</div>
+<div class="c b">
+<div class="l">Resources</div>
+<p style="margin-bottom:4px">✅ CPU and memory requests set on every container</p>
+<p style="margin-bottom:4px">✅ Memory limits set (prevent OOM on node)</p>
+<p style="margin-bottom:4px">✅ QoS class is Guaranteed or Burstable (never BestEffort)</p>
+<p style="margin:0">✅ Values based on load testing, not guesses</p>
+</div>
+<div class="c p">
+<div class="l">Resilience</div>
+<p style="margin-bottom:4px">✅ Pods managed by a controller (never naked Pods)</p>
+<p style="margin-bottom:4px">✅ At least 2-3 replicas for critical services</p>
+<p style="margin-bottom:4px">✅ Pod anti-affinity to spread across nodes/zones</p>
+<p style="margin-bottom:4px">✅ PodDisruptionBudget configured</p>
+<p style="margin:0">✅ Graceful shutdown handles SIGTERM + preStop hook</p>
+</div>
+<div class="c o">
+<div class="l">Observability</div>
+<p style="margin-bottom:4px">✅ Structured JSON logging to stdout/stderr</p>
+<p style="margin-bottom:4px">✅ Prometheus metrics endpoint exposed</p>
+<p style="margin-bottom:4px">✅ Alerts on restart count, OOM, error rate, latency</p>
+<p style="margin:0">✅ Distributed tracing headers propagated</p>
+</div>
+<div class="c r">
+<div class="l">Security</div>
+<p style="margin-bottom:4px">✅ <code>runAsNonRoot: true</code></p>
+<p style="margin-bottom:4px">✅ <code>readOnlyRootFilesystem: true</code> where possible</p>
+<p style="margin-bottom:4px">✅ No <code>privileged: true</code> unless absolutely required</p>
+<p style="margin-bottom:4px">✅ Secrets from K8s Secrets (never hardcoded)</p>
+<p style="margin:0">✅ Network policies restricting traffic</p>
+</div>
+</section>
+
+<section id="sre-cmd">
+<h2><span class="n">38</span> Command Reference</h2>
+
+<pre><code><span class="cm"># ══════════════ STATUS & INSPECTION ══════════════</span>
+kubectl get pods -o wide                               <span class="cm"># Overview with node/IP</span>
+kubectl get pods --show-labels                         <span class="cm"># Show all labels</span>
+kubectl describe pod/my-app                            <span class="cm"># Full details + events</span>
+kubectl get pod/my-app -o yaml                         <span class="cm"># Full YAML spec + status</span>
+kubectl get pod/my-app -o jsonpath='{.status.phase}'   <span class="cm"># Pod phase</span>
+kubectl get pod/my-app -o jsonpath='{.status.containerStatuses}'  <span class="cm"># Container states</span>
+
+<span class="cm"># ══════════════ LOGS ══════════════</span>
+kubectl logs pod/my-app                                <span class="cm"># Current logs</span>
+kubectl logs pod/my-app --previous                     <span class="cm"># Last crashed container</span>
+kubectl logs pod/my-app -c sidecar                     <span class="cm"># Specific container</span>
+kubectl logs pod/my-app --all-containers               <span class="cm"># All containers</span>
+kubectl logs pod/my-app --since=1h                     <span class="cm"># Last hour only</span>
+kubectl logs pod/my-app -f                             <span class="cm"># Follow (stream)</span>
+
+<span class="cm"># ══════════════ DEBUGGING ══════════════</span>
+kubectl exec -it pod/my-app -- /bin/sh                 <span class="cm"># Shell into container</span>
+kubectl exec pod/my-app -- env                         <span class="cm"># Check env vars</span>
+kubectl exec pod/my-app -- cat /etc/resolv.conf        <span class="cm"># Check DNS config</span>
+kubectl debug -it pod/my-app --image=busybox           <span class="cm"># Ephemeral debug container</span>
+kubectl debug pod/my-app -it --copy-to=dbg --share-processes  <span class="cm"># Copy + debug</span>
+kubectl port-forward pod/my-app 8080:80                <span class="cm"># Access locally</span>
+kubectl top pods                                       <span class="cm"># CPU/memory usage</span>
+
+<span class="cm"># ══════════════ MANAGEMENT ══════════════</span>
+kubectl delete pod/my-app                              <span class="cm"># Graceful delete</span>
+kubectl delete pod/my-app --grace-period=60            <span class="cm"># Custom grace period</span>
+kubectl delete pod/my-app --force --grace-period=0     <span class="cm"># Force (dangerous!)</span>
+kubectl rollout restart deployment/my-app              <span class="cm"># Rolling restart all Pods</span>
+kubectl rollout undo deployment/my-app                 <span class="cm"># Rollback</span>
+kubectl label pod/my-app debug=true                    <span class="cm"># Add label</span>
+kubectl annotate pod/my-app note="investigating"       <span class="cm"># Add annotation</span>
+
+<span class="cm"># ══════════════ CLUSTER CONTEXT ══════════════</span>
+kubectl get events --sort-by='.lastTimestamp'          <span class="cm"># Recent events</span>
+kubectl get events --field-selector involvedObject.name=my-app  <span class="cm"># Pod events</span>
+kubectl describe node &lt;node-name&gt;                      <span class="cm"># Node resources/conditions</span>
+kubectl get pdb                                        <span class="cm"># Pod Disruption Budgets</span></code></pre>
+
+<div class="sre" style="margin-top:30px">
+<div class="tag">Final SRE Wisdom</div>
+<p style="margin:0">The goal of Pod operations isn't zero failures — it's <strong>fast, automated, observable recovery</strong>. Design Pods to crash safely (meaningful exit codes, graceful shutdown), detect failures quickly (probes, metrics, alerts), recover automatically (controllers, restart policies, replicas), and provide full visibility (structured logs, distributed traces, Kubernetes events). A well-instrumented Pod that restarts cleanly in 5 seconds is worth more than a fragile Pod that never crashes but silently corrupts data when it does.</p>
+</div>
+</section>
+
+</main>
+</body>
+</html>

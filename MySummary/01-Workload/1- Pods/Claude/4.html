@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Pods — The Definitive SRE Guide v4</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#0ea472;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.8;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:252px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:16px 11px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:2px}
+nav .sub{font-size:7.5px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
+nav ul{list-style:none}nav ul li a{display:block;padding:3px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10.5px;font-weight:500;transition:.12s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:10px 0 3px 7px;font-weight:700}
+main{margin-left:252px;max-width:980px;padding:28px 42px 80px}
+.hero{text-align:center;padding:36px 0 28px;position:relative}
+.hero::before{content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:460px;height:460px;background:radial-gradient(circle,rgba(14,164,114,.06) 0%,transparent 60%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:42px;font-weight:900;background:linear-gradient(135deg,#fff,var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:14px;max-width:580px;margin:0 auto}
+section{margin-bottom:38px;scroll-margin-top:18px}
+h2{font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:12px;padding-bottom:7px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(14,164,114,.12);padding:2px 6px;border-radius:4px}
+h3{font-size:15px;font-weight:700;color:#dde2ea;margin:20px 0 7px}
+h4{font-size:13px;font-weight:600;color:var(--ac2);margin:10px 0 4px}
+p{margin-bottom:9px}strong{color:#eee}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:11px 13px;margin:10px 0;font-size:13.5px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8.5px;text-transform:uppercase;letter-spacing:1.3px;font-weight:700;margin-bottom:3px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}.c .l.t{color:var(--ac)}
+.sre{background:linear-gradient(135deg,rgba(14,164,114,.04),rgba(8,145,178,.02));border:1px solid rgba(14,164,114,.14);border-radius:var(--r);padding:11px 14px;margin:12px 0;font-size:13.5px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(14,164,114,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:3px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:11px 14px;overflow-x:auto;margin:7px 0 10px;font-size:11px;line-height:1.55}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,li code,td code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10.5px}
+.cm{color:#3f4d65}.k{color:var(--ac)}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:10px 14px;margin:7px 0 10px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;color:#6d7b90;overflow-x:auto}
+.T .p{color:var(--gn)}.T .h{color:var(--ac2);font-weight:600}.T .w{color:var(--yl)}.T .e{color:var(--rd)}.T .o{color:var(--gn)}.T .v{color:#b0baca}
+.d{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin:12px 0;overflow-x:auto}
+.dt{font-size:9.5px;text-transform:uppercase;letter-spacing:1.6px;color:var(--ac);font-weight:700;margin-bottom:10px;text-align:center}
+.d svg{display:block;margin:0 auto}
+table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:12px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:6px 9px;font-size:9.5px;text-transform:uppercase;letter-spacing:.7px}
+td{padding:6px 9px;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:hover td{background:rgba(14,164,114,.02)}
+.bg{display:inline-block;padding:1px 6px;border-radius:12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.og{background:rgba(234,88,12,.15);color:var(--og)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0}
+.cd{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px}
+.cd h4{margin-top:0}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:18px 14px 60px}.hero h1{font-size:30px}.g2,.g3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+<div class="logo">⬡ K8s Pods v4</div>
+<div class="sub">Definitive Deep-Dive</div>
+<div class="sl">1 · Fundamentals</div>
+<ul>
+<li><a href="#s01">What is a Pod?</a></li>
+<li><a href="#s02">Pod Architecture</a></li>
+<li><a href="#s03">Container Types</a></li>
+<li><a href="#s04">Init Containers</a></li>
+<li><a href="#s05">Sidecar Containers</a></li>
+<li><a href="#s06">Ephemeral Containers</a></li>
+<li><a href="#s07">Multi-Container Patterns</a></li>
+</ul>
+<div class="sl">2 · Pod Management</div>
+<ul>
+<li><a href="#s08">Create: YAML</a></li>
+<li><a href="#s09">Create: CLI</a></li>
+<li><a href="#s10">Create: Controllers</a></li>
+<li><a href="#s11">Update: Manual Pods</a></li>
+<li><a href="#s12">Update: Controller Pods</a></li>
+<li><a href="#s13">Mutable Fields</a></li>
+<li><a href="#s14">Delete &amp; Graceful Shutdown</a></li>
+<li><a href="#s15">Shutdown Scenarios</a></li>
+</ul>
+<div class="sl">3 · Lifecycle</div>
+<ul>
+<li><a href="#s16">Pod Phases</a></li>
+<li><a href="#s17">Pod Conditions</a></li>
+<li><a href="#s18">Container States</a></li>
+<li><a href="#s19">Lifecycle Hooks</a></li>
+</ul>
+<div class="sl">4 · Failure Handling</div>
+<ul>
+<li><a href="#s20">Failure Sequence Map</a></li>
+<li><a href="#s21">① Scheduling Failures</a></li>
+<li><a href="#s22">② Image Pull Failures</a></li>
+<li><a href="#s23">③ Config Failures</a></li>
+<li><a href="#s24">④ App Crashes</a></li>
+<li><a href="#s25">⑤ OOM Kills</a></li>
+<li><a href="#s26">⑥ Probe Failures</a></li>
+<li><a href="#s27">⑦ Dependency Failures</a></li>
+<li><a href="#s28">Crash Loop</a></li>
+<li><a href="#s29">Restart Policy</a></li>
+</ul>
+<div class="sl">5 · Health Probes</div>
+<ul>
+<li><a href="#s30">Probes Explained</a></li>
+<li><a href="#s31">Three Probe Types</a></li>
+<li><a href="#s32">Probe Config YAML</a></li>
+<li><a href="#s33">Probe Best Practices</a></li>
+</ul>
+<div class="sl">6 · Resources</div>
+<ul>
+<li><a href="#s34">Requests vs Limits</a></li>
+<li><a href="#s35">Resource Calculation</a></li>
+<li><a href="#s36">QoS Classes</a></li>
+</ul>
+<div class="sl">7 · Disruption</div>
+<ul>
+<li><a href="#s37">Disruption Types</a></li>
+<li><a href="#s38">PDB Deep Dive</a></li>
+</ul>
+<div class="sl">8 · SRE Operations</div>
+<ul>
+<li><a href="#s39">Monitoring</a></li>
+<li><a href="#s40">Production Checklist</a></li>
+<li><a href="#s41">Command Reference</a></li>
+</ul>
+</nav>
+
+<main>
+<div class="hero">
+<h1>Kubernetes Pods</h1>
+<p>The definitive guide — every concept with architecture diagrams, real-world workflow scenarios, full YAML, kubectl output, and SRE operational principles. 41 sections.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  1 · FUNDAMENTALS                               -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<section id="s01">
+<h2><span class="n">01</span> What is a Pod?</h2>
+
+<p><strong>Definition:</strong> A Pod is the smallest deployable unit in Kubernetes. It's a logical host for one or more containers that share network, storage, and lifecycle. Every container in Kubernetes runs inside a Pod — even a single container is wrapped in a Pod.</p>
+
+<div class="c g"><div class="l">Analogy</div>
+<p style="margin:0">A Pod is a <strong>shared apartment</strong>. Containers are roommates — they share the same address (IP), living space (volumes), and lease (lifecycle). Kubernetes manages apartments, not individual people.</p></div>
+
+<div class="d">
+<div class="dt">What Containers Share Inside a Pod</div>
+<svg width="740" height="250" viewBox="0 0 740 250" fill="none">
+<!-- Pod boundary -->
+<rect x="20" y="10" width="700" height="230" rx="16" fill="rgba(14,164,114,.03)" stroke="#0ea472" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="40" y="32" font-family="JetBrains Mono" font-size="10" fill="#0ea472" font-weight="600">Pod: my-app-7d4b9 · IP: 10.244.1.23 · Node: worker-02</text>
+
+<!-- Network layer -->
+<rect x="40" y="185" width="660" height="40" rx="8" fill="rgba(37,99,235,.06)" stroke="#2563eb" stroke-dasharray="4 3"/>
+<text x="220" y="210" font-family="JetBrains Mono" font-size="10" fill="#2563eb">① Shared Network Namespace — same IP, same ports, localhost</text>
+
+<!-- Container A -->
+<rect x="40" y="50" width="185" height="120" rx="10" fill="rgba(14,164,114,.08)" stroke="#0ea472"/>
+<text x="55" y="70" font-family="JetBrains Mono" font-size="10" fill="#0ea472" font-weight="600">Container A: web</text>
+<text x="55" y="86" font-family="DM Sans" font-size="9.5" fill="#5f7090">Image: nginx:1.25</text>
+<text x="55" y="100" font-family="DM Sans" font-size="9.5" fill="#5f7090">Port: 8080</text>
+<text x="55" y="114" font-family="DM Sans" font-size="9.5" fill="#5f7090">Writes → /var/log/app.log</text>
+<text x="55" y="140" font-family="JetBrains Mono" font-size="9" fill="#5f7090">talks to B via localhost:9090</text>
+<line x1="40" y1="170" x2="40" y2="185" stroke="#2563eb" stroke-dasharray="3 2"/>
+
+<!-- Container B -->
+<rect x="245" y="50" width="185" height="120" rx="10" fill="rgba(8,145,178,.08)" stroke="#0891b2"/>
+<text x="260" y="70" font-family="JetBrains Mono" font-size="10" fill="#0891b2" font-weight="600">Container B: log-agent</text>
+<text x="260" y="86" font-family="DM Sans" font-size="9.5" fill="#5f7090">Image: fluent-bit:2.1</text>
+<text x="260" y="100" font-family="DM Sans" font-size="9.5" fill="#5f7090">Port: 9090</text>
+<text x="260" y="114" font-family="DM Sans" font-size="9.5" fill="#5f7090">Reads ← /var/log/app.log</text>
+<text x="260" y="140" font-family="JetBrains Mono" font-size="9" fill="#5f7090">talks to A via localhost:8080</text>
+<line x1="245" y1="170" x2="245" y2="185" stroke="#2563eb" stroke-dasharray="3 2"/>
+
+<!-- Shared Volume -->
+<rect x="450" y="50" width="200" height="120" rx="10" fill="rgba(147,51,234,.06)" stroke="#9333ea"/>
+<text x="465" y="70" font-family="JetBrains Mono" font-size="10" fill="#9333ea" font-weight="600">③ Shared Volume</text>
+<text x="465" y="86" font-family="DM Sans" font-size="9.5" fill="#5f7090">Name: log-volume</text>
+<text x="465" y="100" font-family="DM Sans" font-size="9.5" fill="#5f7090">Type: emptyDir</text>
+<text x="465" y="114" font-family="DM Sans" font-size="9.5" fill="#5f7090">Path: /var/log</text>
+<text x="465" y="134" font-family="DM Sans" font-size="9" fill="#5f7090">Both containers mount</text>
+<text x="465" y="148" font-family="DM Sans" font-size="9" fill="#5f7090">the same filesystem</text>
+
+<!-- Connection arrows -->
+<path d="M225 105 L245 105" stroke="#1e2a3c" stroke-width="1" stroke-dasharray="3 2"/>
+<path d="M430 105 L450 105" stroke="#9333ea" stroke-width="1" stroke-dasharray="3 2"/>
+</svg>
+</div>
+
+<table>
+<tr><th>Shared Resource</th><th>Definition</th><th>What This Means in Practice</th></tr>
+<tr><td><strong>Network Namespace</strong></td><td>All containers get the same IP address and port space via a shared Linux network namespace</td><td>Container A on :8080 and Container B on :9090 are reachable via <code>localhost</code>. External traffic reaches them at the <strong>same Pod IP</strong>.</td></tr>
+<tr><td><strong>Storage Volumes</strong></td><td>Volumes declared in the Pod spec can be mounted by any container in the Pod</td><td>The web container writes logs to <code>/var/log/app.log</code>; the sidecar reads the same file and ships it to Elasticsearch. Both mount the same <code>emptyDir</code> volume.</td></tr>
+<tr><td><strong>IPC Namespace</strong></td><td>Shared inter-process communication — System V IPC and POSIX message queues</td><td>Legacy apps that use shared memory for fast data exchange between processes can work across containers in the same Pod.</td></tr>
+<tr><td><strong>PID Namespace</strong></td><td>When <code>shareProcessNamespace: true</code>, containers see each other's process trees</td><td>A debug sidecar can run <code>kill -USR1 &lt;app-pid&gt;</code> to trigger a heap dump, or <code>strace -p &lt;pid&gt;</code> to trace the app.</td></tr>
+<tr><td><strong>UTS Namespace</strong></td><td>Same hostname for all containers (= Pod name)</td><td><code>hostname</code> command returns the Pod name in every container.</td></tr>
+<tr><td><strong>Lifecycle</strong></td><td>All containers are co-scheduled on the same node and start/stop together</td><td>If the Pod is deleted, ALL containers receive SIGTERM. If the node fails, ALL containers fail. There is no way to move one container to another node.</td></tr>
+</table>
+
+<div class="sre">
+<div class="tag">SRE Principle — Cattle, Not Pets</div>
+<p style="margin:0">Pods are <strong>disposable</strong>. They get new names and IPs when replaced. Never store important data inside a Pod without a PersistentVolume. Never depend on a specific Pod's IP. Design your application to survive any Pod being killed at any time. This is the foundation of reliable Kubernetes operations.</p>
+</div>
+</section>
+
+<section id="s02">
+<h2><span class="n">02</span> Pod Internal Architecture</h2>
+
+<p><strong>Definition:</strong> When Kubernetes creates a Pod, it first creates a hidden <strong>pause container</strong> (also called the infrastructure container). This tiny container does nothing except hold the network namespace alive. When your app container crashes and restarts, the Pod's IP address is preserved because the pause container keeps running.</p>
+
+<div class="d">
+<div class="dt">Pod Internal Architecture — The Pause Container</div>
+<svg width="740" height="220" viewBox="0 0 740 220" fill="none">
+<!-- Node -->
+<rect x="10" y="5" width="720" height="210" rx="14" fill="rgba(14,164,114,.02)" stroke="#1e2a3c"/>
+<text x="25" y="22" font-family="JetBrains Mono" font-size="9" fill="#5f7090">Node: worker-02 (kubelet manages containers via containerd/CRI)</text>
+
+<!-- Pod -->
+<rect x="30" y="35" width="690" height="168" rx="12" fill="rgba(14,164,114,.03)" stroke="#0ea472" stroke-dasharray="5 4"/>
+<text x="45" y="52" font-family="JetBrains Mono" font-size="9" fill="#0ea472" font-weight="600">Pod: my-app-7d4b9 (IP: 10.244.1.23)</text>
+
+<!-- Pause -->
+<rect x="50" y="62" width="160" height="42" rx="7" fill="rgba(100,112,136,.08)" stroke="#5f7090"/>
+<text x="62" y="80" font-family="JetBrains Mono" font-size="9" fill="#5f7090" font-weight="600">pause container</text>
+<text x="62" y="96" font-family="DM Sans" font-size="8.5" fill="#3f4d65">Holds network namespace alive</text>
+
+<!-- Init -->
+<rect x="50" y="115" width="140" height="38" rx="7" fill="rgba(202,138,4,.08)" stroke="#ca8a04"/>
+<text x="62" y="133" font-family="JetBrains Mono" font-size="9" fill="#ca8a04">Init: wait-for-db</text>
+<text x="62" y="147" font-family="DM Sans" font-size="8" fill="#3f4d65">Runs first, then exits ✓</text>
+
+<!-- Sidecar -->
+<rect x="210" y="115" width="145" height="38" rx="7" fill="rgba(8,145,178,.08)" stroke="#0891b2"/>
+<text x="222" y="133" font-family="JetBrains Mono" font-size="9" fill="#0891b2">Sidecar: log-agent</text>
+<text x="222" y="147" font-family="DM Sans" font-size="8" fill="#3f4d65">Starts in init, runs forever</text>
+
+<!-- App -->
+<rect x="375" y="115" width="145" height="38" rx="7" fill="rgba(14,164,114,.1)" stroke="#0ea472"/>
+<text x="387" y="133" font-family="JetBrains Mono" font-size="10" fill="#0ea472" font-weight="600">App: web</text>
+<text x="387" y="147" font-family="DM Sans" font-size="8" fill="#3f4d65">Main application process</text>
+
+<!-- Volume -->
+<rect x="540" y="115" width="155" height="38" rx="7" fill="rgba(147,51,234,.06)" stroke="#9333ea"/>
+<text x="552" y="133" font-family="JetBrains Mono" font-size="9" fill="#9333ea">Volume: /var/log</text>
+<text x="552" y="147" font-family="DM Sans" font-size="8" fill="#3f4d65">Shared emptyDir</text>
+
+<!-- Network bar -->
+<rect x="50" y="165" width="645" height="25" rx="5" fill="rgba(37,99,235,.05)" stroke="#2563eb" stroke-dasharray="3 2"/>
+<text x="230" y="182" font-family="JetBrains Mono" font-size="9" fill="#2563eb">Network: eth0 → 10.244.1.23 (owned by pause container)</text>
+
+<!-- Arrows -->
+<line x1="130" y1="104" x2="130" y2="115" stroke="#1e2a3c" stroke-dasharray="2 2"/>
+<line x1="280" y1="153" x2="280" y2="165" stroke="#2563eb" stroke-dasharray="2 2"/>
+<line x1="450" y1="153" x2="450" y2="165" stroke="#2563eb" stroke-dasharray="2 2"/>
+</svg>
+</div>
+
+<h3>Why the Pause Container Matters</h3>
+<p>When your app container crashes (exit code 1, OOMKilled, etc.), the kubelet restarts it <strong>inside the same Pod</strong>. Because the pause container is still running, the Pod keeps its IP address. Without the pause container, every container restart would mean a new network namespace and a new IP — breaking all connections.</p>
+</section>
+
+<section id="s03">
+<h2><span class="n">03</span> Container Types — Complete Overview</h2>
+
+<p><strong>Definition:</strong> A Pod can contain four types of containers. Each has a different role, lifetime, and behavior. Understanding these types is essential for designing reliable Pod architectures.</p>
+
+<div class="d">
+<div class="dt">Container Types — Execution Timeline</div>
+<svg width="740" height="195" viewBox="0 0 740 195" fill="none">
+<line x1="60" y1="175" x2="700" y2="175" stroke="#1e2a3c"/>
+<text x="685" y="190" font-family="JetBrains Mono" font-size="7.5" fill="#5f7090">time →</text>
+
+<!-- Phase labels -->
+<rect x="65" y="8" width="170" height="18" rx="4" fill="rgba(202,138,4,.08)"/>
+<text x="98" y="20" font-family="JetBrains Mono" font-size="8" fill="#ca8a04">INIT PHASE</text>
+<rect x="300" y="8" width="390" height="18" rx="4" fill="rgba(14,164,114,.06)"/>
+<text x="440" y="20" font-family="JetBrains Mono" font-size="8" fill="#0ea472">RUNNING PHASE</text>
+<line x1="280" y1="28" x2="280" y2="170" stroke="#1e2a3c" stroke-dasharray="4 3"/>
+
+<!-- Init 1 -->
+<rect x="70" y="35" width="90" height="26" rx="5" fill="rgba(202,138,4,.12)" stroke="#ca8a04"/>
+<text x="80" y="52" font-family="JetBrains Mono" font-size="8.5" fill="#ca8a04">Init 1 ✓</text>
+
+<!-- Init 2 -->
+<rect x="170" y="35" width="90" height="26" rx="5" fill="rgba(202,138,4,.12)" stroke="#ca8a04"/>
+<text x="180" y="52" font-family="JetBrains Mono" font-size="8.5" fill="#ca8a04">Init 2 ✓</text>
+
+<!-- Sidecar -->
+<rect x="70" y="75" width="620" height="26" rx="5" fill="rgba(8,145,178,.08)" stroke="#0891b2"/>
+<text x="310" y="92" font-family="JetBrains Mono" font-size="8.5" fill="#0891b2">Sidecar Container (starts during init, runs entire Pod life, stops LAST)</text>
+
+<!-- App -->
+<rect x="290" y="115" width="400" height="26" rx="5" fill="rgba(14,164,114,.12)" stroke="#0ea472"/>
+<text x="410" y="132" font-family="JetBrains Mono" font-size="8.5" fill="#0ea472">App Container (starts after all init done, stops BEFORE sidecar)</text>
+
+<!-- Ephemeral -->
+<rect x="480" y="150" width="110" height="20" rx="4" fill="rgba(147,51,234,.08)" stroke="#9333ea" stroke-dasharray="3 2"/>
+<text x="490" y="164" font-family="JetBrains Mono" font-size="7.5" fill="#9333ea">Ephemeral (debug)</text>
+<text x="598" y="164" font-family="DM Sans" font-size="7.5" fill="#5f7090">← injected on demand</text>
+</svg>
+</div>
+
+<table>
+<tr><th>Type</th><th>Defined In</th><th>When It Runs</th><th>Restarts?</th><th>Probes?</th><th>Purpose</th></tr>
+<tr><td><strong>Init Container</strong></td><td><code>spec.initContainers[]</code></td><td>Before app, sequentially (one at a time)</td><td>On failure (blocks Pod startup)</td><td>No</td><td>Prerequisites: wait for DB, run migrations, download config</td></tr>
+<tr><td><strong>Sidecar</strong> (native)</td><td><code>spec.initContainers[]</code> + <code>restartPolicy: Always</code></td><td>Starts during init phase, runs for entire Pod life</td><td>Always (independent of Pod policy)</td><td>Yes (all 3)</td><td>Log shipping, service mesh proxy, monitoring agent</td></tr>
+<tr><td><strong>App Container</strong></td><td><code>spec.containers[]</code></td><td>After all init containers complete, in parallel</td><td>Per Pod <code>restartPolicy</code></td><td>Yes (all 3)</td><td>Your application: web server, API, worker</td></tr>
+<tr><td><strong>Ephemeral</strong></td><td>Injected via <code>kubectl debug</code></td><td>On-demand — for live debugging</td><td>No</td><td>No</td><td>Troubleshoot running/crashed Pods without restart</td></tr>
+</table>
+</section>
+
+<section id="s04">
+<h2><span class="n">04</span> Init Containers — In Detail</h2>
+
+<p><strong>Definition:</strong> Init containers are specialized containers that run <strong>before</strong> any app containers start. They execute one at a time in the order they're listed. Each must exit with code 0 before the next one begins. If any fails, the Pod keeps retrying that init container.</p>
+
+<div class="d">
+<div class="dt">Init Container Execution Flow</div>
+<svg width="740" height="170" viewBox="0 0 740 170" fill="none">
+<defs><marker id="a1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0 0 L7 2.5 L0 5" fill="#1e2a3c"/></marker></defs>
+
+<!-- Init 1 -->
+<rect x="30" y="20" width="145" height="65" rx="8" fill="rgba(202,138,4,.1)" stroke="#ca8a04"/>
+<text x="45" y="40" font-family="JetBrains Mono" font-size="9.5" fill="#ca8a04" font-weight="600">Init 1: wait-for-db</text>
+<text x="45" y="55" font-family="DM Sans" font-size="9" fill="#5f7090">Polls until postgres</text>
+<text x="45" y="68" font-family="DM Sans" font-size="9" fill="#5f7090">DNS resolves → exit 0</text>
+<path d="M180 52 L210 52" stroke="#1e2a3c" stroke-width="1.5" marker-end="url(#a1)"/>
+
+<!-- Init 2 -->
+<rect x="215" y="20" width="145" height="65" rx="8" fill="rgba(202,138,4,.1)" stroke="#ca8a04"/>
+<text x="230" y="40" font-family="JetBrains Mono" font-size="9.5" fill="#ca8a04" font-weight="600">Init 2: migrate</text>
+<text x="230" y="55" font-family="DM Sans" font-size="9" fill="#5f7090">Runs flyway migrate</text>
+<text x="230" y="68" font-family="DM Sans" font-size="9" fill="#5f7090">→ schema updated → exit 0</text>
+<path d="M365 52 L395 52" stroke="#1e2a3c" stroke-width="1.5" marker-end="url(#a1)"/>
+
+<!-- Init 3 -->
+<rect x="400" y="20" width="145" height="65" rx="8" fill="rgba(202,138,4,.1)" stroke="#ca8a04"/>
+<text x="415" y="40" font-family="JetBrains Mono" font-size="9.5" fill="#ca8a04" font-weight="600">Init 3: download</text>
+<text x="415" y="55" font-family="DM Sans" font-size="9" fill="#5f7090">Downloads TLS certs</text>
+<text x="415" y="68" font-family="DM Sans" font-size="9" fill="#5f7090">from Vault → exit 0</text>
+<path d="M550 52 L575 52" stroke="#1e2a3c" stroke-width="1.5" marker-end="url(#a1)"/>
+
+<!-- Done -->
+<text x="580" y="35" font-family="JetBrains Mono" font-size="8.5" fill="#16a34a">All init done ✓</text>
+<rect x="580" y="42" width="140" height="48" rx="7" fill="rgba(14,164,114,.1)" stroke="#0ea472"/>
+<text x="592" y="60" font-family="JetBrains Mono" font-size="9" fill="#0ea472" font-weight="600">App Containers</text>
+<text x="592" y="78" font-family="DM Sans" font-size="8.5" fill="#5f7090">Start in parallel →</text>
+
+<!-- Failure scenario -->
+<rect x="30" y="105" width="690" height="50" rx="8" fill="rgba(220,38,38,.04)" stroke="#dc2626" stroke-dasharray="4 3"/>
+<text x="45" y="122" font-family="JetBrains Mono" font-size="9" fill="#dc2626">What if Init 2 fails?</text>
+<text x="45" y="140" font-family="DM Sans" font-size="9.5" fill="#5f7090">Pod stays in <strong style="color:#ca8a04">Init:1/3</strong> status. Kubelet retries Init 2 with exponential backoff. Init 3 and App containers never start. Pod is stuck until Init 2 succeeds or you fix the issue.</text>
+</svg>
+</div>
+
+<h3>Full YAML Example</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">my-app</span>
+<span class="k">spec:</span>
+  <span class="k">initContainers:</span>
+
+  <span class="cm"># Init 1: Wait until the database is reachable</span>
+  - <span class="k">name:</span> <span class="s">wait-for-db</span>
+    <span class="k">image:</span> <span class="s">busybox:1.36</span>
+    <span class="k">command:</span>
+    - <span class="s">'sh'</span>
+    - <span class="s">'-c'</span>
+    - <span class="s">'until nslookup postgres.default.svc.cluster.local; do echo "Waiting for DB..."; sleep 2; done'</span>
+
+  <span class="cm"># Init 2: Run database migrations</span>
+  - <span class="k">name:</span> <span class="s">run-migrations</span>
+    <span class="k">image:</span> <span class="s">myapp/migrate:v3.2</span>
+    <span class="k">command:</span> [<span class="s">"./migrate"</span>, <span class="s">"--source"</span>, <span class="s">"file:///migrations"</span>, <span class="s">"up"</span>]
+    <span class="k">env:</span>
+    - <span class="k">name:</span> <span class="s">DATABASE_URL</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">secretKeyRef:</span>
+          <span class="k">name:</span> <span class="s">db-credentials</span>
+          <span class="k">key:</span> <span class="s">url</span>
+
+  <span class="cm"># Init 3: Download TLS certificates from Vault</span>
+  - <span class="k">name:</span> <span class="s">download-certs</span>
+    <span class="k">image:</span> <span class="s">vault:1.15</span>
+    <span class="k">command:</span> [<span class="s">"vault"</span>, <span class="s">"read"</span>, <span class="s">"-field=certificate"</span>, <span class="s">"pki/issue/my-app"</span>]
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">certs</span>
+      <span class="k">mountPath:</span> <span class="s">/certs</span>
+
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">web</span>
+    <span class="k">image:</span> <span class="s">myapp/web:v2.1</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">8080</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">certs</span>
+      <span class="k">mountPath:</span> <span class="s">/etc/tls</span>
+      <span class="k">readOnly:</span> <span class="v">true</span>
+
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">certs</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+
+<div class="T"><span class="p">$</span> kubectl get pod my-app -w
+<span class="h">NAME     READY   STATUS            RESTARTS   AGE</span>
+<span class="v">my-app   0/1     </span><span class="w">Init:0/3</span><span class="v">          0          2s</span>    <span class="dm"># Init 1 running</span>
+<span class="v">my-app   0/1     </span><span class="w">Init:1/3</span><span class="v">          0          8s</span>    <span class="dm"># Init 1 done, Init 2 running</span>
+<span class="v">my-app   0/1     </span><span class="w">Init:2/3</span><span class="v">          0          14s</span>   <span class="dm"># Init 2 done, Init 3 running</span>
+<span class="v">my-app   0/1     </span><span class="w">PodInitializing</span><span class="v">   0          19s</span>   <span class="dm"># All init done, app starting</span>
+<span class="v">my-app   1/1     </span><span class="o">Running</span><span class="v">           0          21s</span>   <span class="dm"># App container ready!</span></div>
+</section>
+
+<section id="s05">
+<h2><span class="n">05</span> Sidecar Containers (Native, v1.29+)</h2>
+
+<p><strong>Definition:</strong> A native sidecar is an init container with <code>restartPolicy: Always</code>. It starts during the init phase (guaranteed to start before app containers) and runs for the entire Pod lifetime (guaranteed to stop after app containers). This solves the old problem of sidecars defined as regular containers having unpredictable startup/shutdown ordering.</p>
+
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">app-with-sidecar</span>
+<span class="k">spec:</span>
+  <span class="k">initContainers:</span>
+  <span class="cm"># This is a SIDECAR — note restartPolicy: Always</span>
+  - <span class="k">name:</span> <span class="s">log-shipper</span>
+    <span class="k">image:</span> <span class="s">fluent/fluent-bit:2.1</span>
+    <span class="k">restartPolicy:</span> <span class="v">Always</span>       <span class="cm"># ← This makes it a sidecar</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">app-logs</span>
+      <span class="k">mountPath:</span> <span class="s">/var/log/app</span>
+    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">cpu:</span> <span class="s">"50m"</span>
+        <span class="k">memory:</span> <span class="s">"64Mi"</span>
+      <span class="k">limits:</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span>
+
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">web</span>
+    <span class="k">image:</span> <span class="s">myapp/web:v2.1</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">8080</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">app-logs</span>
+      <span class="k">mountPath:</span> <span class="s">/var/log/app</span>
+
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">app-logs</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+
+<div class="d">
+<div class="dt">Sidecar Startup/Shutdown Guarantee</div>
+<svg width="720" height="120" viewBox="0 0 720 120" fill="none">
+<line x1="40" y1="95" x2="680" y2="95" stroke="#1e2a3c"/>
+<text x="670" y="110" font-family="JetBrains Mono" font-size="7" fill="#5f7090">time →</text>
+
+<!-- Sidecar bar -->
+<rect x="60" y="20" width="580" height="24" rx="5" fill="rgba(8,145,178,.1)" stroke="#0891b2"/>
+<text x="290" y="36" font-family="JetBrains Mono" font-size="8.5" fill="#0891b2">Sidecar: log-shipper</text>
+<text x="50" y="14" font-family="JetBrains Mono" font-size="7" fill="#0891b2">starts FIRST ↓</text>
+<text x="600" y="14" font-family="JetBrains Mono" font-size="7" fill="#0891b2">stops LAST ↓</text>
+
+<!-- App bar -->
+<rect x="160" y="55" width="380" height="24" rx="5" fill="rgba(14,164,114,.12)" stroke="#0ea472"/>
+<text x="290" y="71" font-family="JetBrains Mono" font-size="8.5" fill="#0ea472">App: web</text>
+<text x="150" y="50" font-family="JetBrains Mono" font-size="7" fill="#0ea472">starts AFTER sidecar ↓</text>
+<text x="500" y="50" font-family="JetBrains Mono" font-size="7" fill="#0ea472">stops FIRST ↓</text>
+
+<!-- Phase markers -->
+<line x1="160" y1="18" x2="160" y2="82" stroke="#1e2a3c" stroke-dasharray="3 2"/>
+<line x1="540" y1="18" x2="540" y2="82" stroke="#1e2a3c" stroke-dasharray="3 2"/>
+</svg>
+</div>
+</section>
+
+<section id="s06">
+<h2><span class="n">06</span> Ephemeral Containers</h2>
+<p><strong>Definition:</strong> Temporary debug containers injected into a running Pod via <code>kubectl debug</code>. Not defined in the Pod spec. Share the Pod's namespaces so you can inspect files, network, and processes of the target container.</p>
+
+<pre><code><span class="cm"># Attach a debug shell to a running pod</span>
+kubectl debug -it my-app --image=busybox:1.36 --target=web
+
+<span class="cm"># Copy the pod and attach debug container with shared processes</span>
+kubectl debug my-app -it --image=nicolaka/netshoot --copy-to=debug-pod --share-processes</code></pre>
+
+<div class="T"><span class="p">$</span> kubectl debug -it my-app --image=busybox --target=web
+<span class="dm">Targeting container "web". If you don't see a command prompt, try pressing enter.</span>
+<span class="o">/ #</span> wget -qO- localhost:8080/healthz
+<span class="v">{"status":"healthy","db":"connected","cache":"warm"}</span>
+<span class="o">/ #</span> ls /proc/1/root/app/
+<span class="v">main  config.yaml  templates/</span>
+<span class="o">/ #</span> cat /proc/1/root/app/config.yaml
+<span class="v">database_url: postgres://db:5432/myapp</span></div>
+
+<div class="sre">
+<div class="tag">SRE Principle — Debug Without Disrupting</div>
+<p style="margin:0">Ephemeral containers let you troubleshoot production Pods <strong>without restarting them</strong>. This preserves the exact state causing the issue. Use minimal production images (distroless) for security, then inject full debug tools (netshoot, busybox) only when investigating.</p>
+</div>
+</section>
+
+<section id="s07">
+<h2><span class="n">07</span> Multi-Container Patterns</h2>
+
+<div class="d">
+<div class="dt">Three Multi-Container Design Patterns</div>
+<svg width="740" height="215" viewBox="0 0 740 215" fill="none">
+<!-- Sidecar -->
+<rect x="10" y="8" width="234" height="200" rx="10" fill="#10151e" stroke="#0ea472" stroke-width="1.5"/>
+<text x="75" y="30" font-family="Fraunces" font-size="13" fill="#fff" font-weight="700">Sidecar</text>
+<rect x="30" y="45" width="75" height="45" rx="6" fill="rgba(14,164,114,.12)" stroke="#0ea472"/>
+<text x="42" y="65" font-family="JetBrains Mono" font-size="9" fill="#0ea472">App</text>
+<text x="40" y="80" font-family="DM Sans" font-size="7.5" fill="#5f7090">writes logs</text>
+<path d="M105 68 L130 68" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a1)"/>
+<rect x="133" y="45" width="90" height="45" rx="6" fill="rgba(8,145,178,.1)" stroke="#0891b2"/>
+<text x="142" y="62" font-family="JetBrains Mono" font-size="8" fill="#0891b2">Log</text>
+<text x="142" y="74" font-family="JetBrains Mono" font-size="8" fill="#0891b2">Shipper</text>
+<text x="142" y="84" font-family="DM Sans" font-size="7.5" fill="#5f7090">reads logs</text>
+<text x="25" y="112" font-family="DM Sans" font-size="10" fill="#c5cdd8"><tspan font-weight="700">Extends</tspan> the main container</text>
+<text x="25" y="128" font-family="DM Sans" font-size="10" fill="#5f7090">without modifying it.</text>
+<text x="25" y="152" font-family="DM Sans" font-size="9.5" fill="#5f7090">Real examples:</text>
+<text x="25" y="167" font-family="DM Sans" font-size="9" fill="#5f7090">• Fluent Bit (log shipping)</text>
+<text x="25" y="180" font-family="DM Sans" font-size="9" fill="#5f7090">• Envoy (service mesh proxy)</text>
+<text x="25" y="193" font-family="DM Sans" font-size="9" fill="#5f7090">• Vault Agent (secret injection)</text>
+
+<!-- Adapter -->
+<rect x="254" y="8" width="234" height="200" rx="10" fill="#10151e" stroke="#2563eb" stroke-width="1.5"/>
+<text x="325" y="30" font-family="Fraunces" font-size="13" fill="#fff" font-weight="700">Adapter</text>
+<rect x="274" y="45" width="75" height="45" rx="6" fill="rgba(14,164,114,.12)" stroke="#0ea472"/>
+<text x="286" y="65" font-family="JetBrains Mono" font-size="9" fill="#0ea472">App</text>
+<text x="280" y="80" font-family="DM Sans" font-size="7.5" fill="#5f7090">custom fmt</text>
+<path d="M349 68 L378 68" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a1)"/>
+<rect x="381" y="45" width="88" height="45" rx="6" fill="rgba(37,99,235,.1)" stroke="#2563eb"/>
+<text x="389" y="62" font-family="JetBrains Mono" font-size="8" fill="#2563eb">Format</text>
+<text x="389" y="74" font-family="JetBrains Mono" font-size="8" fill="#2563eb">Converter</text>
+<text x="389" y="84" font-family="DM Sans" font-size="7.5" fill="#5f7090">→ standard</text>
+<text x="269" y="112" font-family="DM Sans" font-size="10" fill="#c5cdd8"><tspan font-weight="700">Transforms</tspan> output to a</text>
+<text x="269" y="128" font-family="DM Sans" font-size="10" fill="#5f7090">standard format.</text>
+<text x="269" y="152" font-family="DM Sans" font-size="9.5" fill="#5f7090">Real examples:</text>
+<text x="269" y="167" font-family="DM Sans" font-size="9" fill="#5f7090">• Prometheus exporter</text>
+<text x="269" y="180" font-family="DM Sans" font-size="9" fill="#5f7090">• Log format normalizer</text>
+<text x="269" y="193" font-family="DM Sans" font-size="9" fill="#5f7090">• Metric adapter</text>
+
+<!-- Ambassador -->
+<rect x="498" y="8" width="234" height="200" rx="10" fill="#10151e" stroke="#9333ea" stroke-width="1.5"/>
+<text x="555" y="30" font-family="Fraunces" font-size="13" fill="#fff" font-weight="700">Ambassador</text>
+<rect x="518" y="45" width="75" height="45" rx="6" fill="rgba(14,164,114,.12)" stroke="#0ea472"/>
+<text x="530" y="65" font-family="JetBrains Mono" font-size="9" fill="#0ea472">App</text>
+<text x="523" y="80" font-family="DM Sans" font-size="7.5" fill="#5f7090">localhost</text>
+<path d="M593 68 L618 68" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a1)"/>
+<rect x="621" y="45" width="88" height="45" rx="6" fill="rgba(147,51,234,.1)" stroke="#9333ea"/>
+<text x="631" y="62" font-family="JetBrains Mono" font-size="8" fill="#9333ea">Proxy</text>
+<text x="631" y="74" font-family="JetBrains Mono" font-size="8" fill="#9333ea">Router</text>
+<text x="631" y="84" font-family="DM Sans" font-size="7.5" fill="#5f7090">→ external</text>
+<text x="513" y="112" font-family="DM Sans" font-size="10" fill="#c5cdd8"><tspan font-weight="700">Proxies</tspan> connections to</text>
+<text x="513" y="128" font-family="DM Sans" font-size="10" fill="#5f7090">external services.</text>
+<text x="513" y="152" font-family="DM Sans" font-size="9.5" fill="#5f7090">Real examples:</text>
+<text x="513" y="167" font-family="DM Sans" font-size="9" fill="#5f7090">• Cloud SQL Proxy</text>
+<text x="513" y="180" font-family="DM Sans" font-size="9" fill="#5f7090">• Redis sentinel proxy</text>
+<text x="513" y="193" font-family="DM Sans" font-size="9" fill="#5f7090">• API gateway sidecar</text>
+</svg>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  2 · POD MANAGEMENT                             -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<section id="s08">
+<h2><span class="n">08</span> Creating Pods — YAML (Declarative)</h2>
+
+<p><strong>Definition:</strong> Declarative means you define the <strong>desired state</strong> in a YAML file, and Kubernetes figures out how to achieve it. This is the production-recommended approach because YAML files can be version-controlled in Git.</p>
+
+<pre><code><span class="cm"># Complete production-ready Pod YAML</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">my-app</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">version:</span> <span class="s">v2.1</span>
+    <span class="k">component:</span> <span class="s">frontend</span>
+  <span class="k">annotations:</span>
+    <span class="k">prometheus.io/scrape:</span> <span class="s">"true"</span>
+    <span class="k">prometheus.io/port:</span> <span class="s">"8080"</span>
+<span class="k">spec:</span>
+  <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">60</span>
+  <span class="k">restartPolicy:</span> <span class="v">Always</span>
+  <span class="k">serviceAccountName:</span> <span class="s">my-app-sa</span>
+  <span class="k">securityContext:</span>
+    <span class="k">runAsNonRoot:</span> <span class="v">true</span>
+    <span class="k">runAsUser:</span> <span class="nm">1000</span>
+    <span class="k">fsGroup:</span> <span class="nm">1000</span>
+
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">web</span>
+    <span class="k">image:</span> <span class="s">myapp/web:v2.1</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">8080</span>
+      <span class="k">name:</span> <span class="s">http</span>
+    - <span class="k">containerPort:</span> <span class="nm">9090</span>
+      <span class="k">name:</span> <span class="s">metrics</span>
+    <span class="k">env:</span>
+    - <span class="k">name:</span> <span class="s">DB_HOST</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">configMapKeyRef:</span>
+          <span class="k">name:</span> <span class="s">app-config</span>
+          <span class="k">key:</span> <span class="s">db-host</span>
+    - <span class="k">name:</span> <span class="s">DB_PASSWORD</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">secretKeyRef:</span>
+          <span class="k">name:</span> <span class="s">db-secret</span>
+          <span class="k">key:</span> <span class="s">password</span>
+    - <span class="k">name:</span> <span class="s">LOG_LEVEL</span>
+      <span class="k">value:</span> <span class="s">"info"</span>
+    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">cpu:</span> <span class="s">"250m"</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span>
+      <span class="k">limits:</span>
+        <span class="k">cpu:</span> <span class="s">"500m"</span>
+        <span class="k">memory:</span> <span class="s">"256Mi"</span>
+    <span class="k">startupProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/healthz</span>
+        <span class="k">port:</span> <span class="nm">8080</span>
+      <span class="k">failureThreshold:</span> <span class="nm">30</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/healthz</span>
+        <span class="k">port:</span> <span class="nm">8080</span>
+      <span class="k">periodSeconds:</span> <span class="nm">15</span>
+      <span class="k">timeoutSeconds:</span> <span class="nm">3</span>
+      <span class="k">failureThreshold:</span> <span class="nm">3</span>
+    <span class="k">readinessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/ready</span>
+        <span class="k">port:</span> <span class="nm">8080</span>
+      <span class="k">periodSeconds:</span> <span class="nm">5</span>
+      <span class="k">failureThreshold:</span> <span class="nm">2</span>
+    <span class="k">lifecycle:</span>
+      <span class="k">preStop:</span>
+        <span class="k">exec:</span>
+          <span class="k">command:</span> [<span class="s">"/bin/sh"</span>, <span class="s">"-c"</span>, <span class="s">"sleep 5"</span>]
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">data</span>
+      <span class="k">mountPath:</span> <span class="s">/data</span>
+    <span class="k">securityContext:</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+      <span class="k">allowPrivilegeEscalation:</span> <span class="v">false</span>
+
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">data</span>
+    <span class="k">persistentVolumeClaim:</span>
+      <span class="k">claimName:</span> <span class="s">app-data-pvc</span></code></pre>
+
+<pre><code>kubectl apply -f pod.yaml</code></pre>
+
+<div class="T"><span class="p">$</span> kubectl apply -f pod.yaml
+<span class="v">pod/my-app created</span>
+<span class="p">$</span> kubectl get pod my-app -o wide
+<span class="h">NAME     READY   STATUS    RESTARTS   AGE   IP            NODE</span>
+<span class="v">my-app   1/1     </span><span class="o">Running</span><span class="v">   0          12s   10.244.1.23   worker-02</span></div>
+</section>
+
+<section id="s09">
+<h2><span class="n">09</span> Creating Pods — CLI (Imperative)</h2>
+<pre><code><span class="cm"># Basic</span>
+kubectl run my-app --image=nginx:1.25
+
+<span class="cm"># With port + labels + env</span>
+kubectl run my-app --image=myapp:v2 --port=8080 --labels="app=web,env=prod" --env="LOG_LEVEL=info"
+
+<span class="cm"># With resource requests</span>
+kubectl run my-app --image=nginx --requests="cpu=250m,memory=128Mi" --limits="cpu=500m,memory=256Mi"
+
+<span class="cm"># Generate YAML (don't create) — best for exam prep</span>
+kubectl run my-app --image=nginx:1.25 --port=80 --dry-run=client -o yaml > pod.yaml
+
+<span class="cm"># One-shot debug pod (auto-delete when you exit)</span>
+kubectl run tmp-debug --image=nicolaka/netshoot --rm -it --restart=Never -- /bin/bash
+
+<span class="cm"># Run a specific command</span>
+kubectl run batch --image=python:3.11 --restart=Never -- python -c "print('hello world')"</code></pre>
+</section>
+
+<section id="s10">
+<h2><span class="n">10</span> Creating Pods — Via Controllers (Production)</h2>
+
+<p><strong>Definition:</strong> In production, you never create Pods directly. You create a <strong>controller</strong> (Deployment, StatefulSet, etc.) that creates and manages Pods for you. If a Pod dies, the controller recreates it. This is <strong>self-healing</strong>.</p>
+
+<div class="d">
+<div class="dt">What Happens When a Node Crashes — Naked Pod vs Controller Pod</div>
+<svg width="740" height="260" viewBox="0 0 740 260" fill="none">
+<!-- Scenario: Node crashes -->
+<text x="300" y="18" font-family="JetBrains Mono" font-size="9.5" fill="#dc2626" font-weight="600">⚡ Node worker-02 crashes!</text>
+
+<!-- LEFT: Naked Pod -->
+<rect x="20" y="35" width="340" height="210" rx="12" fill="rgba(220,38,38,.03)" stroke="#dc2626" stroke-dasharray="4 3"/>
+<text x="100" y="55" font-family="JetBrains Mono" font-size="10" fill="#dc2626" font-weight="600">Naked Pod (kubectl run)</text>
+
+<rect x="40" y="70" width="130" height="45" rx="7" fill="rgba(100,112,136,.06)" stroke="#5f7090" stroke-dasharray="3 2"/>
+<text x="55" y="90" font-family="JetBrains Mono" font-size="9" fill="#5f7090">worker-02 💀</text>
+<text x="55" y="104" font-family="DM Sans" font-size="8" fill="#3f4d65">Node dead</text>
+
+<rect x="190" y="70" width="130" height="45" rx="7" fill="rgba(220,38,38,.08)" stroke="#dc2626"/>
+<text x="205" y="90" font-family="JetBrains Mono" font-size="9" fill="#dc2626">my-app Pod ✗</text>
+<text x="205" y="104" font-family="DM Sans" font-size="8" fill="#dc2626">Gone forever</text>
+
+<text x="40" y="140" font-family="DM Sans" font-size="10" fill="#dc2626">No controller watching →</text>
+<text x="40" y="155" font-family="DM Sans" font-size="10" fill="#dc2626">Nobody recreates it →</text>
+<text x="40" y="170" font-family="DM Sans" font-size="10" fill="#dc2626" font-weight="700">SERVICE DOWN ✗</text>
+<text x="40" y="200" font-family="DM Sans" font-size="9" fill="#5f7090">Manual intervention needed.</text>
+<text x="40" y="215" font-family="DM Sans" font-size="9" fill="#5f7090">You have to create the Pod again</text>
+<text x="40" y="228" font-family="DM Sans" font-size="9" fill="#5f7090">by hand. In the middle of the night.</text>
+
+<!-- RIGHT: Controller Pod -->
+<rect x="390" y="35" width="340" height="210" rx="12" fill="rgba(22,163,74,.03)" stroke="#16a34a"/>
+<text x="445" y="55" font-family="JetBrains Mono" font-size="10" fill="#16a34a" font-weight="600">Deployment-Managed Pod</text>
+
+<rect x="410" y="70" width="130" height="45" rx="7" fill="rgba(100,112,136,.06)" stroke="#5f7090" stroke-dasharray="3 2"/>
+<text x="425" y="90" font-family="JetBrains Mono" font-size="9" fill="#5f7090">worker-02 💀</text>
+<text x="425" y="104" font-family="DM Sans" font-size="8" fill="#3f4d65">Node dead</text>
+
+<rect x="560" y="70" width="140" height="45" rx="7" fill="rgba(22,163,74,.1)" stroke="#16a34a"/>
+<text x="575" y="90" font-family="JetBrains Mono" font-size="9" fill="#16a34a">worker-03 ✓</text>
+<text x="575" y="104" font-family="DM Sans" font-size="8" fill="#16a34a">Pod rescheduled here!</text>
+
+<text x="410" y="140" font-family="DM Sans" font-size="10" fill="#16a34a">Deployment detects missing Pod →</text>
+<text x="410" y="155" font-family="DM Sans" font-size="10" fill="#16a34a">Creates new Pod on healthy node →</text>
+<text x="410" y="170" font-family="DM Sans" font-size="10" fill="#16a34a" font-weight="700">AUTO-HEALED ✓</text>
+<text x="410" y="200" font-family="DM Sans" font-size="9" fill="#5f7090">No human intervention needed.</text>
+<text x="410" y="215" font-family="DM Sans" font-size="9" fill="#5f7090">Happens in seconds. You might</text>
+<text x="410" y="228" font-family="DM Sans" font-size="9" fill="#5f7090">not even notice it happened.</text>
+</svg>
+</div>
+
+<pre><code><span class="cm"># Create a Deployment (most common)</span>
+kubectl create deployment my-app --image=myapp:v2.1 --replicas=3
+
+<span class="cm"># Generate Deployment YAML</span>
+kubectl create deployment my-app --image=myapp:v2.1 --replicas=3 --dry-run=client -o yaml > deploy.yaml</code></pre>
+
+<div class="sre">
+<div class="tag">SRE Principle — Never Run Naked Pods</div>
+<p style="margin:0">Every production Pod must be managed by a controller. Naked Pods are for testing only. The difference between a naked Pod and a controller-managed Pod is the difference between "service restored in seconds" and "pager goes off at 3 AM."</p>
+</div>
+</section>
+
+<section id="s11">
+<h2><span class="n">11</span> Updating Manual (Naked) Pods</h2>
+<p>Most Pod fields are <strong>immutable after creation</strong>. For naked Pods, updating means delete + recreate:</p>
+<pre><code><span class="cm"># Export → Edit → Delete → Recreate</span>
+kubectl get pod my-app -o yaml > pod.yaml
+<span class="cm"># Edit pod.yaml (change image, env, etc.)</span>
+kubectl delete pod my-app          <span class="cm"># ⚠ DOWNTIME STARTS HERE</span>
+kubectl apply -f pod.yaml          <span class="cm"># ⚠ DOWNTIME ENDS HERE</span></code></pre>
+
+<div class="c r"><div class="l">This Causes Downtime</div>
+<p style="margin:0">Between delete and create, your service is <strong>completely unavailable</strong>. No traffic handling, no recovery. This is why naked Pods should never be used in production.</p></div>
+</section>
+
+<section id="s12">
+<h2><span class="n">12</span> Updating Controller-Managed Pods</h2>
+
+<p>When Pods are managed by a Deployment, you update the Deployment and it performs a <strong>rolling update</strong> — zero downtime.</p>
+
+<h3>4 Ways to Update</h3>
+<pre><code><span class="cm"># Method 1: Edit YAML file and apply</span>
+kubectl apply -f deployment.yaml
+
+<span class="cm"># Method 2: Change image directly</span>
+kubectl set image deployment/my-app web=myapp:v2.2
+
+<span class="cm"># Method 3: Edit live object in editor</span>
+kubectl edit deployment my-app
+
+<span class="cm"># Method 4: JSON patch</span>
+kubectl patch deployment my-app -p '{"spec":{"template":{"spec":{"containers":[{"name":"web","image":"myapp:v2.2"}]}}}}'</code></pre>
+
+<div class="d">
+<div class="dt">Rolling Update — What Happens Internally</div>
+<svg width="740" height="250" viewBox="0 0 740 250" fill="none">
+<defs><marker id="a2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0 0 L7 2.5 L0 5" fill="#1e2a3c"/></marker></defs>
+
+<!-- Step 1 -->
+<text x="20" y="18" font-family="JetBrains Mono" font-size="8.5" fill="#5f7090">STEP 1: All old</text>
+<rect x="20" y="28" width="46" height="24" rx="4" fill="rgba(234,88,12,.12)" stroke="#ea580c"/>
+<text x="30" y="44" font-family="JetBrains Mono" font-size="8" fill="#ea580c">v1</text>
+<rect x="72" y="28" width="46" height="24" rx="4" fill="rgba(234,88,12,.12)" stroke="#ea580c"/>
+<text x="82" y="44" font-family="JetBrains Mono" font-size="8" fill="#ea580c">v1</text>
+<rect x="20" y="58" width="46" height="24" rx="4" fill="rgba(234,88,12,.12)" stroke="#ea580c"/>
+<text x="30" y="74" font-family="JetBrains Mono" font-size="8" fill="#ea580c">v1</text>
+
+<!-- Step 2 -->
+<text x="150" y="18" font-family="JetBrains Mono" font-size="8.5" fill="#5f7090">STEP 2: +1 new</text>
+<rect x="150" y="28" width="46" height="24" rx="4" fill="rgba(234,88,12,.12)" stroke="#ea580c"/>
+<text x="160" y="44" font-family="JetBrains Mono" font-size="8" fill="#ea580c">v1</text>
+<rect x="202" y="28" width="46" height="24" rx="4" fill="rgba(234,88,12,.12)" stroke="#ea580c"/>
+<text x="212" y="44" font-family="JetBrains Mono" font-size="8" fill="#ea580c">v1</text>
+<rect x="150" y="58" width="46" height="24" rx="4" fill="rgba(14,164,114,.15)" stroke="#0ea472"/>
+<text x="160" y="74" font-family="JetBrains Mono" font-size="8" fill="#0ea472">v2</text>
+
+<!-- Step 3 -->
+<text x="280" y="18" font-family="JetBrains Mono" font-size="8.5" fill="#5f7090">STEP 3: +2 new</text>
+<rect x="280" y="28" width="46" height="24" rx="4" fill="rgba(234,88,12,.12)" stroke="#ea580c"/>
+<text x="290" y="44" font-family="JetBrains Mono" font-size="8" fill="#ea580c">v1</text>
+<rect x="332" y="28" width="46" height="24" rx="4" fill="rgba(14,164,114,.15)" stroke="#0ea472"/>
+<text x="342" y="44" font-family="JetBrains Mono" font-size="8" fill="#0ea472">v2</text>
+<rect x="280" y="58" width="46" height="24" rx="4" fill="rgba(14,164,114,.15)" stroke="#0ea472"/>
+<text x="290" y="74" font-family="JetBrains Mono" font-size="8" fill="#0ea472">v2</text>
+
+<!-- Step 4 -->
+<text x="410" y="18" font-family="JetBrains Mono" font-size="8.5" fill="#16a34a">STEP 4: All new ✓</text>
+<rect x="410" y="28" width="46" height="24" rx="4" fill="rgba(14,164,114,.15)" stroke="#0ea472"/>
+<text x="420" y="44" font-family="JetBrains Mono" font-size="8" fill="#0ea472">v2</text>
+<rect x="462" y="28" width="46" height="24" rx="4" fill="rgba(14,164,114,.15)" stroke="#0ea472"/>
+<text x="472" y="44" font-family="JetBrains Mono" font-size="8" fill="#0ea472">v2</text>
+<rect x="410" y="58" width="46" height="24" rx="4" fill="rgba(14,164,114,.15)" stroke="#0ea472"/>
+<text x="420" y="74" font-family="JetBrains Mono" font-size="8" fill="#0ea472">v2</text>
+
+<!-- Internal mechanism -->
+<rect x="20" y="105" width="700" height="135" rx="10" fill="rgba(14,164,114,.02)" stroke="#1e2a3c"/>
+<text x="35" y="125" font-family="JetBrains Mono" font-size="9.5" fill="#0ea472" font-weight="600">What's happening internally:</text>
+
+<text x="35" y="148" font-family="DM Sans" font-size="10" fill="#c5cdd8">1. Deployment creates a <tspan font-weight="700" fill="#fff">new ReplicaSet</tspan> (RS-v2) with the updated Pod template</text>
+<text x="35" y="166" font-family="DM Sans" font-size="10" fill="#c5cdd8">2. RS-v2 scales up from 0→1. RS-v1 scales down from 3→2</text>
+<text x="35" y="184" font-family="DM Sans" font-size="10" fill="#c5cdd8">3. RS-v2 scales to 2, RS-v1 scales to 1. New Pods must pass readiness before old Pods are killed</text>
+<text x="35" y="202" font-family="DM Sans" font-size="10" fill="#c5cdd8">4. RS-v2 reaches 3, RS-v1 reaches 0. The old ReplicaSet is kept (for rollback history)</text>
+<text x="35" y="226" font-family="JetBrains Mono" font-size="9" fill="#5f7090">At NO point is there zero Pods serving traffic. Zero downtime ✓</text>
+</svg>
+</div>
+
+<div class="T"><span class="p">$</span> kubectl set image deployment/my-app web=myapp:v2.2
+<span class="v">deployment.apps/my-app image updated</span>
+
+<span class="p">$</span> kubectl rollout status deployment/my-app
+<span class="v">Waiting for deployment "my-app" rollout to finish: 1 out of 3 new replicas have been updated...</span>
+<span class="v">Waiting for deployment "my-app" rollout to finish: 2 out of 3 new replicas have been updated...</span>
+<span class="v">Waiting for deployment "my-app" rollout to finish: 2 of 3 updated replicas are available...</span>
+<span class="o">deployment "my-app" successfully rolled out</span>
+
+<span class="p">$</span> kubectl rollout history deployment/my-app
+<span class="h">REVISION  CHANGE-CAUSE</span>
+<span class="v">1         kubectl create --filename=deployment.yaml</span>
+<span class="v">2         kubectl set image deployment/my-app web=myapp:v2.2</span>
+
+<span class="p">$</span> kubectl rollout undo deployment/my-app    <span class="dm"># Rollback to revision 1</span>
+<span class="v">deployment.apps/my-app rolled back</span></div>
+
+<h3>Rolling Update Configuration</h3>
+<pre><code><span class="k">spec:</span>
+  <span class="k">strategy:</span>
+    <span class="k">type:</span> <span class="v">RollingUpdate</span>
+    <span class="k">rollingUpdate:</span>
+      <span class="k">maxSurge:</span> <span class="nm">1</span>           <span class="cm"># Allow 1 extra Pod during update (4 total for replicas:3)</span>
+      <span class="k">maxUnavailable:</span> <span class="nm">0</span>     <span class="cm"># Never go below desired count (always ≥3 running)</span></code></pre>
+</section>
+
+<section id="s13">
+<h2><span class="n">13</span> Mutable vs Immutable Pod Fields</h2>
+<table>
+<tr><th>Field</th><th>Mutable?</th><th>How to Change</th></tr>
+<tr><td><code>metadata.labels</code></td><td><span class="bg gn">Yes</span></td><td><code>kubectl label pod my-app env=staging</code></td></tr>
+<tr><td><code>metadata.annotations</code></td><td><span class="bg gn">Yes</span></td><td><code>kubectl annotate pod my-app note="debug"</code></td></tr>
+<tr><td><code>spec.tolerations</code></td><td><span class="bg yl">Add only</span></td><td>Can add new, cannot remove existing</td></tr>
+<tr><td><code>spec.activeDeadlineSeconds</code></td><td><span class="bg yl">Reduce only</span></td><td>Can decrease, cannot increase</td></tr>
+<tr><td><code>spec.containers[*].image</code></td><td><span class="bg rd">No</span></td><td>Delete + recreate (or use Deployment)</td></tr>
+<tr><td><code>spec.containers[*].resources</code></td><td><span class="bg yl">v1.27+</span></td><td>In-Place Pod Resize (feature gate)</td></tr>
+<tr><td><code>spec.containers[*].command</code></td><td><span class="bg rd">No</span></td><td>Immutable</td></tr>
+<tr><td><code>spec.containers[*].env</code></td><td><span class="bg rd">No</span></td><td>Immutable</td></tr>
+<tr><td><code>spec.containers[*].ports</code></td><td><span class="bg rd">No</span></td><td>Immutable</td></tr>
+<tr><td><code>spec.nodeName</code></td><td><span class="bg rd">No</span></td><td>Pod cannot move nodes</td></tr>
+<tr><td><code>spec.serviceAccountName</code></td><td><span class="bg rd">No</span></td><td>Immutable</td></tr>
+</table>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  GRACEFUL SHUTDOWN WITH REAL-WORLD SCENARIOS    -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<section id="s14">
+<h2><span class="n">14</span> Graceful Shutdown — Complete Workflow</h2>
+
+<p><strong>Definition:</strong> When a Pod is deleted, Kubernetes follows a precise 6-step shutdown sequence designed to give your application time to finish work, close connections, and clean up. Understanding each step prevents data loss and failed requests.</p>
+
+<div class="d">
+<div class="dt">Graceful Shutdown — Full Architecture Diagram</div>
+<svg width="740" height="440" viewBox="0 0 740 440" fill="none">
+<defs><marker id="a3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0 0 L7 2.5 L0 5" fill="#1e2a3c"/></marker><marker id="a3r" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0 0 L7 2.5 L0 5" fill="#dc2626"/></marker></defs>
+
+<!-- User traffic -->
+<rect x="20" y="10" width="80" height="35" rx="6" fill="rgba(147,51,234,.08)" stroke="#9333ea"/>
+<text x="35" y="32" font-family="JetBrains Mono" font-size="9" fill="#9333ea">Users</text>
+
+<!-- Service -->
+<rect x="140" y="5" width="120" height="45" rx="8" fill="rgba(37,99,235,.08)" stroke="#2563eb"/>
+<text x="160" y="25" font-family="JetBrains Mono" font-size="9" fill="#2563eb" font-weight="600">Service</text>
+<text x="155" y="40" font-family="DM Sans" font-size="8" fill="#5f7090">Load Balancer</text>
+<path d="M100 27 L140 27" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a3)"/>
+
+<!-- Pod being deleted -->
+<rect x="310" y="5" width="160" height="45" rx="8" fill="rgba(14,164,114,.08)" stroke="#0ea472"/>
+<text x="325" y="25" font-family="JetBrains Mono" font-size="9" fill="#0ea472" font-weight="600">Pod: my-app</text>
+<text x="325" y="40" font-family="DM Sans" font-size="8" fill="#5f7090">Connected to DB, Redis</text>
+<path d="M260 27 L310 27" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a3)"/>
+
+<!-- External services -->
+<rect x="530" y="5" width="80" height="25" rx="5" fill="rgba(202,138,4,.06)" stroke="#ca8a04"/>
+<text x="540" y="22" font-family="JetBrains Mono" font-size="8" fill="#ca8a04">Database</text>
+<rect x="620" y="5" width="70" height="25" rx="5" fill="rgba(202,138,4,.06)" stroke="#ca8a04"/>
+<text x="633" y="22" font-family="JetBrains Mono" font-size="8" fill="#ca8a04">Redis</text>
+<path d="M470 20 L530 15" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a3)"/>
+<path d="M470 30 L620 20" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a3)"/>
+
+<!-- Steps -->
+<rect x="20" y="70" width="700" height="50" rx="8" fill="rgba(37,99,235,.05)" stroke="#2563eb"/>
+<text x="35" y="88" font-family="JetBrains Mono" font-size="10" fill="#2563eb" font-weight="600">① kubectl delete pod my-app</text>
+<text x="35" y="108" font-family="DM Sans" font-size="10" fill="#5f7090">API server marks Pod as Terminating. <tspan fill="#2563eb" font-weight="700">Pod removed from Service endpoints</tspan> — no NEW traffic arrives.</text>
+
+<rect x="20" y="128" width="700" height="50" rx="8" fill="rgba(147,51,234,.05)" stroke="#9333ea"/>
+<text x="35" y="146" font-family="JetBrains Mono" font-size="10" fill="#9333ea" font-weight="600">② preStop hook runs (sleep 5)</text>
+<text x="35" y="166" font-family="DM Sans" font-size="10" fill="#5f7090">Why sleep 5? Gives time for <tspan fill="#9333ea">endpoint removal to propagate</tspan> to all kube-proxies. Without this, some nodes may still route traffic here.</text>
+
+<rect x="20" y="186" width="700" height="50" rx="8" fill="rgba(220,38,38,.05)" stroke="#dc2626"/>
+<text x="35" y="204" font-family="JetBrains Mono" font-size="10" fill="#dc2626" font-weight="600">③ SIGTERM sent to PID 1 in each container</text>
+<text x="35" y="224" font-family="DM Sans" font-size="10" fill="#5f7090">Your app catches SIGTERM → <tspan fill="#dc2626">finishes in-flight requests</tspan> → <tspan fill="#dc2626">closes DB + Redis connections</tspan> → <tspan fill="#dc2626">flushes buffers</tspan> → exits 0</text>
+
+<rect x="20" y="244" width="700" height="50" rx="8" fill="rgba(202,138,4,.05)" stroke="#ca8a04"/>
+<text x="35" y="262" font-family="JetBrains Mono" font-size="10" fill="#ca8a04" font-weight="600">④ Grace period countdown (terminationGracePeriodSeconds: 60)</text>
+<text x="35" y="282" font-family="DM Sans" font-size="10" fill="#5f7090">Kubernetes waits up to 60s total (preStop + shutdown time). Your app should exit well before this deadline.</text>
+
+<rect x="20" y="302" width="700" height="50" rx="8" fill="rgba(220,38,38,.08)" stroke="#dc2626"/>
+<text x="35" y="320" font-family="JetBrains Mono" font-size="10" fill="#dc2626" font-weight="600">⑤ SIGKILL if still alive (hard kill, no mercy)</text>
+<text x="35" y="340" font-family="DM Sans" font-size="10" fill="#5f7090">If the container hasn't exited by end of grace period → Linux kernel force-kills it. <tspan fill="#dc2626">Cannot be caught. Data may be lost.</tspan></text>
+
+<rect x="20" y="360" width="700" height="36" rx="8" fill="rgba(100,112,136,.05)" stroke="#5f7090"/>
+<text x="35" y="383" font-family="JetBrains Mono" font-size="10" fill="#5f7090">⑥ Pod object removed from API server and etcd</text>
+
+<!-- DB connection detail -->
+<rect x="20" y="405" width="700" height="30" rx="6" fill="rgba(14,164,114,.04)" stroke="#0ea472"/>
+<text x="35" y="425" font-family="DM Sans" font-size="10" fill="#0ea472">At step ③, your app should: close DB connection pools, commit pending transactions, stop consuming from message queues, write final metrics</text>
+</svg>
+</div>
+
+<h3>Full YAML — Graceful Shutdown Configuration</h3>
+<pre><code><span class="k">spec:</span>
+  <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">60</span>   <span class="cm"># Total window: 60 seconds</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">web</span>
+    <span class="k">image:</span> <span class="s">myapp:v2.1</span>
+    <span class="k">lifecycle:</span>
+      <span class="k">preStop:</span>
+        <span class="k">exec:</span>
+          <span class="k">command:</span>
+          - <span class="s">"/bin/sh"</span>
+          - <span class="s">"-c"</span>
+          - <span class="s">"sleep 5 && kill -SIGTERM 1"</span>
+          <span class="cm"># sleep 5: wait for endpoint removal to propagate</span>
+          <span class="cm"># kill -SIGTERM 1: tell app to start shutting down</span></code></pre>
+
+<div class="T"><span class="p">$</span> kubectl get pod my-app -w
+<span class="h">NAME     READY   STATUS        RESTARTS   AGE</span>
+<span class="v">my-app   1/1     </span><span class="o">Running</span><span class="v">       0          4h12m</span>
+<span class="v">my-app   1/1     </span><span class="w">Terminating</span><span class="v">   0          4h12m</span>  <span class="dm"># SIGTERM sent</span>
+<span class="v">my-app   0/1     </span><span class="w">Terminating</span><span class="v">   0          4h12m</span>  <span class="dm"># Container exited</span>
+<span class="dm">                                                   # Pod removed</span></div>
+</section>
+
+<section id="s15">
+<h2><span class="n">15</span> Shutdown Scenarios — What If It Goes Wrong?</h2>
+
+<div class="d">
+<div class="dt">Scenario 1: App Handles SIGTERM Correctly ✓</div>
+<svg width="720" height="90" viewBox="0 0 720 90" fill="none">
+<rect x="10" y="10" width="120" height="28" rx="5" fill="rgba(220,38,38,.08)" stroke="#dc2626"/>
+<text x="22" y="28" font-family="JetBrains Mono" font-size="8.5" fill="#dc2626">SIGTERM sent</text>
+<path d="M135 24 L165 24" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a3)"/>
+<rect x="170" y="10" width="140" height="28" rx="5" fill="rgba(14,164,114,.08)" stroke="#0ea472"/>
+<text x="182" y="28" font-family="JetBrains Mono" font-size="8.5" fill="#0ea472">App finishes requests</text>
+<path d="M315 24 L345 24" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a3)"/>
+<rect x="350" y="10" width="130" height="28" rx="5" fill="rgba(14,164,114,.08)" stroke="#0ea472"/>
+<text x="362" y="28" font-family="JetBrains Mono" font-size="8.5" fill="#0ea472">Closes DB conn</text>
+<path d="M485 24 L515 24" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a3)"/>
+<rect x="520" y="10" width="100" height="28" rx="5" fill="rgba(22,163,74,.12)" stroke="#16a34a"/>
+<text x="536" y="28" font-family="JetBrains Mono" font-size="8.5" fill="#16a34a">Exit 0 ✓</text>
+<text x="10" y="60" font-family="DM Sans" font-size="10" fill="#16a34a" font-weight="700">Result: Clean shutdown. Zero data loss. Zero failed requests.</text>
+<text x="10" y="78" font-family="DM Sans" font-size="9.5" fill="#5f7090">Timeline: SIGTERM → 3s for in-flight → 1s for connections → exit. Total: ~4s (well within 60s grace).</text>
+</svg>
+</div>
+
+<div class="d">
+<div class="dt">Scenario 2: App Ignores SIGTERM — Gets SIGKILL ✗</div>
+<svg width="720" height="100" viewBox="0 0 720 100" fill="none">
+<rect x="10" y="10" width="100" height="28" rx="5" fill="rgba(220,38,38,.08)" stroke="#dc2626"/>
+<text x="18" y="28" font-family="JetBrains Mono" font-size="8" fill="#dc2626">SIGTERM</text>
+<path d="M115 24 L145 24" stroke="#1e2a3c" stroke-width="1" marker-end="url(#a3)"/>
+<rect x="150" y="10" width="280" height="28" rx="5" fill="rgba(202,138,4,.08)" stroke="#ca8a04"/>
+<text x="165" y="28" font-family="JetBrains Mono" font-size="8" fill="#ca8a04">App ignores signal... still running... 60 seconds pass...</text>
+<path d="M435 24 L465 24" stroke="#dc2626" stroke-width="1.5" marker-end="url(#a3r)"/>
+<rect x="470" y="10" width="100" height="28" rx="5" fill="rgba(220,38,38,.15)" stroke="#dc2626"/>
+<text x="480" y="28" font-family="JetBrains Mono" font-size="8" fill="#dc2626">SIGKILL ☠</text>
+<text x="10" y="60" font-family="DM Sans" font-size="10" fill="#dc2626" font-weight="700">Result: Force killed. In-flight requests get "connection reset". DB transactions rolled back. Data potentially lost.</text>
+<text x="10" y="78" font-family="DM Sans" font-size="9.5" fill="#5f7090">Fix: Your app MUST handle SIGTERM. Use exec form in Dockerfile (CMD ["app"]) not shell form (CMD app).</text>
+<text x="10" y="92" font-family="DM Sans" font-size="9.5" fill="#5f7090">Shell form means PID 1 is bash, which doesn't forward SIGTERM to your app process.</text>
+</svg>
+</div>
+
+<div class="d">
+<div class="dt">Scenario 3: DB Connection During Shutdown — The Race Condition</div>
+<svg width="720" height="140" viewBox="0 0 720 140" fill="none">
+<!-- Timeline -->
+<line x1="30" y1="30" x2="700" y2="30" stroke="#1e2a3c"/>
+<text x="690" y="22" font-family="JetBrains Mono" font-size="7" fill="#5f7090">time →</text>
+
+<!-- Endpoint removal (async) -->
+<rect x="40" y="15" width="160" height="16" rx="3" fill="rgba(37,99,235,.12)" stroke="#2563eb"/>
+<text x="50" y="27" font-family="JetBrains Mono" font-size="7.5" fill="#2563eb">Endpoint removal propagates</text>
+
+<!-- SIGTERM -->
+<line x1="40" y1="30" x2="40" y2="50" stroke="#dc2626" stroke-width="1.5"/>
+<text x="45" y="50" font-family="JetBrains Mono" font-size="7" fill="#dc2626">SIGTERM</text>
+
+<!-- Problem zone -->
+<rect x="40" y="55" width="100" height="20" rx="3" fill="rgba(220,38,38,.1)" stroke="#dc2626" stroke-dasharray="3 2"/>
+<text x="45" y="69" font-family="JetBrains Mono" font-size="7" fill="#dc2626">⚠ DANGER ZONE</text>
+<text x="40" y="90" font-family="DM Sans" font-size="9" fill="#dc2626">During this window, some kube-proxies still</text>
+<text x="40" y="104" font-family="DM Sans" font-size="9" fill="#dc2626">route traffic to this Pod, but the app is shutting</text>
+<text x="40" y="118" font-family="DM Sans" font-size="9" fill="#dc2626">down → users get 502/connection reset errors</text>
+
+<!-- Solution -->
+<rect x="400" y="55" width="290" height="50" rx="6" fill="rgba(22,163,74,.05)" stroke="#16a34a"/>
+<text x="415" y="72" font-family="JetBrains Mono" font-size="9" fill="#16a34a" font-weight="600">Solution: preStop: sleep 5</text>
+<text x="415" y="90" font-family="DM Sans" font-size="9" fill="#5f7090">Delay SIGTERM by 5s → endpoints fully removed</text>
+<text x="415" y="102" font-family="DM Sans" font-size="9" fill="#5f7090">→ no traffic arrives → safe to shut down</text>
+</svg>
+</div>
+
+<div class="sre">
+<div class="tag">SRE Principle — Test Graceful Shutdown Under Load</div>
+<p style="margin:0">Run a load test, then <code>kubectl delete pod</code> during the test. Check for <strong>zero 5xx errors</strong>. If you see connection resets or 502s, add a <code>preStop: sleep 5</code> hook and increase your <code>terminationGracePeriodSeconds</code>. This is the #1 cause of errors during deployments.</p>
+</div>
+</section>
+
+<!-- Remaining sections will continue in Part 2 to keep file manageable -->
+<!-- Adding lifecycle, failure handling, probes, resources, disruption, SRE -->
+
+<section id="s16">
+<h2><span class="n">16</span> Pod Phases</h2>
+<div class="d">
+<div class="dt">Pod Phase State Machine</div>
+<svg width="700" height="150" viewBox="0 0 700 150" fill="none">
+<defs><marker id="a4" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0 0 L7 2.5 L0 5" fill="#1e2a3c"/></marker></defs>
+<rect x="15" y="50" width="95" height="36" rx="7" fill="rgba(202,138,4,.12)" stroke="#ca8a04"/>
+<text x="30" y="72" font-family="JetBrains Mono" font-size="10" fill="#ca8a04">Pending</text>
+<path d="M115 68 L155 68" stroke="#1e2a3c" stroke-width="1.5" marker-end="url(#a4)"/>
+<rect x="160" y="50" width="95" height="36" rx="7" fill="rgba(37,99,235,.12)" stroke="#2563eb"/>
+<text x="175" y="72" font-family="JetBrains Mono" font-size="10" fill="#2563eb">Running</text>
+<path d="M260 60 L325 32" stroke="#1e2a3c" stroke-width="1.5" marker-end="url(#a4)"/>
+<path d="M260 78 L325 108" stroke="#1e2a3c" stroke-width="1.5" marker-end="url(#a4)"/>
+<rect x="330" y="10" width="110" height="36" rx="7" fill="rgba(22,163,74,.12)" stroke="#16a34a"/>
+<text x="342" y="32" font-family="JetBrains Mono" font-size="10" fill="#16a34a">Succeeded</text>
+<rect x="330" y="95" width="95" height="36" rx="7" fill="rgba(220,38,38,.12)" stroke="#dc2626"/>
+<text x="348" y="117" font-family="JetBrains Mono" font-size="10" fill="#dc2626">Failed</text>
+<rect x="510" y="50" width="105" height="36" rx="7" fill="rgba(100,112,136,.1)" stroke="#5f7090"/>
+<text x="525" y="72" font-family="JetBrains Mono" font-size="10" fill="#5f7090">Unknown</text>
+</svg>
+</div>
+
+<div class="T"><span class="p">$</span> kubectl get pods
+<span class="h">NAME              READY   STATUS                  RESTARTS      AGE</span>
+<span class="v">web-abc12         1/1     </span><span class="o">Running</span><span class="v">                 0             2d</span>
+<span class="v">web-def34         0/1     </span><span class="w">Pending</span><span class="v">                 0             5m</span>
+<span class="v">batch-job-xyz     0/1     </span><span class="o">Completed</span><span class="v">               0             1h</span>
+<span class="v">crash-pod         0/1     </span><span class="e">CrashLoopBackOff</span><span class="v">        5 (3m ago)    10m</span>
+<span class="v">bad-image         0/1     </span><span class="e">ImagePullBackOff</span><span class="v">        0             8m</span>
+<span class="v">no-config         0/1     </span><span class="e">CreateContainerConfigError</span><span class="v"> 0            3m</span>
+<span class="v">evicted-pod       0/1     </span><span class="e">Evicted</span><span class="v">                 0             1d</span></div>
+</section>
+
+<section id="s17">
+<h2><span class="n">17</span> Pod Conditions</h2>
+<div class="T"><span class="p">$</span> kubectl describe pod my-app | grep -A8 "Conditions:"
+<span class="h">Conditions:</span>
+  <span class="v">Type                 Status</span>
+  <span class="o">PodScheduled         True</span>     <span class="dm"># Assigned to a node</span>
+  <span class="o">Initialized          True</span>     <span class="dm"># All init containers completed</span>
+  <span class="o">ContainersReady      True</span>     <span class="dm"># All containers passing readiness</span>
+  <span class="o">Ready                True</span>     <span class="dm"># Pod receives Service traffic</span></div>
+</section>
+
+<section id="s18">
+<h2><span class="n">18</span> Container States</h2>
+<div class="T"><span class="p">$</span> kubectl get pod my-app -o jsonpath='{.status.containerStatuses[0]}' | jq .
+<span class="v">{
+  "name": "web",
+  "state": { "running": { "startedAt": "2025-05-28T10:30:00Z" } },
+  "lastState": {
+    "terminated": {
+      "exitCode": </span><span class="e">137</span><span class="v">,
+      "reason": "</span><span class="e">OOMKilled</span><span class="v">",
+      "finishedAt": "2025-05-28T10:29:55Z"
+    }
+  },
+  "restartCount": </span><span class="w">3</span><span class="v">,
+  "ready": true
+}</span></div>
+
+<table>
+<tr><th>Exit Code</th><th>Signal</th><th>Meaning</th><th>Common Cause</th></tr>
+<tr><td><code>0</code></td><td>—</td><td>Success</td><td>Normal completion</td></tr>
+<tr><td><code>1</code></td><td>—</td><td>General error</td><td>Unhandled exception</td></tr>
+<tr><td><code>127</code></td><td>—</td><td>Command not found</td><td>Wrong ENTRYPOINT/CMD</td></tr>
+<tr><td><code>137</code></td><td>SIGKILL (9)</td><td><strong>OOMKilled</strong></td><td>Exceeded memory limit</td></tr>
+<tr><td><code>139</code></td><td>SIGSEGV (11)</td><td>Segfault</td><td>Memory corruption</td></tr>
+<tr><td><code>143</code></td><td>SIGTERM (15)</td><td>Graceful shutdown</td><td>Pod deleted normally</td></tr>
+</table>
+</section>
+
+<section id="s19">
+<h2><span class="n">19</span> Lifecycle Hooks</h2>
+<pre><code><span class="k">lifecycle:</span>
+  <span class="k">postStart:</span>            <span class="cm"># Runs AFTER container starts (parallel with entrypoint)</span>
+    <span class="k">httpGet:</span>
+      <span class="k">path:</span> <span class="s">/register</span>
+      <span class="k">port:</span> <span class="nm">8080</span>
+  <span class="k">preStop:</span>              <span class="cm"># Runs BEFORE SIGTERM (blocks shutdown until done)</span>
+    <span class="k">exec:</span>
+      <span class="k">command:</span> [<span class="s">"/bin/sh"</span>, <span class="s">"-c"</span>, <span class="s">"sleep 5 && /app/drain-connections.sh"</span>]</code></pre>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  4 · FAILURE HANDLING                           -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<section id="s20">
+<h2><span class="n">20</span> Failure Sequence Map</h2>
+<p>Failures happen in a <strong>predictable order</strong> during the Pod lifecycle. Each category has different symptoms, detection methods, and fixes:</p>
+
+<div class="d">
+<div class="dt">Failure Categories in Lifecycle Order</div>
+<svg width="740" height="350" viewBox="0 0 740 350" fill="none">
+<line x1="45" y1="18" x2="45" y2="340" stroke="#1e2a3c" stroke-width="2"/>
+
+<circle cx="45" cy="35" r="5" fill="#dc2626"/><rect x="65" y="18" width="660" height="38" rx="7" fill="rgba(220,38,38,.04)" stroke="#dc2626"/>
+<text x="80" y="34" font-family="JetBrains Mono" font-size="9.5" fill="#dc2626" font-weight="600">① SCHEDULING — No suitable node found</text>
+<text x="80" y="50" font-family="DM Sans" font-size="9.5" fill="#5f7090">Status: Pending · Event: FailedScheduling · Fix: Add nodes, fix affinity, remove taints</text>
+
+<circle cx="45" cy="85" r="5" fill="#ea580c"/><rect x="65" y="68" width="660" height="38" rx="7" fill="rgba(234,88,12,.04)" stroke="#ea580c"/>
+<text x="80" y="84" font-family="JetBrains Mono" font-size="9.5" fill="#ea580c" font-weight="600">② IMAGE PULL — Can't download container image</text>
+<text x="80" y="100" font-family="DM Sans" font-size="9.5" fill="#5f7090">Status: ImagePullBackOff · Fix: Check image name/tag, registry auth, network</text>
+
+<circle cx="45" cy="135" r="5" fill="#ca8a04"/><rect x="65" y="118" width="660" height="38" rx="7" fill="rgba(202,138,4,.04)" stroke="#ca8a04"/>
+<text x="80" y="134" font-family="JetBrains Mono" font-size="9.5" fill="#ca8a04" font-weight="600">③ CONFIG — Missing ConfigMap, Secret, or Volume</text>
+<text x="80" y="150" font-family="DM Sans" font-size="9.5" fill="#5f7090">Status: CreateContainerConfigError · Fix: Create missing resources, check names</text>
+
+<circle cx="45" cy="185" r="5" fill="#9333ea"/><rect x="65" y="168" width="660" height="38" rx="7" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="80" y="184" font-family="JetBrains Mono" font-size="9.5" fill="#9333ea" font-weight="600">④ APPLICATION CRASH — Container starts then dies</text>
+<text x="80" y="200" font-family="DM Sans" font-size="9.5" fill="#5f7090">Status: CrashLoopBackOff · Fix: Check logs (--previous), fix code, check dependencies</text>
+
+<circle cx="45" cy="235" r="5" fill="#db2777"/><rect x="65" y="218" width="660" height="38" rx="7" fill="rgba(219,39,119,.04)" stroke="#db2777"/>
+<text x="80" y="234" font-family="JetBrains Mono" font-size="9.5" fill="#db2777" font-weight="600">⑤ OOM KILL — Container exceeded memory limit</text>
+<text x="80" y="250" font-family="DM Sans" font-size="9.5" fill="#5f7090">Status: OOMKilled, exit 137 · Fix: Increase memory limit, fix memory leak</text>
+
+<circle cx="45" cy="285" r="5" fill="#2563eb"/><rect x="65" y="268" width="660" height="38" rx="7" fill="rgba(37,99,235,.04)" stroke="#2563eb"/>
+<text x="80" y="284" font-family="JetBrains Mono" font-size="9.5" fill="#2563eb" font-weight="600">⑥ PROBE FAILURE — App running but health check failing</text>
+<text x="80" y="300" font-family="DM Sans" font-size="9.5" fill="#5f7090">Liveness fail → restart · Readiness fail → remove from traffic · Fix: Tune probe thresholds</text>
+
+<circle cx="45" cy="335" r="5" fill="#0d9488"/><rect x="65" y="318" width="660" height="28" rx="7" fill="rgba(13,148,136,.04)" stroke="#0d9488"/>
+<text x="80" y="337" font-family="JetBrains Mono" font-size="9.5" fill="#0d9488" font-weight="600">⑦ DEPENDENCY — External service (DB, API) is down</text>
+</svg>
+</div>
+</section>
+
+<!-- Individual failure sections with detect + handle -->
+<section id="s21"><h2><span class="n">21</span> ① Scheduling Failures</h2>
+<div class="T"><span class="p">$</span> kubectl describe pod stuck-pod | tail -3
+<span class="h">Events:</span>
+  <span class="e">Warning  FailedScheduling  default-scheduler</span>
+  <span class="e">0/3 nodes are available: 1 Insufficient cpu, 2 node(s) had taint {dedicated: gpu}.</span></div>
+<table>
+<tr><th>Cause</th><th>How to Detect</th><th>How to Fix</th></tr>
+<tr><td>Insufficient CPU/memory</td><td><code>kubectl describe pod</code> → <code>Insufficient cpu</code></td><td>Add nodes, reduce requests, clean up unused Pods</td></tr>
+<tr><td>Taint not tolerated</td><td>Event shows <code>had taint that pod didn't tolerate</code></td><td>Add toleration to Pod, or untaint node</td></tr>
+<tr><td>Node affinity mismatch</td><td><code>didn't match node affinity</code></td><td>Fix nodeSelector/affinity, or label nodes</td></tr>
+<tr><td>PVC not found</td><td><code>persistentvolumeclaim not found</code></td><td>Create PVC, check StorageClass, check namespace</td></tr>
+</table></section>
+
+<section id="s22"><h2><span class="n">22</span> ② Image Pull Failures</h2>
+<div class="T"><span class="p">$</span> kubectl describe pod bad-img | tail -3
+<span class="e">Warning  Failed  kubelet  Failed to pull image "myapp:v99": not found</span>
+<span class="e">Warning  Failed  kubelet  Error: ImagePullBackOff</span></div>
+<table>
+<tr><th>Cause</th><th>How to Detect</th><th>How to Fix</th></tr>
+<tr><td>Wrong image name/tag</td><td><code>not found</code> or <code>manifest unknown</code></td><td>Verify with <code>docker pull myapp:v99</code></td></tr>
+<tr><td>Auth required</td><td><code>401 Unauthorized</code></td><td>Create <code>imagePullSecrets</code></td></tr>
+<tr><td>Rate limited</td><td><code>429 Too Many Requests</code></td><td>Use pull-through cache or authenticate</td></tr>
+<tr><td>Network issue</td><td><code>dial tcp: lookup ... timeout</code></td><td>Check DNS, firewall, proxy</td></tr>
+</table></section>
+
+<section id="s23"><h2><span class="n">23</span> ③ Config Failures</h2>
+<div class="T"><span class="p">$</span> kubectl describe pod no-cfg | tail -2
+<span class="e">Warning  Failed  kubelet  Error: configmap "app-config" not found</span></div>
+<table>
+<tr><th>Cause</th><th>How to Fix</th></tr>
+<tr><td>Missing ConfigMap</td><td><code>kubectl create configmap app-config --from-file=config.yaml</code></td></tr>
+<tr><td>Missing Secret</td><td><code>kubectl create secret generic db-secret --from-literal=password=xxx</code></td></tr>
+<tr><td>Wrong key name</td><td>Check <code>key:</code> in env valueFrom matches actual key in ConfigMap/Secret</td></tr>
+</table></section>
+
+<section id="s24"><h2><span class="n">24</span> ④ Application Crashes</h2>
+<div class="T"><span class="p">$</span> kubectl logs crash-pod --previous
+<span class="e">Traceback (most recent call last):</span>
+<span class="e">  File "app.py", line 42, in main</span>
+<span class="e">    conn = psycopg2.connect(DB_URL)</span>
+<span class="e">psycopg2.OperationalError: could not connect to server: Connection refused</span></div>
+<p><strong>Detect:</strong> <code>kubectl logs pod --previous</code> (shows last crashed container's logs).</p>
+<p><strong>Fix:</strong> Fix the application code, ensure dependencies are available, add init containers to wait for deps.</p></section>
+
+<section id="s25"><h2><span class="n">25</span> ⑤ OOM Kills</h2>
+<div class="T"><span class="p">$</span> kubectl describe pod oom | grep -A3 "Last State"
+    <span class="h">Last State:</span>  Terminated
+      <span class="v">Reason:      </span><span class="e">OOMKilled</span>
+      <span class="v">Exit Code:   </span><span class="e">137</span>
+
+<span class="p">$</span> kubectl top pod oom
+<span class="h">NAME   CPU(cores)   MEMORY(bytes)</span>
+<span class="v">oom    45m          </span><span class="e">248Mi</span>         <span class="dm"># limit is 256Mi → OOM imminent!</span></div>
+<p><strong>Fix:</strong> Increase memory limit, fix memory leak, optimize app, use <code>kubectl top</code> to right-size.</p></section>
+
+<section id="s26"><h2><span class="n">26</span> ⑥ Probe Failures</h2>
+<div class="T"><span class="p">$</span> kubectl describe pod slow | tail -3
+<span class="w">Warning  Unhealthy  kubelet  Liveness probe failed: HTTP probe failed with statuscode: 503</span>
+<span class="v">Normal   Killing    kubelet  Container web failed liveness probe, will be restarted</span></div>
+<table>
+<tr><th>Probe</th><th>On Failure</th><th>Fix</th></tr>
+<tr><td>Startup</td><td>Kill + restart</td><td>Increase <code>failureThreshold × periodSeconds</code></td></tr>
+<tr><td>Liveness</td><td>Kill + restart</td><td>Increase <code>timeoutSeconds</code>, remove external dep checks</td></tr>
+<tr><td>Readiness</td><td>Remove from Service</td><td>Fix dependency, tune thresholds</td></tr>
+</table></section>
+
+<section id="s27"><h2><span class="n">27</span> ⑦ Dependency Failures</h2>
+<p><strong>Definition:</strong> Your app is running but can't reach a database, cache, or external API.</p>
+<p><strong>Detect:</strong> Readiness probe fails, app logs show connection errors.</p>
+<p><strong>Handle:</strong> Use readiness probes (not liveness!) so the Pod is removed from traffic but NOT restarted. Restarting won't fix a down database.</p>
+
+<div class="sre"><div class="tag">SRE Principle — Liveness ≠ Readiness</div>
+<p style="margin:0"><strong>Liveness</strong> checks if the process is alive (never check external deps). <strong>Readiness</strong> checks if it can serve traffic (should check deps). If you put a DB check in liveness, and the DB goes down, ALL Pods restart → thundering herd → cascading failure → total outage.</p></div>
+</section>
+
+<section id="s28"><h2><span class="n">28</span> Crash Loop Lifecycle</h2>
+<p>Backoff formula: <code>min(10s × 2^(n-1), 300s)</code> → 10s, 20s, 40s, 80s, 160s, 300s cap. Resets after 10 min of healthy running.</p>
+<div class="T"><span class="p">$</span> kubectl get pod crash -w
+<span class="h">NAME    READY   STATUS             RESTARTS      AGE</span>
+<span class="v">crash   0/1     </span><span class="e">Error</span><span class="v">              0             2s</span>
+<span class="v">crash   0/1     </span><span class="e">CrashLoopBackOff</span><span class="v">   1 (10s ago)   14s</span>
+<span class="v">crash   0/1     </span><span class="e">Error</span><span class="v">              1             25s</span>
+<span class="v">crash   0/1     </span><span class="e">CrashLoopBackOff</span><span class="v">   2 (20s ago)   47s</span>
+<span class="v">crash   0/1     </span><span class="e">CrashLoopBackOff</span><span class="v">   3 (40s ago)   1m32s</span>
+<span class="v">crash   0/1     </span><span class="e">CrashLoopBackOff</span><span class="v">   4 (80s ago)   3m5s</span></div></section>
+
+<section id="s29"><h2><span class="n">29</span> Restart Policy</h2>
+<table>
+<tr><th>Exit Code</th><th><code>Always</code> (Deployments)</th><th><code>OnFailure</code> (Jobs)</th><th><code>Never</code> (Jobs)</th></tr>
+<tr><td>0 (success)</td><td>Restart</td><td>Stay stopped</td><td>Stay stopped</td></tr>
+<tr><td>1 (error)</td><td>Restart</td><td>Restart</td><td>Stay stopped</td></tr>
+<tr><td>137 (OOM)</td><td>Restart</td><td>Restart</td><td>Stay stopped</td></tr>
+</table></section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  5 · PROBES                                     -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<section id="s30"><h2><span class="n">30</span> Probes Explained</h2>
+<p><strong>Definition:</strong> A probe is a periodic diagnostic check run by the <strong>kubelet</strong> against a container. Four mechanisms: <code>httpGet</code> (HTTP 200-399), <code>tcpSocket</code> (connection opens), <code>exec</code> (exit code 0), <code>grpc</code> (SERVING).</p></section>
+
+<section id="s31"><h2><span class="n">31</span> The Three Probe Types</h2>
+<div class="d">
+<div class="dt">Probe Timeline — How They Interact</div>
+<svg width="720" height="110" viewBox="0 0 720 110" fill="none">
+<line x1="50" y1="90" x2="690" y2="90" stroke="#1e2a3c"/>
+<text x="680" y="105" font-family="JetBrains Mono" font-size="7" fill="#5f7090">time →</text>
+<rect x="55" y="15" width="170" height="22" rx="4" fill="rgba(202,138,4,.1)" stroke="#ca8a04"/>
+<text x="90" y="30" font-family="JetBrains Mono" font-size="8.5" fill="#ca8a04">Startup Probe</text>
+<line x1="230" y1="26" x2="230" y2="88" stroke="#16a34a" stroke-width="1.5"/>
+<text x="235" y="18" font-family="JetBrains Mono" font-size="7" fill="#16a34a">passes ✓</text>
+<rect x="240" y="10" width="440" height="22" rx="4" fill="rgba(220,38,38,.06)" stroke="#dc2626"/>
+<text x="400" y="25" font-family="JetBrains Mono" font-size="8.5" fill="#dc2626">Liveness Probe (fail → restart)</text>
+<rect x="240" y="42" width="440" height="22" rx="4" fill="rgba(14,164,114,.08)" stroke="#0ea472"/>
+<text x="380" y="57" font-family="JetBrains Mono" font-size="8.5" fill="#0ea472">Readiness Probe (fail → remove traffic)</text>
+<text x="55" y="80" font-family="DM Sans" font-size="8.5" fill="#5f7090">Liveness + Readiness are DISABLED during startup probe phase</text>
+</svg>
+</div></section>
+
+<section id="s32"><h2><span class="n">32</span> Probe Configuration YAML</h2>
+<pre><code><span class="k">startupProbe:</span>                       <span class="cm"># Protect slow-starting apps</span>
+  <span class="k">httpGet:</span>
+    <span class="k">path:</span> <span class="s">/healthz</span>
+    <span class="k">port:</span> <span class="nm">8080</span>
+  <span class="k">failureThreshold:</span> <span class="nm">30</span>              <span class="cm"># 30 × 10s = 300s = 5min max startup</span>
+  <span class="k">periodSeconds:</span> <span class="nm">10</span>
+
+<span class="k">livenessProbe:</span>                      <span class="cm"># Detect deadlocks (NEVER check external deps!)</span>
+  <span class="k">httpGet:</span>
+    <span class="k">path:</span> <span class="s">/healthz</span>                 <span class="cm"># Lightweight, internal-only endpoint</span>
+    <span class="k">port:</span> <span class="nm">8080</span>
+  <span class="k">periodSeconds:</span> <span class="nm">15</span>
+  <span class="k">timeoutSeconds:</span> <span class="nm">3</span>
+  <span class="k">failureThreshold:</span> <span class="nm">3</span>
+
+<span class="k">readinessProbe:</span>                     <span class="cm"># Control traffic (CAN check external deps)</span>
+  <span class="k">httpGet:</span>
+    <span class="k">path:</span> <span class="s">/ready</span>                  <span class="cm"># Checks DB, cache, dependencies</span>
+    <span class="k">port:</span> <span class="nm">8080</span>
+  <span class="k">periodSeconds:</span> <span class="nm">5</span>
+  <span class="k">failureThreshold:</span> <span class="nm">2</span>
+  <span class="k">successThreshold:</span> <span class="nm">1</span></code></pre></section>
+
+<section id="s33"><h2><span class="n">33</span> Probe Best Practices</h2>
+<div class="c r"><div class="l">Common Mistakes That Cause Outages</div>
+<p style="margin-bottom:4px">❌ DB check in liveness → DB down → all Pods restart → thundering herd → total outage</p>
+<p style="margin-bottom:4px">❌ Probe too aggressive (period:1, threshold:1) → brief CPU spike → Pod killed</p>
+<p style="margin-bottom:4px">❌ No startup probe → JVM takes 90s → liveness kills it at 30s → CrashLoop</p>
+<p style="margin:0">❌ Probe does heavy computation → causes the overload it's trying to detect</p></div></section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  6 · RESOURCES                                  -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<section id="s34"><h2><span class="n">34</span> Requests vs Limits</h2>
+<pre><code><span class="k">resources:</span>
+  <span class="k">requests:</span>           <span class="cm"># GUARANTEED minimum — scheduler uses this to place Pod</span>
+    <span class="k">cpu:</span> <span class="s">"250m"</span>      <span class="cm"># 250 millicores = 0.25 CPU core</span>
+    <span class="k">memory:</span> <span class="s">"128Mi"</span>  <span class="cm"># 128 Mebibytes</span>
+  <span class="k">limits:</span>             <span class="cm"># HARD CEILING — enforced by kernel</span>
+    <span class="k">cpu:</span> <span class="s">"500m"</span>      <span class="cm"># Exceed → throttled (slowed, NOT killed)</span>
+    <span class="k">memory:</span> <span class="s">"256Mi"</span>  <span class="cm"># Exceed → OOM KILLED (exit 137)</span></code></pre>
+
+<div class="T"><span class="p">$</span> kubectl top pods
+<span class="h">NAME       CPU(cores)   MEMORY(bytes)</span>
+<span class="v">web-abc    </span><span class="o">45m</span><span class="v">          </span><span class="o">98Mi</span>           <span class="dm"># Healthy</span>
+<span class="v">web-def    </span><span class="w">490m</span><span class="v">         </span><span class="w">241Mi</span>          <span class="dm"># Near limits!</span>
+<span class="v">web-ghi    </span><span class="e">500m</span><span class="v">         </span><span class="e">256Mi</span>          <span class="dm"># At limit — CPU throttled, OOM risk</span></div></section>
+
+<section id="s35"><h2><span class="n">35</span> Resource Calculation for Multi-Container Pods</h2>
+<pre><code><span class="cm"># Pod with: Init(500m, 512Mi), Init(200m, 256Mi), Sidecar(100m, 128Mi), App(300m, 256Mi)</span>
+<span class="cm">#</span>
+<span class="cm"># MAX(init containers)   = 500m CPU, 512Mi mem  (inits run one-at-a-time)</span>
+<span class="cm"># SUM(app + sidecar)     = 400m CPU, 384Mi mem  (these run simultaneously)</span>
+<span class="cm"># Pod effective          = MAX(500m, 400m) = 500m CPU</span>
+<span class="cm">#                          MAX(512Mi, 384Mi) = 512Mi mem</span></code></pre></section>
+
+<section id="s36"><h2><span class="n">36</span> QoS Classes</h2>
+<table>
+<tr><th>Class</th><th>Condition</th><th>Eviction Order</th></tr>
+<tr><td><span class="bg gn">Guaranteed</span></td><td>Every container: <code>requests == limits</code> for CPU + memory</td><td>Last (highest priority)</td></tr>
+<tr><td><span class="bg yl">Burstable</span></td><td>At least one container has requests or limits, but not equal</td><td>Middle</td></tr>
+<tr><td><span class="bg rd">BestEffort</span></td><td>No requests or limits on any container</td><td>First (lowest priority)</td></tr>
+</table>
+<div class="T"><span class="p">$</span> kubectl get pod my-app -o jsonpath='{.status.qosClass}'
+<span class="o">Burstable</span></div></section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  7 · DISRUPTION                                 -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<section id="s37"><h2><span class="n">37</span> Disruption Types</h2>
+<div class="g2">
+<div class="cd" style="border-top:3px solid var(--og)">
+<h4 style="color:var(--og)">Voluntary (Controlled)</h4>
+<p style="font-size:12px;color:var(--dm)"><code>kubectl drain node</code> · Cluster upgrade · Autoscaler scale-down · Rolling deployment · Manual pod deletion</p>
+<p style="font-size:12px;color:var(--gn)"><strong>Protected by:</strong> PodDisruptionBudgets</p>
+</div>
+<div class="cd" style="border-top:3px solid var(--rd)">
+<h4 style="color:var(--rd)">Involuntary (Uncontrolled)</h4>
+<p style="font-size:12px;color:var(--dm)">Hardware failure · Kernel panic · Cloud VM termination · Network partition · OOM by node kernel</p>
+<p style="font-size:12px;color:var(--og)"><strong>Protected by:</strong> Replicas + spread across zones</p>
+</div>
+</div></section>
+
+<section id="s38"><h2><span class="n">38</span> Pod Disruption Budgets — Deep Dive</h2>
+<pre><code><span class="k">apiVersion:</span> <span class="v">policy/v1</span>
+<span class="k">kind:</span> <span class="v">PodDisruptionBudget</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-pdb</span>
+<span class="k">spec:</span>
+  <span class="k">minAvailable:</span> <span class="nm">2</span>              <span class="cm"># Always keep ≥2 running</span>
+  <span class="cm"># OR: maxUnavailable: 1     # At most 1 down at a time</span>
+  <span class="cm"># OR: minAvailable: "80%"   # Keep ≥80% running</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span></code></pre>
+
+<div class="d">
+<div class="dt">PDB in Action — Node Drain with minAvailable: 2 (3 replicas)</div>
+<svg width="720" height="150" viewBox="0 0 720 150" fill="none">
+<text x="20" y="15" font-family="JetBrains Mono" font-size="8.5" fill="#5f7090">Drain node-a (has Pod1 + Pod2). Pod3 on node-b.</text>
+
+<rect x="20" y="25" width="200" height="55" rx="8" fill="rgba(220,38,38,.04)" stroke="#dc2626" stroke-dasharray="4 3"/>
+<text x="35" y="42" font-family="JetBrains Mono" font-size="8" fill="#dc2626">node-a (draining)</text>
+<rect x="35" y="50" width="55" height="22" rx="4" fill="rgba(220,38,38,.1)" stroke="#dc2626" stroke-dasharray="3 2"/>
+<text x="42" y="65" font-family="JetBrains Mono" font-size="7.5" fill="#dc2626">Pod1 ✗</text>
+<rect x="100" y="50" width="55" height="22" rx="4" fill="rgba(14,164,114,.1)" stroke="#0ea472"/>
+<text x="107" y="65" font-family="JetBrains Mono" font-size="7.5" fill="#0ea472">Pod2</text>
+<text x="165" y="65" font-family="DM Sans" font-size="7.5" fill="#ca8a04">← PDB blocks!</text>
+
+<rect x="250" y="25" width="140" height="55" rx="8" fill="rgba(14,164,114,.04)" stroke="#0ea472"/>
+<text x="265" y="42" font-family="JetBrains Mono" font-size="8" fill="#5f7090">node-b</text>
+<rect x="265" y="50" width="55" height="22" rx="4" fill="rgba(14,164,114,.1)" stroke="#0ea472"/>
+<text x="272" y="65" font-family="JetBrains Mono" font-size="7.5" fill="#0ea472">Pod3</text>
+
+<text x="420" y="42" font-family="DM Sans" font-size="10" fill="#5f7090">Step 1: Evict Pod1 → rescheduled on node-c</text>
+<text x="420" y="60" font-family="DM Sans" font-size="10" fill="#5f7090">Step 2: Wait until Pod1 is Running on node-c</text>
+<text x="420" y="78" font-family="DM Sans" font-size="10" fill="#ca8a04">Step 3: PDB satisfied (2 running) → evict Pod2</text>
+<text x="420" y="96" font-family="DM Sans" font-size="10" fill="#16a34a">Result: At least 2 Pods always running ✓</text>
+
+<text x="20" y="110" font-family="DM Sans" font-size="9" fill="#5f7090">The drain process is <tspan fill="#fff" font-weight="700">sequential and controlled</tspan>. PDB blocks eviction until the minimum is satisfied.</text>
+<text x="20" y="128" font-family="DM Sans" font-size="9" fill="#dc2626">⚠ PDBs do NOT protect against involuntary disruptions (node crash). For that, use replicas spread across zones.</text>
+</svg>
+</div>
+
+<div class="T"><span class="p">$</span> kubectl get pdb
+<span class="h">NAME      MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE</span>
+<span class="v">web-pdb   2               N/A               1                     5d</span></div></section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  8 · SRE OPERATIONS                             -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<section id="s39"><h2><span class="n">39</span> Monitoring &amp; Observability</h2>
+<table>
+<tr><th>Metric</th><th>Alert When</th></tr>
+<tr><td><code>kube_pod_container_status_restarts_total</code></td><td>> 3 restarts in 10min</td></tr>
+<tr><td><code>kube_pod_status_phase{phase="Pending"}</code></td><td>Pending > 5min</td></tr>
+<tr><td><code>container_memory_usage_bytes / limit</code></td><td>> 90% of limit</td></tr>
+<tr><td><code>container_cpu_cfs_throttled_periods_total</code></td><td>Throttled > 25% of periods</td></tr>
+<tr><td><code>kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}</code></td><td>Any count > 0</td></tr>
+<tr><td><code>container_oom_events_total</code></td><td>Any occurrence</td></tr>
+</table>
+
+<div class="sre"><div class="tag">SRE Principle — Four Golden Signals</div>
+<p style="margin:0"><strong>Latency</strong> (p50/p95/p99) · <strong>Traffic</strong> (req/sec) · <strong>Errors</strong> (5xx rate) · <strong>Saturation</strong> (CPU/mem vs limits). Monitor these for every Pod, alert on deviations from baseline.</p></div></section>
+
+<section id="s40"><h2><span class="n">40</span> Production Readiness Checklist</h2>
+<div class="c g"><div class="l">Health</div><p style="margin:0">✅ Startup + Liveness + Readiness probes · ✅ Separate /healthz (liveness, no deps) vs /ready (readiness, checks deps) · ✅ Probe thresholds tuned via load testing</p></div>
+<div class="c b"><div class="l">Resources</div><p style="margin:0">✅ CPU + memory requests on every container · ✅ Memory limits set · ✅ QoS ≥ Burstable · ✅ Values from load testing, not guesses</p></div>
+<div class="c p"><div class="l">Resilience</div><p style="margin:0">✅ Controller-managed (never naked) · ✅ ≥2 replicas · ✅ Pod anti-affinity across nodes/zones · ✅ PDB configured · ✅ Graceful shutdown with preStop + SIGTERM handling</p></div>
+<div class="c o"><div class="l">Observability</div><p style="margin:0">✅ Structured JSON logging to stdout · ✅ Prometheus /metrics endpoint · ✅ Alerts on restarts, OOM, error rate · ✅ Distributed tracing headers</p></div>
+<div class="c r"><div class="l">Security</div><p style="margin:0">✅ runAsNonRoot · ✅ readOnlyRootFilesystem · ✅ No privileged · ✅ Secrets from K8s Secrets · ✅ Network policies · ✅ Minimal base image</p></div></section>
+
+<section id="s41"><h2><span class="n">41</span> Command Reference</h2>
+<pre><code><span class="cm"># ══ CREATE ══</span>
+kubectl apply -f pod.yaml                                <span class="cm"># Declarative (production)</span>
+kubectl run my-app --image=nginx:1.25                    <span class="cm"># Imperative (testing)</span>
+kubectl run tmp --image=busybox --rm -it -- sh           <span class="cm"># One-shot debug</span>
+kubectl create deploy my-app --image=nginx --replicas=3  <span class="cm"># Via controller</span>
+
+<span class="cm"># ══ INSPECT ══</span>
+kubectl get pods -o wide --show-labels                   <span class="cm"># Overview</span>
+kubectl describe pod my-app                              <span class="cm"># Events + all details</span>
+kubectl get pod my-app -o yaml                           <span class="cm"># Full spec + status</span>
+kubectl get pod my-app -o jsonpath='{.status.phase}'     <span class="cm"># Phase only</span>
+kubectl get pod my-app -o jsonpath='{.status.qosClass}'  <span class="cm"># QoS class</span>
+
+<span class="cm"># ══ LOGS ══</span>
+kubectl logs my-app                                      <span class="cm"># Current container logs</span>
+kubectl logs my-app --previous                           <span class="cm"># LAST CRASHED container logs ← KEY</span>
+kubectl logs my-app -c sidecar                           <span class="cm"># Specific container</span>
+kubectl logs my-app --all-containers                     <span class="cm"># All containers</span>
+kubectl logs my-app -f --since=1h                        <span class="cm"># Stream last hour</span>
+
+<span class="cm"># ══ DEBUG ══</span>
+kubectl exec -it my-app -- sh                            <span class="cm"># Shell into container</span>
+kubectl debug -it my-app --image=busybox --target=web    <span class="cm"># Ephemeral debug</span>
+kubectl port-forward my-app 8080:80                      <span class="cm"># Access locally</span>
+kubectl top pods                                         <span class="cm"># CPU/memory usage</span>
+
+<span class="cm"># ══ UPDATE ══</span>
+kubectl set image deploy/my-app web=myapp:v2.2           <span class="cm"># Update image</span>
+kubectl rollout status deploy/my-app                     <span class="cm"># Watch rollout</span>
+kubectl rollout undo deploy/my-app                       <span class="cm"># Rollback</span>
+kubectl rollout history deploy/my-app                    <span class="cm"># Revision history</span>
+
+<span class="cm"># ══ DELETE ══</span>
+kubectl delete pod my-app                                <span class="cm"># Graceful (30s default)</span>
+kubectl delete pod my-app --grace-period=60              <span class="cm"># Custom grace</span>
+kubectl delete pod my-app --grace-period=0 --force       <span class="cm"># Force (DANGEROUS)</span>
+
+<span class="cm"># ══ CLUSTER CONTEXT ══</span>
+kubectl get events --sort-by='.lastTimestamp'             <span class="cm"># Recent events</span>
+kubectl describe node worker-02                           <span class="cm"># Node health</span>
+kubectl get pdb                                           <span class="cm"># Disruption budgets</span></code></pre>
+
+<div class="sre" style="margin-top:18px">
+<div class="tag">Final SRE Wisdom</div>
+<p style="margin:0">The goal isn't zero failures — it's <strong>fast, automated, observable recovery</strong>. Design Pods to: crash safely (meaningful exit codes, graceful shutdown handling), detect failures quickly (probes, metrics, alerting), recover automatically (controllers, restart policies, replicas across zones), and provide full visibility (structured logs, distributed traces, Kubernetes events). A well-instrumented Pod that restarts cleanly in 5 seconds is worth infinitely more than a fragile Pod that silently corrupts data when it eventually fails.</p>
+</div>
+</section>
+
+</main>
+</body>
+</html>
