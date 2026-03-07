@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Pod Failures — Retry vs Dead</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#0ea472;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:248px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10.5px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:248px;max-width:1000px;padding:24px 38px 80px}
+.hero{text-align:center;padding:30px 0 22px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(220,38,38,.04) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:38px;font-weight:900;background:linear-gradient(135deg,#fff,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:600px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--rd);margin-right:4px;background:rgba(220,38,38,.12);padding:1px 5px;border-radius:3px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:16px 0 6px}
+p{margin-bottom:8px}strong{color:#eee}
+.def{background:rgba(14,164,114,.03);border:1px solid rgba(14,164,114,.1);border-radius:var(--r);padding:10px 12px;margin:8px 0;font-size:13px}
+.def b{color:var(--ac);font-size:10px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:10px 12px;margin:9px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(14,164,114,.03),rgba(8,145,178,.02));border:1px solid rgba(14,164,114,.12);border-radius:var(--r);padding:10px 12px;margin:10px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(14,164,114,.12);color:var(--ac);font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;overflow-x:auto;margin:6px 0 9px;font-size:10.5px;line-height:1.52}
+code{font-family:'JetBrains Mono',monospace;font-size:10px}
+p code,td code{background:var(--sf2);padding:1px 3px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:var(--ac)}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:9px 12px;margin:6px 0 9px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.45;color:#6d7b90;overflow-x:auto}
+.T .p{color:var(--gn)}.T .h{color:var(--ac2);font-weight:600}.T .w{color:var(--yl)}.T .e{color:var(--rd)}.T .o{color:var(--gn)}.T .v{color:#b0baca}.T .x{color:#3d4a5e}
+table{width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.og{background:rgba(234,88,12,.15);color:var(--og)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}
+
+/* STEPPER */
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:12px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 11px;font-size:9.5px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--rd);border-bottom-color:var(--rd);background:rgba(220,38,38,.04)}
+.W .body{padding:14px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:8px;border-top:1px solid var(--bd)}
+.W .btn{padding:5px 14px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(220,38,38,.1);border-color:var(--rd);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:12px;margin:8px 0;min-height:50px}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.W .dt{font-size:11px;color:var(--dm);margin-top:4px}
+.W .cd{background:#070a0e;border:1px solid #141c28;border-radius:5px;padding:7px 10px;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6d7b90;line-height:1.35}
+.bx{display:inline-block;padding:3px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9.5px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:var(--ac);border:1px solid rgba(14,164,114,.25)}
+.bx.pen{background:rgba(202,138,4,.1);color:var(--yl);border:1px solid rgba(202,138,4,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.new{background:rgba(37,99,235,.1);color:var(--bl);border:1px solid rgba(37,99,235,.25)}
+.bx.loop{background:rgba(234,88,12,.1);color:var(--og);border:1px solid rgba(234,88,12,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:13px}
+
+/* Retry badge */
+.retry{display:inline-block;padding:3px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;margin:2px}
+.retry.yes{background:rgba(234,88,12,.12);color:var(--og);border:1px solid rgba(234,88,12,.25)}
+.retry.no{background:rgba(220,38,38,.12);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.retry.dep{background:rgba(147,51,234,.1);color:var(--pp);border:1px solid rgba(147,51,234,.25)}
+
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:16px 12px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+
+<nav>
+<div class="logo">⬡ K8s Failures</div>
+<div class="sub">Retry vs Dead Guide</div>
+<div class="sl">Overview</div>
+<ul>
+<li><a href="#s01">Master Table</a></li>
+<li><a href="#s02">Retry Rule</a></li>
+</ul>
+<div class="sl">Pre-Run Failures</div>
+<ul>
+<li><a href="#s03">Scheduling ▶</a></li>
+<li><a href="#s04">Image Pull ▶</a></li>
+<li><a href="#s05">Config ▶</a></li>
+</ul>
+<div class="sl">Runtime Failures</div>
+<ul>
+<li><a href="#s06">App Crash ▶</a></li>
+<li><a href="#s07">OOM Kill ▶</a></li>
+<li><a href="#s08">Probe Fail ▶</a></li>
+<li><a href="#s09">Dependency ▶</a></li>
+</ul>
+<div class="sl">Special Cases</div>
+<ul>
+<li><a href="#s10">Init Container ▶</a></li>
+<li><a href="#s11">Eviction ▶</a></li>
+<li><a href="#s12">Node Death ▶</a></li>
+</ul>
+<div class="sl">Reference</div>
+<ul>
+<li><a href="#s13">restartPolicy</a></li>
+<li><a href="#s14">Backoff Formula</a></li>
+<li><a href="#s15">Debug Commands</a></li>
+</ul>
+</nav>
+
+<main>
+<div class="hero">
+<h1>Failure Retry Behavior</h1>
+<p>For every Kubernetes failure: does it retry or stay dead? How many times? How fast? What controls it? Complete interactive reference.</p>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- S01: MASTER TABLE                      -->
+<!-- ══════════════════════════════════════ -->
+<section id="s01">
+<h2><span class="n">01</span> Master Retry Table</h2>
+
+<table>
+<tr><th>Failure</th><th>Status You See</th><th>Retries?</th><th>Who Retries?</th><th>Backoff?</th><th>Stops When?</th></tr>
+<tr><td><strong>Scheduling</strong></td><td><code>Pending</code></td><td><span class="bg og">∞ Forever</span></td><td>Scheduler</td><td>No (watches events)</td><td>Never — keeps trying until node available or Pod deleted</td></tr>
+<tr><td><strong>Image Pull</strong></td><td><code>ImagePullBackOff</code></td><td><span class="bg og">∞ Forever</span></td><td>Kubelet</td><td>Yes: 10s→20s→40s→5min cap</td><td>Never — keeps retrying until image found or Pod deleted</td></tr>
+<tr><td><strong>Config Missing</strong></td><td><code>CreateContainerConfigError</code></td><td><span class="bg og">∞ Forever</span></td><td>Kubelet</td><td>Yes (periodic re-check)</td><td>Never — keeps checking until ConfigMap/Secret exists or Pod deleted</td></tr>
+<tr><td><strong>App Crash</strong></td><td><code>CrashLoopBackOff</code></td><td><span class="bg dep">Depends on restartPolicy</span></td><td>Kubelet</td><td>Yes: 10s→20s→300s cap</td><td><code>Always</code>: never. <code>OnFailure</code>: never. <code>Never</code>: stays dead</td></tr>
+<tr><td><strong>OOM Kill</strong></td><td><code>OOMKilled</code></td><td><span class="bg dep">Depends on restartPolicy</span></td><td>Kubelet</td><td>Yes: 10s→20s→300s cap</td><td><code>Always</code>: never. <code>OnFailure</code>: never. <code>Never</code>: stays dead</td></tr>
+<tr><td><strong>Liveness Probe Fail</strong></td><td><code>Unhealthy</code></td><td><span class="bg dep">Depends on restartPolicy</span></td><td>Kubelet</td><td>Yes: 10s→20s→300s cap</td><td><code>Always/OnFailure</code>: restarts forever. <code>Never</code>: stays dead</td></tr>
+<tr><td><strong>Readiness Probe Fail</strong></td><td><code>Unhealthy</code></td><td><span class="bg og">∞ Keeps checking</span></td><td>Kubelet</td><td>No (fixed interval)</td><td>Never kills — just removes/adds traffic. Checks forever.</td></tr>
+<tr><td><strong>Startup Probe Fail</strong></td><td><code>Unhealthy</code></td><td><span class="bg rd">Limited</span></td><td>Kubelet</td><td>No (fixed period)</td><td>After <code>failureThreshold × periodSeconds</code> → killed. Then restartPolicy applies.</td></tr>
+<tr><td><strong>Init Container Fail</strong></td><td><code>Init:CrashLoopBackOff</code></td><td><span class="bg og">∞ Forever</span></td><td>Kubelet</td><td>Yes: 10s→20s→300s cap</td><td>Never — retries forever (ignores restartPolicy)</td></tr>
+<tr><td><strong>Eviction</strong></td><td><code>Evicted</code></td><td><span class="bg rd">No retry</span></td><td>—</td><td>—</td><td>Pod is dead. Controller must recreate. Naked Pod = gone forever.</td></tr>
+<tr><td><strong>Node Death</strong></td><td><code>Unknown</code></td><td><span class="bg rd">No retry</span></td><td>—</td><td>—</td><td>Pod lost. Controller recreates on another node. Naked Pod = gone.</td></tr>
+</table>
+
+<div class="sre"><div class="tag">Key Insight</div><p style="margin:0"><strong>Pre-run failures</strong> (scheduling, image pull, config) always retry forever — Kubernetes never gives up trying to start your Pod. <strong>Runtime failures</strong> (crash, OOM, probes) depend on <code>restartPolicy</code>. <strong>Infrastructure failures</strong> (eviction, node death) never retry the same Pod — a controller must create a new one.</p></div>
+</section>
+
+<!-- ══════════════════════════════════════ -->
+<!-- S02: THE RULE                          -->
+<!-- ══════════════════════════════════════ -->
+<section id="s02">
+<h2><span class="n">02</span> The Retry Rule</h2>
+
+<div class="def"><b>Definition — The Two Retry Systems</b>Kubernetes has two completely different retry mechanisms. Understanding which one handles your failure is the key to understanding retry behavior:
+<br><br>
+<strong>1. Kubelet Retry (container level)</strong> — the kubelet on the node keeps trying to start/restart the container. This handles: image pull, config errors, container crashes, OOM kills. Controlled by <code>restartPolicy</code>.
+<br><br>
+<strong>2. Controller Retry (pod level)</strong> — a Deployment/ReplicaSet/Job watches for missing Pods and creates new ones. This handles: eviction, node death, pod deletion. Naked Pods have NO controller, so they're gone forever.</p>
+</div>
+
+<div class="c r"><div class="l">Critical Distinction</div>
+<p style="margin:0"><strong>Kubelet retries = same Pod, same node, same IP.</strong> The container restarts inside the existing Pod.<br>
+<strong>Controller retries = brand new Pod, possibly different node, new IP.</strong> The old Pod is gone — a completely new Pod is created.</p></div>
+</section>
+
+<!-- ══════════════════════════════════════ -->
+<!-- S03: SCHEDULING FAILURES               -->
+<!-- ══════════════════════════════════════ -->
+<section id="s03">
+<h2><span class="n">03</span> Scheduling Failure ▶</h2>
+
+<div class="W" id="w-sched">
+<div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Retry behavior</div><div class="tab" data-i="2">Timeline</div><div class="tab" data-i="3">How to fix</div></div>
+<div class="body">
+<div class="pnl on" data-i="0">
+<div class="tl">Pod stuck in Pending — scheduler can't find a node</div>
+<div class="vis"><span class="bx ded">Pod: Pending</span> <span class="ar">→</span> <span class="bx pen">Scheduler: "no nodes available"</span> <span class="ar">→</span> Pod waits forever</div>
+<div class="ds"><strong>What fails:</strong> The kube-scheduler cannot find any node that satisfies the Pod's requirements — not enough CPU/memory, taints not tolerated, affinity doesn't match, PVC not available.</div>
+<div class="cd"><span style="color:var(--rd)">Warning  FailedScheduling  0/3 nodes are available: 1 Insufficient cpu, 2 node(s) had taint</span></div>
+</div>
+<div class="pnl" data-i="1">
+<div class="tl"><span class="retry yes">RETRIES FOREVER</span> — scheduler never gives up</div>
+<div class="vis"><span class="bx loop">Retry ∞</span> — scheduler watches for node changes and re-evaluates continuously</div>
+<div class="ds"><strong>Retry mechanism:</strong> The scheduler is <strong>event-driven</strong> — it watches for changes (new nodes added, pods deleted, resources freed). Every time something changes in the cluster, it re-evaluates all pending Pods. There is <strong>no backoff</strong> — it checks instantly when conditions change.<br><br>
+<strong>Stops when:</strong> Never. Pod stays in Pending until either a suitable node appears OR you delete the Pod. There is no maximum retry count and no timeout.</div>
+</div>
+<div class="pnl" data-i="2">
+<div class="tl">What you see over time</div>
+<div class="cd"><span style="color:var(--gn)">$</span> kubectl get pod stuck-pod -w<br>
+<span style="color:var(--ac2)">NAME        READY   STATUS    AGE</span><br>
+<span style="color:#b0baca">stuck-pod   0/1     </span><span style="color:var(--yl)">Pending</span><span style="color:#b0baca">   0s</span><br>
+<span style="color:#b0baca">stuck-pod   0/1     </span><span style="color:var(--yl)">Pending</span><span style="color:#b0baca">   5m</span><span style="color:#3d4a5e">    # Still waiting</span><br>
+<span style="color:#b0baca">stuck-pod   0/1     </span><span style="color:var(--yl)">Pending</span><span style="color:#b0baca">   1h</span><span style="color:#3d4a5e">    # Still waiting</span><br>
+<span style="color:#b0baca">stuck-pod   0/1     </span><span style="color:var(--yl)">Pending</span><span style="color:#b0baca">   3d</span><span style="color:#3d4a5e">    # Will wait forever</span><br>
+<span style="color:#3d4a5e"># You add a new node with enough resources...</span><br>
+<span style="color:#b0baca">stuck-pod   0/1     </span><span style="color:var(--yl)">ContainerCreating</span><span style="color:#b0baca">   3d</span><span style="color:#3d4a5e">    # Instantly scheduled!</span><br>
+<span style="color:#b0baca">stuck-pod   1/1     </span><span style="color:var(--gn)">Running</span><span style="color:#b0baca">            3d</span></div>
+</div>
+<div class="pnl" data-i="3">
+<div class="tl">How to fix</div>
+<div class="ds">
+<strong>1.</strong> Add more nodes: <code>minikube node add</code><br>
+<strong>2.</strong> Reduce Pod resource requests<br>
+<strong>3.</strong> Delete unused Pods to free resources<br>
+<strong>4.</strong> Fix nodeSelector/affinity to match existing nodes<br>
+<strong>5.</strong> Add toleration for tainted nodes<br>
+<strong>6.</strong> Create the missing PVC
+</div>
+</div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- ══════════════════════════════════════ -->
+<!-- S04: IMAGE PULL                        -->
+<!-- ══════════════════════════════════════ -->
+<section id="s04">
+<h2><span class="n">04</span> Image Pull Failure ▶</h2>
+
+<div class="W" id="w-img">
+<div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Retry behavior</div><div class="tab" data-i="2">Backoff timeline</div><div class="tab" data-i="3">How to fix</div></div>
+<div class="body">
+<div class="pnl on" data-i="0">
+<div class="tl">Kubelet can't download the container image from the registry</div>
+<div class="vis"><span class="bx run">kubelet</span> <span class="ar">→</span> <span class="bx ded">Registry: "image not found" / "401 unauthorized" / timeout</span></div>
+<div class="ds"><strong>What fails:</strong> The container runtime (containerd) tries to pull the image and gets an error. Common causes: wrong image name/tag, private registry without credentials, Docker Hub rate limiting, network/DNS issue.</div>
+<div class="cd"><span style="color:var(--rd)">Failed to pull image "myapp:v99": rpc error: manifest unknown</span></div>
+</div>
+<div class="pnl" data-i="1">
+<div class="tl"><span class="retry yes">RETRIES FOREVER</span> with exponential backoff</div>
+<div class="vis"><span class="bx ded">ErrImagePull</span> <span class="ar">→</span> <span class="bx loop">ImagePullBackOff (retry with backoff)</span> <span class="ar">→</span> <span class="bx ded">ErrImagePull</span> <span class="ar">→</span> <span class="bx loop">ImagePullBackOff</span> <span class="ar">→</span> ∞</div>
+<div class="ds"><strong>Retry mechanism:</strong> Kubelet retries pulling the image with <strong>exponential backoff</strong>. It alternates between <code>ErrImagePull</code> (actively trying) and <code>ImagePullBackOff</code> (waiting before retry).<br><br>
+<strong>Backoff:</strong> Starts at ~10 seconds, doubles each time, caps at <strong>5 minutes</strong>. After reaching the cap, it retries every 5 minutes forever.<br><br>
+<strong>Stops when:</strong> Never. Kubelet retries forever until the image becomes available OR you delete/update the Pod. There is no maximum retry count.<br><br>
+<strong>restartPolicy has NO effect here</strong> — the container hasn't started yet, so there's nothing to "restart." The kubelet simply keeps trying to pull the image.</div>
+</div>
+<div class="pnl" data-i="2">
+<div class="tl">Exact timeline of what you see</div>
+<div class="cd"><span style="color:var(--gn)">$</span> kubectl get pod bad-image -w<br>
+<span style="color:var(--ac2)">NAME        READY   STATUS             AGE</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--rd)">ErrImagePull</span><span style="color:#b0baca">       2s</span><span style="color:#3d4a5e">    # First attempt fails</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--yl)">ImagePullBackOff</span><span style="color:#b0baca">   14s</span><span style="color:#3d4a5e">   # Waiting ~10s</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--rd)">ErrImagePull</span><span style="color:#b0baca">       26s</span><span style="color:#3d4a5e">   # Retry #2 fails</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--yl)">ImagePullBackOff</span><span style="color:#b0baca">   48s</span><span style="color:#3d4a5e">   # Waiting ~20s</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--rd)">ErrImagePull</span><span style="color:#b0baca">       1m10s</span><span style="color:#3d4a5e"> # Retry #3 fails</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--yl)">ImagePullBackOff</span><span style="color:#b0baca">   2m</span><span style="color:#3d4a5e">    # Waiting ~40s</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--yl)">ImagePullBackOff</span><span style="color:#b0baca">   10m</span><span style="color:#3d4a5e">   # Waiting ~5min (max)</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--yl)">ImagePullBackOff</span><span style="color:#b0baca">   3h</span><span style="color:#3d4a5e">    # Still retrying every 5min...</span><br>
+<span style="color:#3d4a5e"># You fix the image tag...</span><br>
+<span style="color:#b0baca">bad-image   0/1     </span><span style="color:var(--yl)">ContainerCreating</span><span style="color:#b0baca">  3h</span><span style="color:#3d4a5e">   # Next retry succeeds!</span><br>
+<span style="color:#b0baca">bad-image   1/1     </span><span style="color:var(--gn)">Running</span><span style="color:#b0baca">            3h</span></div>
+</div>
+<div class="pnl" data-i="3">
+<div class="tl">How to fix</div>
+<pre><code><span class="cm"># Check the exact error</span>
+kubectl describe pod bad-image | grep -A5 "Events"
+
+<span class="cm"># Fix 1: Wrong image name/tag</span>
+kubectl set image pod/bad-image web=myapp:v2  <span class="cm"># correct the tag</span>
+
+<span class="cm"># Fix 2: Private registry — create image pull secret</span>
+kubectl create secret docker-registry my-reg \
+  --docker-server=registry.example.com \
+  --docker-username=user \
+  --docker-password=pass
+
+<span class="cm"># Then add to Pod spec:</span>
+<span class="cm"># spec:</span>
+<span class="cm">#   imagePullSecrets:</span>
+<span class="cm">#   - name: my-reg</span>
+
+<span class="cm"># Fix 3: Docker Hub rate limit — authenticate</span>
+kubectl create secret docker-registry dockerhub \
+  --docker-server=docker.io \
+  --docker-username=your-user \
+  --docker-password=your-token</code></pre>
+</div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- ══════════════════════════════════════ -->
+<!-- S05: CONFIG FAILURES                   -->
+<!-- ══════════════════════════════════════ -->
+<section id="s05">
+<h2><span class="n">05</span> Config Failure ▶</h2>
+
+<div class="W" id="w-cfg">
+<div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Retry behavior</div><div class="tab" data-i="2">How to fix</div></div>
+<div class="body">
+<div class="pnl on" data-i="0">
+<div class="tl">Missing ConfigMap, Secret, or volume mount</div>
+<div class="vis"><span class="bx ded">CreateContainerConfigError</span> <span class="ar">→</span> Pod references <span class="bx pen">ConfigMap "app-config"</span> that doesn't exist</div>
+<div class="cd"><span style="color:var(--rd)">Error: configmap "app-config" not found</span></div>
+</div>
+<div class="pnl" data-i="1">
+<div class="tl"><span class="retry yes">RETRIES FOREVER</span> — kubelet keeps checking</div>
+<div class="ds"><strong>Retry mechanism:</strong> Kubelet periodically re-checks whether the missing ConfigMap/Secret has been created. The container stays in <code>CreateContainerConfigError</code> and never starts. As soon as you create the missing resource, kubelet detects it and the container starts automatically.<br><br>
+<strong>restartPolicy has NO effect</strong> — the container never started, so there's nothing to restart.<br><br>
+<strong>Stops when:</strong> Never — waits forever until the resource exists or Pod is deleted.</div>
+</div>
+<div class="pnl" data-i="2">
+<div class="tl">How to fix</div>
+<pre><code><span class="cm"># Create the missing ConfigMap</span>
+kubectl create configmap app-config --from-literal=db-host=postgres
+
+<span class="cm"># Create the missing Secret</span>
+kubectl create secret generic db-secret --from-literal=password=mypass
+
+<span class="cm"># OR mark it optional in the Pod spec:</span>
+<span class="k">env:</span>
+- <span class="k">name:</span> <span class="s">OPTIONAL_VAR</span>
+  <span class="k">valueFrom:</span>
+    <span class="k">configMapKeyRef:</span>
+      <span class="k">name:</span> <span class="s">maybe-exists</span>
+      <span class="k">key:</span> <span class="s">value</span>
+      <span class="k">optional:</span> <span class="v">true</span>   <span class="cm"># ← Container starts even if ConfigMap missing</span></code></pre>
+</div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- ══════════════════════════════════════ -->
+<!-- S06: APP CRASH                         -->
+<!-- ══════════════════════════════════════ -->
+<section id="s06">
+<h2><span class="n">06</span> Application Crash ▶</h2>
+
+<div class="W" id="w-crash">
+<div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">restartPolicy: Always</div><div class="tab" data-i="2">restartPolicy: OnFailure</div><div class="tab" data-i="3">restartPolicy: Never</div><div class="tab" data-i="4">Backoff timeline</div></div>
+<div class="body">
+<div class="pnl on" data-i="0">
+<div class="tl">Container starts then exits with non-zero code</div>
+<div class="vis"><span class="bx run">Container starts</span> <span class="ar">→</span> <span class="bx ded">Crash! exit 1 (exception/bug)</span> <span class="ar">→</span> what happens next depends on <span class="bx pen">restartPolicy</span></div>
+<div class="ds">The container process dies. This is different from pre-run failures — the container DID start and DID run, but the application had a bug, missing dependency, or configuration issue.</div>
+</div>
+<div class="pnl" data-i="1">
+<div class="tl"><code>restartPolicy: Always</code> → <span class="retry yes">RETRIES FOREVER</span></div>
+<div class="vis"><span class="bx ded">exit 1</span> <span class="ar">→</span> <span class="bx loop">wait 10s</span> <span class="ar">→</span> <span class="bx ded">exit 1</span> <span class="ar">→</span> <span class="bx loop">wait 20s</span> <span class="ar">→</span> <span class="bx ded">exit 1</span> <span class="ar">→</span> <span class="bx loop">wait 40s</span> <span class="ar">→</span> ∞ forever</div>
+<div class="ds"><strong>Used by:</strong> Deployments, StatefulSets, DaemonSets (the default).<br>
+<strong>Behavior:</strong> Kubelet restarts the container regardless of exit code (even exit 0). Uses exponential backoff: 10s, 20s, 40s, 80s, 160s, 300s cap. After 10 minutes of successful running, backoff resets to 10s.<br>
+<strong>Never gives up.</strong> The container will keep crashing and restarting forever until you fix the code or delete the Pod.</div>
+</div>
+<div class="pnl" data-i="2">
+<div class="tl"><code>restartPolicy: OnFailure</code> → <span class="retry yes">RETRIES ON ERROR</span></div>
+<div class="vis"><span class="bx ded">exit 1 (error)</span> <span class="ar">→</span> <span class="bx loop">restart with backoff ∞</span><br><br><span class="bx run">exit 0 (success)</span> <span class="ar">→</span> <span class="bx run">STAYS STOPPED ✓ (job done)</span></div>
+<div class="ds"><strong>Used by:</strong> Jobs, batch workloads.<br>
+<strong>Behavior:</strong> Kubelet restarts the container only if it exits with a non-zero code (failure). If it exits 0 (success), it stays stopped — the job is complete. Retries forever on failure with the same exponential backoff.<br>
+<strong>This is perfect for Jobs</strong> — retry on failure, stop on success.</div>
+</div>
+<div class="pnl" data-i="3">
+<div class="tl"><code>restartPolicy: Never</code> → <span class="retry no">NEVER RETRIES — STAYS DEAD</span></div>
+<div class="vis"><span class="bx ded">exit 1 (error)</span> <span class="ar">→</span> <span class="bx ded">Container stays dead. Pod status: Failed.</span><br><br><span class="bx run">exit 0 (success)</span> <span class="ar">→</span> <span class="bx run">Container stays stopped. Pod status: Succeeded.</span></div>
+<div class="ds"><strong>Used by:</strong> Jobs (when the Job controller handles retry at the Pod level, not container level).<br>
+<strong>Behavior:</strong> The container is NEVER restarted regardless of exit code. The Pod goes to <code>Failed</code> or <code>Succeeded</code> status and stays there forever. For Jobs, the <strong>Job controller</strong> creates a brand new Pod instead (up to <code>backoffLimit</code>).<br>
+<strong>This is the ONLY policy where a container stays permanently dead.</strong></div>
+</div>
+<div class="pnl" data-i="4">
+<div class="tl">CrashLoopBackOff timeline (restartPolicy: Always)</div>
+<div class="cd"><span style="color:var(--gn)">$</span> kubectl get pod crash -w<br>
+<span style="color:var(--ac2)">NAME    READY   STATUS             RESTARTS       AGE</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--rd)">Error</span><span style="color:#b0baca">              0              2s</span><span style="color:#3d4a5e">     # Crash #1</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--og)">CrashLoopBackOff</span><span style="color:#b0baca">   1 (10s ago)    14s</span><span style="color:#3d4a5e">   # Wait 10s</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--rd)">Error</span><span style="color:#b0baca">              1              26s</span><span style="color:#3d4a5e">    # Crash #2</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--og)">CrashLoopBackOff</span><span style="color:#b0baca">   2 (20s ago)    48s</span><span style="color:#3d4a5e">   # Wait 20s</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--rd)">Error</span><span style="color:#b0baca">              2              1m10s</span><span style="color:#3d4a5e">  # Crash #3</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--og)">CrashLoopBackOff</span><span style="color:#b0baca">   3 (40s ago)    1m55s</span><span style="color:#3d4a5e"> # Wait 40s</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--og)">CrashLoopBackOff</span><span style="color:#b0baca">   4 (80s ago)    3m20s</span><span style="color:#3d4a5e"> # Wait 80s</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--og)">CrashLoopBackOff</span><span style="color:#b0baca">   5 (160s ago)   6m</span><span style="color:#3d4a5e">    # Wait 160s</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--og)">CrashLoopBackOff</span><span style="color:#b0baca">   6 (300s ago)   11m</span><span style="color:#3d4a5e">   # Wait 300s (MAX)</span><br>
+<span style="color:#b0baca">crash   0/1     </span><span style="color:var(--og)">CrashLoopBackOff</span><span style="color:#b0baca">   7 (300s ago)   16m</span><span style="color:#3d4a5e">   # Still 300s</span><br>
+<span style="color:#3d4a5e"># This continues FOREVER until you fix the code or delete the Pod</span></div>
+</div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 5</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- S07: OOM -->
+<section id="s07"><h2><span class="n">07</span> OOM Kill ▶</h2>
+<div class="W" id="w-oom">
+<div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Retry behavior</div><div class="tab" data-i="2">How to detect &amp; fix</div></div>
+<div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Container exceeds memory limit → kernel kills it</div><div class="vis"><span class="bx run">Container: using 250Mi</span> <span class="ar">→</span> <span class="bx pen">254Mi...</span> <span class="ar">→</span> <span class="bx ded">257Mi > limit 256Mi → SIGKILL! exit 137</span></div><div class="ds"><strong>What happens:</strong> The Linux kernel's OOM killer detects the container's memory cgroup exceeding its limit. It sends <strong>SIGKILL</strong> (cannot be caught) → process dies instantly with exit code 137. No graceful shutdown. No time to clean up.</div></div>
+<div class="pnl" data-i="1"><div class="tl"><span class="retry dep">DEPENDS ON restartPolicy</span> — same as app crash</div><div class="ds"><strong>OOM kills are treated exactly like app crashes.</strong> The container exited with non-zero (137), so:<br><br>
+<code>Always</code>: Restarts forever with backoff. Container will keep OOM-ing if you don't fix the memory leak.<br>
+<code>OnFailure</code>: Restarts forever (137 ≠ 0, so it's a failure).<br>
+<code>Never</code>: Container stays dead. Pod status: Failed.</div></div>
+<div class="pnl" data-i="2"><div class="tl">How to detect &amp; fix</div>
+<div class="cd"><span style="color:var(--gn)">$</span> kubectl describe pod oom-app | grep -A3 "Last State"<br>
+&nbsp;&nbsp;Last State: Terminated<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Reason: <span style="color:var(--rd)">OOMKilled</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Exit Code: <span style="color:var(--rd)">137</span><br><br>
+
+<span style="color:var(--gn)">$</span> kubectl top pod oom-app<br>
+<span style="color:var(--ac2)">NAME      CPU    MEMORY</span><br>
+<span style="color:#b0baca">oom-app   50m    </span><span style="color:var(--rd)">248Mi</span><span style="color:#3d4a5e">    # limit is 256Mi → OOM imminent!</span></div>
+<div class="ds"><strong>Fix:</strong> Increase <code>resources.limits.memory</code>, fix the memory leak in your app, profile heap usage.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- S08: PROBES -->
+<section id="s08"><h2><span class="n">08</span> Probe Failures ▶</h2>
+<div class="W" id="w-probe">
+<div class="bar"><div class="tab on" data-i="0">Startup fail</div><div class="tab" data-i="1">Liveness fail</div><div class="tab" data-i="2">Readiness fail</div></div>
+<div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Startup Probe Failure</div>
+<div class="vis"><span class="bx pen">Startup: checking /healthz... fail... fail...</span> <span class="ar">→</span> <span class="bx ded">30 failures × 10s = 5min → KILL container</span> <span class="ar">→</span> <span class="bx loop">restartPolicy applies</span></div>
+<div class="ds"><strong>Retry behavior:</strong> The startup probe itself retries up to <code>failureThreshold</code> times (e.g., 30). If it never passes → container is <strong>killed</strong>. Then <code>restartPolicy</code> determines if the container restarts:<br><br>
+<code>Always</code>/<code>OnFailure</code>: Container restarts, startup probe begins again from scratch. This loops forever (CrashLoopBackOff).<br>
+<code>Never</code>: Container stays dead.</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Liveness Probe Failure</div>
+<div class="vis"><span class="bx run">Running OK...</span> <span class="ar">→</span> <span class="bx ded">Liveness: 3 consecutive failures</span> <span class="ar">→</span> <span class="bx ded">KILL container</span> <span class="ar">→</span> <span class="bx loop">restartPolicy applies</span></div>
+<div class="ds"><strong>Retry behavior:</strong> Liveness probe checks every <code>periodSeconds</code>. After <code>failureThreshold</code> consecutive failures → container is <strong>killed and restarted</strong> (per restartPolicy). Kubelet keeps running liveness checks forever. If the underlying problem persists, this becomes a CrashLoopBackOff cycle.<br><br>
+<strong>Key point:</strong> Liveness <strong>kills</strong> the container. This is destructive. That's why you should NEVER check external dependencies in liveness — if the DB is down, killing your app won't fix the DB!</div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Readiness Probe Failure</div>
+<div class="vis"><span class="bx run">Running OK, serving traffic</span> <span class="ar">→</span> <span class="bx pen">Readiness fails</span> <span class="ar">→</span> <span class="bx pen">Removed from Service (no traffic)</span> <span class="ar">→</span> <span class="bx run">Container keeps running!</span></div>
+<div class="ds"><strong>Retry behavior:</strong> Readiness probe <strong>NEVER kills the container</strong>. It only controls whether the Pod receives traffic from the Service. Kubelet keeps checking every <code>periodSeconds</code> forever. When the probe starts passing again, the Pod is automatically added back to the Service endpoints.<br><br>
+<strong>This is the safe probe for dependency checks.</strong> DB goes down → readiness fails → Pod removed from traffic → DB comes back → readiness passes → Pod gets traffic again. No restarts. No data loss. No disruption.</div></div>
+
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- S09: DEPENDENCY -->
+<section id="s09"><h2><span class="n">09</span> Dependency Failure ▶</h2>
+<div class="W" id="w-dep">
+<div class="bar"><div class="tab on" data-i="0">DB goes down</div><div class="tab" data-i="1">With readiness (correct)</div><div class="tab" data-i="2">With liveness (WRONG!)</div></div>
+<div class="body">
+<div class="pnl on" data-i="0"><div class="tl">External service becomes unavailable</div><div class="vis"><span class="bx run">Pod running fine</span> <span class="ar">⟷</span> <span class="bx ded">Database DOWN ✗</span></div><div class="ds">Your app process is alive and healthy. But the database it depends on is unreachable. The app can't serve meaningful requests. What should Kubernetes do?</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Correct: Readiness probe checks DB → Pod removed from traffic</div><div class="vis"><span class="bx run">Pod alive</span> <span class="ar">→</span> <span class="bx pen">Readiness fails (DB down)</span> <span class="ar">→</span> <span class="bx pen">Removed from Service</span> <span class="ar">→</span> <span class="bx run">Pod keeps running, waiting for DB</span><br><br>
+<span style="font-size:11px;color:var(--dm)">DB comes back →</span> <span class="bx run">Readiness passes</span> <span class="ar">→</span> <span class="bx run">Added back to Service ✓</span></div>
+<div class="ds"><strong>Result:</strong> Pod stays alive. No restart. No data loss. Traffic goes to other healthy Pods. When DB recovers, this Pod automatically starts receiving traffic again. <strong>Self-healing without destruction.</strong></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">WRONG: Liveness probe checks DB → CATASTROPHIC CASCADE</div><div class="vis"><span class="bx ded">DB DOWN</span> <span class="ar">→</span> <span class="bx ded">Liveness fails on ALL Pods</span> <span class="ar">→</span> <span class="bx ded">ALL Pods killed + restarted simultaneously</span><br><br>
+<span class="bx ded">All Pods restarting</span> <span class="ar">→</span> <span class="bx ded">All hit DB at once (thundering herd)</span> <span class="ar">→</span> <span class="bx ded">DB still down → ALL fail again</span> <span class="ar">→</span> <span class="bx ded">TOTAL OUTAGE</span></div>
+<div class="ds"><strong>Result:</strong> Every single Pod restarts at the same time. When they all come back, they ALL try to reconnect to the DB simultaneously (thundering herd). DB is still down → they all fail liveness again → all restart again. <strong>Infinite loop of destruction. Complete service outage.</strong><br><br>
+This is why the rule is absolute: <strong>NEVER put external dependency checks in liveness probes.</strong></div></div>
+
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- S10: INIT CONTAINER -->
+<section id="s10"><h2><span class="n">10</span> Init Container Failure ▶</h2>
+<div class="W" id="w-init">
+<div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Retry behavior</div><div class="tab" data-i="2">Timeline</div></div>
+<div class="body">
+<div class="pnl on" data-i="0"><div class="tl">An init container exits with non-zero code</div><div class="vis"><span class="bx run">Init 1: ✓</span> <span class="ar">→</span> <span class="bx ded">Init 2: exit 1 ✗</span> <span class="ar">→</span> <span class="bx pen">Init 3: never runs</span> <span class="ar">→</span> <span class="bx pen">App: never starts</span></div><div class="ds">The failed init container blocks the entire Pod. Everything after it (subsequent inits, sidecars, app containers) <strong>never starts</strong>.</div></div>
+<div class="pnl" data-i="1"><div class="tl"><span class="retry yes">RETRIES FOREVER</span> — ignores restartPolicy!</div><div class="ds"><strong>Critical difference:</strong> Init containers <strong>always retry regardless of the Pod's restartPolicy</strong>. Even if the Pod has <code>restartPolicy: Never</code>, a failed init container will be retried with exponential backoff. This is because the Pod hasn't "run" yet — it never got past initialization.<br><br>
+<strong>Backoff:</strong> Same formula: 10s → 20s → 40s → 80s → 160s → 300s cap.<br>
+<strong>Stops when:</strong> Never — retries forever until init exits 0, or you delete the Pod.<br>
+<strong>Exception:</strong> If the Pod's <code>restartPolicy</code> is <code>Never</code> AND the init container fails, the <strong>entire Pod</strong> is marked Failed. But the controller (Job) may create a new Pod to retry.</div></div>
+<div class="pnl" data-i="2"><div class="tl">What you see</div>
+<div class="cd"><span style="color:var(--gn)">$</span> kubectl get pod my-app -w<br>
+<span style="color:var(--ac2)">NAME     READY   STATUS                  AGE</span><br>
+<span style="color:#b0baca">my-app   0/1     </span><span style="color:var(--yl)">Init:1/3</span><span style="color:#b0baca">                8s</span><span style="color:#3d4a5e">   # Init 2 running</span><br>
+<span style="color:#b0baca">my-app   0/1     </span><span style="color:var(--rd)">Init:Error</span><span style="color:#b0baca">              10s</span><span style="color:#3d4a5e">  # Init 2 failed!</span><br>
+<span style="color:#b0baca">my-app   0/1     </span><span style="color:var(--rd)">Init:CrashLoopBackOff</span><span style="color:#b0baca">   22s</span><span style="color:#3d4a5e">  # Waiting 10s</span><br>
+<span style="color:#b0baca">my-app   0/1     </span><span style="color:var(--rd)">Init:CrashLoopBackOff</span><span style="color:#b0baca">   45s</span><span style="color:#3d4a5e">  # Waiting 20s</span><br>
+<span style="color:#b0baca">my-app   0/1     </span><span style="color:var(--rd)">Init:CrashLoopBackOff</span><span style="color:#b0baca">   5m</span><span style="color:#3d4a5e">   # Keeps retrying forever</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- S11: EVICTION -->
+<section id="s11"><h2><span class="n">11</span> Eviction ▶</h2>
+<div class="W" id="w-evict">
+<div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Retry behavior</div><div class="tab" data-i="2">Naked vs Controller</div></div>
+<div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Kubelet evicts Pod due to node resource pressure</div><div class="vis"><span class="bx ded">Node memory: 95% used!</span> <span class="ar">→</span> <span class="bx ded">kubelet evicts BestEffort Pods first</span> <span class="ar">→</span> <span class="bx ded">Pod: Evicted</span></div><div class="ds">When a node runs low on memory, disk, or PIDs, the kubelet evicts Pods in QoS priority order (BestEffort → Burstable → Guaranteed). The evicted Pod is <strong>terminated and not restarted on the same node</strong>.</div></div>
+<div class="pnl" data-i="1"><div class="tl"><span class="retry no">NO RETRY on same Pod</span> — Controller must create a new one</div><div class="ds"><strong>The kubelet does NOT restart evicted Pods.</strong> An evicted Pod is dead. Its status is <code>Failed</code> with reason <code>Evicted</code>. It stays in this state forever (until garbage collected).<br><br>
+<strong>Who recreates it?</strong> Only a <strong>controller</strong> (Deployment, ReplicaSet, StatefulSet). The controller detects that the actual replica count is below desired, and creates a <strong>brand new Pod</strong> — possibly on a different node. This is a NEW Pod with a new name and new IP.</div></div>
+<div class="pnl" data-i="2"><div class="tl">Naked Pod = gone forever. Controller Pod = recreated.</div><div class="vis"><strong>Naked Pod:</strong> <span class="bx ded">Evicted → gone forever. Nobody recreates it. ✗</span><br><br><strong>Deployment Pod:</strong> <span class="bx ded">Evicted</span> <span class="ar">→</span> <span class="bx new">ReplicaSet creates NEW Pod on healthy node ✓</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- S12: NODE DEATH -->
+<section id="s12"><h2><span class="n">12</span> Node Death ▶</h2>
+<div class="W" id="w-node">
+<div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Timeline</div><div class="tab" data-i="2">Naked vs Controller</div></div>
+<div class="body">
+<div class="pnl on" data-i="0"><div class="tl">The node running your Pod crashes</div><div class="vis"><span class="bx ded">Node: worker-02 ☠ (hardware/kernel/power failure)</span> <span class="ar">→</span> All Pods on this node go <span class="bx ded">Unknown</span></div><div class="ds">The node stops reporting heartbeats to the API server. After <code>node-monitor-grace-period</code> (default 40s), the node is marked <code>NotReady</code>. After <code>pod-eviction-timeout</code> (default 5 min), all Pods on the dead node are marked for deletion.</div></div>
+<div class="pnl" data-i="1"><div class="tl">What you see over time</div>
+<div class="cd"><span style="color:var(--gn)">$</span> kubectl get nodes -w<br>
+<span style="color:#b0baca">worker-02   </span><span style="color:var(--gn)">Ready</span><span style="color:#b0baca">      &lt;none&gt;   5d</span><br>
+<span style="color:#b0baca">worker-02   </span><span style="color:var(--yl)">NotReady</span><span style="color:#b0baca">   &lt;none&gt;   5d</span><span style="color:#3d4a5e">   # After 40s of no heartbeat</span><br><br>
+
+<span style="color:var(--gn)">$</span> kubectl get pods -w<br>
+<span style="color:#b0baca">my-app   1/1   </span><span style="color:var(--gn)">Running</span><span style="color:#b0baca">       0   2h</span><br>
+<span style="color:#b0baca">my-app   1/1   </span><span style="color:var(--yl)">Unknown</span><span style="color:#b0baca">       0   2h</span><span style="color:#3d4a5e">       # Node went NotReady</span><br>
+<span style="color:#b0baca">my-app   1/1   </span><span style="color:var(--rd)">Terminating</span><span style="color:#b0baca">   0   2h</span><span style="color:#3d4a5e">   # After 5 min, Pod marked for deletion</span><br>
+<span style="color:#3d4a5e"># If Deployment-managed: new Pod created on healthy node</span><br>
+<span style="color:#b0baca">my-app-new   0/1   </span><span style="color:var(--yl)">ContainerCreating</span><span style="color:#b0baca">   0   1s</span></div></div>
+<div class="pnl" data-i="2"><div class="tl"><span class="retry no">NO RETRY for the same Pod</span></div><div class="vis"><strong>Naked Pod:</strong> <span class="bx ded">Node dies → Pod gone FOREVER. No controller = no recreation. ✗</span><br><br><strong>Deployment Pod:</strong> <span class="bx ded">Node dies</span> <span class="ar">→</span> wait 5 min <span class="ar">→</span> <span class="bx new">NEW Pod created on healthy node ✓</span></div><div class="ds">The original Pod is never "restarted." It's dead on a dead node. A controller creates a completely <strong>new Pod</strong> (new name, new IP, possibly different node). This is why controllers are essential for production.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div>
+</div></div>
+</section>
+
+<!-- S13: RESTART POLICY -->
+<section id="s13"><h2><span class="n">13</span> restartPolicy — Complete Reference</h2>
+<div class="def"><b>Definition — restartPolicy</b>A Pod-level field that tells the kubelet what to do when a container exits. Set once for the entire Pod — all containers follow the same policy. Only applies to containers that have actually started (not pre-run failures like image pull or config errors).</div>
+
+<table>
+<tr><th>Event</th><th>restartPolicy: Always</th><th>restartPolicy: OnFailure</th><th>restartPolicy: Never</th></tr>
+<tr><td>exit 0 (success)</td><td><span class="bg og">Restart</span> with backoff</td><td><span class="bg gn">Stay stopped</span> (success!)</td><td><span class="bg gn">Stay stopped</span></td></tr>
+<tr><td>exit 1 (app error)</td><td><span class="bg og">Restart</span> with backoff</td><td><span class="bg og">Restart</span> with backoff</td><td><span class="bg rd">Dead forever</span></td></tr>
+<tr><td>exit 137 (OOM kill)</td><td><span class="bg og">Restart</span> with backoff</td><td><span class="bg og">Restart</span> with backoff</td><td><span class="bg rd">Dead forever</span></td></tr>
+<tr><td>exit 143 (SIGTERM)</td><td><span class="bg og">Restart</span> with backoff</td><td><span class="bg og">Restart</span> with backoff</td><td><span class="bg rd">Dead forever</span></td></tr>
+<tr><td>Liveness probe fail</td><td><span class="bg og">Kill + restart</span></td><td><span class="bg og">Kill + restart</span></td><td><span class="bg rd">Kill → dead forever</span></td></tr>
+<tr><td>Image pull fail</td><td colspan="3" style="text-align:center"><span class="bg yl">restartPolicy doesn't apply — kubelet retries pull forever regardless</span></td></tr>
+<tr><td>Config missing</td><td colspan="3" style="text-align:center"><span class="bg yl">restartPolicy doesn't apply — kubelet retries forever regardless</span></td></tr>
+<tr><td>Scheduling fail</td><td colspan="3" style="text-align:center"><span class="bg yl">restartPolicy doesn't apply — scheduler retries forever regardless</span></td></tr>
+<tr><td>Eviction</td><td colspan="3" style="text-align:center"><span class="bg rd">Pod dead. Only controller can create a new one.</span></td></tr>
+<tr><td>Node death</td><td colspan="3" style="text-align:center"><span class="bg rd">Pod dead. Only controller can create a new one.</span></td></tr>
+</table>
+
+<pre><code><span class="cm"># Deployments (services that should always run)</span>
+<span class="k">restartPolicy:</span> <span class="v">Always</span>      <span class="cm"># DEFAULT — Kubernetes adds this if you don't specify</span>
+
+<span class="cm"># Jobs (batch tasks that should retry on failure)</span>
+<span class="k">restartPolicy:</span> <span class="v">OnFailure</span>   <span class="cm"># Retry failures, stop on success</span>
+
+<span class="cm"># Jobs (when Job controller handles retry at Pod level)</span>
+<span class="k">restartPolicy:</span> <span class="v">Never</span>       <span class="cm"># Let the container die, Job creates a new Pod</span></code></pre>
+</section>
+
+<!-- S14: BACKOFF -->
+<section id="s14"><h2><span class="n">14</span> Backoff Formula</h2>
+<div class="def"><b>Definition — Exponential Backoff</b>When a container keeps failing, Kubernetes waits longer between each restart to avoid wasting resources. The formula: <code>min(10s × 2^(n-1), 300s)</code> where n = restart count. After 10 minutes of healthy running, the backoff timer resets to 10s.</div>
+
+<table>
+<tr><th>Restart #</th><th>Wait Before Retry</th><th>Cumulative Time</th></tr>
+<tr><td>1</td><td>10 seconds</td><td>~10s</td></tr>
+<tr><td>2</td><td>20 seconds</td><td>~30s</td></tr>
+<tr><td>3</td><td>40 seconds</td><td>~1m 10s</td></tr>
+<tr><td>4</td><td>80 seconds</td><td>~2m 30s</td></tr>
+<tr><td>5</td><td>160 seconds</td><td>~5m 10s</td></tr>
+<tr><td>6+</td><td>300 seconds (cap)</td><td>+5 min per retry</td></tr>
+</table>
+
+<div class="c g"><div class="l">Backoff Reset</div><p style="margin:0">If a container runs successfully for <strong>10 consecutive minutes</strong>, the backoff timer resets to 10 seconds. This means: fix the bug → container starts → runs for 10 min → if it crashes again, wait is only 10s instead of 300s.</p></div>
+</section>
+
+<!-- S15: DEBUG -->
+<section id="s15"><h2><span class="n">15</span> Debug Commands</h2>
+<pre><code><span class="cm"># ══ IDENTIFY THE FAILURE ══</span>
+kubectl get pods                                  <span class="cm"># See status column</span>
+kubectl describe pod X | grep -A20 "Events"       <span class="cm"># See WHY it failed</span>
+kubectl describe pod X | grep -A10 "Conditions"   <span class="cm"># See pod conditions</span>
+
+<span class="cm"># ══ APP CRASH ══</span>
+kubectl logs X                                    <span class="cm"># Current container logs</span>
+kubectl logs X --previous                         <span class="cm"># LAST CRASHED container logs ← KEY!</span>
+kubectl logs X -c init-container-name             <span class="cm"># Init container logs</span>
+
+<span class="cm"># ══ OOM DETECTION ══</span>
+kubectl describe pod X | grep -i oom              <span class="cm"># Check for OOMKilled</span>
+kubectl top pod X                                 <span class="cm"># Current memory usage</span>
+
+<span class="cm"># ══ IMAGE PULL ══</span>
+kubectl describe pod X | grep "image"             <span class="cm"># See exact image name</span>
+kubectl get pod X -o jsonpath='{.spec.containers[0].image}'  <span class="cm"># Get image</span>
+
+<span class="cm"># ══ SCHEDULING ══</span>
+kubectl describe pod X | grep -i "schedule"       <span class="cm"># Scheduling events</span>
+kubectl describe nodes | grep -A5 "Allocated"     <span class="cm"># Node resource usage</span>
+
+<span class="cm"># ══ LIVE DEBUG ══</span>
+kubectl debug -it X --image=busybox --target=web  <span class="cm"># Ephemeral debug container</span>
+kubectl exec -it X -- sh                          <span class="cm"># Shell into running container</span></code></pre>
+</section>
+
+</main>
+
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>
