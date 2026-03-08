@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKAD Pod Labs v2 — All Methods</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#f59e0b;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:248px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:15px;background:linear-gradient(135deg,var(--ac),var(--og));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:248px;max-width:1020px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 18px}
+.hero h1{font-family:'Fraunces',serif;font-size:34px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:6px}
+.hero p{color:var(--dm);font-size:12.5px;max-width:640px;margin:0 auto}
+h2{font-family:'Fraunces',serif;font-size:19px;font-weight:700;color:#fff;margin:28px 0 10px;padding-bottom:5px;border-bottom:2px solid var(--bd)}
+h3{font-size:13.5px;font-weight:700;color:#dde2ea;margin:12px 0 4px}
+p{margin-bottom:6px;font-size:13px}strong{color:#eee}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 11px;overflow-x:auto;margin:4px 0 7px;font-size:10px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:9.5px}
+p code,li code,td code{background:var(--sf2);padding:1px 3px;border-radius:3px;color:var(--ac2)}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:11px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:4px 7px;font-size:8.5px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:4px 7px;border-bottom:1px solid var(--bd);vertical-align:top}
+
+.L{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:12px 0;overflow:hidden}
+.L .lh{padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.L .ln{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);font-weight:700;background:rgba(245,158,11,.1);padding:2px 7px;border-radius:4px;white-space:nowrap}
+.L .lt{font-size:13.5px;font-weight:700;color:#fff;flex:1}
+.L .lw{font-family:'JetBrains Mono',monospace;font-size:8.5px;padding:2px 7px;border-radius:10px;font-weight:600}
+.L .lw.w1{background:rgba(22,163,74,.12);color:var(--gn)}.L .lw.w2{background:rgba(245,158,11,.12);color:var(--ac)}.L .lw.w3{background:rgba(220,38,38,.12);color:var(--rd)}
+.L .ltime{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--dm)}
+.L .ctx{background:rgba(37,99,235,.03);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:6px 12px;font-size:11px;color:var(--dm)}
+.L .task{padding:10px 12px;font-size:12.5px}
+.L .task ul{margin:3px 0 6px 14px}.L .task ul li{margin-bottom:2px;font-size:12px}
+.L .verify{background:rgba(14,164,114,.03);border-top:1px solid rgba(14,164,114,.08);padding:7px 12px;font-size:11px}
+.L .verify b{color:#0ea472;font-size:8px;text-transform:uppercase;letter-spacing:1px}
+.L .sol-btn{display:block;width:100%;padding:8px 12px;background:rgba(245,158,11,.04);border:none;border-top:1px solid var(--bd);color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;cursor:pointer;text-align:left;transition:.1s}
+.L .sol-btn:hover{background:rgba(245,158,11,.08)}
+.L .sol{display:none;padding:10px 12px;border-top:1px solid var(--bd)}
+.L.open .sol{display:block}
+/* Method tabs inside solution */
+.M{border:1px solid var(--bd);border-radius:8px;margin:8px 0;overflow:hidden}
+.M .mt{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.M .mb{padding:5px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:'JetBrains Mono',monospace;transition:.1s}
+.M .mb:hover{color:var(--tx);background:var(--sf2)}
+.M .mb.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(245,158,11,.04)}
+.M .mp{display:none;padding:10px 12px}.M .mp.on{display:block}
+.why{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.08);border-radius:6px;padding:7px 10px;margin:5px 0;font-size:11.5px}
+.why b{color:var(--bl);font-size:8px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:1px}
+.trap{background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.08);border-radius:6px;padding:7px 10px;margin:5px 0;font-size:11.5px}
+.trap b{color:var(--rd);font-size:8px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:1px}
+.best{background:rgba(22,163,74,.03);border:1px solid rgba(22,163,74,.08);border-radius:6px;padding:7px 10px;margin:5px 0;font-size:11.5px}
+.best b{color:var(--gn);font-size:8px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:1px}
+.sre{background:linear-gradient(135deg,rgba(245,158,11,.03),rgba(8,145,178,.02));border:1px solid rgba(245,158,11,.1);border-radius:var(--r);padding:8px 12px;margin:8px 0;font-size:12px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(245,158,11,.12);color:var(--ac);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ CKAD Labs v2</div>
+<div class="sub">All Methods Shown</div>
+<div class="sl">Basics</div>
+<ul><li><a href="#L01">01 Create Pod</a></li><li><a href="#L02">02 Labels &amp; Annotations</a></li><li><a href="#L03">03 Env Variables</a></li><li><a href="#L04">04 Command &amp; Args</a></li></ul>
+<div class="sl">Multi-Container</div>
+<ul><li><a href="#L05">05 Sidecar</a></li><li><a href="#L06">06 Init Container</a></li><li><a href="#L07">07 Init+Sidecar+App</a></li></ul>
+<div class="sl">Config</div>
+<ul><li><a href="#L08">08 ConfigMap → Env</a></li><li><a href="#L09">09 Secret → Volume</a></li><li><a href="#L10">10 ConfigMap → File</a></li></ul>
+<div class="sl">Probes</div>
+<ul><li><a href="#L11">11 Liveness</a></li><li><a href="#L12">12 Readiness</a></li><li><a href="#L13">13 All 3 Probes</a></li></ul>
+<div class="sl">Resources</div>
+<ul><li><a href="#L14">14 Requests &amp; Limits</a></li><li><a href="#L15">15 Guaranteed QoS</a></li></ul>
+<div class="sl">Security</div>
+<ul><li><a href="#L16">16 Security Context</a></li><li><a href="#L17">17 Service Account</a></li></ul>
+<div class="sl">Scheduling</div>
+<ul><li><a href="#L18">18 Node Selector</a></li><li><a href="#L19">19 Tolerations</a></li><li><a href="#L20">20 Node Affinity</a></li></ul>
+<div class="sl">Troubleshooting</div>
+<ul><li><a href="#L21">21 Fix Wrong Image</a></li><li><a href="#L22">22 Fix OOMKilled</a></li><li><a href="#L23">23 Fix CrashLoop</a></li><li><a href="#L24">24 Fix Config Error</a></li><li><a href="#L25">25 Fix Pending</a></li></ul>
+<div class="sl">Advanced</div>
+<ul><li><a href="#L26">26 Graceful Shutdown</a></li><li><a href="#L27">27 Ephemeral Debug</a></li><li><a href="#L28">28 Extract Info</a></li><li><a href="#L29">29 Update Image</a></li><li><a href="#L30">30 Full Production</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>CKAD Pod Labs v2</h1><p>30 hands-on tasks. Every solution shows ALL possible methods: imperative command, YAML file, and hybrid approaches. Try to solve without peeking, then compare your approach.</p></div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- LAB 01                              -->
+<!-- ═══════════════════════════════════ -->
+<div class="L" id="L01">
+<div class="lh"><span class="ln">LAB 01</span><div class="lt">Create a Pod</div><span class="lw w1">Easy</span><span class="ltime">⏱ 1 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create a Pod: name <code>web-pod</code>, image <code>nginx:1.25</code>, port <code>80</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pod web-pod</code> → STATUS: Running, READY: 1/1</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L01" data-i="0">Method A: Imperative</div>
+<div class="mb" data-g="L01" data-i="1">Method B: YAML</div>
+<div class="mb" data-g="L01" data-i="2">Method C: Hybrid</div>
+</div>
+<div class="mp on" data-g="L01" data-i="0">
+<h3>Method A — One imperative command (fastest)</h3>
+<pre><code>kubectl run web-pod --image=nginx:1.25 --port=80</code></pre>
+<div class="best"><b>Best for exam</b>Fastest for simple Pods. One command, done.</div>
+</div>
+<div class="mp" data-g="L01" data-i="1">
+<h3>Method B — Write YAML from scratch</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx:1.25</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span></code></pre>
+<pre><code>kubectl apply -f pod.yaml</code></pre>
+<div class="why"><b>When to use</b>When you need to add fields that imperative commands don't support (probes, volumes, securityContext, etc.).</div>
+</div>
+<div class="mp" data-g="L01" data-i="2">
+<h3>Method C — Generate YAML then apply (recommended workflow)</h3>
+<pre><code><span class="cm"># Step 1: Generate YAML skeleton</span>
+kubectl run web-pod --image=nginx:1.25 --port=80 --dry-run=client -o yaml > pod.yaml
+
+<span class="cm"># Step 2: Edit if needed (add probes, resources, etc.)</span>
+vi pod.yaml
+
+<span class="cm"># Step 3: Apply</span>
+kubectl apply -f pod.yaml</code></pre>
+<div class="best"><b>Best for complex tasks</b>Generate the boilerplate, then add the complex fields. Saves typing and avoids YAML indentation mistakes.</div>
+</div>
+</div>
+
+</div></div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- LAB 02                              -->
+<!-- ═══════════════════════════════════ -->
+<div class="L" id="L02">
+<div class="lh"><span class="ln">LAB 02</span><div class="lt">Pod with Labels &amp; Annotations</div><span class="lw w1">Easy</span><span class="ltime">⏱ 2 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>labeled-pod</code>, image <code>httpd:2.4</code>. Labels: <code>app=frontend</code>, <code>tier=web</code>. Annotation: <code>description=CKAD lab pod</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pod labeled-pod --show-labels</code> and <code>kubectl get pod labeled-pod -o jsonpath='{.metadata.annotations.description}'</code></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L02" data-i="0">Method A: All imperative</div>
+<div class="mb" data-g="L02" data-i="1">Method B: All in YAML</div>
+<div class="mb" data-g="L02" data-i="2">Method C: Create then add</div>
+</div>
+<div class="mp on" data-g="L02" data-i="0">
+<h3>Method A — Imperative with post-creation annotation</h3>
+<pre><code><span class="cm"># Create Pod with labels in one command</span>
+kubectl run labeled-pod --image=httpd:2.4 --labels="app=frontend,tier=web"
+
+<span class="cm"># Add annotation (can't do this in kubectl run)</span>
+kubectl annotate pod labeled-pod description="CKAD lab pod"</code></pre>
+<div class="why"><b>Note</b><code>kubectl run</code> supports <code>--labels</code> but NOT <code>--annotations</code>. You must add annotations as a separate step or use YAML.</div>
+</div>
+<div class="mp" data-g="L02" data-i="1">
+<h3>Method B — Full YAML (labels + annotations together)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">labeled-pod</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">frontend</span>
+    <span class="k">tier:</span> <span class="s">web</span>
+  <span class="k">annotations:</span>
+    <span class="k">description:</span> <span class="s">CKAD lab pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">httpd</span>
+    <span class="k">image:</span> <span class="s">httpd:2.4</span></code></pre>
+<pre><code>kubectl apply -f labeled-pod.yaml</code></pre>
+</div>
+<div class="mp" data-g="L02" data-i="2">
+<h3>Method C — Generate YAML, edit, apply</h3>
+<pre><code><span class="cm"># Generate skeleton with labels</span>
+kubectl run labeled-pod --image=httpd:2.4 --labels="app=frontend,tier=web" --dry-run=client -o yaml > lab02.yaml
+
+<span class="cm"># Edit: add annotations section under metadata</span>
+<span class="cm"># annotations:</span>
+<span class="cm">#   description: CKAD lab pod</span>
+
+kubectl apply -f lab02.yaml</code></pre>
+</div>
+</div>
+
+</div></div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- LAB 03                              -->
+<!-- ═══════════════════════════════════ -->
+<div class="L" id="L03">
+<div class="lh"><span class="ln">LAB 03</span><div class="lt">Pod with Environment Variables</div><span class="lw w2">Medium</span><span class="ltime">⏱ 2 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>env-pod</code>, image <code>nginx</code>, with env vars: <code>APP_ENV=production</code>, <code>LOG_LEVEL=debug</code>, <code>MAX_CONN=100</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl exec env-pod -- env | grep -E "APP_ENV|LOG_LEVEL|MAX_CONN"</code></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L03" data-i="0">Method A: Imperative</div>
+<div class="mb" data-g="L03" data-i="1">Method B: YAML</div>
+</div>
+<div class="mp on" data-g="L03" data-i="0">
+<h3>Method A — Imperative with --env flags</h3>
+<pre><code>kubectl run env-pod --image=nginx \
+  --env="APP_ENV=production" \
+  --env="LOG_LEVEL=debug" \
+  --env="MAX_CONN=100"</code></pre>
+<div class="best"><b>Fastest</b>Use <code>--env</code> multiple times. Works for simple literal values.</div>
+</div>
+<div class="mp" data-g="L03" data-i="1">
+<h3>Method B — YAML with env array</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">env-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">env:</span>
+    - <span class="k">name:</span> <span class="s">APP_ENV</span>
+      <span class="k">value:</span> <span class="s">"production"</span>
+    - <span class="k">name:</span> <span class="s">LOG_LEVEL</span>
+      <span class="k">value:</span> <span class="s">"debug"</span>
+    - <span class="k">name:</span> <span class="s">MAX_CONN</span>
+      <span class="k">value:</span> <span class="s">"100"</span></code></pre>
+<pre><code>kubectl apply -f env-pod.yaml</code></pre>
+</div>
+</div>
+
+</div></div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- LAB 04                              -->
+<!-- ═══════════════════════════════════ -->
+<div class="L" id="L04">
+<div class="lh"><span class="ln">LAB 04</span><div class="lt">Pod with Command and Args</div><span class="lw w2">Medium</span><span class="ltime">⏱ 2 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>cmd-pod</code>, image <code>busybox:1.36</code>, that prints "Hello CKAD" then sleeps 3600 seconds. Pod must stay running.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl logs cmd-pod</code> → "Hello CKAD" and <code>kubectl get pod cmd-pod</code> → Running</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L04" data-i="0">Method A: Imperative</div>
+<div class="mb" data-g="L04" data-i="1">Method B: YAML command</div>
+<div class="mb" data-g="L04" data-i="2">Method C: YAML command+args</div>
+</div>
+<div class="mp on" data-g="L04" data-i="0">
+<h3>Method A — Imperative (everything after -- is the command)</h3>
+<pre><code>kubectl run cmd-pod --image=busybox:1.36 --restart=Never \
+  -- /bin/sh -c "echo Hello CKAD && sleep 3600"</code></pre>
+</div>
+<div class="mp" data-g="L04" data-i="1">
+<h3>Method B — YAML with <code>command</code> only (overrides ENTRYPOINT + CMD)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">cmd-pod</span>
+<span class="k">spec:</span>
+  <span class="k">restartPolicy:</span> <span class="v">Never</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">cmd</span>
+    <span class="k">image:</span> <span class="s">busybox:1.36</span>
+    <span class="k">command:</span> [<span class="s">"/bin/sh"</span>,<span class="s">"-c"</span>,<span class="s">"echo Hello CKAD && sleep 3600"</span>]</code></pre>
+</div>
+<div class="mp" data-g="L04" data-i="2">
+<h3>Method C — YAML with separate <code>command</code> + <code>args</code></h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">cmd-pod</span>
+<span class="k">spec:</span>
+  <span class="k">restartPolicy:</span> <span class="v">Never</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">cmd</span>
+    <span class="k">image:</span> <span class="s">busybox:1.36</span>
+    <span class="k">command:</span> [<span class="s">"/bin/sh"</span>, <span class="s">"-c"</span>]      <span class="cm"># = Docker ENTRYPOINT</span>
+    <span class="k">args:</span> [<span class="s">"echo Hello CKAD && sleep 3600"</span>]  <span class="cm"># = Docker CMD</span></code></pre>
+<div class="why"><b>command vs args</b><code>command</code> overrides Docker ENTRYPOINT. <code>args</code> overrides Docker CMD. If you set only <code>args</code>, the image's default ENTRYPOINT is used with your new args.</div>
+</div>
+</div>
+
+</div></div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- LAB 08                              -->
+<!-- ═══════════════════════════════════ -->
+<h2>Config &amp; Volumes</h2>
+<div class="L" id="L08">
+<div class="lh"><span class="ln">LAB 08</span><div class="lt">ConfigMap → Environment Variables</div><span class="lw w2">Medium</span><span class="ltime">⏱ 5 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create a ConfigMap named <code>app-config</code> with keys <code>DB_HOST=mysql</code> and <code>DB_PORT=3306</code>. Then create Pod <code>config-pod</code> (image <code>nginx</code>) that uses these values as environment variables.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl exec config-pod -- env | grep DB_</code> → DB_HOST=mysql, DB_PORT=3306</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+
+<h3>Step 1 — Create the ConfigMap (3 methods)</h3>
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L08a" data-i="0">Imperative literal</div>
+<div class="mb" data-g="L08a" data-i="1">Imperative from file</div>
+<div class="mb" data-g="L08a" data-i="2">YAML file</div>
+</div>
+<div class="mp on" data-g="L08a" data-i="0">
+<h3>Create ConfigMap — imperative from literals</h3>
+<pre><code>kubectl create configmap app-config \
+  --from-literal=DB_HOST=mysql \
+  --from-literal=DB_PORT=3306</code></pre>
+<div class="best"><b>Fastest</b>One command. Use for simple key-value pairs.</div>
+</div>
+<div class="mp" data-g="L08a" data-i="1">
+<h3>Create ConfigMap — imperative from file</h3>
+<pre><code><span class="cm"># Create a properties file first</span>
+cat > app.properties &lt;&lt;EOF
+DB_HOST=mysql
+DB_PORT=3306
+EOF
+
+<span class="cm"># Create ConfigMap from file (each line becomes a key-value pair)</span>
+kubectl create configmap app-config --from-env-file=app.properties</code></pre>
+<div class="why"><b>When to use</b>When you have many config values in an existing file. <code>--from-env-file</code> splits lines as key=value pairs. <code>--from-file</code> stores the entire file as a single key.</div>
+</div>
+<div class="mp" data-g="L08a" data-i="2">
+<h3>Create ConfigMap — YAML file</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">ConfigMap</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">app-config</span>
+<span class="k">data:</span>
+  <span class="k">DB_HOST:</span> <span class="s">mysql</span>
+  <span class="k">DB_PORT:</span> <span class="s">"3306"</span></code></pre>
+<pre><code>kubectl apply -f configmap.yaml</code></pre>
+<div class="trap"><b>Trap</b>ConfigMap values are always strings. Numeric values like <code>3306</code> must be quoted: <code>"3306"</code>. Without quotes, YAML parses it as an integer and Kubernetes rejects it.</div>
+</div>
+</div>
+
+<h3>Step 2 — Create Pod using the ConfigMap (3 methods)</h3>
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L08b" data-i="0">envFrom (all keys)</div>
+<div class="mb" data-g="L08b" data-i="1">env valueFrom (pick keys)</div>
+<div class="mb" data-g="L08b" data-i="2">All-in-one YAML</div>
+</div>
+<div class="mp on" data-g="L08b" data-i="0">
+<h3>Method A — <code>envFrom</code>: load ALL keys from ConfigMap as env vars</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">config-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">envFrom:</span>
+    - <span class="k">configMapRef:</span>
+        <span class="k">name:</span> <span class="s">app-config</span></code></pre>
+<div class="best"><b>Best when</b>You want ALL keys from the ConfigMap as env vars with their original names. Shortest YAML.</div>
+</div>
+<div class="mp" data-g="L08b" data-i="1">
+<h3>Method B — <code>env.valueFrom</code>: pick individual keys (can rename)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">config-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">env:</span>
+    - <span class="k">name:</span> <span class="s">DB_HOST</span>            <span class="cm"># env var name in container</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">configMapKeyRef:</span>
+          <span class="k">name:</span> <span class="s">app-config</span>     <span class="cm"># ConfigMap name</span>
+          <span class="k">key:</span> <span class="s">DB_HOST</span>          <span class="cm"># key inside ConfigMap</span>
+    - <span class="k">name:</span> <span class="s">DATABASE_PORT</span>      <span class="cm"># ← can rename the env var!</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">configMapKeyRef:</span>
+          <span class="k">name:</span> <span class="s">app-config</span>
+          <span class="k">key:</span> <span class="s">DB_PORT</span></code></pre>
+<div class="why"><b>When to use</b>When you need only specific keys, or want to rename them (e.g., ConfigMap key <code>DB_PORT</code> → env var <code>DATABASE_PORT</code>).</div>
+</div>
+<div class="mp" data-g="L08b" data-i="2">
+<h3>Method C — Define ConfigMap + Pod in a single YAML file</h3>
+<pre><code><span class="cm"># Both resources in one file, separated by ---</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">ConfigMap</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">app-config</span>
+<span class="k">data:</span>
+  <span class="k">DB_HOST:</span> <span class="s">mysql</span>
+  <span class="k">DB_PORT:</span> <span class="s">"3306"</span>
+---
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">config-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">envFrom:</span>
+    - <span class="k">configMapRef:</span>
+        <span class="k">name:</span> <span class="s">app-config</span></code></pre>
+<pre><code>kubectl apply -f all-in-one.yaml</code></pre>
+<div class="why"><b>When to use</b>When both resources are tightly coupled. Use <code>---</code> to separate multiple resources in one file. <code>kubectl apply -f</code> creates them all in order.</div>
+</div>
+</div>
+
+</div></div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- LAB 09                              -->
+<!-- ═══════════════════════════════════ -->
+<div class="L" id="L09">
+<div class="lh"><span class="ln">LAB 09</span><div class="lt">Secret → Mounted as Volume</div><span class="lw w2">Medium</span><span class="ltime">⏱ 5 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Secret <code>db-creds</code> with <code>username=admin</code>, <code>password=s3cret</code>. Create Pod <code>secret-pod</code> (image <code>nginx</code>) that mounts the Secret as a read-only volume at <code>/etc/db-credentials</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl exec secret-pod -- cat /etc/db-credentials/password</code> → s3cret</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+
+<h3>Step 1 — Create the Secret (3 methods)</h3>
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L09a" data-i="0">Imperative</div>
+<div class="mb" data-g="L09a" data-i="1">YAML (base64)</div>
+<div class="mb" data-g="L09a" data-i="2">YAML (stringData)</div>
+</div>
+<div class="mp on" data-g="L09a" data-i="0">
+<pre><code>kubectl create secret generic db-creds \
+  --from-literal=username=admin \
+  --from-literal=password=s3cret</code></pre>
+<div class="best"><b>Fastest</b>kubectl handles base64 encoding automatically.</div>
+</div>
+<div class="mp" data-g="L09a" data-i="1">
+<h3>YAML with base64-encoded data</h3>
+<pre><code><span class="cm"># First encode values:</span>
+<span class="cm"># echo -n "admin" | base64  → YWRtaW4=</span>
+<span class="cm"># echo -n "s3cret" | base64 → czNjcmV0</span>
+
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Secret</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">db-creds</span>
+<span class="k">type:</span> <span class="v">Opaque</span>
+<span class="k">data:</span>
+  <span class="k">username:</span> <span class="s">YWRtaW4=</span>        <span class="cm"># base64 of "admin"</span>
+  <span class="k">password:</span> <span class="s">czNjcmV0</span>       <span class="cm"># base64 of "s3cret"</span></code></pre>
+<div class="trap"><b>Trap</b>Use <code>echo -n</code> (no newline!) when encoding. <code>echo "admin" | base64</code> includes a newline character, giving wrong output.</div>
+</div>
+<div class="mp" data-g="L09a" data-i="2">
+<h3>YAML with stringData (plain text, auto-encoded)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Secret</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">db-creds</span>
+<span class="k">type:</span> <span class="v">Opaque</span>
+<span class="k">stringData:</span>                  <span class="cm"># ← plain text, K8s encodes it for you</span>
+  <span class="k">username:</span> <span class="s">admin</span>
+  <span class="k">password:</span> <span class="s">s3cret</span></code></pre>
+<div class="best"><b>Best for YAML</b><code>stringData</code> accepts plain text — no manual base64 encoding needed. Kubernetes converts it to <code>data</code> (base64) when stored.</div>
+</div>
+</div>
+
+<h3>Step 2 — Pod mounting the Secret as a volume</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">secret-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">creds</span>
+      <span class="k">mountPath:</span> <span class="s">/etc/db-credentials</span>
+      <span class="k">readOnly:</span> <span class="v">true</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">creds</span>
+    <span class="k">secret:</span>
+      <span class="k">secretName:</span> <span class="s">db-creds</span></code></pre>
+<div class="why"><b>Volume vs Env</b>When mounted as a volume, each Secret key becomes a file. <code>/etc/db-credentials/username</code> contains "admin", <code>/etc/db-credentials/password</code> contains "s3cret". Volumes auto-update when the Secret changes (env vars don't).</div>
+
+</div></div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- LAB 10                              -->
+<!-- ═══════════════════════════════════ -->
+<div class="L" id="L10">
+<div class="lh"><span class="ln">LAB 10</span><div class="lt">ConfigMap → Mounted as File</div><span class="lw w2">Medium</span><span class="ltime">⏱ 4 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create ConfigMap <code>nginx-conf</code> containing a custom nginx config. Mount it into Pod <code>custom-nginx</code> at <code>/etc/nginx/conf.d</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl exec custom-nginx -- cat /etc/nginx/conf.d/default.conf</code></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L10" data-i="0">Method A: From file</div>
+<div class="mb" data-g="L10" data-i="1">Method B: All YAML</div>
+</div>
+<div class="mp on" data-g="L10" data-i="0">
+<h3>Method A — Create ConfigMap from an actual file</h3>
+<pre><code><span class="cm"># Step 1: Create the config file</span>
+cat > default.conf &lt;&lt;'EOF'
+server {
+    listen 80;
+    server_name localhost;
+    location / {
+        return 200 "Hello from CKAD!\n";
+    }
+}
+EOF
+
+<span class="cm"># Step 2: Create ConfigMap from file</span>
+kubectl create configmap nginx-conf --from-file=default.conf</code></pre>
+<div class="why"><b>Key</b><code>--from-file=default.conf</code> stores the entire file as a single key. The key name = filename (<code>default.conf</code>). The value = file contents.</div>
+</div>
+<div class="mp" data-g="L10" data-i="1">
+<h3>Method B — ConfigMap YAML with embedded file content</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">ConfigMap</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">nginx-conf</span>
+<span class="k">data:</span>
+  <span class="k">default.conf:</span> |             <span class="cm"># ← key becomes filename</span>
+    server {
+        listen 80;
+        server_name localhost;
+        location / {
+            return 200 "Hello from CKAD!\n";
+        }
+    }</code></pre>
+<div class="why"><b>Pipe symbol |</b>The YAML <code>|</code> preserves newlines in multi-line strings. Without it, the config would be on one line.</div>
+</div>
+</div>
+
+<h3>Pod YAML (same for both methods)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">custom-nginx</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">config</span>
+      <span class="k">mountPath:</span> <span class="s">/etc/nginx/conf.d</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">config</span>
+    <span class="k">configMap:</span>
+      <span class="k">name:</span> <span class="s">nginx-conf</span></code></pre>
+
+</div></div>
+
+<!-- REMAINING LABS — abbreviated for key ones with multiple methods -->
+<h2>Probes</h2>
+
+<div class="L" id="L11">
+<div class="lh"><span class="ln">LAB 11</span><div class="lt">Liveness Probe</div><span class="lw w2">Medium</span><span class="ltime">⏱ 3 min</span></div>
+<div class="task"><p>Create Pod <code>liveness-pod</code>, image <code>nginx</code>. Add liveness probe: HTTP GET <code>/</code> port <code>80</code>, period <code>10s</code>, failure threshold <code>3</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl describe pod liveness-pod | grep Liveness</code></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L11" data-i="0">YAML (httpGet)</div>
+<div class="mb" data-g="L11" data-i="1">YAML (exec)</div>
+<div class="mb" data-g="L11" data-i="2">YAML (tcpSocket)</div>
+</div>
+<div class="mp on" data-g="L11" data-i="0">
+<h3>httpGet probe (most common for web apps)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">liveness-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+      <span class="k">failureThreshold:</span> <span class="nm">3</span></code></pre>
+</div>
+<div class="mp" data-g="L11" data-i="1">
+<h3>exec probe (custom command, exit 0 = healthy)</h3>
+<pre><code>    <span class="k">livenessProbe:</span>
+      <span class="k">exec:</span>
+        <span class="k">command:</span>
+        - <span class="s">cat</span>
+        - <span class="s">/tmp/healthy</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+      <span class="k">failureThreshold:</span> <span class="nm">3</span></code></pre>
+<div class="why"><b>Use when</b>App doesn't have HTTP endpoints. The command must return exit 0 for healthy.</div>
+</div>
+<div class="mp" data-g="L11" data-i="2">
+<h3>tcpSocket probe (connection opens = healthy)</h3>
+<pre><code>    <span class="k">livenessProbe:</span>
+      <span class="k">tcpSocket:</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+      <span class="k">failureThreshold:</span> <span class="nm">3</span></code></pre>
+<div class="why"><b>Use when</b>Non-HTTP services like databases, message queues. Just checks if the port is open.</div>
+</div>
+</div>
+</div></div>
+
+<h2>Troubleshooting</h2>
+
+<div class="L" id="L21">
+<div class="lh"><span class="ln">LAB 21</span><div class="lt">Fix Wrong Image</div><span class="lw w2">Medium</span><span class="ltime">⏱ 3 min</span></div>
+<div class="task"><p><strong>Setup:</strong> <code>kubectl run broken-pod --image=ngnix:latest</code> (typo: ngnix → nginx)</p><p>Fix the Pod so it runs.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pod broken-pod</code> → Running</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<h3>Step 1 — Diagnose</h3>
+<pre><code>kubectl describe pod broken-pod | tail -5
+<span class="cm"># Events: Failed to pull image "ngnix:latest" → ImagePullBackOff</span></code></pre>
+
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L21" data-i="0">Method A: Delete + recreate</div>
+<div class="mb" data-g="L21" data-i="1">Method B: Export + edit + replace</div>
+<div class="mb" data-g="L21" data-i="2">Method C: kubectl edit (won't work)</div>
+</div>
+<div class="mp on" data-g="L21" data-i="0">
+<h3>Method A — Delete and recreate (fastest)</h3>
+<pre><code>kubectl delete pod broken-pod
+kubectl run broken-pod --image=nginx:latest</code></pre>
+<div class="best"><b>Fastest for exam</b>Image is immutable. Fastest fix is delete + create with correct image.</div>
+</div>
+<div class="mp" data-g="L21" data-i="1">
+<h3>Method B — Export, edit, replace</h3>
+<pre><code><span class="cm"># Export current spec</span>
+kubectl get pod broken-pod -o yaml > fix.yaml
+
+<span class="cm"># Edit: change "ngnix" to "nginx"</span>
+sed -i 's/ngnix/nginx/g' fix.yaml
+
+<span class="cm"># Replace (deletes + creates in one step)</span>
+kubectl replace --force -f fix.yaml</code></pre>
+<div class="why"><b>kubectl replace --force</b>Deletes and recreates in one command. Cleaner than separate delete + apply. Also removes runtime fields automatically.</div>
+</div>
+<div class="mp" data-g="L21" data-i="2">
+<h3>Method C — kubectl edit (DOES NOT WORK for image!)</h3>
+<pre><code>kubectl edit pod broken-pod
+<span class="cm"># You CAN open the editor, but saving a changed image FAILS:</span>
+<span class="cm"># "spec.containers[0].image: Forbidden: pod updates may not change fields"</span></code></pre>
+<div class="trap"><b>Exam Trap</b><code>kubectl edit</code> can change labels, annotations, and some other fields. But image, command, env, ports, and most spec fields are <strong>immutable</strong>. Don't waste time trying — delete and recreate.</div>
+</div>
+</div>
+</div></div>
+
+<div class="L" id="L22">
+<div class="lh"><span class="ln">LAB 22</span><div class="lt">Fix OOMKilled Pod</div><span class="lw w2">Medium</span><span class="ltime">⏱ 4 min</span></div>
+<div class="task"><p><strong>Setup:</strong></p>
+<pre><code>cat &lt;&lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oom-pod
+spec:
+  containers:
+  - name: stress
+    image: polinux/stress
+    command: ["stress"]
+    args: ["--vm", "1", "--vm-bytes", "200M", "--timeout", "600s"]
+    resources:
+      limits:
+        memory: "50Mi"
+EOF</code></pre>
+<p>Fix the OOMKilled Pod.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pod oom-pod</code> → Running</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<h3>Step 1 — Diagnose</h3>
+<pre><code><span class="cm"># Confirm it's OOM</span>
+kubectl describe pod oom-pod | grep -A3 "Last State"
+<span class="cm"># Reason: OOMKilled, Exit Code: 137</span>
+<span class="cm"># Container needs 200M but limit is 50Mi</span></code></pre>
+
+<h3>Step 2 — Fix</h3>
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L22" data-i="0">Method A: Export + edit + replace</div>
+<div class="mb" data-g="L22" data-i="1">Method B: Delete + create new</div>
+</div>
+<div class="mp on" data-g="L22" data-i="0">
+<pre><code><span class="cm"># Export</span>
+kubectl get pod oom-pod -o yaml > oom-fix.yaml
+
+<span class="cm"># Edit: change memory limit from 50Mi to 256Mi</span>
+sed -i 's/50Mi/256Mi/g' oom-fix.yaml
+
+<span class="cm"># Replace</span>
+kubectl replace --force -f oom-fix.yaml</code></pre>
+</div>
+<div class="mp" data-g="L22" data-i="1">
+<pre><code>kubectl delete pod oom-pod
+
+cat &lt;&lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oom-pod
+spec:
+  containers:
+  - name: stress
+    image: polinux/stress
+    command: ["stress"]
+    args: ["--vm", "1", "--vm-bytes", "200M", "--timeout", "600s"]
+    resources:
+      limits:
+        memory: "256Mi"
+EOF</code></pre>
+</div>
+</div>
+</div></div>
+
+<div class="L" id="L24">
+<div class="lh"><span class="ln">LAB 24</span><div class="lt">Fix CreateContainerConfigError</div><span class="lw w2">Medium</span><span class="ltime">⏱ 3 min</span></div>
+<div class="task"><p><strong>Setup:</strong></p>
+<pre><code>cat &lt;&lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: config-err-pod
+spec:
+  containers:
+  - name: app
+    image: nginx
+    env:
+    - name: DB_HOST
+      valueFrom:
+        configMapKeyRef:
+          name: missing-config
+          key: host
+EOF</code></pre>
+<p>Pod shows <code>CreateContainerConfigError</code>. Fix it without modifying the Pod.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pod config-err-pod</code> → Running</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<h3>Step 1 — Diagnose</h3>
+<pre><code>kubectl describe pod config-err-pod | tail -5
+<span class="cm"># Error: configmap "missing-config" not found</span></code></pre>
+
+<h3>Step 2 — Fix (create the missing ConfigMap)</h3>
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L24" data-i="0">Method A: Create ConfigMap</div>
+<div class="mb" data-g="L24" data-i="1">Method B: Make optional</div>
+</div>
+<div class="mp on" data-g="L24" data-i="0">
+<h3>Method A — Create the missing ConfigMap (don't touch Pod)</h3>
+<pre><code>kubectl create configmap missing-config --from-literal=host=mysql.default.svc</code></pre>
+<p>The kubelet detects the new ConfigMap within ~60 seconds and starts the container automatically. No Pod restart needed.</p>
+<div class="best"><b>Best approach</b>The task says "without modifying the Pod" — creating the missing resource is the cleanest fix.</div>
+</div>
+<div class="mp" data-g="L24" data-i="1">
+<h3>Method B — Mark the reference as optional (modify Pod)</h3>
+<pre><code><span class="cm"># Export, edit, replace</span>
+kubectl get pod config-err-pod -o yaml > fix24.yaml
+
+<span class="cm"># Add optional: true under configMapKeyRef</span>
+<span class="cm">#   configMapKeyRef:</span>
+<span class="cm">#     name: missing-config</span>
+<span class="cm">#     key: host</span>
+<span class="cm">#     optional: true        ← add this line</span>
+
+kubectl replace --force -f fix24.yaml</code></pre>
+<div class="why"><b>When to use</b>When the ConfigMap genuinely might not exist and the app can handle missing values. The env var will be empty but the container starts.</div>
+</div>
+</div>
+</div></div>
+
+<h2>Advanced</h2>
+
+<div class="L" id="L29">
+<div class="lh"><span class="ln">LAB 29</span><div class="lt">Update a Pod's Image</div><span class="lw w2">Medium</span><span class="ltime">⏱ 3 min</span></div>
+<div class="task"><p>Pod <code>web-pod</code> runs <code>nginx:1.25</code>. Update to <code>nginx:1.26</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pod web-pod -o jsonpath='{.spec.containers[0].image}'</code> → nginx:1.26</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt">
+<div class="mb on" data-g="L29" data-i="0">Method A: replace --force</div>
+<div class="mb" data-g="L29" data-i="1">Method B: delete + create</div>
+<div class="mb" data-g="L29" data-i="2">Method C: kubectl edit (won't work)</div>
+</div>
+<div class="mp on" data-g="L29" data-i="0">
+<h3>Method A — Export, edit, replace --force (cleanest)</h3>
+<pre><code>kubectl get pod web-pod -o yaml > update.yaml
+
+<span class="cm"># Edit: change nginx:1.25 → nginx:1.26</span>
+sed -i 's/nginx:1.25/nginx:1.26/g' update.yaml
+
+<span class="cm"># Replace force = delete + create in one step</span>
+kubectl replace --force -f update.yaml</code></pre>
+<div class="best"><b>Best for exam</b><code>replace --force</code> handles immutable field changes by deleting and recreating. One command instead of two.</div>
+</div>
+<div class="mp" data-g="L29" data-i="1">
+<h3>Method B — Manual delete + create</h3>
+<pre><code>kubectl get pod web-pod -o yaml > update.yaml
+<span class="cm"># Edit the image</span>
+kubectl delete pod web-pod
+kubectl apply -f update.yaml</code></pre>
+</div>
+<div class="mp" data-g="L29" data-i="2">
+<h3>Method C — kubectl edit (FAILS for image change)</h3>
+<pre><code>kubectl edit pod web-pod
+<span class="cm"># Change the image in the editor...</span>
+<span class="cm"># ERROR: "Forbidden: pod updates may not change fields"</span></code></pre>
+<div class="trap"><b>This does NOT work</b>Image is immutable on a Pod. <code>kubectl edit</code> will reject the change. You MUST delete + recreate. (Note: this DOES work on Deployments — only naked Pods are immutable.)</div>
+</div>
+</div>
+</div></div>
+
+<div class="L" id="L30">
+<div class="lh"><span class="ln">LAB 30</span><div class="lt">Full Production Pod</div><span class="lw w3">Hard</span><span class="ltime">⏱ 10 min</span></div>
+<div class="task"><p>Create namespace <code>production</code>. Create Pod with:</p>
+<ul>
+<li>Name: <code>prod-app</code>, namespace: <code>production</code>, image: <code>nginx:1.25</code>, port: <code>80</code></li>
+<li>Labels: <code>app=web</code>, <code>env=production</code></li>
+<li>Env: <code>APP_ENV=production</code></li>
+<li>CPU: request <code>100m</code>, limit <code>200m</code>. Memory: request <code>64Mi</code>, limit <code>128Mi</code></li>
+<li>Liveness: HTTP <code>/</code> port <code>80</code>, period <code>10s</code></li>
+<li>Readiness: HTTP <code>/</code> port <code>80</code>, period <code>5s</code></li>
+<li>Run as user <code>1000</code>, read-only root filesystem</li>
+<li>Grace period: <code>45s</code>, preStop: <code>sleep 5</code></li>
+<li>Mount emptyDir at <code>/tmp</code> and <code>/var/cache/nginx</code></li>
+</ul></div>
+<div class="verify"><b>Verify: </b><code>kubectl -n production get pod prod-app</code> → Running</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<h3>Step 1 — Create namespace</h3>
+<pre><code>kubectl create namespace production</code></pre>
+
+<h3>Step 2 — Generate skeleton, then add everything</h3>
+<pre><code><span class="cm"># Generate base YAML</span>
+kubectl run prod-app --image=nginx:1.25 --port=80 \
+  --labels="app=web,env=production" \
+  --env="APP_ENV=production" \
+  -n production \
+  --dry-run=client -o yaml > prod.yaml</code></pre>
+
+<h3>Step 3 — Final YAML (add resources, probes, security, lifecycle, volumes)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">prod-app</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">env:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">45</span>
+  <span class="k">securityContext:</span>
+    <span class="k">runAsUser:</span> <span class="nm">1000</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx:1.25</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span>
+    <span class="k">env:</span>
+    - <span class="k">name:</span> <span class="s">APP_ENV</span>
+      <span class="k">value:</span> <span class="s">"production"</span>
+    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">cpu:</span> <span class="s">"100m"</span>
+        <span class="k">memory:</span> <span class="s">"64Mi"</span>
+      <span class="k">limits:</span>
+        <span class="k">cpu:</span> <span class="s">"200m"</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+    <span class="k">readinessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">5</span>
+    <span class="k">lifecycle:</span>
+      <span class="k">preStop:</span>
+        <span class="k">exec:</span>
+          <span class="k">command:</span> [<span class="s">"/bin/sh"</span>,<span class="s">"-c"</span>,<span class="s">"sleep 5"</span>]
+    <span class="k">securityContext:</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">tmp</span>
+      <span class="k">mountPath:</span> <span class="s">/tmp</span>
+    - <span class="k">name:</span> <span class="s">cache</span>
+      <span class="k">mountPath:</span> <span class="s">/var/cache/nginx</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">tmp</span>
+    <span class="k">emptyDir:</span> {}
+  - <span class="k">name:</span> <span class="s">cache</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+<pre><code>kubectl apply -f prod.yaml</code></pre>
+<div class="why"><b>Why emptyDir for /tmp and /var/cache/nginx</b>With <code>readOnlyRootFilesystem: true</code>, nginx can't write anywhere. It needs writable paths for temp files and cache. Without these emptyDirs, nginx fails to start.</div>
+</div></div>
+
+<div class="sre" style="margin-top:16px"><div class="tag">Exam Strategy</div><p style="margin:0"><strong>Always use the hybrid approach:</strong> (1) <code>kubectl run ... --dry-run=client -o yaml > pod.yaml</code> to generate skeleton, (2) edit the YAML to add complex fields, (3) <code>kubectl apply -f pod.yaml</code>. This is faster than writing YAML from scratch and avoids indentation mistakes. Master <code>kubectl explain</code> for field names you forget.</p></div>
+
+</main>
+
+<script>
+// Solution toggle
+document.querySelectorAll('.sol-btn').forEach(btn=>{
+btn.addEventListener('click',function(){
+const lab=this.parentElement;
+lab.classList.toggle('open');
+this.textContent=lab.classList.contains('open')?'▲ Hide Solution':'▶ Show Solution';
+})});
+
+// Method tabs inside solutions
+document.querySelectorAll('.M .mb').forEach(tab=>{
+tab.addEventListener('click',function(){
+const g=this.dataset.g, i=this.dataset.i;
+document.querySelectorAll(`.mb[data-g="${g}"]`).forEach(t=>t.classList.remove('on'));
+document.querySelectorAll(`.mp[data-g="${g}"]`).forEach(p=>p.classList.remove('on'));
+this.classList.add('on');
+document.querySelector(`.mp[data-g="${g}"][data-i="${i}"]`).classList.add('on');
+})});
+</script>
+</body>
+</html>

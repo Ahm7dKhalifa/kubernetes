@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKAD Pod Labs — Hands-On Exam Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#f59e0b;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:252px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:15px;background:linear-gradient(135deg,var(--ac),var(--og));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:252px;max-width:1000px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px}
+.hero h1{font-family:'Fraunces',serif;font-size:34px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:28px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h3{font-size:14px;font-weight:700;color:#dde2ea;margin:12px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.5}
+code{font-family:'JetBrains Mono',monospace;font-size:10px}
+p code,td code,li code{background:var(--sf2);padding:1px 3px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+
+/* LAB TASK */
+.L{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:12px 0;overflow:hidden}
+.L .lh{padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.L .ln{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);font-weight:700;background:rgba(245,158,11,.1);padding:2px 8px;border-radius:4px;white-space:nowrap}
+.L .lw{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.L .lw.w1{background:rgba(22,163,74,.12);color:var(--gn)}
+.L .lw.w2{background:rgba(245,158,11,.12);color:var(--ac)}
+.L .lw.w3{background:rgba(220,38,38,.12);color:var(--rd)}
+.L .lt{font-size:14px;font-weight:700;color:#fff;flex:1}
+.L .ltime{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dm);white-space:nowrap}
+
+/* Context bar */
+.L .ctx{background:rgba(37,99,235,.04);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:8px 14px;font-size:12px;color:var(--dm)}
+.L .ctx code{color:var(--bl)}
+
+/* Task body */
+.L .task{padding:12px 14px}
+.L .task p{margin-bottom:5px;font-size:13px}
+.L .task ul{margin:4px 0 8px 16px;font-size:12.5px}
+.L .task ul li{margin-bottom:3px}
+
+/* Verification */
+.L .verify{background:rgba(14,164,114,.03);border-top:1px solid rgba(14,164,114,.1);padding:8px 14px;font-size:12px}
+.L .verify b{color:#0ea472;font-size:9px;text-transform:uppercase;letter-spacing:1px}
+
+/* Solution toggle */
+.L .sol-btn{display:block;width:100%;padding:8px 14px;background:rgba(245,158,11,.05);border:none;border-top:1px solid var(--bd);color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;text-align:left;transition:.1s}
+.L .sol-btn:hover{background:rgba(245,158,11,.1)}
+.L .sol{display:none;padding:12px 14px;border-top:1px solid var(--bd)}
+.L.open .sol{display:block}
+.L .sol .step{margin-bottom:10px}
+.L .sol .step-n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);font-weight:600;margin-bottom:2px}
+.L .sol .step-d{font-size:12.5px;color:var(--tx);margin-bottom:4px}
+.L .sol .why{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.08);border-radius:6px;padding:8px 10px;margin:6px 0;font-size:12px}
+.L .sol .why b{color:var(--bl);font-size:8px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.L .sol .trap{background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.08);border-radius:6px;padding:8px 10px;margin:6px 0;font-size:12px}
+.L .sol .trap b{color:var(--rd);font-size:8px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+
+.sre{background:linear-gradient(135deg,rgba(245,158,11,.03),rgba(8,145,178,.02));border:1px solid rgba(245,158,11,.12);border-radius:var(--r);padding:10px 12px;margin:8px 0;font-size:12.5px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(245,158,11,.12);color:var(--ac);font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:16px 12px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+
+<nav>
+<div class="logo">⬡ CKAD Labs</div>
+<div class="sub">Hands-On Pod Tasks</div>
+<div class="sl">Pod Basics</div>
+<ul>
+<li><a href="#lab01">Lab 01: Create Pod</a></li>
+<li><a href="#lab02">Lab 02: Pod with Labels</a></li>
+<li><a href="#lab03">Lab 03: Pod with Env Vars</a></li>
+<li><a href="#lab04">Lab 04: Pod with Command</a></li>
+</ul>
+<div class="sl">Multi-Container</div>
+<ul>
+<li><a href="#lab05">Lab 05: Sidecar Pattern</a></li>
+<li><a href="#lab06">Lab 06: Init Container</a></li>
+<li><a href="#lab07">Lab 07: Init + Sidecar</a></li>
+</ul>
+<div class="sl">Probes</div>
+<ul>
+<li><a href="#lab08">Lab 08: Liveness Probe</a></li>
+<li><a href="#lab09">Lab 09: Readiness Probe</a></li>
+<li><a href="#lab10">Lab 10: All 3 Probes</a></li>
+</ul>
+<div class="sl">Resources</div>
+<ul>
+<li><a href="#lab11">Lab 11: Requests &amp; Limits</a></li>
+<li><a href="#lab12">Lab 12: Guaranteed QoS</a></li>
+</ul>
+<div class="sl">Config &amp; Volumes</div>
+<ul>
+<li><a href="#lab13">Lab 13: ConfigMap Env</a></li>
+<li><a href="#lab14">Lab 14: Secret Volume</a></li>
+<li><a href="#lab15">Lab 15: Shared Volume</a></li>
+</ul>
+<div class="sl">Security</div>
+<ul>
+<li><a href="#lab16">Lab 16: Security Context</a></li>
+<li><a href="#lab17">Lab 17: Service Account</a></li>
+</ul>
+<div class="sl">Scheduling</div>
+<ul>
+<li><a href="#lab18">Lab 18: Node Selector</a></li>
+<li><a href="#lab19">Lab 19: Tolerations</a></li>
+<li><a href="#lab20">Lab 20: Node Affinity</a></li>
+</ul>
+<div class="sl">Troubleshooting</div>
+<ul>
+<li><a href="#lab21">Lab 21: Fix Broken Pod</a></li>
+<li><a href="#lab22">Lab 22: Fix OOMKilled</a></li>
+<li><a href="#lab23">Lab 23: Debug CrashLoop</a></li>
+<li><a href="#lab24">Lab 24: Fix ImagePull</a></li>
+<li><a href="#lab25">Lab 25: Fix Pending Pod</a></li>
+</ul>
+<div class="sl">Advanced</div>
+<ul>
+<li><a href="#lab26">Lab 26: Graceful Shutdown</a></li>
+<li><a href="#lab27">Lab 27: Ephemeral Debug</a></li>
+<li><a href="#lab28">Lab 28: Pod Logs</a></li>
+<li><a href="#lab29">Lab 29: Update Image</a></li>
+<li><a href="#lab30">Lab 30: Full Production</a></li>
+</ul>
+</nav>
+
+<main>
+<div class="hero"><h1>CKAD Pod Labs</h1><p>30 hands-on tasks that simulate the real exam. Each gives you a scenario + requirements. Try to solve it yourself, then click "Show Solution" to check. Time yourself — in the real exam, speed matters.</p></div>
+
+<div class="sre"><div class="tag">How to Use This</div><p style="margin:0"><strong>1.</strong> Read the task. <strong>2.</strong> Open your terminal (minikube/kind/real cluster). <strong>3.</strong> Try to solve it WITHOUT looking at the solution. <strong>4.</strong> Run the verification command to check. <strong>5.</strong> Only then click "Show Solution" to compare. <strong>Target time</strong> is shown per task — try to beat it.</p></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- LAB 01                                  -->
+<!-- ═══════════════════════════════════════ -->
+<div class="L" id="lab01">
+<div class="lh">
+<span class="ln">LAB 01</span>
+<div class="lt">Create a Pod</div>
+<span class="lw w1">4%</span>
+<span class="ltime">⏱ Target: 1 min</span>
+</div>
+<div class="ctx">Context: <code>kubectl config use-context k8s-ckad</code> · Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod with the following requirements:</p>
+<ul>
+<li>Pod name: <code>web-pod</code></li>
+<li>Image: <code>nginx:1.25</code></li>
+<li>Container port: <code>80</code></li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod web-pod
+# Expected: STATUS = Running, READY = 1/1</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="step">
+<div class="step-n">Fastest method (1 command):</div>
+<pre><code>kubectl run web-pod --image=nginx:1.25 --port=80</code></pre>
+</div>
+<div class="step">
+<div class="step-n">Alternative — YAML method:</div>
+<pre><code>kubectl run web-pod --image=nginx:1.25 --port=80 --dry-run=client -o yaml | kubectl apply -f -</code></pre>
+</div>
+<div class="why"><b>Why this approach</b>For simple Pods, the imperative <code>kubectl run</code> is faster than writing YAML. Save YAML for complex specs. The <code>--port</code> flag sets <code>containerPort</code> (informational only — doesn't expose anything).</div>
+</div>
+</div>
+
+<!-- LAB 02 -->
+<div class="L" id="lab02">
+<div class="lh">
+<span class="ln">LAB 02</span>
+<div class="lt">Create a Pod with Labels and Annotations</div>
+<span class="lw w1">4%</span>
+<span class="ltime">⏱ Target: 2 min</span>
+</div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod with:</p>
+<ul>
+<li>Name: <code>labeled-pod</code></li>
+<li>Image: <code>httpd:2.4</code></li>
+<li>Labels: <code>app=frontend</code>, <code>tier=web</code></li>
+<li>Annotation: <code>description=CKAD practice pod</code></li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod labeled-pod --show-labels
+# Expected: Labels column shows app=frontend,tier=web
+
+kubectl get pod labeled-pod -o jsonpath='{.metadata.annotations.description}'
+# Expected: CKAD practice pod</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="step">
+<div class="step-n">Step 1 — Generate base YAML and apply with labels:</div>
+<pre><code>kubectl run labeled-pod --image=httpd:2.4 --labels="app=frontend,tier=web" --dry-run=client -o yaml > lab02.yaml</code></pre>
+</div>
+<div class="step">
+<div class="step-n">Step 2 — Add the annotation (edit lab02.yaml or use imperative):</div>
+<pre><code>kubectl apply -f lab02.yaml
+kubectl annotate pod labeled-pod description="CKAD practice pod"</code></pre>
+</div>
+<div class="step">
+<div class="step-n">Or all-in-one YAML:</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">labeled-pod</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">frontend</span>
+    <span class="k">tier:</span> <span class="s">web</span>
+  <span class="k">annotations:</span>
+    <span class="k">description:</span> <span class="s">CKAD practice pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">httpd</span>
+    <span class="k">image:</span> <span class="s">httpd:2.4</span></code></pre>
+</div>
+</div>
+</div>
+
+<!-- LAB 03 -->
+<div class="L" id="lab03">
+<div class="lh">
+<span class="ln">LAB 03</span>
+<div class="lt">Pod with Environment Variables</div>
+<span class="lw w1">4%</span>
+<span class="ltime">⏱ Target: 2 min</span>
+</div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod named <code>env-pod</code> using image <code>nginx</code> with these environment variables:</p>
+<ul>
+<li><code>APP_ENV=production</code></li>
+<li><code>LOG_LEVEL=debug</code></li>
+<li><code>MAX_CONNECTIONS=100</code></li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl exec env-pod -- env | grep -E "APP_ENV|LOG_LEVEL|MAX_CONNECTIONS"
+# Expected: all 3 variables shown</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl run env-pod --image=nginx \
+  --env="APP_ENV=production" \
+  --env="LOG_LEVEL=debug" \
+  --env="MAX_CONNECTIONS=100"</code></pre>
+<div class="why"><b>Exam Speed</b>Use <code>--env</code> multiple times for simple literal values. Only switch to YAML when you need <code>valueFrom</code> (ConfigMap/Secret references).</div>
+</div>
+</div>
+
+<!-- LAB 04 -->
+<div class="L" id="lab04">
+<div class="lh">
+<span class="ln">LAB 04</span>
+<div class="lt">Pod with Custom Command and Arguments</div>
+<span class="lw w2">4%</span>
+<span class="ltime">⏱ Target: 2 min</span>
+</div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod named <code>cmd-pod</code> with:</p>
+<ul>
+<li>Image: <code>busybox:1.36</code></li>
+<li>Command: <code>/bin/sh -c</code></li>
+<li>Arguments: <code>echo Hello CKAD && sleep 3600</code></li>
+<li>The Pod should stay running (not complete immediately)</li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl logs cmd-pod
+# Expected: Hello CKAD
+
+kubectl get pod cmd-pod
+# Expected: STATUS = Running</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="step">
+<div class="step-n">Imperative:</div>
+<pre><code>kubectl run cmd-pod --image=busybox:1.36 --restart=Never -- /bin/sh -c "echo Hello CKAD && sleep 3600"</code></pre>
+</div>
+<div class="step">
+<div class="step-n">YAML equivalent:</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">cmd-pod</span>
+<span class="k">spec:</span>
+  <span class="k">restartPolicy:</span> <span class="v">Never</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">cmd-pod</span>
+    <span class="k">image:</span> <span class="s">busybox:1.36</span>
+    <span class="k">command:</span> [<span class="s">"/bin/sh"</span>, <span class="s">"-c"</span>]
+    <span class="k">args:</span> [<span class="s">"echo Hello CKAD && sleep 3600"</span>]</code></pre>
+</div>
+<div class="trap"><b>Exam Trap</b>The <code>--</code> in kubectl separates kubectl flags from the container command. Everything after <code>--</code> is the container's command + args. Without <code>sleep 3600</code>, the container exits immediately after echo and becomes <code>Completed</code>.</div>
+</div>
+</div>
+
+<!-- LAB 05 -->
+<div class="L" id="lab05">
+<div class="lh">
+<span class="ln">LAB 05</span>
+<div class="lt">Sidecar Pattern — Log Shipping</div>
+<span class="lw w2">7%</span>
+<span class="ltime">⏱ Target: 5 min</span>
+</div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod named <code>sidecar-pod</code> with two containers:</p>
+<ul>
+<li><strong>Container 1 — app:</strong> image <code>busybox</code>, runs command that writes the current date to <code>/var/log/app.log</code> every 3 seconds</li>
+<li><strong>Container 2 — sidecar:</strong> image <code>busybox</code>, runs <code>tail -f /var/log/app.log</code></li>
+<li>Both containers share a volume mounted at <code>/var/log</code></li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl logs sidecar-pod -c sidecar
+# Expected: date entries appearing every 3 seconds</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">sidecar-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"while true; do date >> /var/log/app.log; sleep 3; done"</span>]
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">logs</span>
+      <span class="k">mountPath:</span> <span class="s">/var/log</span>
+  - <span class="k">name:</span> <span class="s">sidecar</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"tail -f /var/log/app.log"</span>]
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">logs</span>
+      <span class="k">mountPath:</span> <span class="s">/var/log</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">logs</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+<div class="why"><b>Key Pattern</b>This is the <strong>Sidecar pattern</strong>: both containers mount the same <code>emptyDir</code> volume. The app writes logs, the sidecar reads and ships them. <code>emptyDir</code> is created when Pod starts, deleted when Pod dies.</div>
+</div>
+</div>
+
+<!-- LAB 06 -->
+<div class="L" id="lab06">
+<div class="lh">
+<span class="ln">LAB 06</span>
+<div class="lt">Init Container — Wait for Service</div>
+<span class="lw w2">7%</span>
+<span class="ltime">⏱ Target: 4 min</span>
+</div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod named <code>init-pod</code> with:</p>
+<ul>
+<li><strong>Init container:</strong> name <code>wait</code>, image <code>busybox:1.36</code>, runs: <code>until nslookup mydb; do echo waiting; sleep 2; done</code></li>
+<li><strong>App container:</strong> name <code>app</code>, image <code>nginx</code>, port <code>80</code></li>
+<li>The Pod should stay in <code>Init:0/1</code> because <code>mydb</code> service doesn't exist yet</li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod init-pod
+# Expected: STATUS = Init:0/1 (init container waiting)
+
+kubectl logs init-pod -c wait
+# Expected: "waiting" messages</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">init-pod</span>
+<span class="k">spec:</span>
+  <span class="k">initContainers:</span>
+  - <span class="k">name:</span> <span class="s">wait</span>
+    <span class="k">image:</span> <span class="s">busybox:1.36</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"until nslookup mydb; do echo waiting; sleep 2; done"</span>]
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span></code></pre>
+</div>
+</div>
+
+<!-- LAB 07 -->
+<div class="L" id="lab07">
+<div class="lh">
+<span class="ln">LAB 07</span>
+<div class="lt">Init Container + Sidecar Together</div>
+<span class="lw w3">7%</span>
+<span class="ltime">⏱ Target: 6 min</span>
+</div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod named <code>multi-pod</code> with:</p>
+<ul>
+<li><strong>Init container:</strong> name <code>init</code>, image <code>busybox</code>, command: writes "app initialized" to <code>/work-dir/status.txt</code></li>
+<li><strong>App container:</strong> name <code>app</code>, image <code>nginx</code>, port <code>80</code>, mounts volume at <code>/usr/share/nginx/html</code></li>
+<li><strong>Sidecar container:</strong> name <code>monitor</code>, image <code>busybox</code>, runs <code>while true; do cat /work-dir/status.txt; sleep 10; done</code></li>
+<li>All containers share a volume named <code>work-dir</code></li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod multi-pod
+# Expected: READY 2/2, STATUS Running
+
+kubectl logs multi-pod -c monitor
+# Expected: "app initialized"
+
+kubectl exec multi-pod -c app -- cat /usr/share/nginx/html/status.txt
+# Expected: app initialized</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">multi-pod</span>
+<span class="k">spec:</span>
+  <span class="k">initContainers:</span>
+  - <span class="k">name:</span> <span class="s">init</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"echo 'app initialized' > /work-dir/status.txt"</span>]
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">work-dir</span>, <span class="k">mountPath:</span> <span class="s">/work-dir</span> }
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span>
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">work-dir</span>, <span class="k">mountPath:</span> <span class="s">/usr/share/nginx/html</span> }
+  - <span class="k">name:</span> <span class="s">monitor</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"while true; do cat /work-dir/status.txt; sleep 10; done"</span>]
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">work-dir</span>, <span class="k">mountPath:</span> <span class="s">/work-dir</span> }
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">work-dir</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+</div>
+</div>
+
+<!-- LAB 08 -->
+<div class="L" id="lab08">
+<div class="lh"><span class="ln">LAB 08</span><div class="lt">Add a Liveness Probe</div><span class="lw w2">4%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod named <code>liveness-pod</code> with:</p>
+<ul>
+<li>Image: <code>nginx</code></li>
+<li>Liveness probe: HTTP GET on path <code>/</code>, port <code>80</code></li>
+<li>Check every <code>10</code> seconds, fail after <code>3</code> consecutive failures</li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl describe pod liveness-pod | grep -A5 "Liveness"
+# Expected: http-get http://:80/ ... period:10s ... failure:3</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">liveness-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+      <span class="k">failureThreshold:</span> <span class="nm">3</span></code></pre>
+</div>
+</div>
+
+<!-- LAB 09 -->
+<div class="L" id="lab09">
+<div class="lh"><span class="ln">LAB 09</span><div class="lt">Add a Readiness Probe</div><span class="lw w2">4%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task">
+<p>Create a Pod named <code>readiness-pod</code> with:</p>
+<ul>
+<li>Image: <code>nginx</code></li>
+<li>Readiness probe: TCP socket on port <code>80</code></li>
+<li>Initial delay: <code>5</code> seconds, check every <code>5</code> seconds</li>
+</ul>
+</div>
+<div class="verify"><b>Verify</b><pre><code>kubectl describe pod readiness-pod | grep -A5 "Readiness"
+# Expected: tcp-socket :80 delay:5s period:5s</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">readiness-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span>
+    <span class="k">readinessProbe:</span>
+      <span class="k">tcpSocket:</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">initialDelaySeconds:</span> <span class="nm">5</span>
+      <span class="k">periodSeconds:</span> <span class="nm">5</span></code></pre>
+</div>
+</div>
+
+<!-- LAB 10 -->
+<div class="L" id="lab10">
+<div class="lh"><span class="ln">LAB 10</span><div class="lt">All 3 Probes Together</div><span class="lw w3">7%</span><span class="ltime">⏱ Target: 5 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>probed-pod</code> with image <code>nginx</code>, port <code>80</code>. Add:</p>
+<ul>
+<li><strong>Startup probe:</strong> HTTP GET <code>/</code> port <code>80</code>, period <code>5s</code>, failure threshold <code>30</code></li>
+<li><strong>Liveness probe:</strong> HTTP GET <code>/</code> port <code>80</code>, period <code>10s</code>, timeout <code>3s</code></li>
+<li><strong>Readiness probe:</strong> HTTP GET <code>/</code> port <code>80</code>, period <code>5s</code></li>
+</ul></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl describe pod probed-pod | grep -E "Liveness|Readiness|Startup"</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">probed-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span>
+    <span class="k">startupProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">5</span>
+      <span class="k">failureThreshold:</span> <span class="nm">30</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+      <span class="k">timeoutSeconds:</span> <span class="nm">3</span>
+    <span class="k">readinessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">5</span></code></pre>
+</div>
+</div>
+
+<!-- LAB 11 -->
+<div class="L" id="lab11">
+<div class="lh"><span class="ln">LAB 11</span><div class="lt">Set Resource Requests and Limits</div><span class="lw w2">4%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>resource-pod</code> with image <code>nginx</code>. Set:</p>
+<ul>
+<li>CPU request: <code>100m</code>, CPU limit: <code>200m</code></li>
+<li>Memory request: <code>64Mi</code>, Memory limit: <code>128Mi</code></li>
+</ul></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod resource-pod -o jsonpath='{.spec.containers[0].resources}' | jq .
+# OR: kubectl describe pod resource-pod | grep -A6 "Limits\|Requests"</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl run resource-pod --image=nginx --dry-run=client -o yaml > lab11.yaml</code></pre>
+<p>Edit lab11.yaml and add under the container spec:</p>
+<pre><code>    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">cpu:</span> <span class="s">"100m"</span>
+        <span class="k">memory:</span> <span class="s">"64Mi"</span>
+      <span class="k">limits:</span>
+        <span class="k">cpu:</span> <span class="s">"200m"</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span></code></pre>
+<pre><code>kubectl apply -f lab11.yaml</code></pre>
+</div>
+</div>
+
+<!-- LAB 12 -->
+<div class="L" id="lab12">
+<div class="lh"><span class="ln">LAB 12</span><div class="lt">Create a Guaranteed QoS Pod</div><span class="lw w2">4%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>guaranteed-pod</code> with image <code>nginx</code>. It must have QoS class <strong>Guaranteed</strong>.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod guaranteed-pod -o jsonpath='{.status.qosClass}'
+# Expected: Guaranteed</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<p>For Guaranteed QoS, <strong>requests must equal limits</strong> for both CPU and memory:</p>
+<pre><code>    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">cpu:</span> <span class="s">"200m"</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span>
+      <span class="k">limits:</span>
+        <span class="k">cpu:</span> <span class="s">"200m"</span>         <span class="cm"># == requests</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span>     <span class="cm"># == requests</span></code></pre>
+</div>
+</div>
+
+<!-- LAB 13 -->
+<div class="L" id="lab13">
+<div class="lh"><span class="ln">LAB 13</span><div class="lt">Pod with ConfigMap as Env Vars</div><span class="lw w2">7%</span><span class="ltime">⏱ Target: 4 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Step 1: Create a ConfigMap named <code>app-config</code> with <code>DB_HOST=mysql</code> and <code>DB_PORT=3306</code>.<br>Step 2: Create Pod <code>config-pod</code> with image <code>nginx</code> that loads <strong>all</strong> keys from <code>app-config</code> as environment variables.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl exec config-pod -- env | grep DB_
+# Expected: DB_HOST=mysql  DB_PORT=3306</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Create ConfigMap</span>
+kubectl create configmap app-config --from-literal=DB_HOST=mysql --from-literal=DB_PORT=3306
+
+<span class="cm"># Step 2: Pod YAML (load ALL keys from ConfigMap)</span></code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">config-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">envFrom:</span>                 <span class="cm"># Load ALL keys as env vars</span>
+    - <span class="k">configMapRef:</span>
+        <span class="k">name:</span> <span class="s">app-config</span></code></pre>
+<div class="why"><b>envFrom vs env</b><code>envFrom</code> loads ALL keys from a ConfigMap/Secret. <code>env.valueFrom</code> loads ONE specific key. Use <code>envFrom</code> when you want everything, <code>valueFrom</code> when you want to pick specific keys or rename them.</div>
+</div>
+</div>
+
+<!-- LAB 14 -->
+<div class="L" id="lab14">
+<div class="lh"><span class="ln">LAB 14</span><div class="lt">Mount Secret as Volume</div><span class="lw w2">7%</span><span class="ltime">⏱ Target: 4 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Step 1: Create a Secret named <code>db-creds</code> with <code>username=admin</code> and <code>password=s3cret</code>.<br>Step 2: Create Pod <code>secret-pod</code> with image <code>nginx</code>. Mount the Secret as a volume at <code>/etc/db-credentials</code> (read-only).</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl exec secret-pod -- cat /etc/db-credentials/username
+# Expected: admin
+kubectl exec secret-pod -- cat /etc/db-credentials/password
+# Expected: s3cret</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create secret generic db-creds --from-literal=username=admin --from-literal=password=s3cret</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">secret-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">creds</span>
+      <span class="k">mountPath:</span> <span class="s">/etc/db-credentials</span>
+      <span class="k">readOnly:</span> <span class="v">true</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">creds</span>
+    <span class="k">secret:</span>
+      <span class="k">secretName:</span> <span class="s">db-creds</span></code></pre>
+</div>
+</div>
+
+<!-- LAB 15 -->
+<div class="L" id="lab15">
+<div class="lh"><span class="ln">LAB 15</span><div class="lt">Shared emptyDir Volume</div><span class="lw w1">4%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>cache-pod</code> with image <code>redis</code>. Mount an <code>emptyDir</code> volume at <code>/data</code>.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl exec cache-pod -- ls /data
+# Expected: empty directory, no error</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">cache-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">redis</span>
+    <span class="k">image:</span> <span class="s">redis</span>
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">cache</span>, <span class="k">mountPath:</span> <span class="s">/data</span> }
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">cache</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+</div>
+</div>
+
+<!-- LAB 16 -->
+<div class="L" id="lab16">
+<div class="lh"><span class="ln">LAB 16</span><div class="lt">Security Context — Run as Non-Root</div><span class="lw w2">7%</span><span class="ltime">⏱ Target: 4 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>secure-pod</code> with image <code>nginx</code>:</p>
+<ul>
+<li>Must run as user ID <code>1000</code>, group ID <code>3000</code></li>
+<li>Read-only root filesystem</li>
+<li>No privilege escalation allowed</li>
+<li>Drop all Linux capabilities</li>
+</ul></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod secure-pod -o jsonpath='{.spec.containers[0].securityContext}' | jq .
+kubectl get pod secure-pod -o jsonpath='{.spec.securityContext}' | jq .</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">secure-pod</span>
+<span class="k">spec:</span>
+  <span class="k">securityContext:</span>
+    <span class="k">runAsUser:</span> <span class="nm">1000</span>
+    <span class="k">runAsGroup:</span> <span class="nm">3000</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">securityContext:</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+      <span class="k">allowPrivilegeEscalation:</span> <span class="v">false</span>
+      <span class="k">capabilities:</span>
+        <span class="k">drop:</span> [<span class="s">"ALL"</span>]</code></pre>
+<div class="trap"><b>Note</b>This Pod may fail because nginx tries to write to <code>/var/cache/nginx</code>. In the real exam, if the task says "read-only filesystem," you'd need to mount an emptyDir at writable paths. For the exam, focus on getting the securityContext fields correct.</div>
+</div>
+</div>
+
+<!-- LAB 17 -->
+<div class="L" id="lab17">
+<div class="lh"><span class="ln">LAB 17</span><div class="lt">Service Account</div><span class="lw w1">4%</span><span class="ltime">⏱ Target: 2 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create a ServiceAccount named <code>app-sa</code>. Then create Pod <code>sa-pod</code> with image <code>nginx</code> using that ServiceAccount.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod sa-pod -o jsonpath='{.spec.serviceAccountName}'
+# Expected: app-sa</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create serviceaccount app-sa
+kubectl run sa-pod --image=nginx --dry-run=client -o yaml > lab17.yaml</code></pre>
+<p>Add <code>serviceAccountName: app-sa</code> under <code>spec:</code>, then apply:</p>
+<pre><code>kubectl apply -f lab17.yaml</code></pre>
+</div>
+</div>
+
+<!-- LAB 18 -->
+<div class="L" id="lab18">
+<div class="lh"><span class="ln">LAB 18</span><div class="lt">Schedule Pod on Specific Node</div><span class="lw w2">4%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Step 1: Label node <code>minikube</code> with <code>disktype=ssd</code>.<br>Step 2: Create Pod <code>ssd-pod</code> with image <code>nginx</code> that only runs on nodes with <code>disktype=ssd</code>.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod ssd-pod -o wide
+# Expected: NODE column shows minikube
+
+kubectl get pod ssd-pod -o jsonpath='{.spec.nodeSelector}'
+# Expected: {"disktype":"ssd"}</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl label node minikube disktype=ssd</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">ssd-pod</span>
+<span class="k">spec:</span>
+  <span class="k">nodeSelector:</span>
+    <span class="k">disktype:</span> <span class="s">ssd</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span></code></pre>
+</div>
+</div>
+
+<!-- LAB 19 -->
+<div class="L" id="lab19">
+<div class="lh"><span class="ln">LAB 19</span><div class="lt">Tolerate a Tainted Node</div><span class="lw w2">7%</span><span class="ltime">⏱ Target: 4 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Step 1: Taint node <code>minikube</code> with <code>dedicated=special:NoSchedule</code>.<br>Step 2: Create Pod <code>tolerant-pod</code> with image <code>nginx</code> that tolerates this taint.<br>Step 3: Clean up — remove the taint after testing.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod tolerant-pod -o wide
+# Expected: Running on minikube</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Taint the node</span>
+kubectl taint nodes minikube dedicated=special:NoSchedule</code></pre>
+<pre><code><span class="cm"># Step 2: Pod YAML with toleration</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">tolerant-pod</span>
+<span class="k">spec:</span>
+  <span class="k">tolerations:</span>
+  - <span class="k">key:</span> <span class="s">"dedicated"</span>
+    <span class="k">operator:</span> <span class="s">"Equal"</span>
+    <span class="k">value:</span> <span class="s">"special"</span>
+    <span class="k">effect:</span> <span class="s">"NoSchedule"</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span></code></pre>
+<pre><code><span class="cm"># Step 3: Remove taint (note the trailing minus sign)</span>
+kubectl taint nodes minikube dedicated=special:NoSchedule-</code></pre>
+</div>
+</div>
+
+<!-- LAB 20 -->
+<div class="L" id="lab20">
+<div class="lh"><span class="ln">LAB 20</span><div class="lt">Node Affinity — Preferred</div><span class="lw w3">7%</span><span class="ltime">⏱ Target: 5 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>affinity-pod</code> with image <code>nginx</code>. It should <strong>prefer</strong> (not require) nodes labeled <code>zone=us-east-1a</code>.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod affinity-pod -o jsonpath='{.spec.affinity}' | jq .
+# Expected: preferredDuringSchedulingIgnoredDuringExecution with zone=us-east-1a</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">affinity-pod</span>
+<span class="k">spec:</span>
+  <span class="k">affinity:</span>
+    <span class="k">nodeAffinity:</span>
+      <span class="k">preferredDuringSchedulingIgnoredDuringExecution:</span>
+      - <span class="k">weight:</span> <span class="nm">100</span>
+        <span class="k">preference:</span>
+          <span class="k">matchExpressions:</span>
+          - <span class="k">key:</span> <span class="s">zone</span>
+            <span class="k">operator:</span> <span class="s">In</span>
+            <span class="k">values:</span>
+            - <span class="s">us-east-1a</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span></code></pre>
+<div class="why"><b>Preferred vs Required</b><code>preferred</code> = scheduler tries but schedules elsewhere if no match (Pod runs anyway). <code>required</code> = Pod stays Pending forever if no match. Use <code>kubectl explain pod.spec.affinity.nodeAffinity</code> during the exam to get the exact field names.</div>
+</div>
+</div>
+
+<!-- ═══════ TROUBLESHOOTING LABS ═══════ -->
+
+<!-- LAB 21 -->
+<div class="L" id="lab21">
+<div class="lh"><span class="ln">LAB 21</span><div class="lt">Fix a Broken Pod — Wrong Image</div><span class="lw w2">7%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>A Pod exists but is failing. Diagnose and fix it.</p>
+<p><strong>Setup (run this first):</strong></p>
+<pre><code>kubectl run broken-pod --image=ngnix:latest</code></pre>
+<p>Fix the Pod so it runs successfully.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod broken-pod
+# Expected: Running</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="step">
+<div class="step-n">Step 1 — Diagnose:</div>
+<pre><code>kubectl describe pod broken-pod | tail -10
+<span class="cm"># You'll see: Failed to pull image "ngnix:latest" — typo! Should be "nginx"</span></code></pre>
+</div>
+<div class="step">
+<div class="step-n">Step 2 — Fix (image is immutable, must recreate):</div>
+<pre><code>kubectl get pod broken-pod -o yaml > fix.yaml
+<span class="cm"># Edit fix.yaml: change ngnix to nginx</span>
+kubectl delete pod broken-pod
+kubectl apply -f fix.yaml</code></pre>
+</div>
+<div class="step">
+<div class="step-n">Faster alternative:</div>
+<pre><code>kubectl delete pod broken-pod
+kubectl run broken-pod --image=nginx:latest</code></pre>
+</div>
+</div>
+</div>
+
+<!-- LAB 22 -->
+<div class="L" id="lab22">
+<div class="lh"><span class="ln">LAB 22</span><div class="lt">Fix OOMKilled Pod</div><span class="lw w2">7%</span><span class="ltime">⏱ Target: 4 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p><strong>Setup:</strong></p>
+<pre><code>cat &lt;&lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oom-pod
+spec:
+  containers:
+  - name: stress
+    image: polinux/stress
+    command: ["stress"]
+    args: ["--vm", "1", "--vm-bytes", "200M", "--timeout", "600s"]
+    resources:
+      limits:
+        memory: "50Mi"
+EOF</code></pre>
+<p>The Pod will OOMKill. Diagnose and fix it so it runs without being killed.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod oom-pod
+# Expected: Running (not OOMKilled)</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="step">
+<div class="step-n">Step 1 — Diagnose:</div>
+<pre><code>kubectl describe pod oom-pod | grep -A3 "Last State"
+<span class="cm"># Reason: OOMKilled, Exit Code: 137</span>
+<span class="cm"># The container needs 200M but limit is 50Mi</span></code></pre>
+</div>
+<div class="step">
+<div class="step-n">Step 2 — Fix (increase memory limit to 256Mi):</div>
+<pre><code>kubectl get pod oom-pod -o yaml > oom-fix.yaml
+<span class="cm"># Edit: change memory limit from 50Mi to 256Mi</span>
+kubectl delete pod oom-pod
+kubectl apply -f oom-fix.yaml</code></pre>
+</div>
+</div>
+</div>
+
+<!-- LAB 23 -->
+<div class="L" id="lab23">
+<div class="lh"><span class="ln">LAB 23</span><div class="lt">Debug CrashLoopBackOff</div><span class="lw w3">7%</span><span class="ltime">⏱ Target: 4 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p><strong>Setup:</strong></p>
+<pre><code>kubectl run crash-pod --image=busybox --restart=Always -- /bin/sh -c "exit 1"</code></pre>
+<p>Diagnose why the Pod is in CrashLoopBackOff. Fix it so the container runs and stays alive.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod crash-pod
+# Expected: Running 1/1</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="step">
+<div class="step-n">Step 1 — Diagnose:</div>
+<pre><code>kubectl logs crash-pod --previous
+<span class="cm"># No output — container runs "exit 1" and dies immediately</span>
+
+kubectl describe pod crash-pod | grep "Exit Code"
+<span class="cm"># Exit Code: 1 — the command itself is "exit 1"</span></code></pre>
+</div>
+<div class="step">
+<div class="step-n">Step 2 — Fix (change command to something that stays running):</div>
+<pre><code>kubectl delete pod crash-pod
+kubectl run crash-pod --image=busybox -- /bin/sh -c "sleep 3600"</code></pre>
+</div>
+</div>
+</div>
+
+<!-- LAB 24 -->
+<div class="L" id="lab24">
+<div class="lh"><span class="ln">LAB 24</span><div class="lt">Fix ImagePullBackOff</div><span class="lw w1">4%</span><span class="ltime">⏱ Target: 2 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p><strong>Setup:</strong></p>
+<pre><code>kubectl run pull-pod --image=nginx:nonexistent-tag</code></pre>
+<p>Fix the Pod to use a valid image tag.</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod pull-pod
+# Expected: Running</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Image is immutable — must delete and recreate</span>
+kubectl delete pod pull-pod
+kubectl run pull-pod --image=nginx:1.25</code></pre>
+</div>
+</div>
+
+<!-- LAB 25 -->
+<div class="L" id="lab25">
+<div class="lh"><span class="ln">LAB 25</span><div class="lt">Fix Pending Pod — Wrong Node Selector</div><span class="lw w2">4%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p><strong>Setup:</strong></p>
+<pre><code>cat &lt;&lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pending-pod
+spec:
+  nodeSelector:
+    gpu: "true"
+  containers:
+  - name: nginx
+    image: nginx
+EOF</code></pre>
+<p>The Pod is stuck in Pending. Fix it so it runs. (Hint: no node has label <code>gpu=true</code>.)</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod pending-pod
+# Expected: Running</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="step">
+<div class="step-n">Option A — Label a node:</div>
+<pre><code>kubectl label node minikube gpu=true</code></pre>
+</div>
+<div class="step">
+<div class="step-n">Option B — Remove nodeSelector (recreate Pod):</div>
+<pre><code>kubectl get pod pending-pod -o yaml > fix25.yaml
+<span class="cm"># Remove the nodeSelector section</span>
+kubectl delete pod pending-pod
+kubectl apply -f fix25.yaml</code></pre>
+</div>
+</div>
+</div>
+
+<!-- ═══════ ADVANCED LABS ═══════ -->
+
+<!-- LAB 26 -->
+<div class="L" id="lab26">
+<div class="lh"><span class="ln">LAB 26</span><div class="lt">Graceful Shutdown with preStop Hook</div><span class="lw w3">4%</span><span class="ltime">⏱ Target: 4 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Create Pod <code>graceful-pod</code> with image <code>nginx</code>:</p>
+<ul>
+<li>Grace period: <code>60</code> seconds</li>
+<li>preStop hook: runs <code>sleep 5 && nginx -s quit</code></li>
+</ul></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod graceful-pod -o jsonpath='{.spec.terminationGracePeriodSeconds}'
+# Expected: 60
+
+kubectl get pod graceful-pod -o jsonpath='{.spec.containers[0].lifecycle.preStop}'
+# Expected: {"exec":{"command":[...]}}</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">graceful-pod</span>
+<span class="k">spec:</span>
+  <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">60</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">lifecycle:</span>
+      <span class="k">preStop:</span>
+        <span class="k">exec:</span>
+          <span class="k">command:</span> [<span class="s">"/bin/sh"</span>,<span class="s">"-c"</span>,<span class="s">"sleep 5 && nginx -s quit"</span>]</code></pre>
+</div>
+</div>
+
+<!-- LAB 27 -->
+<div class="L" id="lab27">
+<div class="lh"><span class="ln">LAB 27</span><div class="lt">Ephemeral Debug Container</div><span class="lw w2">4%</span><span class="ltime">⏱ Target: 2 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>A Pod named <code>debug-target</code> is running. Attach an ephemeral debug container using image <code>busybox</code> to investigate it.</p>
+<p><strong>Setup:</strong></p>
+<pre><code>kubectl run debug-target --image=nginx</code></pre></div>
+<div class="verify"><b>Verify</b><p>You should get a shell prompt inside the debug container.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl debug -it debug-target --image=busybox --target=nginx</code></pre>
+<div class="why"><b>Key Points</b><code>--target=nginx</code> shares the process namespace with the nginx container (you can see its PIDs). <code>-it</code> gives interactive shell. The debug container is temporary — not in the Pod spec.</div>
+</div>
+</div>
+
+<!-- LAB 28 -->
+<div class="L" id="lab28">
+<div class="lh"><span class="ln">LAB 28</span><div class="lt">Extract Pod Logs and Information</div><span class="lw w1">4%</span><span class="ltime">⏱ Target: 2 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Given a running Pod <code>web-pod</code> (from Lab 01), extract:</p>
+<ul>
+<li>The Pod's IP address</li>
+<li>The node it's running on</li>
+<li>Its QoS class</li>
+<li>Last 10 lines of container logs</li>
+</ul></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Pod IP</span>
+kubectl get pod web-pod -o jsonpath='{.status.podIP}'
+
+<span class="cm"># Node name</span>
+kubectl get pod web-pod -o jsonpath='{.spec.nodeName}'
+
+<span class="cm"># QoS class</span>
+kubectl get pod web-pod -o jsonpath='{.status.qosClass}'
+
+<span class="cm"># Last 10 log lines</span>
+kubectl logs web-pod --tail=10</code></pre>
+<div class="why"><b>Exam Skill</b>Practice <code>jsonpath</code> queries — the exam often asks you to extract specific values and save them to a file: <code>kubectl get pod X -o jsonpath='{.status.podIP}' > /tmp/pod-ip.txt</code></div>
+</div>
+</div>
+
+<!-- LAB 29 -->
+<div class="L" id="lab29">
+<div class="lh"><span class="ln">LAB 29</span><div class="lt">Update a Pod's Image</div><span class="lw w2">4%</span><span class="ltime">⏱ Target: 3 min</span></div>
+<div class="ctx">Namespace: <code>default</code></div>
+<div class="task"><p>Pod <code>web-pod</code> (from Lab 01) is running <code>nginx:1.25</code>. Update it to <code>nginx:1.26</code>.</p>
+<p>(Remember: image is immutable on a running Pod.)</p></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl get pod web-pod -o jsonpath='{.spec.containers[0].image}'
+# Expected: nginx:1.26</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Image is immutable — export, edit, delete, recreate</span>
+kubectl get pod web-pod -o yaml > update.yaml
+
+<span class="cm"># Edit update.yaml: change nginx:1.25 → nginx:1.26</span>
+<span class="cm"># Also remove: resourceVersion, uid, status, creationTimestamp fields</span>
+
+kubectl delete pod web-pod
+kubectl apply -f update.yaml</code></pre>
+<div class="trap"><b>Exam Trap</b>When exporting with <code>-o yaml</code>, the output contains runtime fields (<code>status</code>, <code>uid</code>, <code>resourceVersion</code>). You should remove these before re-applying, or use <code>kubectl replace --force -f update.yaml</code> which deletes and recreates in one step.</div>
+</div>
+</div>
+
+<!-- LAB 30 -->
+<div class="L" id="lab30">
+<div class="lh"><span class="ln">LAB 30</span><div class="lt">Full Production Pod — Everything Combined</div><span class="lw w3">13%</span><span class="ltime">⏱ Target: 10 min</span></div>
+<div class="ctx">Namespace: <code>production</code></div>
+<div class="task"><p>Create namespace <code>production</code>, then create a Pod with ALL of these requirements:</p>
+<ul>
+<li>Name: <code>prod-app</code>, Namespace: <code>production</code></li>
+<li>Image: <code>nginx:1.25</code>, Port: <code>80</code></li>
+<li>Labels: <code>app=web</code>, <code>env=production</code></li>
+<li>CPU request: <code>100m</code>, limit: <code>200m</code>. Memory request: <code>64Mi</code>, limit: <code>128Mi</code></li>
+<li>Liveness probe: HTTP GET <code>/</code> port <code>80</code>, period <code>10s</code></li>
+<li>Readiness probe: HTTP GET <code>/</code> port <code>80</code>, period <code>5s</code></li>
+<li>Environment variable <code>APP_ENV=production</code></li>
+<li>Run as user <code>1000</code>, read-only root filesystem</li>
+<li>Grace period: <code>45</code> seconds</li>
+<li>Mount an emptyDir at <code>/tmp</code> (for writable temp space)</li>
+</ul></div>
+<div class="verify"><b>Verify</b><pre><code>kubectl -n production get pod prod-app
+# Expected: Running 1/1
+
+kubectl -n production get pod prod-app -o jsonpath='{.status.qosClass}'
+# Expected: Burstable
+
+kubectl -n production describe pod prod-app | grep -E "Liveness|Readiness|security"</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create namespace production</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">prod-app</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">env:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">45</span>
+  <span class="k">securityContext:</span>
+    <span class="k">runAsUser:</span> <span class="nm">1000</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx:1.25</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span>
+    <span class="k">env:</span>
+    - <span class="k">name:</span> <span class="s">APP_ENV</span>
+      <span class="k">value:</span> <span class="s">"production"</span>
+    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">cpu:</span> <span class="s">"100m"</span>
+        <span class="k">memory:</span> <span class="s">"64Mi"</span>
+      <span class="k">limits:</span>
+        <span class="k">cpu:</span> <span class="s">"200m"</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+    <span class="k">readinessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">port:</span> <span class="nm">80</span>
+      <span class="k">periodSeconds:</span> <span class="nm">5</span>
+    <span class="k">securityContext:</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">tmp</span>
+      <span class="k">mountPath:</span> <span class="s">/tmp</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">tmp</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+<div class="why"><b>Why emptyDir at /tmp?</b>With <code>readOnlyRootFilesystem: true</code>, the container can't write anywhere. Nginx needs <code>/tmp</code>, <code>/var/cache/nginx</code>, and <code>/var/run</code> to be writable. In the real exam, you'd mount emptyDirs at all writable paths. For this task, <code>/tmp</code> is sufficient.</div>
+</div>
+</div>
+
+<div class="sre" style="margin-top:20px"><div class="tag">After Completing All 30 Labs</div><p style="margin:0"><strong>Next steps:</strong> (1) Time yourself on each lab again — try to beat the target time. (2) Do them without looking at solutions. (3) Get <strong>killer.sh</strong> (2 free sessions with CKAD exam purchase) — it's the closest to the real exam. (4) Practice <code>kubectl explain</code> navigation — it's allowed during the exam and faster than Googling docs.</p></div>
+
+</main>
+
+<script>
+document.querySelectorAll('.sol-btn').forEach(btn=>{
+btn.addEventListener('click',function(){this.parentElement.classList.toggle('open');this.textContent=this.parentElement.classList.contains('open')?'▲ Hide Solution':'▶ Show Solution'})
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKAD Full Exam Labs — All 5 Domains</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#f59e0b;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.8;font-size:14px}
+nav{position:fixed;top:0;left:0;width:250px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:12px 9px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:14px;background:linear-gradient(135deg,var(--ac),var(--og));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2px 6px;border-radius:3px;color:var(--dm);text-decoration:none;font-size:9.5px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:6.5px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:8px 0 2px 6px;font-weight:700}
+main{margin-left:250px;max-width:1020px;padding:20px 34px 80px}
+.hero{text-align:center;padding:24px 0 16px}
+.hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:6px}
+.hero p{color:var(--dm);font-size:12px;max-width:640px;margin:0 auto}
+h2{font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:#fff;margin:24px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--bd)}
+h2 .pct{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);background:rgba(245,158,11,.1);padding:1px 6px;border-radius:4px;margin-left:6px}
+h3{font-size:13px;font-weight:700;color:#dde2ea;margin:10px 0 4px}
+p{margin-bottom:5px;font-size:12.5px}strong{color:#eee}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;overflow-x:auto;margin:3px 0 6px;font-size:10px;line-height:1.45}
+code{font-family:'JetBrains Mono',monospace;font-size:9.5px}
+p code,li code,td code{background:var(--sf2);padding:1px 3px;border-radius:3px;color:var(--ac2)}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:3px 0 8px;font-size:11px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:4px 6px;font-size:8.5px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:4px 6px;border-bottom:1px solid var(--bd);vertical-align:top}
+.L{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.L .lh{padding:8px 11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.L .ln{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);font-weight:700;background:rgba(245,158,11,.1);padding:2px 6px;border-radius:3px;white-space:nowrap}
+.L .lt{font-size:13px;font-weight:700;color:#fff;flex:1}
+.L .lw{font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 6px;border-radius:8px;font-weight:600}
+.L .lw.w1{background:rgba(22,163,74,.12);color:var(--gn)}.L .lw.w2{background:rgba(245,158,11,.12);color:var(--ac)}.L .lw.w3{background:rgba(220,38,38,.12);color:var(--rd)}
+.L .task{padding:8px 11px;font-size:12px}
+.L .task ul{margin:2px 0 5px 14px}.L .task li{margin-bottom:2px;font-size:11.5px}
+.L .verify{background:rgba(14,164,114,.03);border-top:1px solid rgba(14,164,114,.06);padding:5px 11px;font-size:10.5px}
+.L .verify b{color:#0ea472;font-size:7.5px;text-transform:uppercase;letter-spacing:1px}
+.L .sol-btn{display:block;width:100%;padding:7px 11px;background:rgba(245,158,11,.04);border:none;border-top:1px solid var(--bd);color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;text-align:left;transition:.1s}
+.L .sol-btn:hover{background:rgba(245,158,11,.08)}
+.L .sol{display:none;padding:9px 11px;border-top:1px solid var(--bd)}
+.L.open .sol{display:block}
+.M{border:1px solid var(--bd);border-radius:7px;margin:6px 0;overflow:hidden}
+.M .mt{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.M .mb{padding:4px 9px;font-size:8.5px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:'JetBrains Mono',monospace;transition:.1s}
+.M .mb:hover{color:var(--tx);background:var(--sf2)}
+.M .mb.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(245,158,11,.04)}
+.M .mp{display:none;padding:8px 10px}.M .mp.on{display:block}
+.why{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.why b{color:var(--bl);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.trap{background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.trap b{color:var(--rd);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.best{background:rgba(22,163,74,.03);border:1px solid rgba(22,163,74,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.best b{color:var(--gn);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.sre{background:linear-gradient(135deg,rgba(245,158,11,.03),rgba(8,145,178,.02));border:1px solid rgba(245,158,11,.08);border-radius:var(--r);padding:7px 10px;margin:6px 0;font-size:11.5px}
+.sre .tag{display:inline-block;padding:1px 4px;border-radius:3px;background:rgba(245,158,11,.12);color:var(--ac);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:12px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ CKAD Full Labs</div>
+<div class="sub">All 5 Domains</div>
+<div class="sl">D1: Design &amp; Build 20%</div>
+<ul><li><a href="#d1">01–10: Images, Workloads, Patterns, Volumes</a></li></ul>
+<div class="sl">D2: Deployment 20%</div>
+<ul><li><a href="#d2">11–20: Deployments, Rolling, Helm, Kustomize</a></li></ul>
+<div class="sl">D3: Observability 15%</div>
+<ul><li><a href="#d3">21–28: Probes, Logs, Debug, Monitor</a></li></ul>
+<div class="sl">D4: Config &amp; Security 25%</div>
+<ul><li><a href="#d4">29–44: ConfigMap, Secret, SA, Security, CRD</a></li></ul>
+<div class="sl">D5: Services &amp; Network 20%</div>
+<ul><li><a href="#d5">45–55: Services, Ingress, NetworkPolicy</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>CKAD Full Curriculum Labs</h1><p>55 hands-on tasks covering all 5 exam domains. Every solution shows imperative commands + YAML + multiple methods. Based on the official CKAD curriculum.</p></div>
+
+<div class="sre"><div class="tag">Exam Info</div><p style="margin:0"><strong>Duration:</strong> 2 hours · <strong>Questions:</strong> 15-20 · <strong>Pass:</strong> 66% · <strong>Format:</strong> 100% hands-on in real clusters · <strong>Allowed:</strong> kubernetes.io docs only</p></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- DOMAIN 1: APPLICATION DESIGN & BUILD 20%  -->
+<!-- ══════════════════════════════════════════ -->
+<h2 id="d1">Domain 1: Application Design &amp; Build <span class="pct">20%</span></h2>
+
+<div class="L"><div class="lh"><span class="ln">01</span><div class="lt">Build a Container Image from a Dockerfile</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create a Dockerfile for a simple Python app, build the image, and run it as a Pod.</p>
+<ul><li>Create a file <code>app.py</code> that prints "Hello CKAD"</li><li>Write a Dockerfile using <code>python:3.11-slim</code> base</li><li>Build image tagged <code>myapp:v1</code></li><li>Create a Pod <code>myapp-pod</code> using the image</li></ul></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Create app</span>
+echo 'print("Hello CKAD")' > app.py
+
+<span class="cm"># Step 2: Create Dockerfile</span>
+cat > Dockerfile &lt;&lt;EOF
+FROM python:3.11-slim
+WORKDIR /app
+COPY app.py .
+CMD ["python", "app.py"]
+EOF
+
+<span class="cm"># Step 3: Build (if using minikube, point to minikube's docker)</span>
+eval $(minikube docker-env)
+docker build -t myapp:v1 .
+
+<span class="cm"># Step 4: Create Pod (imagePullPolicy: Never to use local image)</span>
+kubectl run myapp-pod --image=myapp:v1 --restart=Never --image-pull-policy=Never</code></pre>
+<div class="why"><b>Dockerfile commands to know</b><code>FROM</code> (base image), <code>WORKDIR</code> (set directory), <code>COPY</code> (add files), <code>RUN</code> (execute during build), <code>CMD</code> (default command), <code>ENTRYPOINT</code> (fixed command), <code>EXPOSE</code> (document port), <code>ENV</code> (set env var).</div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">02</span><div class="lt">Modify an Existing Container Image</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Modify the nginx image to serve a custom page. Build and run as Pod <code>custom-nginx</code>.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>cat > Dockerfile &lt;&lt;EOF
+FROM nginx:1.25
+RUN echo "&lt;h1&gt;CKAD Custom Page&lt;/h1&gt;" > /usr/share/nginx/html/index.html
+EXPOSE 80
+EOF
+
+eval $(minikube docker-env)
+docker build -t custom-nginx:v1 .
+kubectl run custom-nginx --image=custom-nginx:v1 --port=80 --image-pull-policy=Never</code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">03</span><div class="lt">Choose the Right Workload Resource</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create the correct workload for each scenario:</p>
+<ul><li><strong>A:</strong> A web server that needs 3 replicas and rolling updates</li><li><strong>B:</strong> A batch job that processes a file and exits</li><li><strong>C:</strong> A task that runs every hour</li><li><strong>D:</strong> A log collector that runs on every node</li></ul></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># A: Deployment (stateless, replicated, rolling updates)</span>
+kubectl create deployment web --image=nginx --replicas=3
+
+<span class="cm"># B: Job (run-to-completion, exit when done)</span>
+kubectl create job batch-job --image=busybox -- /bin/sh -c "echo processing && sleep 10"
+
+<span class="cm"># C: CronJob (scheduled recurring task)</span>
+kubectl create cronjob hourly-task --image=busybox --schedule="0 * * * *" -- /bin/sh -c "echo running"
+
+<span class="cm"># D: DaemonSet (one Pod per node — YAML only, no imperative command)</span></code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">log-collector</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">log-collector</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">log-collector</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">agent</span>
+        <span class="k">image:</span> <span class="s">fluentd</span></code></pre>
+<table><tr><th>Workload</th><th>Use When</th><th>Imperative?</th></tr>
+<tr><td>Deployment</td><td>Stateless apps, web servers</td><td><code>kubectl create deployment</code></td></tr>
+<tr><td>StatefulSet</td><td>Databases, apps needing stable identity</td><td>YAML only</td></tr>
+<tr><td>DaemonSet</td><td>One Pod per node (monitoring, logging)</td><td>YAML only</td></tr>
+<tr><td>Job</td><td>Run once and exit</td><td><code>kubectl create job</code></td></tr>
+<tr><td>CronJob</td><td>Scheduled recurring jobs</td><td><code>kubectl create cronjob</code></td></tr></table>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">04</span><div class="lt">Multi-Container Pod — Sidecar Pattern</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create Pod <code>sidecar-pod</code>: app container writes logs to <code>/var/log/app.log</code>, sidecar container tails the same file. Use shared emptyDir volume.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">sidecar-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"while true; do echo $(date) INFO request >> /var/log/app.log; sleep 3; done"</span>]
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">logs</span>, <span class="k">mountPath:</span> <span class="s">/var/log</span> }
+  - <span class="k">name:</span> <span class="s">sidecar</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"tail -f /var/log/app.log"</span>]
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">logs</span>, <span class="k">mountPath:</span> <span class="s">/var/log</span> }
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">logs</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+<div class="verify"><b>Verify: </b><code>kubectl logs sidecar-pod -c sidecar</code></div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">05</span><div class="lt">Multi-Container — Init Container</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create Pod <code>init-pod</code> with an init container that writes "ready" to <code>/work/status</code>. App container reads and prints it.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">init-pod</span>
+<span class="k">spec:</span>
+  <span class="k">initContainers:</span>
+  - <span class="k">name:</span> <span class="s">init</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"echo ready > /work/status"</span>]
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">work</span>, <span class="k">mountPath:</span> <span class="s">/work</span> }
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"cat /work/status && sleep 3600"</span>]
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">work</span>, <span class="k">mountPath:</span> <span class="s">/work</span> }
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">work</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">06</span><div class="lt">PersistentVolumeClaim in a Pod</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create a PVC named <code>data-pvc</code> requesting 1Gi with accessMode <code>ReadWriteOnce</code>. Create Pod <code>pvc-pod</code> (image <code>nginx</code>) mounting it at <code>/data</code>.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="06" data-i="0">Separate YAMLs</div><div class="mb" data-g="06" data-i="1">All-in-one YAML</div></div>
+<div class="mp on" data-g="06" data-i="0">
+<pre><code><span class="cm"># PVC</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">PersistentVolumeClaim</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">data-pvc</span>
+<span class="k">spec:</span>
+  <span class="k">accessModes:</span> [<span class="s">ReadWriteOnce</span>]
+  <span class="k">resources:</span>
+    <span class="k">requests:</span>
+      <span class="k">storage:</span> <span class="s">1Gi</span></code></pre>
+<pre><code><span class="cm"># Pod</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">pvc-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">data</span>, <span class="k">mountPath:</span> <span class="s">/data</span> }
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">data</span>
+    <span class="k">persistentVolumeClaim:</span>
+      <span class="k">claimName:</span> <span class="s">data-pvc</span></code></pre></div>
+<div class="mp" data-g="06" data-i="1">
+<pre><code><span class="cm"># Both in one file separated by ---</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">PersistentVolumeClaim</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">data-pvc</span>
+<span class="k">spec:</span>
+  <span class="k">accessModes:</span> [<span class="s">ReadWriteOnce</span>]
+  <span class="k">resources:</span>
+    <span class="k">requests:</span>
+      <span class="k">storage:</span> <span class="s">1Gi</span>
+---
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">pvc-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">data</span>, <span class="k">mountPath:</span> <span class="s">/data</span> }
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">data</span>
+    <span class="k">persistentVolumeClaim:</span>
+      <span class="k">claimName:</span> <span class="s">data-pvc</span></code></pre></div></div>
+</div></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- DOMAIN 2: APPLICATION DEPLOYMENT 20%      -->
+<!-- ══════════════════════════════════════════ -->
+<h2 id="d2">Domain 2: Application Deployment <span class="pct">20%</span></h2>
+
+<div class="L"><div class="lh"><span class="ln">11</span><div class="lt">Create a Deployment with Rolling Update Strategy</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Create Deployment <code>web-deploy</code>, image <code>nginx:1.25</code>, 3 replicas, with maxSurge=1, maxUnavailable=0.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="11" data-i="0">Imperative + edit</div><div class="mb" data-g="11" data-i="1">Full YAML</div></div>
+<div class="mp on" data-g="11" data-i="0">
+<pre><code><span class="cm"># Generate skeleton</span>
+kubectl create deployment web-deploy --image=nginx:1.25 --replicas=3 --dry-run=client -o yaml > deploy.yaml
+<span class="cm"># Add strategy section, then apply</span>
+kubectl apply -f deploy.yaml</code></pre></div>
+<div class="mp" data-g="11" data-i="1">
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-deploy</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">strategy:</span>
+    <span class="k">type:</span> <span class="v">RollingUpdate</span>
+    <span class="k">rollingUpdate:</span>
+      <span class="k">maxSurge:</span> <span class="nm">1</span>
+      <span class="k">maxUnavailable:</span> <span class="nm">0</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web-deploy</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web-deploy</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span></code></pre></div></div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">12</span><div class="lt">Perform a Rolling Update and Rollback</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Update <code>web-deploy</code> to <code>nginx:1.26</code>. Watch the rollout. Then rollback to previous version.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Update image</span>
+kubectl set image deployment/web-deploy nginx=nginx:1.26
+
+<span class="cm"># Watch rollout</span>
+kubectl rollout status deployment/web-deploy
+
+<span class="cm"># View history</span>
+kubectl rollout history deployment/web-deploy
+
+<span class="cm"># Rollback to previous</span>
+kubectl rollout undo deployment/web-deploy
+
+<span class="cm"># Rollback to specific revision</span>
+kubectl rollout undo deployment/web-deploy --to-revision=1
+
+<span class="cm"># Verify</span>
+kubectl get deployment web-deploy -o jsonpath='{.spec.template.spec.containers[0].image}'</code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">13</span><div class="lt">Scale a Deployment</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Scale <code>web-deploy</code> to 5 replicas, then back to 2.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl scale deployment web-deploy --replicas=5
+kubectl get pods -l app=web-deploy    <span class="cm"># should show 5</span>
+kubectl scale deployment web-deploy --replicas=2</code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">14</span><div class="lt">Blue/Green Deployment Strategy</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Implement blue/green: Deploy v1 (blue) behind a Service. Deploy v2 (green). Switch Service to v2.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Blue deployment (v1)</span>
+kubectl create deployment blue --image=nginx:1.25
+kubectl label deployment blue version=v1
+kubectl expose deployment blue --name=web-svc --port=80 --selector=version=v1 --type=ClusterIP --dry-run=client -o yaml > svc.yaml
+<span class="cm"># Edit svc.yaml selector to: version: v1</span>
+kubectl apply -f svc.yaml
+
+<span class="cm"># Green deployment (v2)</span>
+kubectl create deployment green --image=nginx:1.26
+kubectl label pods -l app=green version=v2 --overwrite
+
+<span class="cm"># Switch traffic: change Service selector from v1 to v2</span>
+kubectl patch svc web-svc -p '{"spec":{"selector":{"version":"v2"}}}'
+
+<span class="cm"># Verify: traffic now goes to green</span>
+kubectl describe svc web-svc | grep Selector</code></pre>
+<div class="why"><b>Blue/Green concept</b>Both versions run simultaneously. The Service selector switches traffic instantly. Rollback = switch selector back to v1.</div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">15</span><div class="lt">Create and Use a Job</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Create a Job <code>math-job</code> that runs <code>expr 3 + 2</code> and completes. Then a Job with 3 completions, parallelism 2.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="15" data-i="0">Simple Job</div><div class="mb" data-g="15" data-i="1">Parallel Job</div></div>
+<div class="mp on" data-g="15" data-i="0">
+<pre><code>kubectl create job math-job --image=busybox -- expr 3 + 2
+kubectl get jobs
+kubectl logs job/math-job</code></pre></div>
+<div class="mp" data-g="15" data-i="1">
+<pre><code><span class="k">apiVersion:</span> <span class="v">batch/v1</span>
+<span class="k">kind:</span> <span class="v">Job</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">parallel-job</span>
+<span class="k">spec:</span>
+  <span class="k">completions:</span> <span class="nm">3</span>      <span class="cm"># Total runs needed</span>
+  <span class="k">parallelism:</span> <span class="nm">2</span>      <span class="cm"># Run 2 at a time</span>
+  <span class="k">backoffLimit:</span> <span class="nm">4</span>     <span class="cm"># Max failures before giving up</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">restartPolicy:</span> <span class="v">Never</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">worker</span>
+        <span class="k">image:</span> <span class="s">busybox</span>
+        <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"echo processing && sleep 5"</span>]</code></pre></div></div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">16</span><div class="lt">Create a CronJob</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Create CronJob <code>backup-cron</code> that runs every 5 minutes, image <code>busybox</code>, command: <code>echo backup done</code>.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create cronjob backup-cron --image=busybox --schedule="*/5 * * * *" -- /bin/sh -c "echo backup done"
+
+<span class="cm"># Verify</span>
+kubectl get cronjob backup-cron
+kubectl get jobs --watch   <span class="cm"># Wait 5 min to see job created</span></code></pre>
+</div></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- DOMAIN 3: OBSERVABILITY & MAINTENANCE 15% -->
+<!-- ══════════════════════════════════════════ -->
+<h2 id="d3">Domain 3: Observability &amp; Maintenance <span class="pct">15%</span></h2>
+
+<div class="L"><div class="lh"><span class="ln">21</span><div class="lt">Add All 3 Probes to a Pod</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create Pod <code>probed-pod</code> (nginx, port 80) with: startup probe (30 failures × 10s), liveness (period 15s, timeout 3s), readiness (period 5s).</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">probed-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">ports:</span> [{ <span class="k">containerPort:</span> <span class="nm">80</span> }]
+    <span class="k">startupProbe:</span>
+      <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/</span>, <span class="k">port:</span> <span class="nm">80</span> }
+      <span class="k">failureThreshold:</span> <span class="nm">30</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/</span>, <span class="k">port:</span> <span class="nm">80</span> }
+      <span class="k">periodSeconds:</span> <span class="nm">15</span>
+      <span class="k">timeoutSeconds:</span> <span class="nm">3</span>
+      <span class="k">failureThreshold:</span> <span class="nm">3</span>
+    <span class="k">readinessProbe:</span>
+      <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/</span>, <span class="k">port:</span> <span class="nm">80</span> }
+      <span class="k">periodSeconds:</span> <span class="nm">5</span></code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">22</span><div class="lt">Use CLI Tools to Monitor and Debug</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Given a running app, extract: Pod IP, node name, QoS class, recent events, resource usage, and last 20 log lines.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Pod IP</span>
+kubectl get pod X -o jsonpath='{.status.podIP}'
+
+<span class="cm"># Node name</span>
+kubectl get pod X -o jsonpath='{.spec.nodeName}'
+
+<span class="cm"># QoS class</span>
+kubectl get pod X -o jsonpath='{.status.qosClass}'
+
+<span class="cm"># Events (sorted by time)</span>
+kubectl get events --sort-by=.lastTimestamp --field-selector involvedObject.name=X
+
+<span class="cm"># Resource usage</span>
+kubectl top pod X
+
+<span class="cm"># Last 20 log lines</span>
+kubectl logs X --tail=20
+
+<span class="cm"># Previous crash logs</span>
+kubectl logs X --previous
+
+<span class="cm"># Describe (full detail including events)</span>
+kubectl describe pod X</code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">23</span><div class="lt">Debug a CrashLoopBackOff Pod</div><span class="lw w2">Medium</span></div>
+<div class="task"><p><strong>Setup:</strong> <code>kubectl run crash-debug --image=busybox -- /bin/sh -c "exit 1"</code></p><p>Diagnose and fix.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Check status</span>
+kubectl get pod crash-debug    <span class="cm"># CrashLoopBackOff</span>
+
+<span class="cm"># Step 2: Check exit code</span>
+kubectl describe pod crash-debug | grep "Exit Code"   <span class="cm"># Exit Code: 1</span>
+
+<span class="cm"># Step 3: Check previous logs</span>
+kubectl logs crash-debug --previous   <span class="cm"># empty — "exit 1" produces no output</span>
+
+<span class="cm"># Step 4: Fix — change command to something that stays running</span>
+kubectl delete pod crash-debug
+kubectl run crash-debug --image=busybox -- /bin/sh -c "echo fixed && sleep 3600"</code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">24</span><div class="lt">Use Ephemeral Debug Container</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Pod <code>debug-target</code> is running nginx. Attach a debug container to check its network configuration.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Create target</span>
+kubectl run debug-target --image=nginx
+
+<span class="cm"># Attach ephemeral debug container</span>
+kubectl debug -it debug-target --image=busybox --target=nginx
+
+<span class="cm"># Inside debug container:</span>
+wget -qO- localhost:80     <span class="cm"># test nginx</span>
+cat /proc/1/root/etc/nginx/nginx.conf   <span class="cm"># read nginx config via shared PID</span></code></pre>
+</div></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- DOMAIN 4: CONFIG & SECURITY 25%           -->
+<!-- ══════════════════════════════════════════ -->
+<h2 id="d4">Domain 4: Environment, Config &amp; Security <span class="pct">25%</span></h2>
+
+<div class="L"><div class="lh"><span class="ln">29</span><div class="lt">Create and Use ConfigMaps — All Methods</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create ConfigMap <code>app-config</code> with DB_HOST=mysql, DB_PORT=3306. Use it in a Pod three different ways: envFrom, env valueFrom, and volume mount.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<h3>Create ConfigMap</h3>
+<div class="M"><div class="mt"><div class="mb on" data-g="29a" data-i="0">Imperative</div><div class="mb" data-g="29a" data-i="1">YAML</div><div class="mb" data-g="29a" data-i="2">From file</div></div>
+<div class="mp on" data-g="29a" data-i="0"><pre><code>kubectl create configmap app-config --from-literal=DB_HOST=mysql --from-literal=DB_PORT=3306</code></pre></div>
+<div class="mp" data-g="29a" data-i="1"><pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">ConfigMap</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">app-config</span>
+<span class="k">data:</span>
+  <span class="k">DB_HOST:</span> <span class="s">mysql</span>
+  <span class="k">DB_PORT:</span> <span class="s">"3306"</span></code></pre></div>
+<div class="mp" data-g="29a" data-i="2"><pre><code>echo -e "DB_HOST=mysql\nDB_PORT=3306" > app.env
+kubectl create configmap app-config --from-env-file=app.env</code></pre></div></div>
+
+<h3>Use in Pod</h3>
+<div class="M"><div class="mt"><div class="mb on" data-g="29b" data-i="0">envFrom (all keys)</div><div class="mb" data-g="29b" data-i="1">valueFrom (pick keys)</div><div class="mb" data-g="29b" data-i="2">Volume mount (as files)</div></div>
+<div class="mp on" data-g="29b" data-i="0">
+<pre><code>    <span class="k">envFrom:</span>
+    - <span class="k">configMapRef:</span>
+        <span class="k">name:</span> <span class="s">app-config</span></code></pre></div>
+<div class="mp" data-g="29b" data-i="1">
+<pre><code>    <span class="k">env:</span>
+    - <span class="k">name:</span> <span class="s">DB_HOST</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">configMapKeyRef:</span>
+          <span class="k">name:</span> <span class="s">app-config</span>
+          <span class="k">key:</span> <span class="s">DB_HOST</span></code></pre></div>
+<div class="mp" data-g="29b" data-i="2">
+<pre><code>    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">cfg</span>, <span class="k">mountPath:</span> <span class="s">/etc/config</span> }
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">cfg</span>
+    <span class="k">configMap:</span>
+      <span class="k">name:</span> <span class="s">app-config</span>
+<span class="cm"># Creates files: /etc/config/DB_HOST and /etc/config/DB_PORT</span></code></pre></div></div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">30</span><div class="lt">Create and Use Secrets — All Methods</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create Secret <code>db-secret</code> with username=admin, password=s3cret. Mount as env vars and as volume.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="30" data-i="0">Imperative</div><div class="mb" data-g="30" data-i="1">YAML (stringData)</div><div class="mb" data-g="30" data-i="2">YAML (base64 data)</div></div>
+<div class="mp on" data-g="30" data-i="0"><pre><code>kubectl create secret generic db-secret --from-literal=username=admin --from-literal=password=s3cret</code></pre></div>
+<div class="mp" data-g="30" data-i="1"><pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Secret</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">db-secret</span>
+<span class="k">stringData:</span>        <span class="cm"># plain text — K8s encodes automatically</span>
+  <span class="k">username:</span> <span class="s">admin</span>
+  <span class="k">password:</span> <span class="s">s3cret</span></code></pre></div>
+<div class="mp" data-g="30" data-i="2"><pre><code><span class="cm"># echo -n "admin" | base64  →  YWRtaW4=</span>
+<span class="cm"># echo -n "s3cret" | base64 →  czNjcmV0</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Secret</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">db-secret</span>
+<span class="k">data:</span>
+  <span class="k">username:</span> <span class="s">YWRtaW4=</span>
+  <span class="k">password:</span> <span class="s">czNjcmV0</span></code></pre>
+<div class="trap"><b>Trap</b>Use <code>echo -n</code> (no newline!). Without <code>-n</code>, the base64 includes a trailing newline character.</div></div></div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">31</span><div class="lt">Resource Requests, Limits, and ResourceQuota</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create namespace <code>limited</code> with a ResourceQuota (max 2 CPU, 1Gi memory). Create Pod with requests and limits within the quota.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create namespace limited</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">ResourceQuota</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">compute-quota</span>
+  <span class="k">namespace:</span> <span class="s">limited</span>
+<span class="k">spec:</span>
+  <span class="k">hard:</span>
+    <span class="k">requests.cpu:</span> <span class="s">"2"</span>
+    <span class="k">requests.memory:</span> <span class="s">1Gi</span>
+    <span class="k">limits.cpu:</span> <span class="s">"4"</span>
+    <span class="k">limits.memory:</span> <span class="s">2Gi</span>
+    <span class="k">pods:</span> <span class="s">"10"</span></code></pre>
+<pre><code><span class="cm"># Pod MUST have requests/limits when quota exists</span>
+kubectl run quota-pod -n limited --image=nginx --dry-run=client -o yaml > qpod.yaml
+<span class="cm"># Add resources section, then apply</span></code></pre>
+<div class="trap"><b>Trap</b>When a ResourceQuota exists in a namespace, every Pod MUST specify resource requests/limits. Without them, the Pod is rejected.</div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">32</span><div class="lt">ServiceAccount</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Create ServiceAccount <code>app-sa</code>. Create Pod using it with token automount disabled.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create serviceaccount app-sa</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">sa-pod</span>
+<span class="k">spec:</span>
+  <span class="k">serviceAccountName:</span> <span class="s">app-sa</span>
+  <span class="k">automountServiceAccountToken:</span> <span class="v">false</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span></code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">33</span><div class="lt">SecurityContext — Full Configuration</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create Pod <code>secure-pod</code>: run as user 1000, group 3000, read-only root filesystem, drop all capabilities, no privilege escalation. Mount emptyDir at /tmp for writable space.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">secure-pod</span>
+<span class="k">spec:</span>
+  <span class="k">securityContext:</span>
+    <span class="k">runAsUser:</span> <span class="nm">1000</span>
+    <span class="k">runAsGroup:</span> <span class="nm">3000</span>
+    <span class="k">runAsNonRoot:</span> <span class="v">true</span>
+    <span class="k">fsGroup:</span> <span class="nm">2000</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">securityContext:</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+      <span class="k">allowPrivilegeEscalation:</span> <span class="v">false</span>
+      <span class="k">capabilities:</span>
+        <span class="k">drop:</span> [<span class="s">"ALL"</span>]
+        <span class="k">add:</span> [<span class="s">"NET_BIND_SERVICE"</span>]   <span class="cm"># Only if needed for port &lt;1024</span>
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">tmp</span>, <span class="k">mountPath:</span> <span class="s">/tmp</span> }
+    - { <span class="k">name:</span> <span class="s">cache</span>, <span class="k">mountPath:</span> <span class="s">/var/cache/nginx</span> }
+    - { <span class="k">name:</span> <span class="s">run</span>, <span class="k">mountPath:</span> <span class="s">/var/run</span> }
+  <span class="k">volumes:</span>
+  - { <span class="k">name:</span> <span class="s">tmp</span>, <span class="k">emptyDir:</span> {} }
+  - { <span class="k">name:</span> <span class="s">cache</span>, <span class="k">emptyDir:</span> {} }
+  - { <span class="k">name:</span> <span class="s">run</span>, <span class="k">emptyDir:</span> {} }</code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">34</span><div class="lt">LimitRange — Default Requests/Limits</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create namespace <code>dev</code> with a LimitRange that sets default CPU request=100m, limit=200m for all containers.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create namespace dev</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">LimitRange</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">default-limits</span>
+  <span class="k">namespace:</span> <span class="s">dev</span>
+<span class="k">spec:</span>
+  <span class="k">limits:</span>
+  - <span class="k">type:</span> <span class="v">Container</span>
+    <span class="k">default:</span>           <span class="cm"># Default limits</span>
+      <span class="k">cpu:</span> <span class="s">"200m"</span>
+    <span class="k">defaultRequest:</span>    <span class="cm"># Default requests</span>
+      <span class="k">cpu:</span> <span class="s">"100m"</span></code></pre>
+<pre><code><span class="cm"># Now any Pod in 'dev' without resources gets these defaults</span>
+kubectl run test -n dev --image=nginx
+kubectl get pod test -n dev -o jsonpath='{.spec.containers[0].resources}'</code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">35</span><div class="lt">Custom Resource Definition (CRD)</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Discover if a CRD named <code>backups.example.com</code> exists. List all custom resources of that type.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># List all CRDs in the cluster</span>
+kubectl get crd
+
+<span class="cm"># Check specific CRD</span>
+kubectl get crd backups.example.com
+
+<span class="cm"># List custom resources of that type</span>
+kubectl get backups   <span class="cm"># or kubectl get backups.example.com</span>
+
+<span class="cm"># Describe a custom resource</span>
+kubectl describe backup my-backup
+
+<span class="cm"># List all API resources (shows CRDs too)</span>
+kubectl api-resources | grep backup</code></pre>
+</div></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- DOMAIN 5: SERVICES & NETWORKING 20%       -->
+<!-- ══════════════════════════════════════════ -->
+<h2 id="d5">Domain 5: Services &amp; Networking <span class="pct">20%</span></h2>
+
+<div class="L"><div class="lh"><span class="ln">45</span><div class="lt">Create Services — All Types</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create a Deployment <code>web</code> (nginx, 3 replicas). Expose it as ClusterIP, NodePort, and LoadBalancer services.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create deployment web --image=nginx --replicas=3</code></pre>
+<div class="M"><div class="mt"><div class="mb on" data-g="45" data-i="0">ClusterIP</div><div class="mb" data-g="45" data-i="1">NodePort</div><div class="mb" data-g="45" data-i="2">LoadBalancer</div><div class="mb" data-g="45" data-i="3">YAML</div></div>
+<div class="mp on" data-g="45" data-i="0">
+<pre><code><span class="cm"># ClusterIP (default — internal only)</span>
+kubectl expose deployment web --name=web-clusterip --port=80 --target-port=80 --type=ClusterIP</code></pre></div>
+<div class="mp" data-g="45" data-i="1">
+<pre><code><span class="cm"># NodePort (exposes on every node's IP:NodePort)</span>
+kubectl expose deployment web --name=web-nodeport --port=80 --target-port=80 --type=NodePort</code></pre></div>
+<div class="mp" data-g="45" data-i="2">
+<pre><code><span class="cm"># LoadBalancer (provisions cloud LB)</span>
+kubectl expose deployment web --name=web-lb --port=80 --target-port=80 --type=LoadBalancer</code></pre></div>
+<div class="mp" data-g="45" data-i="3">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">ClusterIP</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>        <span class="cm"># Must match Deployment Pod labels</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>        <span class="cm"># Service port</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span>  <span class="cm"># Container port</span></code></pre></div></div>
+<pre><code><span class="cm"># Verify</span>
+kubectl get svc
+kubectl get endpoints web-clusterip    <span class="cm"># Shows Pod IPs</span></code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">46</span><div class="lt">Troubleshoot Service — No Endpoints</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Service <code>broken-svc</code> has no endpoints. Diagnose why.</p>
+<p><strong>Setup:</strong></p>
+<pre><code>kubectl run web --image=nginx --labels="app=web"
+kubectl create service clusterip broken-svc --tcp=80:80
+<span class="cm"># The service has selector app=broken-svc (wrong!)</span></code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Check endpoints</span>
+kubectl get endpoints broken-svc     <span class="cm"># Empty!</span>
+
+<span class="cm"># Step 2: Check Service selector</span>
+kubectl get svc broken-svc -o jsonpath='{.spec.selector}'
+<span class="cm"># {"app":"broken-svc"} — doesn't match Pod label "app=web"</span>
+
+<span class="cm"># Step 3: Check Pod labels</span>
+kubectl get pods --show-labels
+
+<span class="cm"># Step 4: Fix — patch the Service selector</span>
+kubectl patch svc broken-svc -p '{"spec":{"selector":{"app":"web"}}}'
+
+<span class="cm"># Verify</span>
+kubectl get endpoints broken-svc     <span class="cm"># Now shows Pod IP</span></code></pre>
+<div class="why"><b>Key rule</b>Service selector must EXACTLY match Pod labels. Most common cause of "Service not working" = selector mismatch.</div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">47</span><div class="lt">Create an Ingress</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create an Ingress that routes <code>myapp.example.com</code> to service <code>web-svc</code> on port 80.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="47" data-i="0">Imperative</div><div class="mb" data-g="47" data-i="1">YAML</div></div>
+<div class="mp on" data-g="47" data-i="0">
+<pre><code>kubectl create ingress myapp-ingress --rule="myapp.example.com/=web-svc:80"</code></pre></div>
+<div class="mp" data-g="47" data-i="1">
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">Ingress</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">myapp-ingress</span>
+<span class="k">spec:</span>
+  <span class="k">rules:</span>
+  - <span class="k">host:</span> <span class="s">myapp.example.com</span>
+    <span class="k">http:</span>
+      <span class="k">paths:</span>
+      - <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">pathType:</span> <span class="v">Prefix</span>
+        <span class="k">backend:</span>
+          <span class="k">service:</span>
+            <span class="k">name:</span> <span class="s">web-svc</span>
+            <span class="k">port:</span>
+              <span class="k">number:</span> <span class="nm">80</span></code></pre></div></div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">48</span><div class="lt">Ingress with Multiple Paths</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create an Ingress: <code>/app</code> → <code>app-svc:8080</code>, <code>/api</code> → <code>api-svc:5000</code>.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">Ingress</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">multi-path</span>
+<span class="k">spec:</span>
+  <span class="k">rules:</span>
+  - <span class="k">http:</span>
+      <span class="k">paths:</span>
+      - <span class="k">path:</span> <span class="s">/app</span>
+        <span class="k">pathType:</span> <span class="v">Prefix</span>
+        <span class="k">backend:</span>
+          <span class="k">service:</span>
+            <span class="k">name:</span> <span class="s">app-svc</span>
+            <span class="k">port:</span>
+              <span class="k">number:</span> <span class="nm">8080</span>
+      - <span class="k">path:</span> <span class="s">/api</span>
+        <span class="k">pathType:</span> <span class="v">Prefix</span>
+        <span class="k">backend:</span>
+          <span class="k">service:</span>
+            <span class="k">name:</span> <span class="s">api-svc</span>
+            <span class="k">port:</span>
+              <span class="k">number:</span> <span class="nm">5000</span></code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">49</span><div class="lt">NetworkPolicy — Deny All Ingress</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create a NetworkPolicy in namespace <code>secure-ns</code> that denies ALL incoming traffic to Pods with label <code>app=db</code>.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">deny-all-ingress</span>
+  <span class="k">namespace:</span> <span class="s">secure-ns</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">db</span>
+  <span class="k">policyTypes:</span>
+  - <span class="v">Ingress</span>
+  <span class="k">ingress:</span> []            <span class="cm"># Empty = deny all incoming</span></code></pre>
+<div class="why"><b>NetworkPolicy logic</b>Empty <code>ingress: []</code> = deny all. No <code>ingress</code> field at all = no restriction. Specifying rules = allow only matching traffic.</div>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">50</span><div class="lt">NetworkPolicy — Allow Only Specific Pod</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Allow only Pods with label <code>app=web</code> to access Pods with label <code>app=db</code> on port 3306.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">allow-web-to-db</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">db</span>            <span class="cm"># Apply to db Pods</span>
+  <span class="k">policyTypes:</span>
+  - <span class="v">Ingress</span>
+  <span class="k">ingress:</span>
+  - <span class="k">from:</span>
+    - <span class="k">podSelector:</span>
+        <span class="k">matchLabels:</span>
+          <span class="k">app:</span> <span class="s">web</span>       <span class="cm"># Only from web Pods</span>
+    <span class="k">ports:</span>
+    - <span class="k">protocol:</span> <span class="v">TCP</span>
+      <span class="k">port:</span> <span class="nm">3306</span>        <span class="cm"># Only on this port</span></code></pre>
+</div></div>
+
+<div class="L"><div class="lh"><span class="ln">51</span><div class="lt">NetworkPolicy — Allow Egress to DNS Only</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Create a policy that allows Pods labeled <code>app=restricted</code> to only make DNS queries (port 53 UDP/TCP) and nothing else.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">dns-only-egress</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">restricted</span>
+  <span class="k">policyTypes:</span>
+  - <span class="v">Egress</span>
+  <span class="k">egress:</span>
+  - <span class="k">ports:</span>
+    - <span class="k">protocol:</span> <span class="v">UDP</span>
+      <span class="k">port:</span> <span class="nm">53</span>
+    - <span class="k">protocol:</span> <span class="v">TCP</span>
+      <span class="k">port:</span> <span class="nm">53</span></code></pre>
+</div></div>
+
+<!-- ═══════════════════ -->
+<!-- CHEAT SHEET         -->
+<!-- ═══════════════════ -->
+<h2>Quick Reference — Exam Speed Commands</h2>
+<pre><code><span class="cm"># ══ GENERATE YAML FAST ══</span>
+kubectl run X --image=nginx --dry-run=client -o yaml > pod.yaml
+kubectl create deployment X --image=nginx --dry-run=client -o yaml > deploy.yaml
+kubectl create job X --image=busybox --dry-run=client -o yaml -- echo hi > job.yaml
+kubectl create cronjob X --image=busybox --schedule="*/5 * * * *" --dry-run=client -o yaml > cron.yaml
+kubectl create service clusterip X --tcp=80:80 --dry-run=client -o yaml > svc.yaml
+kubectl create ingress X --rule="host/path=svc:port" --dry-run=client -o yaml > ing.yaml
+kubectl create configmap X --from-literal=k=v --dry-run=client -o yaml > cm.yaml
+kubectl create secret generic X --from-literal=k=v --dry-run=client -o yaml > sec.yaml
+
+<span class="cm"># ══ LOOK UP YAML FIELDS ══</span>
+kubectl explain pod.spec.containers.resources
+kubectl explain pod.spec.containers.livenessProbe
+kubectl explain deployment.spec.strategy
+kubectl explain ingress.spec.rules
+kubectl explain networkpolicy.spec
+
+<span class="cm"># ══ COMMON OPERATIONS ══</span>
+kubectl set image deployment/X web=nginx:v2       <span class="cm"># Update image</span>
+kubectl rollout status/undo/history deployment/X  <span class="cm"># Rollout management</span>
+kubectl scale deployment X --replicas=5           <span class="cm"># Scale</span>
+kubectl logs X --previous -c container-name       <span class="cm"># Crash logs</span>
+kubectl exec -it X -- sh                          <span class="cm"># Shell in</span>
+kubectl debug -it X --image=busybox               <span class="cm"># Ephemeral debug</span>
+kubectl replace --force -f fixed.yaml             <span class="cm"># Delete + recreate immutable resource</span>
+kubectl top pods / kubectl top nodes              <span class="cm"># Resource usage</span>
+kubectl get events --sort-by=.lastTimestamp        <span class="cm"># Recent events</span></code></pre>
+
+<div class="sre"><div class="tag">Final Exam Strategy</div><p style="margin:0"><strong>1.</strong> Read all questions first — do easy ones first, skip hard ones. <strong>2.</strong> Use <code>--dry-run=client -o yaml</code> for everything. <strong>3.</strong> Use <code>kubectl explain</code> instead of browsing docs. <strong>4.</strong> Check context before each question: <code>kubectl config use-context</code>. <strong>5.</strong> Verify every answer before moving on. <strong>6.</strong> Practice with killer.sh (2 free sessions with exam purchase).</p></div>
+
+</main>
+
+<script>
+document.querySelectorAll('.sol-btn').forEach(btn=>{btn.addEventListener('click',function(){const L=this.parentElement;L.classList.toggle('open');this.textContent=L.classList.contains('open')?'▲ Hide Solution':'▶ Show Solution'})});
+document.querySelectorAll('.M .mb').forEach(tab=>{tab.addEventListener('click',function(){const g=this.dataset.g,i=this.dataset.i;document.querySelectorAll(`.mb[data-g="${g}"]`).forEach(t=>t.classList.remove('on'));document.querySelectorAll(`.mp[data-g="${g}"]`).forEach(p=>p.classList.remove('on'));this.classList.add('on');document.querySelector(`.mp[data-g="${g}"][data-i="${i}"]`).classList.add('on')})});
+</script>
+</body>
+</html>

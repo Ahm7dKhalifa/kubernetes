@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKAD Pod Questions — Complete Exam Prep</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#f59e0b;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:252px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:15px;background:linear-gradient(135deg,var(--ac),var(--og));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:252px;max-width:1000px;padding:24px 38px 80px}
+.hero{text-align:center;padding:30px 0 22px}
+.hero h1{font-family:'Fraunces',serif;font-size:36px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:620px;margin:0 auto}
+section{margin-bottom:32px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:4px;background:rgba(245,158,11,.12);padding:1px 5px;border-radius:3px}
+h3{font-size:14px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.5}
+code{font-family:'JetBrains Mono',monospace;font-size:10px}
+p code,td code{background:var(--sf2);padding:1px 3px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:9px 12px;margin:5px 0 8px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.4;color:#6d7b90;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.og{background:rgba(234,88,12,.15);color:var(--og)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+
+/* Q&A Card */
+.Q{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.Q .qh{padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:.1s}
+.Q .qh:hover{background:var(--sf2)}
+.Q .qt{font-size:13.5px;font-weight:700;color:#fff;flex:1}
+.Q .qt .qn{color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:10px;margin-right:6px}
+.Q .qi{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap;margin-left:8px}
+.Q .qi.e{background:rgba(22,163,74,.12);color:var(--gn)}
+.Q .qi.m{background:rgba(245,158,11,.12);color:var(--ac)}
+.Q .qi.h{background:rgba(220,38,38,.12);color:var(--rd)}
+.Q .qar{color:var(--dm);font-size:16px;transition:.2s;margin-left:8px}
+.Q.open .qar{transform:rotate(180deg)}
+.Q .qa{display:none;padding:0 14px 14px;border-top:1px solid var(--bd)}
+.Q.open .qa{display:block;padding-top:10px}
+.Q .ans{background:rgba(14,164,114,.03);border:1px solid rgba(14,164,114,.1);border-radius:8px;padding:10px 12px;margin:6px 0;font-size:13px}
+.Q .ans b{color:#0ea472;font-size:9px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.Q .why{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.1);border-radius:8px;padding:10px 12px;margin:6px 0;font-size:12.5px}
+.Q .why b{color:var(--bl);font-size:9px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.Q .trap{background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.1);border-radius:8px;padding:10px 12px;margin:6px 0;font-size:12.5px}
+.Q .trap b{color:var(--rd);font-size:9px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.Q .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:10px;margin:6px 0}
+.bx{display:inline-block;padding:3px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.pen{background:rgba(202,138,4,.1);color:var(--yl);border:1px solid rgba(202,138,4,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.svc{background:rgba(147,51,234,.08);color:var(--pp);border:1px solid rgba(147,51,234,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:12px}
+.sre{background:linear-gradient(135deg,rgba(245,158,11,.03),rgba(8,145,178,.02));border:1px solid rgba(245,158,11,.12);border-radius:var(--r);padding:10px 12px;margin:8px 0;font-size:12.5px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(245,158,11,.12);color:var(--ac);font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:16px 12px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+
+<nav>
+<div class="logo">⬡ CKAD Pods</div>
+<div class="sub">Exam Questions &amp; Answers</div>
+<div class="sl">Fundamentals</div>
+<ul>
+<li><a href="#f">Q1–Q8: Pod Basics</a></li>
+</ul>
+<div class="sl">Creating &amp; Managing</div>
+<ul>
+<li><a href="#c">Q9–Q18: Create/Update/Delete</a></li>
+</ul>
+<div class="sl">Multi-Container</div>
+<ul>
+<li><a href="#mc">Q19–Q25: Patterns &amp; Init</a></li>
+</ul>
+<div class="sl">Lifecycle</div>
+<ul>
+<li><a href="#lc">Q26–Q33: Phases &amp; States</a></li>
+</ul>
+<div class="sl">Probes</div>
+<ul>
+<li><a href="#pr">Q34–Q42: Health Checks</a></li>
+</ul>
+<div class="sl">Resources</div>
+<ul>
+<li><a href="#rs">Q43–Q50: Requests/Limits/QoS</a></li>
+</ul>
+<div class="sl">Troubleshooting</div>
+<ul>
+<li><a href="#tr">Q51–Q60: Failures &amp; Debug</a></li>
+</ul>
+<div class="sl">Security</div>
+<ul>
+<li><a href="#sc">Q61–Q66: SecurityContext</a></li>
+</ul>
+<div class="sl">Scheduling</div>
+<ul>
+<li><a href="#sd">Q67–Q74: Affinity/Taints</a></li>
+</ul>
+<div class="sl">Scenarios</div>
+<ul>
+<li><a href="#sn">Q75–Q80: Real-World</a></li>
+</ul>
+</nav>
+
+<main>
+<div class="hero"><h1>CKAD Pod Questions</h1><p>80 exam-style questions with detailed answers, YAML examples, architecture diagrams, and exam tips. Click any question to reveal the answer.</p></div>
+
+<div class="sre"><div class="tag">Exam Tip</div><p style="margin:0"><strong>Speed matters.</strong> Practice these imperative commands until they're muscle memory:<br><code>kubectl run X --image=nginx --dry-run=client -o yaml > pod.yaml</code><br><code>kubectl explain pod.spec.containers --recursive | grep -i probe</code></p></div>
+
+<!-- ═════════════════════════════════════ -->
+<!--  FUNDAMENTALS Q1-Q8                   -->
+<!-- ═════════════════════════════════════ -->
+<section id="f">
+<h2>Fundamentals</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q1</span> What is a Pod and why is it the smallest deployable unit?</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>A Pod is a group of one or more containers that share network (same IP), storage (shared volumes), and lifecycle (co-scheduled, start/stop together). It's the smallest unit because Kubernetes never schedules a bare container — every container must run inside a Pod. Even a single-container app is wrapped in a Pod.</div>
+<div class="vis">
+<span class="bx svc">Pod: my-app (IP: 10.244.1.5)</span><br>
+├── <span class="bx run">Container A: nginx (port 80)</span> ← shares IP with B<br>
+├── <span class="bx run">Container B: log-agent (port 9090)</span> ← talks to A via localhost:80<br>
+└── <span class="bx pen">Volume: /var/log (shared emptyDir)</span>
+</div>
+<div class="why"><b>Why It Matters for CKAD</b>You must understand that containers in a Pod communicate via <code>localhost</code>, not Service DNS. They share the same port space — two containers can't both use port 80.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q2</span> What is the pause container and why does it exist?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>The pause container is a hidden infrastructure container created automatically for every Pod. It holds the Linux network namespace alive. When your app container crashes and kubelet restarts it, the Pod's IP address is preserved because the pause container keeps the namespace running. Without it, every container restart would mean a new IP — breaking all connections.</div>
+<div class="vis">
+<span class="bx pen">pause (holds network: eth0 → 10.244.1.5)</span><br>
+├── <span class="bx run">web container</span> ← uses pause's network<br>
+└── <span class="bx ded">web crashes → restarts</span> ← IP stays same because pause is alive
+</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q3</span> What resources do containers share inside a Pod?</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b><strong>Shared:</strong> Network namespace (same IP + ports + localhost), Storage volumes (any volume mountable by all containers), IPC namespace (shared memory), UTS namespace (same hostname), Lifecycle (co-scheduled, co-terminated).<br><br>
+<strong>NOT shared:</strong> Filesystem (each container has its own unless they mount the same volume), PID namespace (separate by default — opt-in via <code>shareProcessNamespace: true</code>), CPU/memory (each container has its own cgroup limits).</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q4</span> What is the difference between a Pod and a Deployment?</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>A <strong>Pod</strong> is a single instance of your application. A <strong>Deployment</strong> is a controller that manages multiple Pod replicas, provides rolling updates, rollback capability, and auto-healing. If a Pod dies, nobody recreates it. If a Deployment's Pod dies, the Deployment creates a new one automatically.</div>
+<table>
+<tr><th></th><th>Pod (naked)</th><th>Deployment</th></tr>
+<tr><td>Self-healing</td><td>No — dies forever</td><td>Yes — auto-recreates</td></tr>
+<tr><td>Rolling update</td><td>No</td><td>Yes — zero downtime</td></tr>
+<tr><td>Rollback</td><td>No</td><td>Yes — <code>kubectl rollout undo</code></td></tr>
+<tr><td>Scaling</td><td>No</td><td>Yes — <code>kubectl scale</code></td></tr>
+<tr><td>Production use</td><td>Never</td><td>Always</td></tr>
+</table>
+<div class="trap"><b>Exam Trap</b>CKAD may ask you to create a "naked Pod" — that's fine for the exam. But real-world questions may test whether you know to use Deployments in production.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q5</span> Write the YAML for a Pod running nginx:1.25 on port 80</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx:1.25</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">80</span></code></pre>
+<div class="sre"><div class="tag">Exam Speed Tip</div><p style="margin:0">Generate this instantly: <code>kubectl run web --image=nginx:1.25 --port=80 --dry-run=client -o yaml > pod.yaml</code></p></div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q6</span> What are the 5 Pod phases? What does each mean?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b></div>
+<table>
+<tr><th>Phase</th><th>Meaning</th><th>Common Cause</th></tr>
+<tr><td><span class="bg yl">Pending</span></td><td>Accepted but not running — waiting for scheduling, image pull, or init</td><td>No node has enough resources</td></tr>
+<tr><td><span class="bg bl">Running</span></td><td>At least one container is running (note: Running ≠ healthy)</td><td>Normal operation</td></tr>
+<tr><td><span class="bg gn">Succeeded</span></td><td>All containers exited 0. Terminal state.</td><td>Batch Job completed</td></tr>
+<tr><td><span class="bg rd">Failed</span></td><td>All containers terminated, at least one non-zero exit</td><td>App crash with restartPolicy: Never</td></tr>
+<tr><td><span class="bg og">Unknown</span></td><td>Can't determine status — node unreachable</td><td>Node crashed or network partition</td></tr>
+</table>
+<div class="trap"><b>Exam Trap</b><code>Running</code> does NOT mean healthy. A Pod can be Running but in CrashLoopBackOff (container keeps crashing and restarting). Always check READY column too.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q7</span> What are the 4 Pod conditions?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b></div>
+<table>
+<tr><th>Condition</th><th>True Means</th><th>False? Check...</th></tr>
+<tr><td><code>PodScheduled</code></td><td>Assigned to a node</td><td>Resources, affinity, taints</td></tr>
+<tr><td><code>Initialized</code></td><td>All init containers completed</td><td>Init container logs</td></tr>
+<tr><td><code>ContainersReady</code></td><td>All containers passing readiness</td><td>Readiness probe config</td></tr>
+<tr><td><code>Ready</code></td><td>Pod can receive Service traffic</td><td>All above + readiness gates</td></tr>
+</table>
+<pre><code>kubectl describe pod my-app | grep -A8 "Conditions"</code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q8</span> What is the difference between <code>containerPort</code> and exposing a port?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b><code>containerPort</code> is <strong>purely informational</strong> — it tells humans and tools which port the container listens on. It does NOT actually open or restrict any port. A container can listen on any port regardless of what <code>containerPort</code> says. To make a Pod accessible from outside the cluster, you need a <strong>Service</strong> (ClusterIP, NodePort, or LoadBalancer).</div>
+</div></div>
+</section>
+
+<!-- ═════════════════════════════════════ -->
+<!--  CREATING & MANAGING Q9-Q18           -->
+<!-- ═════════════════════════════════════ -->
+<section id="c">
+<h2>Creating &amp; Managing Pods</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q9</span> Create a Pod running busybox that sleeps for 3600 seconds — imperative command</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code>kubectl run sleeper --image=busybox --restart=Never -- sleep 3600</code></pre>
+<div class="why"><b>Key Points</b><code>--</code> separates kubectl flags from the container command. <code>--restart=Never</code> creates a naked Pod (not a Deployment). Without it, older kubectl versions might create a Deployment.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q10</span> Generate YAML for a Pod without actually creating it</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code>kubectl run my-app --image=nginx:1.25 --port=80 --dry-run=client -o yaml > pod.yaml</code></pre>
+<div class="ans"><b>Why This Is Critical</b><code>--dry-run=client</code> generates the YAML without sending it to the API server. <code>-o yaml</code> outputs YAML format. This is the <strong>#1 speed trick</strong> for CKAD — never write YAML from scratch. Generate it, then edit.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q11</span> Create a Pod with environment variables from a literal value, a ConfigMap, and a Secret</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">env-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">env:</span>
+    <span class="cm"># Literal value</span>
+    - <span class="k">name:</span> <span class="s">LOG_LEVEL</span>
+      <span class="k">value:</span> <span class="s">"info"</span>
+    <span class="cm"># From ConfigMap</span>
+    - <span class="k">name:</span> <span class="s">DB_HOST</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">configMapKeyRef:</span>
+          <span class="k">name:</span> <span class="s">app-config</span>
+          <span class="k">key:</span> <span class="s">database_host</span>
+    <span class="cm"># From Secret</span>
+    - <span class="k">name:</span> <span class="s">DB_PASSWORD</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">secretKeyRef:</span>
+          <span class="k">name:</span> <span class="s">db-secret</span>
+          <span class="k">key:</span> <span class="s">password</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q12</span> What fields can you change on a running Pod? What's immutable?</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th>Field</th><th>Mutable?</th></tr>
+<tr><td><code>metadata.labels</code>, <code>metadata.annotations</code></td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td><code>spec.tolerations</code></td><td><span class="bg yl">Add only</span></td></tr>
+<tr><td><code>spec.activeDeadlineSeconds</code></td><td><span class="bg yl">Reduce only</span></td></tr>
+<tr><td><code>spec.containers[*].image</code></td><td><span class="bg rd">No</span> — must delete + recreate</td></tr>
+<tr><td><code>spec.containers[*].env</code></td><td><span class="bg rd">No</span></td></tr>
+<tr><td><code>spec.containers[*].command</code></td><td><span class="bg rd">No</span></td></tr>
+<tr><td><code>spec.containers[*].resources</code></td><td><span class="bg rd">No</span> (v1.27+ in-place resize is alpha)</td></tr>
+<tr><td><code>spec.nodeName</code></td><td><span class="bg rd">No</span></td></tr>
+<tr><td><code>spec.serviceAccountName</code></td><td><span class="bg rd">No</span></td></tr>
+</table>
+<div class="sre"><div class="tag">Exam Technique</div><p style="margin:0">If asked to change an immutable field: <code>kubectl get pod X -o yaml > pod.yaml</code> → edit → <code>kubectl delete pod X</code> → <code>kubectl apply -f pod.yaml</code></p></div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q13</span> Delete a Pod with a 60-second grace period. Then force-delete one instantly.</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="cm"># Graceful with custom period</span>
+kubectl delete pod my-app --grace-period=60
+
+<span class="cm"># Force delete (DANGEROUS — skips graceful shutdown)</span>
+kubectl delete pod my-app --grace-period=0 --force</code></pre>
+<div class="trap"><b>Exam Trap</b>Force delete does NOT wait for SIGTERM. The container may lose in-flight requests and data. Use only when the Pod is stuck in Terminating.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q14</span> Create a temporary Pod for debugging that auto-deletes when you exit</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code>kubectl run tmp --image=busybox --rm -it --restart=Never -- sh</code></pre>
+<div class="ans"><b>Breakdown</b><code>--rm</code> = delete Pod when it exits. <code>-it</code> = interactive + TTY (gives you a shell). <code>--restart=Never</code> = Pod (not Deployment). <code>-- sh</code> = run shell command.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q15</span> How do you run a command inside an existing running Pod?</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="cm"># Interactive shell</span>
+kubectl exec -it my-app -- /bin/sh
+
+<span class="cm"># One-off command</span>
+kubectl exec my-app -- cat /etc/config/app.yaml
+
+<span class="cm"># Specific container in multi-container Pod</span>
+kubectl exec -it my-app -c sidecar -- /bin/sh</code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q16</span> Create a Pod with a volume that two containers share</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">shared-vol</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">writer</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"while true; do date >> /data/log.txt; sleep 5; done"</span>]
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">shared</span>
+      <span class="k">mountPath:</span> <span class="s">/data</span>
+  - <span class="k">name:</span> <span class="s">reader</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"tail -f /data/log.txt"</span>]
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">shared</span>
+      <span class="k">mountPath:</span> <span class="s">/data</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">shared</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+<div class="why"><b>Key Concept</b><code>emptyDir</code> is created when Pod starts, deleted when Pod dies. Both containers mount the same volume at <code>/data</code>. Writer writes, reader reads — they share the same filesystem.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q17</span> What are the 3 restart policies? When do you use each?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th>Policy</th><th>Restart on exit 0?</th><th>Restart on exit 1?</th><th>Use For</th></tr>
+<tr><td><code>Always</code> (default)</td><td>Yes</td><td>Yes</td><td>Deployments, long-running services</td></tr>
+<tr><td><code>OnFailure</code></td><td>No (stopped)</td><td>Yes</td><td>Jobs — retry failures, stop on success</td></tr>
+<tr><td><code>Never</code></td><td>No</td><td>No</td><td>Jobs — let Job controller handle retries</td></tr>
+</table>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q18</span> How do you check the logs of a container that already crashed?</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code>kubectl logs my-app --previous</code></pre>
+<div class="ans"><b>Answer</b><code>--previous</code> (or <code>-p</code>) shows logs from the <strong>last terminated</strong> container instance. This is critical for debugging CrashLoopBackOff — the current container may have no logs yet because it just started. The crash evidence is in the previous container's logs.</div>
+</div></div>
+</section>
+
+<!-- ═════════════════════════════════════ -->
+<!--  MULTI-CONTAINER Q19-Q25              -->
+<!-- ═════════════════════════════════════ -->
+<section id="mc">
+<h2>Multi-Container Pods</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q19</span> Name the 3 multi-container design patterns with examples</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th>Pattern</th><th>Definition</th><th>Data Flow</th><th>Real Examples</th></tr>
+<tr><td><strong>Sidecar</strong></td><td>Extends the main container without modifying it</td><td>App → Sidecar</td><td>Fluent Bit (logs), Envoy (mesh), Vault Agent (secrets)</td></tr>
+<tr><td><strong>Adapter</strong></td><td>Transforms output to a standard format</td><td>App → Adapter → External</td><td>Prometheus exporter, log format normalizer</td></tr>
+<tr><td><strong>Ambassador</strong></td><td>Proxies connections to external services</td><td>App → Proxy → External</td><td>Cloud SQL Proxy, Redis sentinel proxy</td></tr>
+</table>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q20</span> Write a Pod with an init container that waits for a database</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">app-with-init</span>
+<span class="k">spec:</span>
+  <span class="k">initContainers:</span>
+  - <span class="k">name:</span> <span class="s">wait-for-db</span>
+    <span class="k">image:</span> <span class="s">busybox:1.36</span>
+    <span class="k">command:</span> [<span class="s">'sh'</span>,<span class="s">'-c'</span>,<span class="s">'until nslookup mysql; do echo waiting; sleep 2; done'</span>]
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">web</span>
+    <span class="k">image:</span> <span class="s">myapp:v1</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">8080</span></code></pre>
+<div class="vis">
+<span class="bx pen">Init: wait-for-db</span> <span class="ar">→ must exit 0 →</span> <span class="bx run">App: web starts</span>
+</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q21</span> What happens if an init container fails?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>The Pod stays stuck. The failed init container is retried with exponential backoff (10s → 300s cap) <strong>forever</strong> — ignoring the Pod's <code>restartPolicy</code>. All subsequent init containers and app containers <strong>never start</strong>. Pod status shows <code>Init:CrashLoopBackOff</code>.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q22</span> What is a native sidecar container? How is it different from a regular init container?</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>A native sidecar (v1.29+) is an init container with <code>restartPolicy: Always</code>. It starts during the init phase but runs for the <strong>entire Pod lifetime</strong>. Unlike regular init containers (which run and exit), sidecars keep running alongside app containers. They're guaranteed to start BEFORE and stop AFTER app containers.</div>
+<pre><code><span class="k">initContainers:</span>
+- <span class="k">name:</span> <span class="s">log-shipper</span>
+  <span class="k">image:</span> <span class="s">fluent-bit:2.1</span>
+  <span class="k">restartPolicy:</span> <span class="v">Always</span>   <span class="cm"># ← THIS makes it a sidecar</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q23</span> How do you view logs of a specific container in a multi-container Pod?</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code>kubectl logs my-pod -c sidecar           <span class="cm"># specific container</span>
+kubectl logs my-pod --all-containers      <span class="cm"># all containers</span>
+kubectl logs my-pod -c init-db --previous <span class="cm"># previous init container</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q24</span> How do you add an ephemeral debug container to a running Pod?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code>kubectl debug -it my-pod --image=busybox --target=web</code></pre>
+<div class="ans"><b>Answer</b><code>--target=web</code> shares the PID namespace with the "web" container so you can see its processes. The debug container is temporary — it's not defined in the Pod spec and won't survive a restart.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q25</span> Write a Pod with an app container and a sidecar that tails logs</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">app-sidecar</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"while true; do echo $(date) INFO request processed >> /var/log/app.log; sleep 3; done"</span>]
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">logs</span>, <span class="k">mountPath:</span> <span class="s">/var/log</span> }
+  - <span class="k">name:</span> <span class="s">log-sidecar</span>
+    <span class="k">image:</span> <span class="s">busybox</span>
+    <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"tail -f /var/log/app.log"</span>]
+    <span class="k">volumeMounts:</span>
+    - { <span class="k">name:</span> <span class="s">logs</span>, <span class="k">mountPath:</span> <span class="s">/var/log</span> }
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">logs</span>
+    <span class="k">emptyDir:</span> {}</code></pre>
+</div></div>
+</section>
+
+<!-- ═════════════════════════════════════ -->
+<!--  PROBES Q34-Q42                       -->
+<!-- ═════════════════════════════════════ -->
+<section id="pr">
+<h2>Health Probes</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q34</span> What are the 3 probe types and what does each do on failure?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th>Probe</th><th>Question</th><th>On Failure</th><th>Check External Deps?</th></tr>
+<tr><td><strong>Startup</strong></td><td>Finished starting?</td><td>Kill + restart</td><td>No</td></tr>
+<tr><td><strong>Liveness</strong></td><td>Still alive?</td><td>Kill + restart</td><td><strong>NEVER</strong></td></tr>
+<tr><td><strong>Readiness</strong></td><td>Can handle traffic?</td><td>Remove from Service (no kill)</td><td>Yes</td></tr>
+</table>
+<div class="trap"><b>Exam Trap</b>The #1 mistake: putting a DB check in liveness. If DB goes down → all Pods restart → thundering herd → total outage. DB checks go in <strong>readiness only</strong>.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q35</span> What are the 4 probe mechanisms?</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th>Mechanism</th><th>Success</th><th>Use For</th></tr>
+<tr><td><code>httpGet</code></td><td>HTTP 200-399</td><td>Web apps, APIs</td></tr>
+<tr><td><code>tcpSocket</code></td><td>Connection opens</td><td>Databases, non-HTTP services</td></tr>
+<tr><td><code>exec</code></td><td>Exit code 0</td><td>Custom scripts</td></tr>
+<tr><td><code>grpc</code></td><td>SERVING status</td><td>gRPC services</td></tr>
+</table>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q36</span> Write a Pod with all 3 probes configured</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">probed-app</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">web</span>
+    <span class="k">image:</span> <span class="s">myapp:v2</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">8080</span>
+    <span class="k">startupProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/healthz</span>
+        <span class="k">port:</span> <span class="nm">8080</span>
+      <span class="k">failureThreshold:</span> <span class="nm">30</span>   <span class="cm"># 30 × 10s = 5min startup window</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/healthz</span>
+        <span class="k">port:</span> <span class="nm">8080</span>
+      <span class="k">periodSeconds:</span> <span class="nm">15</span>
+      <span class="k">timeoutSeconds:</span> <span class="nm">3</span>
+      <span class="k">failureThreshold:</span> <span class="nm">3</span>
+    <span class="k">readinessProbe:</span>
+      <span class="k">httpGet:</span>
+        <span class="k">path:</span> <span class="s">/ready</span>
+        <span class="k">port:</span> <span class="nm">8080</span>
+      <span class="k">periodSeconds:</span> <span class="nm">5</span>
+      <span class="k">failureThreshold:</span> <span class="nm">2</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q37</span> What are all the probe configuration fields and their defaults?</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
+<tr><td><code>initialDelaySeconds</code></td><td>0</td><td>Wait before first probe after container starts</td></tr>
+<tr><td><code>periodSeconds</code></td><td>10</td><td>How often to check</td></tr>
+<tr><td><code>timeoutSeconds</code></td><td>1</td><td>Max wait for response per check</td></tr>
+<tr><td><code>successThreshold</code></td><td>1</td><td>Consecutive successes to be considered healthy</td></tr>
+<tr><td><code>failureThreshold</code></td><td>3</td><td>Consecutive failures before taking action</td></tr>
+</table>
+<div class="sre"><div class="tag">Exam Speed</div><p style="margin:0"><code>kubectl explain pod.spec.containers.livenessProbe</code> — shows all fields with descriptions during the exam.</p></div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q38</span> When do liveness and readiness probes start if a startup probe is configured?</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>While the startup probe is running, liveness and readiness are <strong>completely disabled</strong>. They don't start until the startup probe <strong>passes for the first time</strong>. After that, startup probe stops, and liveness + readiness begin their normal cycles.</div>
+<div class="vis">
+<span class="bx pen">Startup probe running (liveness + readiness DISABLED)</span><br>
+<span class="ar">→ passes ✓ →</span><br>
+<span class="bx run">Liveness active (every 15s)</span> + <span class="bx run">Readiness active (every 5s)</span>
+</div>
+</div></div>
+</section>
+
+<!-- ═════════════════════════════════════ -->
+<!--  RESOURCES Q43-Q50                    -->
+<!-- ═════════════════════════════════════ -->
+<section id="rs">
+<h2>Resources &amp; QoS</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q43</span> What is the difference between requests and limits?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th></th><th>Requests</th><th>Limits</th></tr>
+<tr><td><strong>Definition</strong></td><td>Guaranteed minimum — scheduler uses for placement</td><td>Hard ceiling — enforced by kernel cgroups</td></tr>
+<tr><td><strong>CPU over</strong></td><td>Can burst above requests</td><td>Throttled (slowed, NOT killed)</td></tr>
+<tr><td><strong>Memory over</strong></td><td>Can burst above requests</td><td><strong>OOM Killed</strong> (exit 137)</td></tr>
+</table>
+<pre><code><span class="k">resources:</span>
+  <span class="k">requests:</span>
+    <span class="k">cpu:</span> <span class="s">"250m"</span>       <span class="cm"># 0.25 CPU cores</span>
+    <span class="k">memory:</span> <span class="s">"128Mi"</span>   <span class="cm"># 128 Mebibytes</span>
+  <span class="k">limits:</span>
+    <span class="k">cpu:</span> <span class="s">"500m"</span>       <span class="cm"># Exceed → throttled</span>
+    <span class="k">memory:</span> <span class="s">"256Mi"</span>   <span class="cm"># Exceed → OOM KILLED</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q44</span> What are the 3 QoS classes and how is each determined?</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th>Class</th><th>Condition</th><th>Eviction Order</th></tr>
+<tr><td><span class="bg gn">Guaranteed</span></td><td>Every container: <code>requests == limits</code> for both CPU + memory</td><td>Last evicted (safest)</td></tr>
+<tr><td><span class="bg yl">Burstable</span></td><td>At least one container has requests ≠ limits</td><td>Middle</td></tr>
+<tr><td><span class="bg rd">BestEffort</span></td><td>No requests or limits on any container</td><td>First evicted (danger)</td></tr>
+</table>
+<pre><code>kubectl get pod X -o jsonpath='{.status.qosClass}'</code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q45</span> Write a Pod that is Guaranteed QoS class</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">cpu:</span> <span class="s">"500m"</span>
+        <span class="k">memory:</span> <span class="s">"256Mi"</span>
+      <span class="k">limits:</span>
+        <span class="k">cpu:</span> <span class="s">"500m"</span>       <span class="cm"># requests == limits</span>
+        <span class="k">memory:</span> <span class="s">"256Mi"</span>   <span class="cm"># requests == limits</span></code></pre>
+</div></div>
+</section>
+
+<!-- ═════════════════════════════════════ -->
+<!--  TROUBLESHOOTING Q51-Q60              -->
+<!-- ═════════════════════════════════════ -->
+<section id="tr">
+<h2>Troubleshooting</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q51</span> Pod is stuck in Pending. How do you diagnose and fix?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code>kubectl describe pod stuck-pod | grep -A10 "Events"</code></pre>
+<table>
+<tr><th>Event Message</th><th>Cause</th><th>Fix</th></tr>
+<tr><td><code>Insufficient cpu</code></td><td>No node has enough CPU</td><td>Add nodes, reduce requests</td></tr>
+<tr><td><code>didn't tolerate taint</code></td><td>Node has taint, Pod has no toleration</td><td>Add toleration or remove taint</td></tr>
+<tr><td><code>didn't match node affinity</code></td><td>No node matches required labels</td><td>Fix nodeSelector or label nodes</td></tr>
+<tr><td><code>PVC not found</code></td><td>PersistentVolumeClaim missing</td><td>Create the PVC</td></tr>
+</table>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q52</span> Pod shows ImagePullBackOff. What's happening and does it retry?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>The kubelet can't download the container image. It retries with exponential backoff: 10s → 20s → 40s → 80s → 160s → <strong>300s cap</strong>. After reaching 300s, it retries every 5 minutes <strong>forever</strong>. It never stops. restartPolicy has no effect on image pulls.</div>
+<pre><code><span class="cm"># Check the exact error</span>
+kubectl describe pod X | grep -A5 "Events"
+
+<span class="cm"># Common fixes</span>
+<span class="cm"># Wrong tag: kubectl set image pod/X web=nginx:correct-tag</span>
+<span class="cm"># Auth needed: kubectl create secret docker-registry ...</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q53</span> Pod shows CrashLoopBackOff. What is the backoff sequence?</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>The container keeps crashing. Kubelet retries with exponential backoff:<br>
+<code>10s → 20s → 40s → 80s → 160s → 300s (cap)</code><br>
+After 300s cap, retries <strong>every 5 minutes forever</strong>. No max retry count. Backoff resets to 10s after 10 minutes of successful running.</div>
+<pre><code><span class="cm"># Debug steps</span>
+kubectl logs crash-pod --previous   <span class="cm"># Logs from LAST crash</span>
+kubectl describe pod crash-pod      <span class="cm"># Exit code + reason</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q54</span> Pod shows OOMKilled with exit code 137. What happened?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b>The container exceeded its memory <code>limits</code>. The Linux kernel's OOM killer sent SIGKILL (signal 9). Exit code = 128 + 9 = <strong>137</strong>. Unlike CPU (throttled), memory overuse = immediate death. No graceful shutdown.</div>
+<pre><code>kubectl describe pod X | grep -i "oom\|reason\|exit"
+kubectl top pod X   <span class="cm"># Check current usage vs limit</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q55</span> What do these exit codes mean: 0, 1, 126, 127, 137, 139, 143?</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th>Code</th><th>Signal</th><th>Meaning</th></tr>
+<tr><td>0</td><td>—</td><td>Success — process completed normally</td></tr>
+<tr><td>1</td><td>—</td><td>General error — unhandled exception</td></tr>
+<tr><td>126</td><td>—</td><td>Permission denied — can't execute the binary</td></tr>
+<tr><td>127</td><td>—</td><td>Command not found — wrong ENTRYPOINT/CMD</td></tr>
+<tr><td>137</td><td>SIGKILL (9)</td><td><strong>OOM Killed</strong> or force-killed</td></tr>
+<tr><td>139</td><td>SIGSEGV (11)</td><td>Segmentation fault — memory corruption</td></tr>
+<tr><td>143</td><td>SIGTERM (15)</td><td>Graceful shutdown — Pod was deleted</td></tr>
+</table>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q56</span> Pod shows CreateContainerConfigError. Does it retry?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b><strong>Yes, retries forever.</strong> The kubelet checks every ~60 seconds (sync frequency). The moment you create the missing ConfigMap/Secret, the container starts automatically on the next sync. restartPolicy has no effect — the container never started.</div>
+</div></div>
+</section>
+
+<!-- ═════════════════════════════════════ -->
+<!--  SECURITY Q61-Q66                     -->
+<!-- ═════════════════════════════════════ -->
+<section id="sc">
+<h2>Security Context</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q61</span> Write a Pod that runs as non-root user with read-only filesystem</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">secure-pod</span>
+<span class="k">spec:</span>
+  <span class="k">securityContext:</span>           <span class="cm"># Pod-level (applies to all containers)</span>
+    <span class="k">runAsNonRoot:</span> <span class="v">true</span>
+    <span class="k">runAsUser:</span> <span class="nm">1000</span>
+    <span class="k">runAsGroup:</span> <span class="nm">3000</span>
+    <span class="k">fsGroup:</span> <span class="nm">2000</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">securityContext:</span>         <span class="cm"># Container-level (overrides Pod-level)</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+      <span class="k">allowPrivilegeEscalation:</span> <span class="v">false</span>
+      <span class="k">capabilities:</span>
+        <span class="k">drop:</span> [<span class="s">"ALL"</span>]</code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q62</span> What is the difference between Pod-level and container-level securityContext?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<div class="ans"><b>Answer</b><strong>Pod-level</strong> (<code>spec.securityContext</code>): applies to ALL containers + volumes. Fields: <code>runAsUser</code>, <code>runAsGroup</code>, <code>fsGroup</code>, <code>runAsNonRoot</code>.<br><br>
+<strong>Container-level</strong> (<code>spec.containers[].securityContext</code>): overrides Pod-level for that specific container. Additional fields: <code>readOnlyRootFilesystem</code>, <code>allowPrivilegeEscalation</code>, <code>capabilities</code>, <code>privileged</code>.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q63</span> Create a Pod with a specific service account</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">spec:</span>
+  <span class="k">serviceAccountName:</span> <span class="s">my-app-sa</span>
+  <span class="k">automountServiceAccountToken:</span> <span class="v">false</span>  <span class="cm"># Disable token mount if not needed</span></code></pre>
+</div></div>
+</section>
+
+<!-- ═════════════════════════════════════ -->
+<!--  SCHEDULING Q67-Q74                   -->
+<!-- ═════════════════════════════════════ -->
+<section id="sd">
+<h2>Scheduling</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q67</span> Schedule a Pod on a specific node using nodeSelector</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="cm"># First, label the node</span>
+kubectl label node worker-01 disktype=ssd
+
+<span class="cm"># Then use nodeSelector in Pod spec</span>
+<span class="k">spec:</span>
+  <span class="k">nodeSelector:</span>
+    <span class="k">disktype:</span> <span class="s">ssd</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q68</span> Schedule a Pod on a specific node using nodeName (direct assignment)</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">spec:</span>
+  <span class="k">nodeName:</span> <span class="s">worker-01</span>   <span class="cm"># Bypasses scheduler entirely</span></code></pre>
+<div class="trap"><b>Exam Trap</b><code>nodeName</code> bypasses the scheduler. If the node doesn't exist or has no capacity, the Pod stays Pending. Prefer <code>nodeSelector</code> or <code>nodeAffinity</code> for production.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q69</span> Write a Pod that tolerates a taint</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="cm"># Node has taint: kubectl taint nodes node1 dedicated=gpu:NoSchedule</span>
+
+<span class="k">spec:</span>
+  <span class="k">tolerations:</span>
+  - <span class="k">key:</span> <span class="s">"dedicated"</span>
+    <span class="k">operator:</span> <span class="s">"Equal"</span>
+    <span class="k">value:</span> <span class="s">"gpu"</span>
+    <span class="k">effect:</span> <span class="s">"NoSchedule"</span></code></pre>
+<div class="why"><b>Key Concept</b>Taints on nodes <strong>repel</strong> Pods. Tolerations on Pods allow them to be <strong>scheduled on tainted nodes</strong>. A toleration doesn't guarantee scheduling on that node — it just removes the restriction.</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q70</span> What is the difference between nodeSelector, nodeAffinity, and nodeName?</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<table>
+<tr><th></th><th>nodeSelector</th><th>nodeAffinity</th><th>nodeName</th></tr>
+<tr><td><strong>Complexity</strong></td><td>Simple key=value match</td><td>Complex expressions (In, NotIn, Exists, Gt, Lt)</td><td>Direct name</td></tr>
+<tr><td><strong>Uses scheduler?</strong></td><td>Yes</td><td>Yes</td><td>No — bypasses</td></tr>
+<tr><td><strong>Soft/Hard</strong></td><td>Hard only</td><td>Both (required + preferred)</td><td>Hard only</td></tr>
+<tr><td><strong>Use when</strong></td><td>Simple node selection</td><td>Complex rules, preferences</td><td>Testing/debugging only</td></tr>
+</table>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q71</span> Write a Pod with node affinity — prefer SSD but don't require it</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">spec:</span>
+  <span class="k">affinity:</span>
+    <span class="k">nodeAffinity:</span>
+      <span class="k">preferredDuringSchedulingIgnoredDuringExecution:</span>
+      - <span class="k">weight:</span> <span class="nm">80</span>
+        <span class="k">preference:</span>
+          <span class="k">matchExpressions:</span>
+          - <span class="k">key:</span> <span class="s">disktype</span>
+            <span class="k">operator:</span> <span class="s">In</span>
+            <span class="k">values:</span> [<span class="s">"ssd"</span>]</code></pre>
+<div class="why"><b>Key Concept</b><code>preferred</code> = soft rule (scheduler tries but doesn't fail if no match). <code>required</code> = hard rule (Pod stays Pending if no match). Weight (1-100) lets you prioritize multiple preferences.</div>
+</div></div>
+</section>
+
+<!-- ═════════════════════════════════════ -->
+<!--  SCENARIOS Q75-Q80                    -->
+<!-- ═════════════════════════════════════ -->
+<section id="sn">
+<h2>Real-World Scenarios</h2>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q75</span> Write a complete production-ready Pod with probes, resources, security, and graceful shutdown</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">production-app</span>
+  <span class="k">labels:</span> { <span class="k">app:</span> <span class="s">web</span>, <span class="k">version:</span> <span class="s">v2</span> }
+<span class="k">spec:</span>
+  <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">60</span>
+  <span class="k">serviceAccountName:</span> <span class="s">app-sa</span>
+  <span class="k">securityContext:</span>
+    <span class="k">runAsNonRoot:</span> <span class="v">true</span>
+    <span class="k">runAsUser:</span> <span class="nm">1000</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">web</span>
+    <span class="k">image:</span> <span class="s">myapp:v2.1</span>
+    <span class="k">ports:</span>
+    - <span class="k">containerPort:</span> <span class="nm">8080</span>
+    <span class="k">resources:</span>
+      <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"250m"</span>, <span class="k">memory:</span> <span class="s">"128Mi"</span> }
+      <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"500m"</span>, <span class="k">memory:</span> <span class="s">"256Mi"</span> }
+    <span class="k">startupProbe:</span>
+      <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/healthz</span>, <span class="k">port:</span> <span class="nm">8080</span> }
+      <span class="k">failureThreshold:</span> <span class="nm">30</span>
+      <span class="k">periodSeconds:</span> <span class="nm">10</span>
+    <span class="k">livenessProbe:</span>
+      <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/healthz</span>, <span class="k">port:</span> <span class="nm">8080</span> }
+      <span class="k">periodSeconds:</span> <span class="nm">15</span>
+      <span class="k">failureThreshold:</span> <span class="nm">3</span>
+    <span class="k">readinessProbe:</span>
+      <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/ready</span>, <span class="k">port:</span> <span class="nm">8080</span> }
+      <span class="k">periodSeconds:</span> <span class="nm">5</span>
+    <span class="k">lifecycle:</span>
+      <span class="k">preStop:</span>
+        <span class="k">exec:</span>
+          <span class="k">command:</span> [<span class="s">"/bin/sh"</span>,<span class="s">"-c"</span>,<span class="s">"sleep 5"</span>]
+    <span class="k">securityContext:</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+      <span class="k">allowPrivilegeEscalation:</span> <span class="v">false</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q76</span> A Pod keeps restarting. Walk through the complete debugging process.</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="cm"># Step 1: Check the status and restart count</span>
+kubectl get pod X
+
+<span class="cm"># Step 2: Check events for WHY</span>
+kubectl describe pod X | tail -20
+
+<span class="cm"># Step 3: Check PREVIOUS container's logs (the crash evidence)</span>
+kubectl logs X --previous
+
+<span class="cm"># Step 4: Check exit code and reason</span>
+kubectl get pod X -o jsonpath='{.status.containerStatuses[0].lastState.terminated}'
+
+<span class="cm"># Step 5: Based on exit code:</span>
+<span class="cm">#   137 → OOMKilled → increase memory limits</span>
+<span class="cm">#   1   → App error → fix code (check --previous logs)</span>
+<span class="cm">#   127 → CMD not found → fix Dockerfile/command</span>
+<span class="cm">#   143 → SIGTERM → Pod was deleted (normal)</span>
+
+<span class="cm"># Step 6: Check resource usage</span>
+kubectl top pod X
+
+<span class="cm"># Step 7: Live debug if needed</span>
+kubectl debug -it X --image=busybox --target=web</code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q77</span> What happens during graceful shutdown? Explain each step.</div><span class="qi h">Hard</span><span class="qar">▼</span></div><div class="qa">
+<div class="vis">
+<span class="bx svc">kubectl delete pod X</span><br>
+<span class="ar">→</span> ① Pod marked <span class="bx pen">Terminating</span> — removed from Service endpoints (no new traffic)<br>
+<span class="ar">→</span> ② <span class="bx pen">preStop hook</span> runs (e.g., sleep 5 — waits for endpoint propagation)<br>
+<span class="ar">→</span> ③ <span class="bx ded">SIGTERM</span> sent to PID 1 — app should finish requests, close DB connections, exit<br>
+<span class="ar">→</span> ④ <span class="bx pen">Grace period</span> countdown (default 30s, configurable)<br>
+<span class="ar">→</span> ⑤ <span class="bx ded">SIGKILL</span> if still alive — force-killed, cannot be caught<br>
+<span class="ar">→</span> ⑥ Pod removed from API server
+</div>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q78</span> Create a Pod that mounts a ConfigMap as a file and a Secret as environment variable</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="cm"># First create the resources</span>
+kubectl create configmap app-cfg --from-literal=app.conf="max_conn=100"
+kubectl create secret generic db-creds --from-literal=password=s3cret
+
+<span class="cm"># Pod YAML</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">config-pod</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">nginx</span>
+    <span class="k">env:</span>
+    - <span class="k">name:</span> <span class="s">DB_PASS</span>
+      <span class="k">valueFrom:</span>
+        <span class="k">secretKeyRef:</span>
+          <span class="k">name:</span> <span class="s">db-creds</span>
+          <span class="k">key:</span> <span class="s">password</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">config-vol</span>
+      <span class="k">mountPath:</span> <span class="s">/etc/config</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">config-vol</span>
+    <span class="k">configMap:</span>
+      <span class="k">name:</span> <span class="s">app-cfg</span></code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q79</span> List all kubectl commands you need to know for Pod operations</div><span class="qi e">Easy</span><span class="qar">▼</span></div><div class="qa">
+<pre><code><span class="cm"># Create</span>
+kubectl run X --image=nginx --port=80 --dry-run=client -o yaml > p.yaml
+kubectl apply -f p.yaml
+
+<span class="cm"># Inspect</span>
+kubectl get pods -o wide --show-labels
+kubectl describe pod X
+kubectl get pod X -o yaml
+kubectl get pod X -o jsonpath='{.status.phase}'
+
+<span class="cm"># Logs</span>
+kubectl logs X | kubectl logs X --previous | kubectl logs X -c container-name
+
+<span class="cm"># Execute</span>
+kubectl exec -it X -- sh
+kubectl exec X -- env | grep DB
+
+<span class="cm"># Debug</span>
+kubectl debug -it X --image=busybox --target=web
+kubectl top pod X
+
+<span class="cm"># Update</span>
+kubectl label pod X env=prod
+kubectl annotate pod X note="debug session"
+
+<span class="cm"># Delete</span>
+kubectl delete pod X
+kubectl delete pod X --grace-period=0 --force
+
+<span class="cm"># Discover fields</span>
+kubectl explain pod.spec.containers.livenessProbe
+kubectl explain pod.spec --recursive | grep -i toleration</code></pre>
+</div></div>
+
+<div class="Q"><div class="qh"><div class="qt"><span class="qn">Q80</span> Quick reference: what kubectl explain paths should you know?</div><span class="qi m">Medium</span><span class="qar">▼</span></div><div class="qa">
+<pre><code>kubectl explain pod.spec.containers.resources
+kubectl explain pod.spec.containers.livenessProbe
+kubectl explain pod.spec.containers.readinessProbe
+kubectl explain pod.spec.containers.startupProbe
+kubectl explain pod.spec.containers.env
+kubectl explain pod.spec.containers.volumeMounts
+kubectl explain pod.spec.containers.securityContext
+kubectl explain pod.spec.initContainers
+kubectl explain pod.spec.volumes
+kubectl explain pod.spec.tolerations
+kubectl explain pod.spec.affinity.nodeAffinity
+kubectl explain pod.spec.securityContext
+kubectl explain pod.spec.serviceAccountName
+kubectl explain pod.spec.terminationGracePeriodSeconds</code></pre>
+<div class="sre"><div class="tag">Final Exam Tip</div><p style="margin:0"><code>kubectl explain</code> is your best friend during CKAD. You don't need to memorize YAML fields — just know the path and kubectl explain will show you the structure, types, and descriptions. Practice navigating it fast.</p></div>
+</div></div>
+
+</section>
+
+</main>
+
+<script>
+document.querySelectorAll('.Q .qh').forEach(h=>{
+h.addEventListener('click',()=>h.parentElement.classList.toggle('open'))
+});
+</script>
+</body>
+</html>
