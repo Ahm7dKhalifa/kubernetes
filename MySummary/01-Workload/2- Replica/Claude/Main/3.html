@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes ReplicaSets — v2 Expanded</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#f59e0b;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:250px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--og));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:250px;max-width:1010px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(245,158,11,.05) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:38px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:6px}
+.hero p{color:var(--dm);font-size:13px;max-width:620px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(245,158,11,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(245,158,11,.03);border:1px solid rgba(245,158,11,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(245,158,11,.03),rgba(8,145,178,.02));border:1px solid rgba(245,158,11,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(245,158,11,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:8px 12px;margin:5px 0 8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.42;color:#6d7b90;overflow-x:auto}
+.T .p{color:var(--gn)}.T .h{color:var(--ac2);font-weight:600}.T .e{color:var(--rd)}.T .o{color:var(--gn)}.T .v{color:#b0baca}.T .x{color:#3d4a5e}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.og{background:rgba(234,88,12,.15);color:var(--og)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(245,158,11,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(245,158,11,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:11px;margin:7px 0;min-height:40px;font-size:12.5px;line-height:1.65}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.pen{background:rgba(202,138,4,.1);color:var(--yl);border:1px solid rgba(202,138,4,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.new{background:rgba(37,99,235,.1);color:var(--bl);border:1px solid rgba(37,99,235,.25)}
+.bx.svc{background:rgba(147,51,234,.08);color:var(--pp);border:1px solid rgba(147,51,234,.25)}
+.bx.rs{background:rgba(245,158,11,.1);color:var(--ac);border:1px solid rgba(245,158,11,.25)}
+.bx.v1{background:rgba(234,88,12,.1);color:var(--og);border:1px solid rgba(234,88,12,.25)}
+.bx.v2{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:12px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ ReplicaSets v2</div>
+<div class="sub">Expanded Edition</div>
+<div class="sl">Fundamentals</div>
+<ul><li><a href="#s01">What &amp; Why</a></li><li><a href="#s02">Three Pillars ▶</a></li><li><a href="#s03">RS vs Deployment vs RC</a></li><li><a href="#s04">Reconciliation Loop ▶</a></li></ul>
+<div class="sl">Full YAML</div>
+<ul><li><a href="#s05">Complete RS YAML</a></li><li><a href="#s06">Pod with Deletion Cost</a></li><li><a href="#s07">RS + Service + PDB</a></li></ul>
+<div class="sl">Updates (Expanded)</div>
+<ul><li><a href="#s08">Update Image ▶</a></li><li><a href="#s09">Update Replicas ▶</a></li><li><a href="#s10">What Can You Change?</a></li></ul>
+<div class="sl">Scaling</div>
+<ul><li><a href="#s11">Scale Methods ▶</a></li><li><a href="#s12">Scale Down Algorithm ▶</a></li><li><a href="#s13">Pod Deletion Cost</a></li></ul>
+<div class="sl">Advanced</div>
+<ul><li><a href="#s14">Delete RS ▶</a></li><li><a href="#s15">Isolate Pods ▶</a></li><li><a href="#s16">Label Matching ▶</a></li></ul>
+<div class="sl">SRE</div>
+<ul><li><a href="#s17">Monitoring &amp; Practices</a></li><li><a href="#s18">Command Reference</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Kubernetes ReplicaSets</h1><p>v2 Expanded — extra detail on image updates, replica updates, pod deletion cost YAML, full production YAML samples, and interactive workflows for every operation.</p></div>
+
+<!-- S01 -->
+<section id="s01"><h2><span class="n">01</span> What Is a ReplicaSet &amp; Why?</h2>
+<div class="def"><b>Definition — ReplicaSet</b>A controller that ensures a specified number of identical Pod replicas are always running. If a Pod dies → creates one. Too many → deletes extras. Runs a reconciliation loop every ~5 seconds.</div>
+<table>
+<tr><th>Benefit</th><th>What It Means</th></tr>
+<tr><td><strong>High Availability</strong></td><td>3 replicas → if 1 dies, 2 still serve traffic while RS creates replacement</td></tr>
+<tr><td><strong>Load Balancing</strong></td><td>Multiple Pods behind a Service distribute traffic evenly</td></tr>
+<tr><td><strong>Scaling</strong></td><td>Change replicas: 3→10 instantly. Manual or automatic (HPA)</td></tr>
+<tr><td><strong>Self-Healing</strong></td><td>Pod crash, OOM, node death → RS detects and replaces automatically</td></tr>
+</table></section>
+
+<!-- S02 -->
+<section id="s02"><h2><span class="n">02</span> Three Pillars ▶</h2>
+<div class="W" id="w-pil"><div class="bar"><div class="tab on" data-i="0">① Replicas</div><div class="tab" data-i="1">② Selector</div><div class="tab" data-i="2">③ Template</div><div class="tab" data-i="3">Connection</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">① Replicas — How many Pods</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>   <span class="cm"># desired count — RS ensures exactly 3 at all times</span></code></pre></div>
+<div class="pnl" data-i="1"><div class="tl">② Selector — Which Pods are mine (IMMUTABLE)</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+      <span class="k">tier:</span> <span class="s">frontend</span></code></pre>
+<div class="c r"><div class="l">Immutable</div><p style="margin:0">Cannot be changed after creation. To change selector → delete RS and create new one.</p></div></div>
+<div class="pnl" data-i="2"><div class="tl">③ Template — Pod blueprint</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>          <span class="cm"># MUST match selector</span>
+        <span class="k">tier:</span> <span class="s">frontend</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span></code></pre></div>
+<div class="pnl" data-i="3"><div class="tl">How They Connect</div>
+<div class="vis"><span class="bx rs">ReplicaSet</span><br><strong>① replicas: 3</strong> → need 3 Pods<br><strong>② selector: app=web</strong> → counts matching Pods → actual=2<br><strong>③ template</strong> → creates 1 Pod → actual=3 ✓</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- S03 -->
+<section id="s03"><h2><span class="n">03</span> RS vs Deployment vs ReplicationController</h2>
+<table>
+<tr><th></th><th>ReplicationController</th><th>ReplicaSet</th><th>Deployment</th></tr>
+<tr><td>API</td><td><code>v1</code> <span class="bg rd">deprecated</span></td><td><code>apps/v1</code></td><td><code>apps/v1</code></td></tr>
+<tr><td>Selector</td><td>Equality only</td><td>Equality + set-based</td><td>Same as RS</td></tr>
+<tr><td>Rolling Update</td><td>No</td><td>No</td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Rollback</td><td>No</td><td>No</td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Production?</td><td>Never</td><td>Rarely</td><td><span class="bg gn">Always</span></td></tr>
+</table></section>
+
+<!-- S04 -->
+<section id="s04"><h2><span class="n">04</span> Reconciliation Loop ▶</h2>
+<div class="W" id="w-loop"><div class="bar"><div class="tab on" data-i="0">① Count</div><div class="tab" data-i="1">② Compare</div><div class="tab" data-i="2">③ Too Few</div><div class="tab" data-i="3">④ Too Many</div><div class="tab" data-i="4">⑤ Equal</div><div class="tab" data-i="5">⑥ Repeat</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">① Count matching Pods</div><div class="vis"><span class="bx rs">RS</span> <span class="ar">→</span> API: "List Pods where app=web" <span class="ar">→</span> <span class="bx pen">actual = 2</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">② Compare actual vs desired</div><div class="vis"><span class="bx pen">actual=2</span> vs <span class="bx rs">desired=3</span> <span class="ar">→</span> <span class="bx ded">MISMATCH</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">③ actual &lt; desired → CREATE</div><div class="vis"><span class="bx run">Pod 1</span> <span class="bx run">Pod 3</span> <span class="bx new">Pod 4 CREATING</span><br>RS creates Pod from template, sets ownerReferences</div></div>
+<div class="pnl" data-i="3"><div class="tl">④ actual &gt; desired → DELETE</div><div class="vis"><span class="bx run">1</span> <span class="bx run">2</span> <span class="bx run">3</span> <span class="bx ded">4 DEL</span> <span class="bx ded">5 DEL</span><br>Uses scale-down algorithm (section 12)</div></div>
+<div class="pnl" data-i="4"><div class="tl">⑤ actual = desired → Do nothing ✓</div><div class="vis"><span class="bx rs">desired=3</span> = <span class="bx run">actual=3</span> <span class="ar">→</span> balanced ✓</div></div>
+<div class="pnl" data-i="5"><div class="tl">⑥ Repeat every ~5 seconds, forever</div><div class="vis"><span class="bx rs">Loop</span> → count → compare → act → wait → count → ∞<br>Also reacts to watch events for faster response.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 6</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═══════════════════════════════════ -->
+<!-- FULL YAML SAMPLES                   -->
+<!-- ═══════════════════════════════════ -->
+<section id="s05"><h2><span class="n">05</span> Complete ReplicaSet YAML — Every Field</h2>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">ReplicaSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-rs</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">version:</span> <span class="s">v1</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>                        <span class="cm"># ① How many Pods</span>
+
+  <span class="k">selector:</span>                          <span class="cm"># ② Which Pods (IMMUTABLE after creation)</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+      <span class="k">tier:</span> <span class="s">frontend</span>
+
+  <span class="k">template:</span>                          <span class="cm"># ③ Pod blueprint</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>                        <span class="cm"># MUST match selector above</span>
+        <span class="k">app:</span> <span class="s">web</span>
+        <span class="k">tier:</span> <span class="s">frontend</span>
+      <span class="k">annotations:</span>
+        <span class="k">prometheus.io/scrape:</span> <span class="s">"true"</span>
+    <span class="k">spec:</span>
+      <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">30</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+          <span class="k">name:</span> <span class="s">http</span>
+        <span class="k">env:</span>
+        - <span class="k">name:</span> <span class="s">ENV</span>
+          <span class="k">value:</span> <span class="s">"production"</span>
+        <span class="k">resources:</span>
+          <span class="k">requests:</span>
+            <span class="k">cpu:</span> <span class="s">"100m"</span>
+            <span class="k">memory:</span> <span class="s">"64Mi"</span>
+          <span class="k">limits:</span>
+            <span class="k">cpu:</span> <span class="s">"200m"</span>
+            <span class="k">memory:</span> <span class="s">"128Mi"</span>
+        <span class="k">livenessProbe:</span>
+          <span class="k">httpGet:</span>
+            <span class="k">path:</span> <span class="s">/</span>
+            <span class="k">port:</span> <span class="nm">80</span>
+          <span class="k">periodSeconds:</span> <span class="nm">10</span>
+        <span class="k">readinessProbe:</span>
+          <span class="k">httpGet:</span>
+            <span class="k">path:</span> <span class="s">/</span>
+            <span class="k">port:</span> <span class="nm">80</span>
+          <span class="k">periodSeconds:</span> <span class="nm">5</span></code></pre></section>
+
+<section id="s06"><h2><span class="n">06</span> Pod with Deletion Cost — Full YAML</h2>
+<div class="def"><b>Definition — Pod Deletion Cost</b>Annotation <code>controller.kubernetes.io/pod-deletion-cost</code> tells the RS which Pods to delete first during scale-down. Lower cost → deleted first. Default: 0. Range: any integer.</div>
+
+<h3>YAML — Pod with High Deletion Cost (protected from scale-down)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">cache-warm-pod</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">tier:</span> <span class="s">frontend</span>
+  <span class="k">annotations:</span>
+    <span class="k">controller.kubernetes.io/pod-deletion-cost:</span> <span class="s">"1000"</span>  <span class="cm"># HIGH cost = delete LAST</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx:1.25</span></code></pre>
+
+<h3>YAML — Pod with Negative Cost (preferred for deletion)</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">unhealthy-pod</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">tier:</span> <span class="s">frontend</span>
+  <span class="k">annotations:</span>
+    <span class="k">controller.kubernetes.io/pod-deletion-cost:</span> <span class="s">"-100"</span>  <span class="cm"># LOW cost = delete FIRST</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx:1.25</span></code></pre>
+
+<h3>Set Deletion Cost Imperatively</h3>
+<pre><code><span class="cm"># Protect a Pod</span>
+kubectl annotate pod web-rs-x7k2j controller.kubernetes.io/pod-deletion-cost="1000"
+
+<span class="cm"># Mark for preferred deletion</span>
+kubectl annotate pod web-rs-m9p4r controller.kubernetes.io/pod-deletion-cost="-100"
+
+<span class="cm"># Remove annotation (back to default 0)</span>
+kubectl annotate pod web-rs-x7k2j controller.kubernetes.io/pod-deletion-cost-</code></pre>
+
+<h3>ReplicaSet Template with Deletion Cost Built-In</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">ReplicaSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-rs</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+      <span class="k">annotations:</span>
+        <span class="k">controller.kubernetes.io/pod-deletion-cost:</span> <span class="s">"500"</span>  <span class="cm"># Every Pod created by this RS gets cost=500</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span></code></pre></section>
+
+<section id="s07"><h2><span class="n">07</span> Full Production Setup — RS + Service + PDB</h2>
+<pre><code><span class="cm"># ═══ All 3 resources in one file ═══</span>
+
+<span class="cm"># 1. ReplicaSet</span>
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">ReplicaSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-rs</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"100m"</span>, <span class="k">memory:</span> <span class="s">"64Mi"</span> }
+          <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"200m"</span>, <span class="k">memory:</span> <span class="s">"128Mi"</span> }
+        <span class="k">readinessProbe:</span>
+          <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/</span>, <span class="k">port:</span> <span class="nm">80</span> }
+---
+<span class="cm"># 2. Service (load balances traffic to RS Pods)</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>                   <span class="cm"># matches RS Pod labels</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span>
+---
+<span class="cm"># 3. PodDisruptionBudget (protects during drains)</span>
+<span class="k">apiVersion:</span> <span class="v">policy/v1</span>
+<span class="k">kind:</span> <span class="v">PodDisruptionBudget</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-pdb</span>
+<span class="k">spec:</span>
+  <span class="k">minAvailable:</span> <span class="nm">2</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span></code></pre>
+<pre><code>kubectl apply -f production-setup.yaml   <span class="cm"># creates all 3 resources</span></code></pre></section>
+
+<!-- ═══════════════════════════════════ -->
+<!-- UPDATES (EXPANDED)                  -->
+<!-- ═══════════════════════════════════ -->
+<section id="s08"><h2><span class="n">08</span> Update Image — What Happens? ▶</h2>
+<div class="def"><b>Critical Rule</b>When you change the <strong>image</strong> in a RS template, existing running Pods are <strong>NOT updated</strong>. Only newly created Pods (from scale-up or crash replacement) will use the new image. This is the fundamental limitation of RS compared to Deployments.</div>
+
+<div class="W" id="w-img"><div class="bar"><div class="tab on" data-i="0">① Before</div><div class="tab" data-i="1">② Change Template</div><div class="tab" data-i="2">③ What Happens</div><div class="tab" data-i="3">④ The Problem</div><div class="tab" data-i="4">⑤ Fix A: Manual</div><div class="tab" data-i="5">⑥ Fix B: Deployment</div></div><div class="body">
+
+<div class="pnl on" data-i="0"><div class="tl">① Before — All 3 Pods running nginx:1.25</div>
+<div class="vis"><span class="bx rs">RS: web-rs (template: nginx:1.25)</span><br><span class="bx v1">Pod 1 (nginx:1.25)</span> <span class="bx v1">Pod 2 (nginx:1.25)</span> <span class="bx v1">Pod 3 (nginx:1.25)</span><br><span style="color:var(--gn);font-size:11px">All running v1.25 ✓</span></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">② You change the template image to nginx:1.26</div>
+<pre><code><span class="cm"># Method 1: Edit YAML file, change image, apply</span>
+<span class="cm"># image: nginx:1.25 → image: nginx:1.26</span>
+kubectl apply -f replicaset.yaml
+
+<span class="cm"># Method 2: Edit live object</span>
+kubectl edit rs web-rs
+<span class="cm"># Change image in editor, save</span>
+
+<span class="cm"># Method 3: Patch</span>
+kubectl patch rs web-rs --type='json' \
+  -p='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"nginx:1.26"}]'</code></pre></div>
+
+<div class="pnl" data-i="2"><div class="tl">③ What happens — NOTHING to existing Pods!</div>
+<div class="vis"><span class="bx rs">RS: web-rs (template: nginx:1.26)</span> ← template updated ✓<br><br><span class="bx v1">Pod 1 (nginx:1.25)</span> <span class="bx v1">Pod 2 (nginx:1.25)</span> <span class="bx v1">Pod 3 (nginx:1.25)</span><br><span style="color:var(--rd);font-size:11px">⚠ ALL 3 Pods STILL running the OLD image 1.25!</span><br><span style="color:var(--dm);font-size:11px">The template changed but RS does NOT restart or replace running Pods.</span></div>
+<div class="ds">The RS only checks <strong>count</strong> — "do I have 3 matching Pods?" Yes → do nothing. It doesn't check whether Pod images match the template. The reconciliation loop only compares <strong>desired count vs actual count</strong>, not template content.</div></div>
+
+<div class="pnl" data-i="3"><div class="tl">④ The Problem — Mixed Versions</div>
+<div class="vis"><span style="color:var(--dm)">When a Pod crashes or is deleted, the RS creates a replacement using the NEW template:</span><br><br><span class="bx v1">Pod 1 (nginx:1.25)</span> <span class="bx v2">Pod 4 (nginx:1.26) NEW!</span> <span class="bx v1">Pod 3 (nginx:1.25)</span><br><span style="color:var(--rd);font-size:11px">⚠ MIXED VERSIONS! Pod 1 and 3 run 1.25, Pod 4 runs 1.26</span><br><span style="color:var(--dm);font-size:11px">This is inconsistent and unpredictable. Some users hit v1.25, some hit v1.26.</span></div></div>
+
+<div class="pnl" data-i="4"><div class="tl">⑤ Fix A — Manually delete all old Pods (causes downtime)</div>
+<pre><code><span class="cm"># Step 1: Update the template image</span>
+kubectl patch rs web-rs --type='json' \
+  -p='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"nginx:1.26"}]'
+
+<span class="cm"># Step 2: Delete ALL Pods — RS recreates them with new image</span>
+kubectl delete pods -l app=web</code></pre>
+<div class="vis"><span class="bx ded">Pod 1 DEL</span> <span class="bx ded">Pod 2 DEL</span> <span class="bx ded">Pod 3 DEL</span><br><span style="color:var(--rd);font-size:11px">⚠ DOWNTIME — all Pods dead simultaneously!</span><br><br><span class="bx v2">Pod 4 (1.26) creating</span> <span class="bx v2">Pod 5 (1.26) creating</span> <span class="bx v2">Pod 6 (1.26) creating</span><br><span style="color:var(--gn);font-size:11px">All new Pods use 1.26 ✓ but there was downtime ✗</span></div>
+
+<div class="c r"><div class="l">Problem</div><p style="margin:0">Deleting all Pods at once causes <strong>downtime</strong>. No traffic can be served until new Pods are ready. This is why RS alone is not suitable for production image updates.</p></div></div>
+
+<div class="pnl" data-i="5"><div class="tl">⑥ Fix B — Use a Deployment instead (zero downtime)</div>
+<pre><code><span class="cm"># Deployments handle image updates with ZERO downtime:</span>
+kubectl set image deployment/web-deploy nginx=nginx:1.26
+
+<span class="cm"># What happens internally:</span>
+<span class="cm"># 1. Deployment creates NEW ReplicaSet (template: 1.26)</span>
+<span class="cm"># 2. New RS scales up: 0→1→2→3</span>
+<span class="cm"># 3. Old RS scales down: 3→2→1→0</span>
+<span class="cm"># 4. Each new Pod must pass readiness before old Pod is killed</span>
+<span class="cm"># 5. At NO point is there zero healthy Pods</span></code></pre>
+<div class="vis"><span style="color:var(--dm)">Deployment Rolling Update (zero downtime):</span><br><br>
+<span class="bx rs">RS-v1 (1.25): 3</span> → <span class="bx rs">RS-v1: 2</span> + <span class="bx rs">RS-v2 (1.26): 1</span> → <span class="bx rs">RS-v1: 1</span> + <span class="bx rs">RS-v2: 2</span> → <span class="bx rs">RS-v1: 0</span> + <span class="bx rs">RS-v2: 3</span> ✓</div>
+<div class="sre"><div class="tag">SRE Principle</div><p style="margin:0">Never update images via ReplicaSet in production. Always use Deployments. The Deployment creates a new RS with the new template and does a rolling replacement — zero downtime, with rollback capability.</p></div></div>
+
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 6</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<section id="s09"><h2><span class="n">09</span> Update Replicas — What Happens? ▶</h2>
+<div class="def"><b>Key Difference</b>Unlike image changes, replica count changes take effect <strong>immediately</strong>. The RS acts on the new count within seconds.</div>
+
+<div class="W" id="w-rep"><div class="bar"><div class="tab on" data-i="0">Scale Up 3→5</div><div class="tab" data-i="1">Scale Down 5→2</div><div class="tab" data-i="2">Scale to 0</div><div class="tab" data-i="3">All Methods</div><div class="tab" data-i="4">⚠ Drift Warning</div></div><div class="body">
+
+<div class="pnl on" data-i="0"><div class="tl">Scale Up: replicas 3 → 5</div>
+<div class="vis"><span class="bx rs">RS: desired=5, actual=3</span> <span class="ar">→</span> 3 &lt; 5 → create 2 Pods<br><br><span class="bx run">Pod 1 ✓</span> <span class="bx run">Pod 2 ✓</span> <span class="bx run">Pod 3 ✓</span> <span class="bx new">Pod 4 creating</span> <span class="bx new">Pod 5 creating</span><br><span style="color:var(--gn);font-size:11px">Within seconds: all 5 Pods running ✓</span></div>
+<div class="ds">New Pods are created from the current template. They go through normal scheduling → image pull → start → readiness. The RS creates all needed Pods immediately (not one-by-one).</div>
+
+<div class="T"><span class="p">$</span> kubectl scale rs web-rs --replicas=5
+<span class="v">replicaset.apps/web-rs scaled</span>
+
+<span class="p">$</span> kubectl get rs web-rs
+<span class="h">NAME     DESIRED   CURRENT   READY   AGE</span>
+<span class="v">web-rs   5         5         3       2m</span>   <span class="x"># 2 still starting</span>
+
+<span class="p">$</span> kubectl get rs web-rs   <span class="x"># 30s later</span>
+<span class="h">NAME     DESIRED   CURRENT   READY   AGE</span>
+<span class="v">web-rs   5         5         5       2m30s</span> <span class="x"># All ready ✓</span></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Scale Down: replicas 5 → 2</div>
+<div class="vis"><span class="bx rs">RS: desired=2, actual=5</span> <span class="ar">→</span> 5 &gt; 2 → delete 3 Pods<br><br><span class="bx run">Pod 1 ✓</span> <span class="bx run">Pod 2 ✓</span> <span class="bx ded">Pod 3 DEL</span> <span class="bx ded">Pod 4 DEL</span> <span class="bx ded">Pod 5 DEL</span><br><span style="color:var(--dm);font-size:11px">RS uses the scale-down algorithm to choose WHICH 3 to delete (section 12)</span></div>
+<div class="ds">Deletion order follows the 5-step priority: ① Pending first → ② lowest deletion cost → ③ nodes with most Pods → ④ newest Pods → ⑤ random. Deleted Pods go through normal graceful shutdown (SIGTERM → grace period → SIGKILL).</div>
+
+<div class="T"><span class="p">$</span> kubectl scale rs web-rs --replicas=2
+<span class="v">replicaset.apps/web-rs scaled</span>
+
+<span class="p">$</span> kubectl get pods -l app=web
+<span class="h">NAME              READY   STATUS        AGE</span>
+<span class="v">web-rs-a3b8n      1/1     Running       5m</span>
+<span class="v">web-rs-x7k2j      1/1     Running       5m</span>
+<span class="v">web-rs-m9p4r      1/1     </span><span class="e">Terminating</span><span class="v">   5m</span>  <span class="x"># Being deleted</span>
+<span class="v">web-rs-k2j7n      1/1     </span><span class="e">Terminating</span><span class="v">   2m</span>  <span class="x"># Being deleted</span>
+<span class="v">web-rs-p4r5t      1/1     </span><span class="e">Terminating</span><span class="v">   2m</span>  <span class="x"># Being deleted</span></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Scale to 0 — Delete all Pods, keep RS</div>
+<pre><code>kubectl scale rs web-rs --replicas=0</code></pre>
+<div class="vis"><span class="bx rs">RS: desired=0, actual=3</span> <span class="ar">→</span> delete ALL 3 Pods<br><br><span class="bx rs">RS still exists (with template), but 0 Pods running</span><br><span style="color:var(--dm);font-size:11px">Useful for: maintenance, cost saving, temporary shutdown. Scale back up anytime.</span></div>
+<pre><code><span class="cm"># Bring back later:</span>
+kubectl scale rs web-rs --replicas=3   <span class="cm"># 3 new Pods created instantly</span></code></pre></div>
+
+<div class="pnl" data-i="3"><div class="tl">All Methods to Change Replica Count</div>
+<pre><code><span class="cm"># Method 1: kubectl scale (in-memory, instant)</span>
+kubectl scale rs web-rs --replicas=5
+
+<span class="cm"># Method 2: Edit YAML file, then apply (best for GitOps)</span>
+<span class="cm"># Change replicas: 3 → replicas: 5 in file</span>
+kubectl apply -f replicaset.yaml
+
+<span class="cm"># Method 3: kubectl edit (live edit)</span>
+kubectl edit rs web-rs
+<span class="cm"># Change replicas in editor, save</span>
+
+<span class="cm"># Method 4: kubectl patch</span>
+kubectl patch rs web-rs -p '{"spec":{"replicas":5}}'
+
+<span class="cm"># Method 5: Conditional scale (safety check)</span>
+kubectl scale rs web-rs --replicas=5 --current-replicas=3
+<span class="cm"># Only scales if current is exactly 3 — prevents race conditions</span>
+
+<span class="cm"># Method 6: HPA (automatic based on metrics)</span>
+kubectl autoscale rs web-rs --min=2 --max=10 --cpu-percent=80</code></pre></div>
+
+<div class="pnl" data-i="4"><div class="tl">⚠ In-Memory Drift Warning</div>
+<div class="vis">
+<span style="color:var(--dm)">Your YAML file says:</span> <code>replicas: 3</code><br>
+<span style="color:var(--dm)">You run:</span> <code>kubectl scale rs web-rs --replicas=5</code><br>
+<span style="color:var(--dm)">Live cluster:</span> 5 Pods running ✓<br><br>
+<span style="color:var(--rd)">Later, teammate runs:</span> <code>kubectl apply -f replicaset.yaml</code><br>
+<span style="color:var(--rd)">YAML says 3 → cluster scales BACK DOWN to 3! Your scale is lost.</span>
+</div>
+<div class="c r"><div class="l">Fix</div><p style="margin:0">Always update the YAML file when scaling: change <code>replicas: 5</code> in the file, commit to Git, then <code>kubectl apply</code>. This keeps your file and cluster in sync.</p></div></div>
+
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 5</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<section id="s10"><h2><span class="n">10</span> What Can You Change on a Running RS?</h2>
+<table>
+<tr><th>Field</th><th>Changeable?</th><th>Takes Effect?</th><th>How</th></tr>
+<tr><td><code>spec.replicas</code></td><td><span class="bg gn">Yes</span></td><td><span class="bg gn">Immediately</span></td><td><code>kubectl scale</code> / edit / patch</td></tr>
+<tr><td><code>spec.template.spec.containers[*].image</code></td><td><span class="bg yl">Yes (template)</span></td><td><span class="bg rd">Only new Pods</span></td><td>Edit / patch — existing Pods unchanged</td></tr>
+<tr><td><code>spec.template.spec.containers[*].env</code></td><td><span class="bg yl">Yes (template)</span></td><td><span class="bg rd">Only new Pods</span></td><td>Same — existing Pods keep old env</td></tr>
+<tr><td><code>spec.template.spec.containers[*].resources</code></td><td><span class="bg yl">Yes (template)</span></td><td><span class="bg rd">Only new Pods</span></td><td>Same</td></tr>
+<tr><td><code>spec.template.metadata.labels</code></td><td><span class="bg yl">Yes (template)</span></td><td><span class="bg rd">Only new Pods</span></td><td>Must still match selector</td></tr>
+<tr><td><code>spec.selector</code></td><td><span class="bg rd">No — IMMUTABLE</span></td><td>—</td><td>Must delete and recreate RS</td></tr>
+<tr><td><code>metadata.labels</code></td><td><span class="bg gn">Yes</span></td><td><span class="bg gn">Immediately</span></td><td>Labels on the RS itself (not Pods)</td></tr>
+</table>
+<div class="c o"><div class="l">Key Insight</div><p style="margin:0"><strong>replicas</strong> change = instant effect. <strong>template</strong> change = only affects future Pods. <strong>selector</strong> change = impossible. This is the core behavior you must understand for CKAD and SRE work.</p></div></section>
+
+<!-- SCALING -->
+<section id="s11"><h2><span class="n">11</span> Scaling Methods ▶</h2>
+<div class="W" id="w-sc"><div class="bar"><div class="tab on" data-i="0">kubectl scale</div><div class="tab" data-i="1">Apply YAML</div><div class="tab" data-i="2">Patch</div><div class="tab" data-i="3">HPA YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><pre><code>kubectl scale rs web-rs --replicas=5</code></pre><div class="ds">In-memory. Instant. Doesn't update your YAML file.</div></div>
+<div class="pnl" data-i="1"><pre><code><span class="cm"># Edit replicas in file: 3 → 5</span>
+kubectl apply -f replicaset.yaml</code></pre><div class="ds">Updates file AND cluster. Best for GitOps.</div></div>
+<div class="pnl" data-i="2"><pre><code>kubectl patch rs web-rs -p '{"spec":{"replicas":5}}'</code></pre></div>
+<div class="pnl" data-i="3">
+<pre><code><span class="k">apiVersion:</span> <span class="v">autoscaling/v2</span>
+<span class="k">kind:</span> <span class="v">HorizontalPodAutoscaler</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-hpa</span>
+<span class="k">spec:</span>
+  <span class="k">scaleTargetRef:</span>
+    <span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+    <span class="k">kind:</span> <span class="v">ReplicaSet</span>
+    <span class="k">name:</span> <span class="s">web-rs</span>
+  <span class="k">minReplicas:</span> <span class="nm">2</span>
+  <span class="k">maxReplicas:</span> <span class="nm">10</span>
+  <span class="k">metrics:</span>
+  - <span class="k">type:</span> <span class="v">Resource</span>
+    <span class="k">resource:</span>
+      <span class="k">name:</span> <span class="s">cpu</span>
+      <span class="k">target:</span>
+        <span class="k">type:</span> <span class="v">Utilization</span>
+        <span class="k">averageUtilization:</span> <span class="nm">80</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<section id="s12"><h2><span class="n">12</span> Scale-Down Algorithm ▶</h2>
+<div class="W" id="w-sd"><div class="bar"><div class="tab on" data-i="0">① Pending</div><div class="tab" data-i="1">② Cost</div><div class="tab" data-i="2">③ Node Spread</div><div class="tab" data-i="3">④ Newest</div><div class="tab" data-i="4">⑤ Random</div><div class="tab" data-i="5">Full Example</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Priority 1 — Delete Pending Pods first</div><div class="vis"><span class="bx pen">Pod A: Pending</span> <span class="ar">→</span> <span class="bx ded">DELETE FIRST</span> (not doing work, instant removal)</div></div>
+<div class="pnl" data-i="1"><div class="tl">Priority 2 — Lower deletion cost = delete first</div><div class="vis"><span class="bx run">cost=-100</span> <span class="ar">→</span> <span class="bx ded">DELETE</span><br><span class="bx run">cost=0</span> → maybe<br><span class="bx run">cost=1000</span> → <span class="bx run">KEEP</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Priority 3 — Delete from nodes with MORE Pods</div><div class="vis"><span style="color:var(--dm)">node-a: 3 Pods, node-b: 1 Pod</span><br><span class="bx ded">Delete from node-a</span> → even distribution</div></div>
+<div class="pnl" data-i="3"><div class="tl">Priority 4 — Delete NEWER Pods first</div><div class="vis"><span class="bx run">Pod: 5 days old</span> → kept<br><span class="bx ded">Pod: 3 min old</span> → <span class="bx ded">DELETE</span> (newer = less proven)</div></div>
+<div class="pnl" data-i="4"><div class="tl">Priority 5 — Random tie-breaker</div><div class="ds">If all criteria equal → random selection.</div></div>
+<div class="pnl" data-i="5"><div class="tl">Full Example — Scale 5→3 (delete 2)</div>
+<div class="vis"><span class="bx pen">Pod A: Pending</span> → ① <span class="bx ded">DELETE #1</span><br><span class="bx run">Pod B: cost=-50</span> → ② <span class="bx ded">DELETE #2</span><br><span class="bx run">Pod C: cost=0, node-a, 1d</span> → kept<br><span class="bx run">Pod D: cost=0, node-b, 5d</span> → kept<br><span class="bx run">Pod E: cost=500</span> → kept (protected)</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 6</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<section id="s13"><h2><span class="n">13</span> Pod Deletion Cost — Complete Reference</h2>
+<table>
+<tr><th>Cost Value</th><th>Behavior</th><th>Use Case</th></tr>
+<tr><td><code>-1000</code></td><td>Deleted FIRST in scale-down</td><td>Unhealthy/degraded Pods</td></tr>
+<tr><td><code>-100</code></td><td>Preferred for deletion</td><td>Pods you want to rotate</td></tr>
+<tr><td><code>0</code> (default)</td><td>Normal priority</td><td>Most Pods</td></tr>
+<tr><td><code>500</code></td><td>Protected from deletion</td><td>Important active connections</td></tr>
+<tr><td><code>1000</code></td><td>Deleted LAST</td><td>Warm cache, long computation</td></tr>
+</table>
+<pre><code><span class="cm"># ═══ Set via kubectl ═══</span>
+kubectl annotate pod web-rs-x7k2j controller.kubernetes.io/pod-deletion-cost="1000"
+kubectl annotate pod web-rs-m9p4r controller.kubernetes.io/pod-deletion-cost="-100"
+kubectl annotate pod web-rs-x7k2j controller.kubernetes.io/pod-deletion-cost-  <span class="cm"># remove (reset to 0)</span></code></pre></section>
+
+<!-- ADVANCED -->
+<section id="s14"><h2><span class="n">14</span> Delete ReplicaSet ▶</h2>
+<div class="W" id="w-del"><div class="bar"><div class="tab on" data-i="0">Normal (cascade)</div><div class="tab" data-i="1">Orphan (keep Pods)</div></div><div class="body">
+<div class="pnl on" data-i="0"><pre><code>kubectl delete rs web-rs   <span class="cm"># Deletes RS AND all its Pods</span></code></pre></div>
+<div class="pnl" data-i="1"><pre><code>kubectl delete rs web-rs --cascade=orphan   <span class="cm"># RS deleted, Pods survive</span></code></pre>
+<div class="vis"><span class="bx rs">RS deleted</span> → <span class="bx run">Pod 1 (orphan)</span> <span class="bx run">Pod 2 (orphan)</span> <span class="bx run">Pod 3 (orphan)</span><br><span style="color:var(--yl);font-size:11px">Pods alive but unmanaged. Create new RS with same selector to re-adopt them.</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<section id="s15"><h2><span class="n">15</span> Isolate Pods ▶</h2>
+<div class="def"><b>Definition</b>Remove a Pod from RS control by removing its matching label. RS creates a replacement. The isolated Pod keeps running for debugging.</div>
+<div class="W" id="w-iso"><div class="bar"><div class="tab on" data-i="0">Before</div><div class="tab" data-i="1">Isolate</div><div class="tab" data-i="2">After</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span class="bx rs">RS: web-rs (3/3, selector: app=web)</span><br><span class="bx run">Pod 1 (app=web)</span> <span class="bx run">Pod 2 (app=web)</span> <span class="bx run">Pod 3 (app=web)</span></div></div>
+<div class="pnl" data-i="1"><pre><code>kubectl label pod web-rs-m9p4r app-   <span class="cm"># trailing '-' removes label</span></code></pre>
+<div class="vis"><span class="bx rs">RS sees actual=2!</span><br><span class="bx run">Pod 1 (app=web)</span> <span class="bx pen">Pod 2 (ISOLATED)</span> <span class="bx run">Pod 3 (app=web)</span><br><span style="color:var(--rd);font-size:11px">2 &lt; 3 → RS creates Pod 4</span></div></div>
+<div class="pnl" data-i="2"><div class="vis"><span class="bx run">Pod 1</span> <span class="bx run">Pod 3</span> <span class="bx new">Pod 4 NEW</span> ← RS back to 3/3 ✓<br><br><span class="bx pen">Pod 2 (isolated, running, debug freely)</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<section id="s16"><h2><span class="n">16</span> Label Matching Edge Cases ▶</h2>
+<div class="W" id="w-lbl"><div class="bar"><div class="tab on" data-i="0">Pods AFTER RS</div><div class="tab" data-i="1">Pods BEFORE RS</div><div class="tab" data-i="2">Adoption Rules</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Case 1 — Pods created after RS with matching labels</div>
+<div class="vis"><span class="bx rs">RS: 3/3 balanced</span> → someone creates extra Pod with app=web → <span class="bx rs">actual=4!</span> → <span class="bx ded">RS deletes 1 to return to 3</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Case 2 — Pods exist before RS is created</div>
+<div class="vis"><span class="bx run">Pod A (app=web)</span> <span class="bx run">Pod B (app=web)</span> exist already<br><br>You create RS (selector: app=web, replicas: 3)<br><span class="bx rs">RS adopts A + B</span>, creates <span class="bx new">Pod C</span> → 3/3 ✓</div></div>
+<div class="pnl" data-i="2"><div class="tl">Adoption Rules</div>
+<table>
+<tr><th>Scenario</th><th>Result</th></tr>
+<tr><td>Orphan Pod matches selector</td><td><span class="bg gn">Adopted</span></td></tr>
+<tr><td>Pod owned by another RS</td><td><span class="bg rd">NOT adopted</span></td></tr>
+<tr><td>More orphans than desired</td><td><span class="bg yl">Adopt all, delete excess</span></td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- SRE -->
+<section id="s17"><h2><span class="n">17</span> Monitoring &amp; Best Practices</h2>
+<table>
+<tr><th>Metric</th><th>Alert When</th></tr>
+<tr><td><code>kube_replicaset_status_replicas</code></td><td>actual ≠ desired &gt; 5 min</td></tr>
+<tr><td><code>kube_replicaset_status_ready_replicas</code></td><td>ready &lt; desired &gt; 5 min</td></tr>
+</table>
+<div class="c g"><div class="l">Use Deployments</div><p style="margin:0">Never create RS directly in production. Deployments manage RS and add rolling updates + rollback.</p></div>
+<div class="c b"><div class="l">Label Hygiene</div><p style="margin:0">Use specific labels: <code>app=web,version=v2,component=frontend</code>. Prevents accidental adoption.</p></div>
+<div class="c o"><div class="l">No In-Memory Scale in GitOps</div><p style="margin:0"><code>kubectl scale</code> creates drift. Always update the YAML file.</p></div>
+<div class="c r"><div class="l">Set PDBs</div><p style="margin:0">For ≥2 replicas, create PodDisruptionBudgets to protect during node drains.</p></div>
+<div class="sre"><div class="tag">SRE Wisdom</div><p style="margin:0">ReplicaSets are the <strong>engine</strong> of self-healing. Deployments are the <strong>steering wheel</strong>. Understand the engine to diagnose. Drive with the wheel in production.</p></div></section>
+
+<section id="s18"><h2><span class="n">18</span> Command Reference</h2>
+<pre><code><span class="cm"># ══ CREATE ══</span>
+kubectl apply -f replicaset.yaml
+kubectl create deployment web --image=nginx --replicas=3  <span class="cm"># via Deployment</span>
+
+<span class="cm"># ══ INSPECT ══</span>
+kubectl get rs
+kubectl get rs web-rs -o wide
+kubectl describe rs web-rs
+kubectl get pods -l app=web --show-labels
+
+<span class="cm"># ══ SCALE ══</span>
+kubectl scale rs web-rs --replicas=5
+kubectl patch rs web-rs -p '{"spec":{"replicas":5}}'
+
+<span class="cm"># ══ UPDATE TEMPLATE ══</span>
+kubectl edit rs web-rs   <span class="cm"># change image — only affects NEW Pods!</span>
+kubectl patch rs web-rs --type='json' -p='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"nginx:1.26"}]'
+
+<span class="cm"># ══ DELETE ══</span>
+kubectl delete rs web-rs                     <span class="cm"># RS + Pods</span>
+kubectl delete rs web-rs --cascade=orphan    <span class="cm"># RS only</span>
+
+<span class="cm"># ══ ISOLATE ══</span>
+kubectl label pod web-rs-x7k2j app-          <span class="cm"># remove label → isolate</span>
+
+<span class="cm"># ══ DELETION COST ══</span>
+kubectl annotate pod X controller.kubernetes.io/pod-deletion-cost="1000"
+kubectl annotate pod X controller.kubernetes.io/pod-deletion-cost="-100"
+
+<span class="cm"># ══ FORCE RECREATE ALL PODS WITH NEW TEMPLATE ══</span>
+kubectl delete pods -l app=web               <span class="cm"># ⚠ causes downtime!</span></code></pre></section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>

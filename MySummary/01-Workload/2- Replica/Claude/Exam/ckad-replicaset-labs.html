@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKAD ReplicaSet Labs — Hands-On Exam Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#f59e0b;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.8;font-size:14px}
+nav{position:fixed;top:0;left:0;width:250px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:12px 9px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:15px;background:linear-gradient(135deg,var(--ac),var(--og));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2px 6px;border-radius:3px;color:var(--dm);text-decoration:none;font-size:9.5px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:6.5px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:8px 0 2px 6px;font-weight:700}
+main{margin-left:250px;max-width:1020px;padding:20px 34px 80px}
+.hero{text-align:center;padding:24px 0 16px}
+.hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:6px}
+.hero p{color:var(--dm);font-size:12px;max-width:640px;margin:0 auto}
+h2{font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:#fff;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--bd)}
+h3{font-size:13px;font-weight:700;color:#dde2ea;margin:10px 0 4px}
+p{margin-bottom:5px;font-size:12.5px}strong{color:#eee}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;overflow-x:auto;margin:4px 0 7px;font-size:10px;line-height:1.45}
+code{font-family:'JetBrains Mono',monospace;font-size:9.5px}
+p code,li code,td code{background:var(--sf2);padding:1px 3px;border-radius:3px;color:var(--ac2)}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:11px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:4px 7px;font-size:8.5px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:4px 7px;border-bottom:1px solid var(--bd);vertical-align:top}
+.L{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.L .lh{padding:8px 11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.L .ln{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);font-weight:700;background:rgba(245,158,11,.1);padding:2px 6px;border-radius:3px;white-space:nowrap}
+.L .lt{font-size:13px;font-weight:700;color:#fff;flex:1}
+.L .lw{font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 6px;border-radius:8px;font-weight:600}
+.L .lw.w1{background:rgba(22,163,74,.12);color:var(--gn)}.L .lw.w2{background:rgba(245,158,11,.12);color:var(--ac)}.L .lw.w3{background:rgba(220,38,38,.12);color:var(--rd)}
+.L .task{padding:8px 11px;font-size:12px}
+.L .task ul{margin:2px 0 5px 14px}.L .task li{margin-bottom:2px;font-size:11.5px}
+.L .verify{background:rgba(14,164,114,.03);border-top:1px solid rgba(14,164,114,.06);padding:5px 11px;font-size:10.5px}
+.L .verify b{color:#0ea472;font-size:7.5px;text-transform:uppercase;letter-spacing:1px}
+.L .sol-btn{display:block;width:100%;padding:7px 11px;background:rgba(245,158,11,.04);border:none;border-top:1px solid var(--bd);color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;text-align:left;transition:.1s}
+.L .sol-btn:hover{background:rgba(245,158,11,.08)}
+.L .sol{display:none;padding:9px 11px;border-top:1px solid var(--bd)}
+.L.open .sol{display:block}
+.M{border:1px solid var(--bd);border-radius:7px;margin:6px 0;overflow:hidden}
+.M .mt{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.M .mb{padding:4px 9px;font-size:8.5px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:'JetBrains Mono',monospace;transition:.1s}
+.M .mb:hover{color:var(--tx);background:var(--sf2)}
+.M .mb.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(245,158,11,.04)}
+.M .mp{display:none;padding:8px 10px}.M .mp.on{display:block}
+.why{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.why b{color:var(--bl);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.trap{background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.trap b{color:var(--rd);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.best{background:rgba(22,163,74,.03);border:1px solid rgba(22,163,74,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.best b{color:var(--gn);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.vis{background:var(--cb);border:1px solid var(--bd);border-radius:6px;padding:10px;margin:5px 0;font-size:11.5px;line-height:1.6}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.new{background:rgba(37,99,235,.1);color:var(--bl);border:1px solid rgba(37,99,235,.25)}
+.bx.rs{background:rgba(245,158,11,.1);color:var(--ac);border:1px solid rgba(245,158,11,.25)}
+.bx.v1{background:rgba(234,88,12,.1);color:var(--og);border:1px solid rgba(234,88,12,.25)}
+.bx.v2{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:11px}
+.sre{background:linear-gradient(135deg,rgba(245,158,11,.03),rgba(8,145,178,.02));border:1px solid rgba(245,158,11,.08);border-radius:var(--r);padding:7px 10px;margin:6px 0;font-size:11.5px}
+.sre .tag{display:inline-block;padding:1px 4px;border-radius:3px;background:rgba(245,158,11,.12);color:var(--ac);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:12px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ CKAD RS Labs</div>
+<div class="sub">Hands-On Practice</div>
+<div class="sl">Create &amp; Basics</div>
+<ul><li><a href="#L01">01 Create RS</a></li><li><a href="#L02">02 RS via Deployment</a></li><li><a href="#L03">03 Inspect RS</a></li></ul>
+<div class="sl">Scaling</div>
+<ul><li><a href="#L04">04 Scale Up</a></li><li><a href="#L05">05 Scale Down</a></li><li><a href="#L06">06 Scale to Zero</a></li><li><a href="#L07">07 Conditional Scale</a></li></ul>
+<div class="sl">Updates</div>
+<ul><li><a href="#L08">08 Update Image</a></li><li><a href="#L09">09 Force Image Update</a></li><li><a href="#L10">10 Update Replicas</a></li></ul>
+<div class="sl">Advanced</div>
+<ul><li><a href="#L11">11 Deletion Cost</a></li><li><a href="#L12">12 Delete RS Keep Pods</a></li><li><a href="#L13">13 Isolate Pod</a></li><li><a href="#L14">14 Labels Before RS</a></li><li><a href="#L15">15 Labels After RS</a></li></ul>
+<div class="sl">Troubleshooting</div>
+<ul><li><a href="#L16">16 Fix Selector Mismatch</a></li><li><a href="#L17">17 Fix Image Error</a></li><li><a href="#L18">18 Fix Stuck RS</a></li></ul>
+<div class="sl">Scenarios</div>
+<ul><li><a href="#L19">19 RS + Service + PDB</a></li><li><a href="#L20">20 Migrate RS → Deploy</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>CKAD ReplicaSet Labs</h1><p>20 hands-on tasks with full YAML, imperative commands, diagrams, and multiple solution methods. Try without peeking, then compare.</p></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- LAB 01                                  -->
+<!-- ═══════════════════════════════════════ -->
+<h2>Create &amp; Basics</h2>
+
+<div class="L" id="L01">
+<div class="lh"><span class="ln">LAB 01</span><div class="lt">Create a ReplicaSet</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create a ReplicaSet named <code>web-rs</code> with 3 replicas, image <code>nginx:1.25</code>, label <code>app=web</code>, port 80.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get rs web-rs</code> → DESIRED=3 CURRENT=3 READY=3</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="why"><b>Important</b>There is NO <code>kubectl create replicaset</code> command. You must write YAML. Tip: generate a Deployment YAML and modify it to kind: ReplicaSet.</div>
+
+<div class="M"><div class="mt"><div class="mb on" data-g="01" data-i="0">Full YAML</div><div class="mb" data-g="01" data-i="1">Quick trick</div></div>
+<div class="mp on" data-g="01" data-i="0">
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">ReplicaSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-rs</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span></code></pre>
+<pre><code>kubectl apply -f rs.yaml</code></pre>
+</div>
+<div class="mp" data-g="01" data-i="1">
+<h3>Exam trick — generate from Deployment, change kind</h3>
+<pre><code><span class="cm"># Step 1: Generate Deployment YAML</span>
+kubectl create deployment web-rs --image=nginx:1.25 --replicas=3 --dry-run=client -o yaml > rs.yaml
+
+<span class="cm"># Step 2: Edit rs.yaml:</span>
+<span class="cm"># - Change kind: Deployment → kind: ReplicaSet</span>
+<span class="cm"># - Remove spec.strategy section</span>
+<span class="cm"># - Keep everything else</span>
+
+<span class="cm"># Step 3: Apply</span>
+kubectl apply -f rs.yaml</code></pre>
+<div class="best"><b>Exam speed</b>This is faster than writing RS YAML from scratch. The Deployment template is almost identical — just change <code>kind</code> and remove the strategy.</div>
+</div></div>
+</div></div>
+
+<div class="L" id="L02">
+<div class="lh"><span class="ln">LAB 02</span><div class="lt">Create RS via Deployment (Production Way)</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Create a Deployment <code>web-deploy</code> with image <code>nginx:1.25</code>, 3 replicas. Verify the RS it auto-created.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get rs</code> → shows an RS owned by web-deploy</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create deployment web-deploy --image=nginx:1.25 --replicas=3</code></pre>
+<pre><code><span class="cm"># Verify the auto-created RS</span>
+kubectl get rs
+<span class="cm"># NAME                    DESIRED   CURRENT   READY   AGE</span>
+<span class="cm"># web-deploy-6d4f5b8c7d   3         3         3       10s</span>
+
+<span class="cm"># See who owns it</span>
+kubectl get rs web-deploy-6d4f5b8c7d -o jsonpath='{.metadata.ownerReferences[0].kind}'
+<span class="cm"># Deployment</span></code></pre>
+<div class="vis"><span class="bx rs">Deployment: web-deploy</span> <span class="ar">→ creates →</span> <span class="bx rs">RS: web-deploy-6d4f5b8c7d</span> <span class="ar">→ creates →</span> <span class="bx run">3 Pods</span></div>
+</div></div>
+
+<div class="L" id="L03">
+<div class="lh"><span class="ln">LAB 03</span><div class="lt">Inspect a ReplicaSet — Extract Information</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Given RS <code>web-rs</code> from Lab 01, extract: desired count, current count, ready count, selector, image, and the Pods it owns.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Overview</span>
+kubectl get rs web-rs
+
+<span class="cm"># Desired count</span>
+kubectl get rs web-rs -o jsonpath='{.spec.replicas}'
+
+<span class="cm"># Current count</span>
+kubectl get rs web-rs -o jsonpath='{.status.replicas}'
+
+<span class="cm"># Ready count</span>
+kubectl get rs web-rs -o jsonpath='{.status.readyReplicas}'
+
+<span class="cm"># Selector</span>
+kubectl get rs web-rs -o jsonpath='{.spec.selector.matchLabels}'
+
+<span class="cm"># Image in template</span>
+kubectl get rs web-rs -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+<span class="cm"># Pods owned by this RS</span>
+kubectl get pods -l app=web --show-labels
+
+<span class="cm"># Full details + events</span>
+kubectl describe rs web-rs</code></pre>
+</div></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCALING LABS                             -->
+<!-- ═══════════════════════════════════════ -->
+<h2>Scaling</h2>
+
+<div class="L" id="L04">
+<div class="lh"><span class="ln">LAB 04</span><div class="lt">Scale Up a ReplicaSet (3 → 5)</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Scale <code>web-rs</code> from 3 to 5 replicas. Use 3 different methods.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get rs web-rs</code> → DESIRED=5 READY=5</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="04" data-i="0">kubectl scale</div><div class="mb" data-g="04" data-i="1">Edit YAML + apply</div><div class="mb" data-g="04" data-i="2">kubectl patch</div></div>
+<div class="mp on" data-g="04" data-i="0">
+<pre><code>kubectl scale rs web-rs --replicas=5</code></pre>
+<div class="trap"><b>Warning</b>This is in-memory only. Your YAML file still says replicas: 3. Next <code>kubectl apply</code> resets it back to 3!</div>
+</div>
+<div class="mp" data-g="04" data-i="1">
+<pre><code><span class="cm"># Edit rs.yaml: replicas: 3 → replicas: 5</span>
+kubectl apply -f rs.yaml</code></pre>
+<div class="best"><b>Best practice</b>Updates file AND cluster. Git stays in sync. No drift.</div>
+</div>
+<div class="mp" data-g="04" data-i="2">
+<pre><code>kubectl patch rs web-rs -p '{"spec":{"replicas":5}}'</code></pre>
+</div></div>
+
+<div class="vis"><strong>What happens internally:</strong><br>
+<span class="bx rs">RS: desired=5, actual=3</span> <span class="ar">→</span> 3 &lt; 5 <span class="ar">→</span> create 2 new Pods<br><br>
+<span class="bx run">Pod 1 ✓</span> <span class="bx run">Pod 2 ✓</span> <span class="bx run">Pod 3 ✓</span> <span class="bx new">Pod 4 creating</span> <span class="bx new">Pod 5 creating</span><br>
+New Pods use the current template. All 5 running within seconds.
+</div>
+</div></div>
+
+<div class="L" id="L05">
+<div class="lh"><span class="ln">LAB 05</span><div class="lt">Scale Down a ReplicaSet (5 → 2)</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Scale <code>web-rs</code> from 5 to 2 replicas. Observe which Pods get deleted and why.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pods -l app=web</code> → only 2 Pods running</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl scale rs web-rs --replicas=2
+
+<span class="cm"># Watch the deletion happen</span>
+kubectl get pods -l app=web -w</code></pre>
+<div class="vis"><strong>Scale-down algorithm picks which 3 to delete:</strong><br>
+① Pending Pods deleted first<br>
+② Lowest deletion-cost annotation next<br>
+③ Pods on nodes with most replicas<br>
+④ Newest Pods (created most recently)<br>
+⑤ Random tie-breaker</div>
+<div class="why"><b>Observe</b>The newest Pods (Pod 4 and Pod 5 from Lab 04) are deleted first because they're the youngest. Older, proven Pods are kept.</div>
+</div></div>
+
+<div class="L" id="L06">
+<div class="lh"><span class="ln">LAB 06</span><div class="lt">Scale to Zero — Pause Without Deleting RS</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Scale <code>web-rs</code> to 0 replicas. Verify all Pods are gone but RS still exists. Then scale back to 3.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get rs web-rs</code> → DESIRED=0 CURRENT=0, then DESIRED=3 READY=3</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Scale to zero — all Pods deleted, RS remains</span>
+kubectl scale rs web-rs --replicas=0
+
+kubectl get rs web-rs
+<span class="cm"># DESIRED=0  CURRENT=0  READY=0</span>
+
+kubectl get pods -l app=web
+<span class="cm"># No resources found (all gone)</span>
+
+<span class="cm"># Scale back — 3 new Pods created instantly</span>
+kubectl scale rs web-rs --replicas=3</code></pre>
+<div class="why"><b>Use case</b>Temporary maintenance, cost saving during off-hours, or testing. The RS template is preserved — scale back up anytime.</div>
+</div></div>
+
+<div class="L" id="L07">
+<div class="lh"><span class="ln">LAB 07</span><div class="lt">Conditional Scale (Safety Check)</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Scale <code>web-rs</code> to 5 replicas ONLY IF it currently has exactly 3. If someone already changed it, the command should fail.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Only scales if current replicas is exactly 3</span>
+kubectl scale rs web-rs --replicas=5 --current-replicas=3</code></pre>
+<div class="why"><b>Why this matters</b>Prevents race conditions. If another admin just scaled to 10 and you run a blind <code>scale --replicas=5</code>, you'd accidentally scale DOWN. The <code>--current-replicas</code> flag acts as a safety check.</div>
+</div></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- UPDATE LABS                              -->
+<!-- ═══════════════════════════════════════ -->
+<h2>Updates</h2>
+
+<div class="L" id="L08">
+<div class="lh"><span class="ln">LAB 08</span><div class="lt">Update Image in RS Template — Observe What Happens</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>RS <code>web-rs</code> runs <code>nginx:1.25</code>. Change the template image to <code>nginx:1.26</code>. Observe: do existing Pods update?</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pods -l app=web -o jsonpath='{range .items[*]}{.spec.containers[0].image}{"\n"}{end}'</code></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<h3>Step 1 — Update the template</h3>
+<div class="M"><div class="mt"><div class="mb on" data-g="08" data-i="0">kubectl edit</div><div class="mb" data-g="08" data-i="1">kubectl patch</div><div class="mb" data-g="08" data-i="2">Edit YAML + apply</div></div>
+<div class="mp on" data-g="08" data-i="0">
+<pre><code>kubectl edit rs web-rs
+<span class="cm"># Find image: nginx:1.25 → change to nginx:1.26 → save</span></code></pre></div>
+<div class="mp" data-g="08" data-i="1">
+<pre><code>kubectl patch rs web-rs --type='json' \
+  -p='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"nginx:1.26"}]'</code></pre></div>
+<div class="mp" data-g="08" data-i="2">
+<pre><code><span class="cm"># Edit rs.yaml: image: nginx:1.25 → image: nginx:1.26</span>
+kubectl apply -f rs.yaml</code></pre></div></div>
+
+<h3>Step 2 — Check existing Pods</h3>
+<pre><code>kubectl get pods -l app=web -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
+<span class="cm"># web-rs-x7k2j    nginx:1.25   ← STILL OLD!</span>
+<span class="cm"># web-rs-m9p4r    nginx:1.25   ← STILL OLD!</span>
+<span class="cm"># web-rs-a3b8n    nginx:1.25   ← STILL OLD!</span></code></pre>
+
+<div class="vis"><strong>⚠ KEY INSIGHT:</strong> Existing Pods are <strong>NOT updated</strong>.<br><br>
+<span class="bx rs">RS template: nginx:1.26</span> ← updated ✓<br>
+<span class="bx v1">Pod 1 (nginx:1.25)</span> <span class="bx v1">Pod 2 (nginx:1.25)</span> <span class="bx v1">Pod 3 (nginx:1.25)</span> ← still old ✗<br><br>
+RS only checks <strong>count</strong> not template content. It sees 3 Pods → desired 3 → do nothing.<br>
+Only <strong>new</strong> Pods (from scale-up or crash replacement) will use nginx:1.26.</div>
+
+<div class="trap"><b>Exam trap</b>If the question says "update the image of a ReplicaSet" — changing the template does NOT update running Pods. You must also delete old Pods (Lab 09) or use a Deployment.</div>
+</div></div>
+
+<div class="L" id="L09">
+<div class="lh"><span class="ln">LAB 09</span><div class="lt">Force All Pods to Use New Image</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>After Lab 08, all 3 Pods still run <code>nginx:1.25</code> but template says <code>nginx:1.26</code>. Force ALL Pods to use the new image.</p></div>
+<div class="verify"><b>Verify: </b>All Pods show <code>nginx:1.26</code></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="09" data-i="0">Method A: Delete all (downtime)</div><div class="mb" data-g="09" data-i="1">Method B: Delete one-by-one</div><div class="mb" data-g="09" data-i="2">Method C: Use Deployment</div></div>
+<div class="mp on" data-g="09" data-i="0">
+<h3>Delete all Pods at once — RS recreates with new template</h3>
+<pre><code>kubectl delete pods -l app=web</code></pre>
+<div class="vis"><span class="bx ded">Pod 1 DEL</span> <span class="bx ded">Pod 2 DEL</span> <span class="bx ded">Pod 3 DEL</span> <span style="color:var(--rd);font-size:10px">← ALL dead simultaneously! DOWNTIME!</span><br><br>
+<span class="bx v2">Pod 4 (1.26) creating</span> <span class="bx v2">Pod 5 (1.26) creating</span> <span class="bx v2">Pod 6 (1.26) creating</span><br>
+All new Pods use the updated template ✓ but there was downtime ✗</div>
+<div class="trap"><b>Downtime warning</b>All Pods die at the same time. Zero capacity until new Pods are ready.</div>
+</div>
+<div class="mp" data-g="09" data-i="1">
+<h3>Delete Pods one at a time — manual rolling update</h3>
+<pre><code><span class="cm"># Delete Pod 1 — RS creates replacement with new image</span>
+kubectl delete pod web-rs-x7k2j
+<span class="cm"># Wait until new Pod is Ready</span>
+kubectl get pods -l app=web -w
+
+<span class="cm"># Delete Pod 2</span>
+kubectl delete pod web-rs-m9p4r
+<span class="cm"># Wait until Ready</span>
+
+<span class="cm"># Delete Pod 3</span>
+kubectl delete pod web-rs-a3b8n</code></pre>
+<div class="vis"><strong>Manual rolling update:</strong><br>
+<span class="bx v1">1 (1.25)</span> <span class="bx v1">2 (1.25)</span> <span class="bx v1">3 (1.25)</span> ← delete 1<br>
+<span class="bx v2">4 (1.26)</span> <span class="bx v1">2 (1.25)</span> <span class="bx v1">3 (1.25)</span> ← delete 2<br>
+<span class="bx v2">4 (1.26)</span> <span class="bx v2">5 (1.26)</span> <span class="bx v1">3 (1.25)</span> ← delete 3<br>
+<span class="bx v2">4 (1.26)</span> <span class="bx v2">5 (1.26)</span> <span class="bx v2">6 (1.26)</span> ← all updated! ✓</div>
+<div class="best"><b>Reduced downtime</b>At least 2 Pods always serving. But it's slow and manual.</div>
+</div>
+<div class="mp" data-g="09" data-i="2">
+<h3>The RIGHT way — use a Deployment (zero downtime, automatic)</h3>
+<pre><code><span class="cm"># If this was a Deployment instead of RS:</span>
+kubectl set image deployment/web-deploy nginx=nginx:1.26
+<span class="cm"># → Deployment creates new RS, does rolling replacement</span>
+<span class="cm"># → Zero downtime, automatic, with rollback capability</span></code></pre>
+<div class="sre"><div class="tag">SRE Principle</div><p style="margin:0">This is exactly why you should never manage RS directly in production. Deployments automate the entire image update process with zero downtime.</p></div>
+</div></div>
+</div></div>
+
+<div class="L" id="L10">
+<div class="lh"><span class="ln">LAB 10</span><div class="lt">Update Replica Count — Observe Immediate Effect</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Change <code>web-rs</code> from 3 to 5 replicas, observe Pods being created. Then change to 1, observe deletions.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Watch in another terminal</span>
+kubectl get pods -l app=web -w
+
+<span class="cm"># Scale up — INSTANT effect</span>
+kubectl scale rs web-rs --replicas=5
+<span class="cm"># You'll see 2 new Pods appear immediately</span>
+
+<span class="cm"># Scale down — INSTANT effect</span>
+kubectl scale rs web-rs --replicas=1
+<span class="cm"># You'll see 4 Pods go to Terminating</span></code></pre>
+<div class="vis"><strong>Key difference from image update:</strong><br>
+Image change → <span class="bx ded">NO effect on running Pods</span><br>
+Replica change → <span class="bx run">IMMEDIATE effect (Pods created/deleted within seconds)</span></div>
+</div></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- ADVANCED LABS                            -->
+<!-- ═══════════════════════════════════════ -->
+<h2>Advanced</h2>
+
+<div class="L" id="L11">
+<div class="lh"><span class="ln">LAB 11</span><div class="lt">Set Pod Deletion Cost</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>RS <code>web-rs</code> has 3 Pods. Make Pod 1 protected (cost=1000) and Pod 3 preferred for deletion (cost=-100). Scale down to 1 and verify Pod 1 survives.</p></div>
+<div class="verify"><b>Verify: </b>After scale-down to 1, only the protected Pod remains</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="11" data-i="0">Imperative</div><div class="mb" data-g="11" data-i="1">YAML annotation</div></div>
+<div class="mp on" data-g="11" data-i="0">
+<pre><code><span class="cm"># Get Pod names</span>
+kubectl get pods -l app=web
+<span class="cm"># web-rs-abc12   web-rs-def34   web-rs-ghi56</span>
+
+<span class="cm"># Protect Pod 1 (high cost = deleted LAST)</span>
+kubectl annotate pod web-rs-abc12 controller.kubernetes.io/pod-deletion-cost="1000"
+
+<span class="cm"># Mark Pod 3 for preferred deletion (low cost = deleted FIRST)</span>
+kubectl annotate pod web-rs-ghi56 controller.kubernetes.io/pod-deletion-cost="-100"
+
+<span class="cm"># Scale down to 1</span>
+kubectl scale rs web-rs --replicas=1
+
+<span class="cm"># Check who survived</span>
+kubectl get pods -l app=web
+<span class="cm"># web-rs-abc12 — the protected Pod! ✓</span></code></pre>
+</div>
+<div class="mp" data-g="11" data-i="1">
+<h3>YAML — Pod with deletion cost in annotations</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">protected-pod</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">annotations:</span>
+    <span class="k">controller.kubernetes.io/pod-deletion-cost:</span> <span class="s">"1000"</span>
+<span class="k">spec:</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">nginx</span>
+    <span class="k">image:</span> <span class="s">nginx:1.25</span></code></pre>
+
+<h3>YAML — RS template with deletion cost built-in</h3>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">ReplicaSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-rs</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+      <span class="k">annotations:</span>
+        <span class="k">controller.kubernetes.io/pod-deletion-cost:</span> <span class="s">"500"</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span></code></pre>
+</div></div>
+
+<div class="vis"><strong>Scale-down order (5→1):</strong><br>
+<span class="bx ded">cost=-100: DELETE 1st</span> → <span class="bx ded">cost=0: DELETE 2nd</span> → <span class="bx ded">cost=0: DELETE 3rd</span> → <span class="bx ded">cost=0: DELETE 4th</span> → <span class="bx run">cost=1000: SURVIVES ✓</span></div>
+</div></div>
+
+<div class="L" id="L12">
+<div class="lh"><span class="ln">LAB 12</span><div class="lt">Delete RS but Keep Pods Running (Orphan)</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Delete <code>web-rs</code> but keep all its Pods running. Verify Pods are alive but have no controller.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get rs web-rs</code> → not found. <code>kubectl get pods -l app=web</code> → still running</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Delete RS with --cascade=orphan</span>
+kubectl delete rs web-rs --cascade=orphan
+
+<span class="cm"># RS is gone</span>
+kubectl get rs web-rs
+<span class="cm"># Error: replicasets.apps "web-rs" not found</span>
+
+<span class="cm"># Pods still alive!</span>
+kubectl get pods -l app=web
+<span class="cm"># web-rs-abc12   Running</span>
+<span class="cm"># web-rs-def34   Running</span>
+<span class="cm"># web-rs-ghi56   Running</span>
+
+<span class="cm"># But they have NO owner now</span>
+kubectl get pod web-rs-abc12 -o jsonpath='{.metadata.ownerReferences}'
+<span class="cm"># empty — these are orphan Pods</span></code></pre>
+<div class="vis"><span class="bx rs">RS deleted</span> → Pods become orphans<br><span class="bx run">Pod 1 (alive, unmanaged)</span> <span class="bx run">Pod 2 (alive, unmanaged)</span> <span class="bx run">Pod 3 (alive, unmanaged)</span><br><span style="color:var(--yl);font-size:10px">⚠ If any Pod dies now, nobody recreates it!</span></div>
+</div></div>
+
+<div class="L" id="L13">
+<div class="lh"><span class="ln">LAB 13</span><div class="lt">Isolate a Pod from ReplicaSet for Debugging</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>RS <code>web-rs</code> has 3 Pods. Isolate one Pod for debugging without affecting service capacity (RS should create a replacement).</p></div>
+<div class="verify"><b>Verify: </b>RS shows 3/3 + 1 isolated Pod exists outside RS</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Get Pod names</span>
+kubectl get pods -l app=web
+<span class="cm"># web-rs-abc12   web-rs-def34   web-rs-ghi56</span>
+
+<span class="cm"># Remove the matching label from one Pod (trailing '-' removes it)</span>
+kubectl label pod web-rs-def34 app-
+
+<span class="cm"># RS detects only 2 matching Pods → creates a replacement</span>
+kubectl get rs web-rs
+<span class="cm"># DESIRED=3  CURRENT=3  READY=3  ← back to full capacity</span>
+
+<span class="cm"># The isolated Pod is still running, outside RS control</span>
+kubectl get pods --show-labels | grep web-rs-def34
+<span class="cm"># web-rs-def34   Running   (no app label)</span>
+
+<span class="cm"># Debug it freely</span>
+kubectl exec -it web-rs-def34 -- sh
+kubectl logs web-rs-def34
+
+<span class="cm"># Clean up when done</span>
+kubectl delete pod web-rs-def34</code></pre>
+
+<div class="vis"><strong>Before:</strong><br>
+<span class="bx rs">RS: 3/3</span> → <span class="bx run">Pod 1 (app=web)</span> <span class="bx run">Pod 2 (app=web)</span> <span class="bx run">Pod 3 (app=web)</span><br><br>
+<strong>After removing label from Pod 2:</strong><br>
+<span class="bx rs">RS: 3/3</span> → <span class="bx run">Pod 1</span> <span class="bx run">Pod 3</span> <span class="bx new">Pod 4 (new!)</span><br>
+<span style="color:var(--yl)">+ </span><span class="bx run">Pod 2 (isolated, alive, debug freely)</span></div>
+</div></div>
+
+<div class="L" id="L14">
+<div class="lh"><span class="ln">LAB 14</span><div class="lt">Pods Exist Before RS — Adoption</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Create 2 naked Pods with label <code>app=adopt-test</code>. Then create an RS with same selector, replicas=3. Observe: does RS adopt the existing Pods?</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Create 2 naked Pods with matching label</span>
+kubectl run orphan1 --image=nginx --labels="app=adopt-test"
+kubectl run orphan2 --image=nginx --labels="app=adopt-test"
+
+<span class="cm"># Step 2: Create RS with same selector, replicas=3</span></code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">ReplicaSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">adopt-rs</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">adopt-test</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">adopt-test</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span></code></pre>
+<pre><code>kubectl apply -f adopt-rs.yaml
+
+<span class="cm"># Check: RS adopted orphan1 + orphan2, created 1 more</span>
+kubectl get pods -l app=adopt-test
+<span class="cm"># orphan1         Running   ← adopted</span>
+<span class="cm"># orphan2         Running   ← adopted</span>
+<span class="cm"># adopt-rs-xyz    Running   ← newly created</span>
+
+<span class="cm"># Verify ownership</span>
+kubectl get pod orphan1 -o jsonpath='{.metadata.ownerReferences[0].name}'
+<span class="cm"># adopt-rs ← now owned by the RS!</span></code></pre>
+
+<div class="vis"><strong>RS adopts orphan Pods:</strong><br>
+<span class="bx run">orphan1 (adopted)</span> <span class="bx run">orphan2 (adopted)</span> <span class="bx new">adopt-rs-xyz (new)</span> = 3/3 ✓</div>
+</div></div>
+
+<div class="L" id="L15">
+<div class="lh"><span class="ln">LAB 15</span><div class="lt">Extra Pod Created After RS — Gets Killed</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>RS <code>web-rs</code> has 3/3 Pods. Create an extra Pod with matching label <code>app=web</code>. Observe: does RS kill it?</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># RS has 3 Pods, all healthy</span>
+kubectl get rs web-rs
+<span class="cm"># DESIRED=3  CURRENT=3  READY=3</span>
+
+<span class="cm"># Create extra Pod with matching label</span>
+kubectl run extra-pod --image=nginx --labels="app=web"
+
+<span class="cm"># RS detects 4 Pods but wants 3 → deletes 1</span>
+kubectl get pods -l app=web -w
+<span class="cm"># You'll see one Pod go to Terminating within seconds</span>
+
+kubectl get rs web-rs
+<span class="cm"># DESIRED=3  CURRENT=3  READY=3  ← back to 3</span></code></pre>
+<div class="vis"><span class="bx rs">RS: desired=3, actual=4!</span> <span class="ar">→</span> 4 &gt; 3 <span class="ar">→</span> <span class="bx ded">DELETE 1 Pod</span> <span class="ar">→</span> back to 3 ✓<br><span style="color:var(--dm);font-size:10px">RS doesn't care who created the extra Pod — if labels match, it's counted. Excess = deleted.</span></div>
+</div></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- TROUBLESHOOTING                         -->
+<!-- ═══════════════════════════════════════ -->
+<h2>Troubleshooting</h2>
+
+<div class="L" id="L16">
+<div class="lh"><span class="ln">LAB 16</span><div class="lt">Fix RS — Selector Doesn't Match Template Labels</div><span class="lw w2">Medium</span></div>
+<div class="task"><p><strong>Setup:</strong> Try to create this broken RS. It will fail. Fix it.</p>
+<pre><code>cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: broken-rs
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+EOF</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Error message:</span>
+<span class="cm"># The ReplicaSet "broken-rs" is invalid:</span>
+<span class="cm"># spec.template.metadata.labels: Invalid value: "app":"api":</span>
+<span class="cm"># selector does not match template labels</span></code></pre>
+<div class="trap"><b>Problem</b>Selector says <code>app: web</code> but template labels say <code>app: api</code>. They MUST match.</div>
+<pre><code><span class="cm"># Fix: change template label to match selector</span>
+<span class="cm"># template.metadata.labels.app: api → app: web</span></code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">ReplicaSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">broken-rs</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">2</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>       <span class="cm"># ← FIXED: now matches selector</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx</span></code></pre>
+</div></div>
+
+<div class="L" id="L17">
+<div class="lh"><span class="ln">LAB 17</span><div class="lt">Fix RS — Wrong Image, Pods in ImagePullBackOff</div><span class="lw w2">Medium</span></div>
+<div class="task"><p><strong>Setup:</strong></p>
+<pre><code>cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: img-rs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: img-test
+  template:
+    metadata:
+      labels:
+        app: img-test
+    spec:
+      containers:
+      - name: app
+        image: ngnix:latest
+EOF</code></pre>
+<p>Fix the Pods so they run successfully.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Diagnose</span>
+kubectl get pods -l app=img-test
+<span class="cm"># All 3 Pods in ImagePullBackOff — typo "ngnix" should be "nginx"</span>
+
+<span class="cm"># Step 2: Fix the RS template</span>
+kubectl patch rs img-rs --type='json' \
+  -p='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"nginx:latest"}]'
+
+<span class="cm"># Step 3: Template is fixed, but old Pods STILL have wrong image!</span>
+<span class="cm"># Must delete them so RS recreates with correct template</span>
+kubectl delete pods -l app=img-test
+
+<span class="cm"># Step 4: Verify new Pods are running</span>
+kubectl get pods -l app=img-test
+<span class="cm"># All 3 Running ✓</span></code></pre>
+<div class="trap"><b>Key lesson</b>Fixing the template alone is NOT enough — you must also delete the broken Pods. The RS won't restart them just because the template changed.</div>
+</div></div>
+
+<div class="L" id="L18">
+<div class="lh"><span class="ln">LAB 18</span><div class="lt">Fix RS — Desired ≠ Ready for 10 Minutes</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>RS shows DESIRED=3, CURRENT=3, but READY=1. Diagnose and fix.</p>
+<p><strong>Setup:</strong></p>
+<pre><code>cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: stuck-rs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: stuck
+  template:
+    metadata:
+      labels:
+        app: stuck
+    spec:
+      containers:
+      - name: app
+        image: nginx
+        readinessProbe:
+          httpGet:
+            path: /nonexistent
+            port: 80
+          periodSeconds: 5
+          failureThreshold: 1
+EOF</code></pre></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Check RS</span>
+kubectl get rs stuck-rs
+<span class="cm"># DESIRED=3  CURRENT=3  READY=0  ← Pods exist but not ready!</span>
+
+<span class="cm"># Step 2: Check Pod events</span>
+kubectl describe pod -l app=stuck | grep -A3 "Readiness"
+<span class="cm"># Readiness probe failed: HTTP probe failed with statuscode: 404</span>
+<span class="cm"># The probe checks /nonexistent which returns 404</span>
+
+<span class="cm"># Step 3: Fix — change readiness probe to valid path</span>
+kubectl patch rs stuck-rs --type='json' \
+  -p='[{"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/path","value":"/"}]'
+
+<span class="cm"># Step 4: Delete old Pods (template change doesn't affect running Pods!)</span>
+kubectl delete pods -l app=stuck
+
+<span class="cm"># Step 5: Verify</span>
+kubectl get rs stuck-rs
+<span class="cm"># DESIRED=3  CURRENT=3  READY=3  ✓</span></code></pre>
+</div></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENARIOS                               -->
+<!-- ═══════════════════════════════════════ -->
+<h2>Real-World Scenarios</h2>
+
+<div class="L" id="L19">
+<div class="lh"><span class="ln">LAB 19</span><div class="lt">Full Production Setup — RS + Service + PDB</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Create a complete production setup in namespace <code>production</code>:</p>
+<ul>
+<li>RS <code>web-rs</code>: 3 replicas, nginx:1.25, port 80, resources (cpu: 100m/200m, mem: 64Mi/128Mi), readiness probe on <code>/</code></li>
+<li>Service <code>web-svc</code>: ClusterIP, port 80 → target 80, selector <code>app=web</code></li>
+<li>PDB <code>web-pdb</code>: minAvailable=2, selector <code>app=web</code></li>
+</ul></div>
+<div class="verify"><b>Verify: </b><code>kubectl -n production get rs,svc,pdb</code></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create namespace production</code></pre>
+<pre><code><span class="cm"># All-in-one YAML</span>
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">ReplicaSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-rs</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+        <span class="k">resources:</span>
+          <span class="k">requests:</span>
+            <span class="k">cpu:</span> <span class="s">"100m"</span>
+            <span class="k">memory:</span> <span class="s">"64Mi"</span>
+          <span class="k">limits:</span>
+            <span class="k">cpu:</span> <span class="s">"200m"</span>
+            <span class="k">memory:</span> <span class="s">"128Mi"</span>
+        <span class="k">readinessProbe:</span>
+          <span class="k">httpGet:</span>
+            <span class="k">path:</span> <span class="s">/</span>
+            <span class="k">port:</span> <span class="nm">80</span>
+          <span class="k">periodSeconds:</span> <span class="nm">5</span>
+---
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span>
+---
+<span class="k">apiVersion:</span> <span class="v">policy/v1</span>
+<span class="k">kind:</span> <span class="v">PodDisruptionBudget</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-pdb</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="k">minAvailable:</span> <span class="nm">2</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span></code></pre>
+<pre><code>kubectl apply -f production.yaml</code></pre>
+</div></div>
+
+<div class="L" id="L20">
+<div class="lh"><span class="ln">LAB 20</span><div class="lt">Migrate RS to Deployment — Zero Downtime</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>RS <code>web-rs</code> has 3 running Pods. Migrate to a Deployment without any downtime — Pods should NOT restart.</p></div>
+<div class="verify"><b>Verify: </b>Deployment manages 3 Pods, none were restarted (check AGE — should be old)</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Delete the RS but KEEP the Pods</span>
+kubectl delete rs web-rs --cascade=orphan
+
+<span class="cm"># Step 2: Create a Deployment with the SAME selector and template</span></code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-deploy</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>           <span class="cm"># SAME selector as the old RS</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span>   <span class="cm"># SAME image</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span></code></pre>
+<pre><code>kubectl apply -f deploy.yaml
+
+<span class="cm"># Step 3: Verify — Deployment adopted existing Pods (check AGE)</span>
+kubectl get pods -l app=web
+<span class="cm"># All Pods have OLD age — they were adopted, not recreated!</span>
+
+kubectl get rs
+<span class="cm"># Shows RS created by Deployment, which adopted the orphan Pods</span></code></pre>
+
+<div class="vis"><strong>Zero-downtime migration:</strong><br>
+① <span class="bx rs">RS deleted (--cascade=orphan)</span> → Pods become orphans, still running<br>
+② <span class="bx rs">Deployment created</span> → creates new RS → RS finds matching orphan Pods<br>
+③ <span class="bx run">RS adopts orphan Pods</span> → no restart needed<br>
+④ <span style="color:var(--gn)">Deployment now manages Pods with rolling updates + rollback ✓</span></div>
+
+<div class="sre"><div class="tag">SRE Best Practice</div><p style="margin:0">This is the correct way to migrate from RS to Deployment in production. The orphan cascade preserves running Pods. The new Deployment's RS adopts them via label matching. Zero downtime, zero restarts.</p></div>
+</div></div>
+
+<div class="sre" style="margin-top:16px"><div class="tag">After All 20 Labs</div><p style="margin:0"><strong>Key takeaways:</strong> (1) RS has no imperative create command — use YAML or generate from Deployment. (2) Image template changes do NOT affect running Pods — must delete them manually. (3) Replica changes take effect immediately. (4) Selector is immutable. (5) <code>--cascade=orphan</code> keeps Pods when deleting RS. (6) Always use Deployments in production — they automate everything RS can't do.</p></div>
+
+</main>
+
+<script>
+document.querySelectorAll('.sol-btn').forEach(btn=>{btn.addEventListener('click',function(){const L=this.parentElement;L.classList.toggle('open');this.textContent=L.classList.contains('open')?'▲ Hide Solution':'▶ Show Solution'})});
+document.querySelectorAll('.M .mb').forEach(tab=>{tab.addEventListener('click',function(){const g=this.dataset.g,i=this.dataset.i;document.querySelectorAll('.mb[data-g="'+g+'"]').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.mp[data-g="'+g+'"]').forEach(p=>p.classList.remove('on'));this.classList.add('on');document.querySelector('.mp[data-g="'+g+'"][data-i="'+i+'"]').classList.add('on')})});
+</script>
+</body>
+</html>
