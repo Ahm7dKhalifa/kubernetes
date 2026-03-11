@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Deployments v2 — Expanded Deep-Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#3b82f6;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1010px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(59,130,246,.05) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:38px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(59,130,246,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(59,130,246,.03);border:1px solid rgba(59,130,246,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(59,130,246,.03),rgba(8,145,178,.02));border:1px solid rgba(59,130,246,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(59,130,246,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:8px 12px;margin:5px 0 8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.42;color:#6d7b90;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.og{background:rgba(234,88,12,.15);color:var(--og)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(59,130,246,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(59,130,246,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:11px;margin:7px 0;min-height:40px;font-size:12px;line-height:1.7}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.new{background:rgba(59,130,246,.1);color:var(--ac);border:1px solid rgba(59,130,246,.25)}
+.bx.rs{background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.25)}
+.bx.dep{background:rgba(59,130,246,.12);color:var(--ac);border:1px solid rgba(59,130,246,.3)}
+.bx.v1{background:rgba(234,88,12,.1);color:var(--og);border:1px solid rgba(234,88,12,.25)}
+.bx.v2{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.svc{background:rgba(147,51,234,.08);color:var(--pp);border:1px solid rgba(147,51,234,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:12px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ Deployments v2</div>
+<div class="sub">Expanded Edition</div>
+<div class="sl">Fundamentals</div>
+<ul><li><a href="#s01">What &amp; Why</a></li><li><a href="#s02">Architecture ▶</a></li><li><a href="#s03">RS vs Deploy ▶</a></li></ul>
+<div class="sl">Full YAML</div>
+<ul><li><a href="#s04">Complete YAML</a></li></ul>
+<div class="sl">Updates (Deep Dive)</div>
+<ul><li><a href="#s05">What Triggers Rollout? ▶</a></li><li><a href="#s06">Image Only ▶</a></li><li><a href="#s07">Image + Replicas ▶</a></li><li><a href="#s08">Replicas Only ▶</a></li><li><a href="#s09">Multiple Changes ▶</a></li></ul>
+<div class="sl">Strategies</div>
+<ul><li><a href="#s10">RollingUpdate ▶</a></li><li><a href="#s11">Recreate ▶</a></li><li><a href="#s12">maxSurge/maxUnavail ▶</a></li></ul>
+<div class="sl">Patterns (Full Workflow)</div>
+<ul><li><a href="#s13">Blue/Green ▶</a></li><li><a href="#s14">Canary ▶</a></li></ul>
+<div class="sl">Rollback &amp; Control</div>
+<ul><li><a href="#s15">Rollback ▶</a></li><li><a href="#s16">Pause &amp; Resume ▶</a></li></ul>
+<div class="sl">SRE</div>
+<ul><li><a href="#s17">Monitoring</a></li><li><a href="#s18">Commands</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Kubernetes Deployments</h1><p>v2 Expanded — deep dive on every update scenario, full Blue/Green &amp; Canary workflows with YAML, and detailed diagrams for every operation.</p></div>
+
+<!-- ═════════════ S01 ═════════════ -->
+<section id="s01"><h2><span class="n">01</span> What Is a Deployment &amp; Why?</h2>
+<div class="def"><b>Definition — Deployment</b>A controller that manages <strong>ReplicaSets</strong>, which manage Pods. Provides declarative updates: you describe desired state, the Deployment controller changes actual state at a controlled rate. Adds <strong>rolling updates, rollback, revision history, pause/resume</strong> on top of ReplicaSets.</div>
+<div class="def"><b>Definition — Why It Exists</b>A ReplicaSet can maintain Pod count but <strong>cannot update Pod images without downtime</strong>. A Deployment solves this by creating a NEW RS with the new template, gradually shifting Pods from old RS to new RS — zero downtime.</div>
+<table>
+<tr><th>Feature</th><th>What It Does</th></tr>
+<tr><td><strong>Rolling Update</strong></td><td>Replace Pods gradually — zero downtime</td></tr>
+<tr><td><strong>Rollback</strong></td><td>Revert to any previous version instantly via old RS</td></tr>
+<tr><td><strong>Revision History</strong></td><td>Track every change with revision numbers</td></tr>
+<tr><td><strong>Pause/Resume</strong></td><td>Batch multiple changes into one rollout</td></tr>
+<tr><td><strong>Status Tracking</strong></td><td>Reports progress, deadline, conditions</td></tr>
+<tr><td><strong>Self-Healing</strong></td><td>Dead Pods automatically replaced (via RS)</td></tr>
+</table></section>
+
+<!-- ═════════════ S02 ═════════════ -->
+<section id="s02"><h2><span class="n">02</span> Architecture ▶</h2>
+<div class="W" id="w-arch"><div class="bar"><div class="tab on" data-i="0">Hierarchy</div><div class="tab" data-i="1">Normal</div><div class="tab" data-i="2">During Update</div><div class="tab" data-i="3">After Update</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Three-Level Ownership</div>
+<div class="vis"><span class="bx dep">Deployment: web-deploy</span><br>
+<span class="ar">└──</span> <span class="bx rs">ReplicaSet: web-deploy-6d4f (rev 1)</span><br>
+<span class="ar">&nbsp;&nbsp;&nbsp;&nbsp;├──</span> <span class="bx run">Pod: web-deploy-6d4f-abc12</span><br>
+<span class="ar">&nbsp;&nbsp;&nbsp;&nbsp;├──</span> <span class="bx run">Pod: web-deploy-6d4f-def34</span><br>
+<span class="ar">&nbsp;&nbsp;&nbsp;&nbsp;└──</span> <span class="bx run">Pod: web-deploy-6d4f-ghi56</span></div>
+<div class="ds">Deployment → creates/manages RS. RS → creates/manages Pods. The RS hash suffix (<code>6d4f</code>) is derived from the Pod template. Different template = different hash = different RS.</div></div>
+<div class="pnl" data-i="1"><div class="tl">Normal State — 1 Active RS</div>
+<div class="vis"><span class="bx dep">Deployment (replicas:3, image:nginx:1.25)</span><br><br><span class="bx rs">RS-v1 (3/3, nginx:1.25)</span><br><span class="bx v1">Pod(1.25)</span> <span class="bx v1">Pod(1.25)</span> <span class="bx v1">Pod(1.25)</span><br><span style="color:var(--gn);font-size:11px">Stable. One active RS. All Pods same version.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">During Rolling Update — 2 RS Active</div>
+<div class="vis"><span class="bx dep">Deployment (updating: 1.25→1.26)</span><br><br><span class="bx rs">RS-v1 (2, scaling DOWN)</span> <span class="bx v1">Pod</span> <span class="bx v1">Pod</span><br><span class="bx rs">RS-v2 (1, scaling UP)</span> <span class="bx v2">Pod ✓</span><br><br><span style="color:var(--yl);font-size:11px">Two RS simultaneously. Traffic goes to both versions temporarily.</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">After Update — Old RS Kept (replicas:0)</div>
+<div class="vis"><span class="bx dep">Deployment (rev 2, nginx:1.26)</span><br><br><span class="bx rs">RS-v1 (0) ← kept for rollback</span><br><span class="bx rs">RS-v2 (3) ← active</span> <span class="bx v2">Pod</span> <span class="bx v2">Pod</span> <span class="bx v2">Pod</span><br><br><span style="color:var(--gn);font-size:11px">Old RS preserved. <code>kubectl rollout undo</code> swaps them back.</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S03 ═════════════ -->
+<section id="s03"><h2><span class="n">03</span> ReplicaSet vs Deployment — Update Comparison ▶</h2>
+<div class="W" id="w-vs"><div class="bar"><div class="tab on" data-i="0">With RS</div><div class="tab" data-i="1">With Deployment</div><div class="tab" data-i="2">Table</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">ReplicaSet — Update Image Scenario</div>
+<div class="vis"><strong>① Update template:</strong> <code>kubectl edit rs web-rs</code> → change image<br><span class="bx v1">Pod 1 (1.25)</span> <span class="bx v1">Pod 2 (1.25)</span> <span class="bx v1">Pod 3 (1.25)</span> ← <span style="color:var(--rd)">STILL OLD!</span><br><br><strong>② Must manually delete all Pods:</strong><br><code>kubectl delete pods -l app=web</code><br><span class="bx ded">ALL dead</span> <span class="ar">→</span> <span style="color:var(--rd);font-weight:700">DOWNTIME!</span> <span class="ar">→</span> <span class="bx v2">Pod 4</span> <span class="bx v2">Pod 5</span> <span class="bx v2">Pod 6</span><br><br><span style="color:var(--rd);font-size:11px">No rollback. No history. Manual. Downtime.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Deployment — Same Scenario</div>
+<div class="vis"><strong>① One command:</strong> <code>kubectl set image deploy/web nginx=nginx:1.26</code><br><br><strong>Automatic process (zero downtime):</strong><br>
+<span class="bx rs">RS-v1(3)</span> <span class="bx v1">P1</span><span class="bx v1">P2</span><span class="bx v1">P3</span> <span class="ar">→</span> <span class="bx rs">RS-v2(1)</span> <span class="bx v2">P4✓</span> created, ready<br>
+<span class="bx rs">RS-v1(2)</span> <span class="bx v1">P2</span><span class="bx v1">P3</span> <span class="ar">→</span> <span class="bx rs">RS-v2(2)</span> <span class="bx v2">P4</span><span class="bx v2">P5✓</span><br>
+<span class="bx rs">RS-v1(1)</span> <span class="bx v1">P3</span> <span class="ar">→</span> <span class="bx rs">RS-v2(3)</span> <span class="bx v2">P4</span><span class="bx v2">P5</span><span class="bx v2">P6✓</span><br>
+<span class="bx rs">RS-v1(0)</span> <span class="ar">→</span> <span class="bx rs">RS-v2(3)</span> <span style="color:var(--gn);font-weight:700">DONE ✓</span><br><br><span style="color:var(--gn);font-size:11px">Zero downtime. Instant rollback. Full history.</span></div></div>
+<div class="pnl" data-i="2">
+<table>
+<tr><th></th><th>ReplicaSet</th><th>Deployment</th></tr>
+<tr><td>Image update effect</td><td><span class="bg rd">Template only — Pods unchanged</span></td><td><span class="bg gn">Rolling replacement — all Pods</span></td></tr>
+<tr><td>Downtime</td><td><span class="bg rd">Yes</span></td><td><span class="bg gn">Zero</span></td></tr>
+<tr><td>Rollback</td><td><span class="bg rd">None</span></td><td><span class="bg gn">Instant</span></td></tr>
+<tr><td>History</td><td><span class="bg rd">None</span></td><td><span class="bg gn">Full revisions</span></td></tr>
+<tr><td>Strategy</td><td>None</td><td><span class="bg gn">RollingUpdate / Recreate</span></td></tr>
+<tr><td>Production?</td><td>Never directly</td><td><span class="bg gn">Always</span></td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S04 ═════════════ -->
+<section id="s04"><h2><span class="n">04</span> Full Deployment YAML</h2>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-deploy</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+  <span class="k">annotations:</span>
+    <span class="k">kubernetes.io/change-cause:</span> <span class="s">"Initial v1.25"</span>    <span class="cm"># Shows in rollout history</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>                          <span class="cm"># Desired Pod count</span>
+  <span class="k">revisionHistoryLimit:</span> <span class="nm">10</span>             <span class="cm"># Old RS kept for rollback</span>
+  <span class="k">progressDeadlineSeconds:</span> <span class="nm">600</span>        <span class="cm"># Max 10min for rollout progress</span>
+  <span class="k">minReadySeconds:</span> <span class="nm">5</span>                  <span class="cm"># Pod ready 5s before "available"</span>
+
+  <span class="k">strategy:</span>
+    <span class="k">type:</span> <span class="v">RollingUpdate</span>                <span class="cm"># or Recreate</span>
+    <span class="k">rollingUpdate:</span>
+      <span class="k">maxSurge:</span> <span class="nm">1</span>                      <span class="cm"># Extra Pods allowed during update</span>
+      <span class="k">maxUnavailable:</span> <span class="nm">0</span>               <span class="cm"># Pods that can be down (0 = safest)</span>
+
+  <span class="k">selector:</span>                             <span class="cm"># IMMUTABLE — cannot change after creation</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+
+  <span class="k">template:</span>                             <span class="cm"># Changes here trigger NEW rollout</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>                      <span class="cm"># MUST match selector</span>
+    <span class="k">spec:</span>
+      <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">30</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+        <span class="k">env:</span>
+        - <span class="k">name:</span> <span class="s">APP_ENV</span>
+          <span class="k">value:</span> <span class="s">"production"</span>
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"100m"</span>, <span class="k">memory:</span> <span class="s">"64Mi"</span> }
+          <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"200m"</span>, <span class="k">memory:</span> <span class="s">"128Mi"</span> }
+        <span class="k">readinessProbe:</span>
+          <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/</span>, <span class="k">port:</span> <span class="nm">80</span> }
+          <span class="k">periodSeconds:</span> <span class="nm">5</span>
+        <span class="k">livenessProbe:</span>
+          <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/</span>, <span class="k">port:</span> <span class="nm">80</span> }
+          <span class="k">periodSeconds:</span> <span class="nm">10</span></code></pre></section>
+
+<!-- ═════════════════════════════════ -->
+<!-- UPDATES DEEP DIVE                 -->
+<!-- ═════════════════════════════════ -->
+<section id="s05"><h2><span class="n">05</span> What Triggers a Rollout? (Master Table) ▶</h2>
+<div class="def"><b>Core Rule</b>Only changes to <code>spec.template</code> trigger a new rollout (new RS created). Changes to <code>replicas</code>, <code>strategy</code>, <code>metadata</code>, or any field OUTSIDE the template do NOT create a new RS.</div>
+
+<div class="W" id="w-trig"><div class="bar"><div class="tab on" data-i="0">Triggers Rollout ✓</div><div class="tab" data-i="1">Does NOT ✗</div><div class="tab" data-i="2">Combination Rules</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">These changes CREATE a new RS (trigger rollout)</div>
+<table>
+<tr><th>Change</th><th>Command</th><th>New RS?</th></tr>
+<tr><td>Container image</td><td><code>kubectl set image deploy/X c=img:v2</code></td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Environment variable</td><td><code>kubectl set env deploy/X KEY=val</code></td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Resource requests/limits</td><td><code>kubectl set resources deploy/X ...</code></td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Pod labels (in template)</td><td>Edit template.metadata.labels</td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Volume mounts</td><td>Edit template.spec.volumes</td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Probes</td><td>Edit livenessProbe/readinessProbe</td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Command/args</td><td>Edit container command</td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Security context</td><td>Edit securityContext</td><td><span class="bg gn">Yes</span></td></tr>
+</table></div>
+<div class="pnl" data-i="1"><div class="tl">These changes do NOT create new RS (no rollout)</div>
+<table>
+<tr><th>Change</th><th>Command</th><th>New RS?</th><th>Effect</th></tr>
+<tr><td>Replica count</td><td><code>kubectl scale deploy/X --replicas=5</code></td><td><span class="bg rd">No</span></td><td>Current RS adjusts Pod count</td></tr>
+<tr><td>Strategy type</td><td>Edit spec.strategy</td><td><span class="bg rd">No</span></td><td>Applied to next rollout</td></tr>
+<tr><td>maxSurge/maxUnavail</td><td>Edit rollingUpdate</td><td><span class="bg rd">No</span></td><td>Applied to next rollout</td></tr>
+<tr><td>Deployment labels</td><td>Edit metadata.labels</td><td><span class="bg rd">No</span></td><td>Label on Deployment object only</td></tr>
+<tr><td>Annotations</td><td>Edit metadata.annotations</td><td><span class="bg rd">No</span></td><td>Metadata only</td></tr>
+<tr><td>revisionHistoryLimit</td><td>Edit spec.revisionHistoryLimit</td><td><span class="bg rd">No</span></td><td>Prunes old RS</td></tr>
+<tr><td>progressDeadlineSeconds</td><td>Edit spec.progressDeadlineSeconds</td><td><span class="bg rd">No</span></td><td>Next rollout uses new deadline</td></tr>
+<tr><td>minReadySeconds</td><td>Edit spec.minReadySeconds</td><td><span class="bg rd">No</span></td><td>Next rollout uses new value</td></tr>
+</table></div>
+<div class="pnl" data-i="2"><div class="tl">Combination Rules — What Happens When You Change Multiple Things</div>
+<table>
+<tr><th>Scenario</th><th>Result</th></tr>
+<tr><td>Image ONLY</td><td>1 rollout → new RS (old RS kept)</td></tr>
+<tr><td>Replicas ONLY</td><td>No rollout → existing RS scales</td></tr>
+<tr><td>Image + Replicas simultaneously</td><td>1 rollout with new replica count. New RS created with new image AND new count.</td></tr>
+<tr><td>Image + Env + Resources</td><td>If done in 3 commands → 3 rollouts (3 RS!). Use <code>pause/resume</code> for 1 rollout.</td></tr>
+<tr><td>Strategy + Image</td><td>Strategy applied in-place (no rollout). Image triggers rollout using the new strategy.</td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S06: IMAGE ONLY ═════════════ -->
+<section id="s06"><h2><span class="n">06</span> Scenario: Update Image Only ▶</h2>
+<div class="W" id="w-img"><div class="bar"><div class="tab on" data-i="0">① Before</div><div class="tab" data-i="1">② Command</div><div class="tab" data-i="2">③ New RS Created</div><div class="tab" data-i="3">④ Rolling Replace</div><div class="tab" data-i="4">⑤ Complete</div><div class="tab" data-i="5">⑥ RS State</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span class="bx dep">Deployment (rev 1, image: nginx:1.25, replicas: 3)</span><br><span class="bx rs">RS-abc (3/3)</span> <span class="bx v1">P1(1.25)</span> <span class="bx v1">P2(1.25)</span> <span class="bx v1">P3(1.25)</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">② Trigger — change image</div>
+<pre><code>kubectl set image deployment/web-deploy nginx=nginx:1.26</code></pre>
+<div class="ds">This modifies <code>spec.template.spec.containers[0].image</code>. Template changed → new template hash → Deployment creates new RS.</div></div>
+<div class="pnl" data-i="2"><div class="tl">③ New RS created (empty), old RS still full</div>
+<div class="vis"><span class="bx rs">RS-abc (3, nginx:1.25)</span> <span class="bx v1">P1</span><span class="bx v1">P2</span><span class="bx v1">P3</span><br><span class="bx rs">RS-xyz (0, nginx:1.26)</span> ← NEW, empty<br><br><span style="color:var(--dm);font-size:10px">Replicas: 3. maxSurge=1 → max 4 total allowed.</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">④ Rolling replacement — one at a time</div>
+<div class="vis"><strong>Step A:</strong> RS-xyz scales 0→1. New Pod created.<br><span class="bx rs">RS-abc(3):</span> <span class="bx v1">P1</span><span class="bx v1">P2</span><span class="bx v1">P3</span> | <span class="bx rs">RS-xyz(1):</span> <span class="bx new">P4 starting...</span> <span style="color:var(--dm)">[4 total]</span><br><br><strong>Step B:</strong> P4 passes readiness → RS-abc scales 3→2.<br><span class="bx rs">RS-abc(2):</span> <span class="bx v1">P2</span><span class="bx v1">P3</span> | <span class="bx rs">RS-xyz(1):</span> <span class="bx v2">P4✓</span> <span style="color:var(--gn)">[3 healthy]</span><br><br><strong>Step C:</strong> RS-xyz 1→2, P5 ready → RS-abc 2→1.<br><span class="bx rs">RS-abc(1):</span> <span class="bx v1">P3</span> | <span class="bx rs">RS-xyz(2):</span> <span class="bx v2">P4</span><span class="bx v2">P5✓</span> <span style="color:var(--gn)">[3 healthy]</span><br><br><strong>Step D:</strong> RS-xyz 2→3, P6 ready → RS-abc 1→0.<br><span class="bx rs">RS-abc(0)</span> | <span class="bx rs">RS-xyz(3):</span> <span class="bx v2">P4</span><span class="bx v2">P5</span><span class="bx v2">P6✓</span> <span style="color:var(--gn)">[3 healthy] DONE</span></div></div>
+<div class="pnl" data-i="4"><div class="tl">⑤ Rollout complete</div>
+<div class="T">$ kubectl rollout status deployment/web-deploy
+<span style="color:var(--gn)">deployment "web-deploy" successfully rolled out</span>
+
+$ kubectl get rs -l app=web
+NAME              DESIRED   CURRENT   READY
+web-deploy-abc    0         0         0        ← old (kept)
+web-deploy-xyz    3         3         3        ← active</div></div>
+<div class="pnl" data-i="5"><div class="tl">⑥ Final RS State — old RS preserved</div>
+<div class="vis"><span class="bx dep">Deployment (rev 2)</span><br><br><span class="bx rs">RS-abc (0, rev 1, nginx:1.25)</span> ← <strong>kept for rollback</strong>. No Pods, just metadata.<br><span class="bx rs">RS-xyz (3, rev 2, nginx:1.26)</span> ← active<br><br><code>kubectl rollout undo</code> → scales RS-abc back to 3, RS-xyz down to 0. Instant.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 6</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S07: IMAGE + REPLICAS ═════════════ -->
+<section id="s07"><h2><span class="n">07</span> Scenario: Update Image + Replicas Together ▶</h2>
+<div class="W" id="w-both"><div class="bar"><div class="tab on" data-i="0">Same time</div><div class="tab" data-i="1">Separate commands</div><div class="tab" data-i="2">YAML approach</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Change image AND replicas in one apply</div>
+<div class="vis"><strong>Before:</strong> image=1.25, replicas=3<br>
+<strong>You change in YAML:</strong> image=1.26, replicas=5<br>
+<code>kubectl apply -f deploy.yaml</code><br><br>
+<strong>Result:</strong> ONE rollout. New RS created with image 1.26 AND scales to 5.<br>
+<span class="bx rs">RS-old(3→0)</span> scaling down<br>
+<span class="bx rs">RS-new(0→5)</span> scaling up to NEW count<br><br>
+<span style="color:var(--gn);font-size:11px">Final: 5 Pods all running nginx:1.26 ✓</span></div>
+<div class="ds">When you change both image and replicas simultaneously (single <code>kubectl apply</code>), Kubernetes creates a new RS and targets the new replica count. The old RS scales down. One rollout, not two.</div></div>
+<div class="pnl" data-i="1"><div class="tl">Two separate commands — what happens?</div>
+<pre><code><span class="cm"># Command 1: change image → triggers rollout</span>
+kubectl set image deployment/web-deploy nginx=nginx:1.26
+
+<span class="cm"># Command 2: change replicas → NO rollout</span>
+kubectl scale deployment/web-deploy --replicas=5</code></pre>
+<div class="vis"><strong>Command 1:</strong> New RS created (1.26). Rolling update starts: RS-old 3→0, RS-new 0→3.<br>
+<strong>Command 2 (during or after):</strong> Adjusts the CURRENT active RS to 5. No new RS.<br><br>
+<span style="color:var(--yl);font-size:11px">If command 2 fires DURING rollout: the in-progress rollout adjusts its target to 5.</span><br>
+<span style="color:var(--gn);font-size:11px">Final: 5 Pods running 1.26 ✓ (same result, but 2 operations).</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">YAML approach (cleanest)</div>
+<pre><code><span class="cm"># Edit deploy.yaml:</span>
+<span class="cm"># replicas: 3 → replicas: 5</span>
+<span class="cm"># image: nginx:1.25 → image: nginx:1.26</span>
+
+kubectl apply -f deploy.yaml
+<span class="cm"># One apply = one rollout = both changes applied atomically</span></code></pre>
+<div class="best"><b>Best practice</b>Make all changes in your YAML file and apply once. This creates a single rollout with both changes. Git stays in sync. No drift.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S08: REPLICAS ONLY ═════════════ -->
+<section id="s08"><h2><span class="n">08</span> Scenario: Update Replicas Only ▶</h2>
+<div class="W" id="w-rep"><div class="bar"><div class="tab on" data-i="0">Scale Up</div><div class="tab" data-i="1">Scale Down</div><div class="tab" data-i="2">NO rollout proof</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Scale 3 → 5 — No rollout, no new RS</div>
+<div class="vis"><span class="bx dep">Deployment (replicas: 3→5)</span><br><br><span class="bx rs">RS-abc (3→5)</span> ← SAME RS, just adds 2 Pods<br><span class="bx run">P1</span><span class="bx run">P2</span><span class="bx run">P3</span> <span class="bx new">P4 creating</span> <span class="bx new">P5 creating</span><br><br><span style="color:var(--gn);font-size:11px">New Pods use current template. Same RS. No new revision.</span></div>
+<pre><code>kubectl scale deployment/web-deploy --replicas=5</code></pre></div>
+<div class="pnl" data-i="1"><div class="tl">Scale 5 → 2</div>
+<div class="vis"><span class="bx rs">RS-abc (5→2)</span> ← deletes 3 Pods using scale-down algorithm<br><span class="bx run">P1</span><span class="bx run">P2</span> <span class="bx ded">P3 del</span><span class="bx ded">P4 del</span><span class="bx ded">P5 del</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Proof: no new RS, no new revision</div>
+<pre><code><span class="cm"># Before scaling</span>
+kubectl get rs -l app=web
+<span class="cm"># web-deploy-abc    3/3/3</span>
+
+kubectl scale deployment/web-deploy --replicas=5
+
+<span class="cm"># After scaling — SAME RS, no new one</span>
+kubectl get rs -l app=web
+<span class="cm"># web-deploy-abc    5/5/5    ← same RS name!</span>
+
+<span class="cm"># Revision history unchanged</span>
+kubectl rollout history deployment/web-deploy
+<span class="cm"># Still same number of revisions — no new revision added</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S09: MULTIPLE CHANGES ═════════════ -->
+<section id="s09"><h2><span class="n">09</span> Scenario: Multiple Template Changes ▶</h2>
+<div class="W" id="w-multi"><div class="bar"><div class="tab on" data-i="0">Without Pause (BAD)</div><div class="tab" data-i="1">With Pause (GOOD)</div><div class="tab" data-i="2">Full YAML (BEST)</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">3 separate commands = 3 rollouts = 3 RS (wasteful!)</div>
+<div class="vis"><code>kubectl set image deploy/web nginx=nginx:1.26</code> <span class="ar">→</span> <span class="bx rs">RS-2 created, rollout starts</span><br>
+<code>kubectl set env deploy/web LOG=debug</code> <span class="ar">→</span> <span class="bx rs">RS-3 created, RS-2 ABANDONED mid-rollout!</span><br>
+<code>kubectl set resources deploy/web -c nginx --limits=mem=256Mi</code> <span class="ar">→</span> <span class="bx rs">RS-4 created, RS-3 ABANDONED!</span><br><br>
+<span style="color:var(--rd);font-size:11px">3 unnecessary RS. Each interrupts the previous. Wastes time and resources.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Pause → make all changes → Resume = 1 rollout</div>
+<pre><code><span class="cm"># Freeze</span>
+kubectl rollout pause deployment/web-deploy
+
+<span class="cm"># Make all 3 changes (nothing happens — paused)</span>
+kubectl set image deployment/web-deploy nginx=nginx:1.26
+kubectl set env deployment/web-deploy LOG_LEVEL=debug
+kubectl set resources deployment/web-deploy -c nginx --limits=memory=256Mi
+
+<span class="cm"># Unfreeze — ONE rollout with ALL changes</span>
+kubectl rollout resume deployment/web-deploy</code></pre>
+<div class="vis"><span style="color:var(--gn)">Result: 1 new RS containing all 3 changes. 1 rollout. Clean.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Edit YAML file and apply once (cleanest)</div>
+<pre><code><span class="cm"># Edit deploy.yaml: change image, add env, add resources</span>
+<span class="cm"># Then single apply:</span>
+kubectl apply -f deploy.yaml
+<span class="cm"># ONE rollout with ALL changes, ONE new RS.</span></code></pre>
+<div class="best"><b>Best for production</b>All changes in one file, one commit, one apply, one rollout. Git is your source of truth.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S10: ROLLING UPDATE ═════════════ -->
+<section id="s10"><h2><span class="n">10</span> RollingUpdate Strategy ▶</h2>
+<div class="def"><b>Definition</b>Gradually replaces old Pods with new Pods. Creates new RS, scales it up while scaling old RS down. Each new Pod must pass <strong>readiness</strong> before an old Pod is killed. At no point fewer than <code>replicas - maxUnavailable</code> healthy Pods.</div>
+<div class="W" id="w-roll"><div class="bar"><div class="tab on" data-i="0">YAML</div><div class="tab" data-i="1">Flow Diagram</div><div class="tab" data-i="2">With Readiness</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<pre><code><span class="k">strategy:</span>
+  <span class="k">type:</span> <span class="v">RollingUpdate</span>
+  <span class="k">rollingUpdate:</span>
+    <span class="k">maxSurge:</span> <span class="nm">1</span>              <span class="cm"># 1 extra Pod allowed (total = desired+1)</span>
+    <span class="k">maxUnavailable:</span> <span class="nm">0</span>       <span class="cm"># 0 Pods can be down (always ≥ desired ready)</span></code></pre></div>
+<div class="pnl" data-i="1"><div class="tl">Rolling Update Flow (replicas=3, maxSurge=1, maxUnavail=0)</div>
+<div class="vis">
+<strong>T=0:</strong> <span class="bx v1">Old-1</span><span class="bx v1">Old-2</span><span class="bx v1">Old-3</span> | total=3 | ready=3 ✓<br><br>
+<strong>T=1:</strong> <span class="bx v1">Old-1</span><span class="bx v1">Old-2</span><span class="bx v1">Old-3</span><span class="bx new">New-1⏳</span> | total=4 | ready=3 (new starting)<br><br>
+<strong>T=2:</strong> <span class="bx v1">Old-1</span><span class="bx v1">Old-2</span><span class="bx ded">Old-3↓</span><span class="bx v2">New-1✓</span> | total=3 | ready=3 (new ready → kill old)<br><br>
+<strong>T=3:</strong> <span class="bx v1">Old-1</span><span class="bx v1">Old-2</span><span class="bx v2">New-1</span><span class="bx new">New-2⏳</span> | total=4 | ready=3<br><br>
+<strong>T=4:</strong> <span class="bx v1">Old-1</span><span class="bx ded">Old-2↓</span><span class="bx v2">New-1</span><span class="bx v2">New-2✓</span> | total=3 | ready=3<br><br>
+<strong>T=5:</strong> <span class="bx v1">Old-1</span><span class="bx v2">New-1</span><span class="bx v2">New-2</span><span class="bx new">New-3⏳</span> | total=4 | ready=3<br><br>
+<strong>T=6:</strong> <span class="bx ded">Old-1↓</span><span class="bx v2">New-1</span><span class="bx v2">New-2</span><span class="bx v2">New-3✓</span> | total=3 | ready=3 <span style="color:var(--gn)">DONE ✓</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Why Readiness Probes Are Critical</div>
+<div class="vis"><strong>WITHOUT readiness probe:</strong><br>
+Pod is "ready" the moment container starts → old Pod killed immediately → new Pod crashes 2s later → <span style="color:var(--rd)">lost capacity!</span><br><br>
+<strong>WITH readiness probe:</strong><br>
+Pod starts → readiness check every 5s → passes after 15s → THEN old Pod killed → <span style="color:var(--gn)">safe!</span></div>
+<div class="sre"><div class="tag">SRE Rule</div><p style="margin:0">Never deploy without readiness probes. Without them, rolling updates can't verify new Pods are actually serving before killing old ones.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S11: RECREATE ═════════════ -->
+<section id="s11"><h2><span class="n">11</span> Recreate Strategy ▶</h2>
+<div class="def"><b>Definition</b>Terminates ALL old Pods first, then creates ALL new Pods. Causes guaranteed downtime. Use only when two versions cannot coexist (shared DB lock, incompatible schema, license conflict).</div>
+<div class="W" id="w-rec"><div class="bar"><div class="tab on" data-i="0">YAML</div><div class="tab" data-i="1">Flow Diagram</div><div class="tab" data-i="2">When to Use</div></div><div class="body">
+<div class="pnl on" data-i="0"><pre><code><span class="k">strategy:</span>
+  <span class="k">type:</span> <span class="v">Recreate</span>     <span class="cm"># No rollingUpdate section needed</span></code></pre></div>
+<div class="pnl" data-i="1"><div class="vis"><strong>T=0:</strong> <span class="bx v1">Old-1</span><span class="bx v1">Old-2</span><span class="bx v1">Old-3</span> running<br>
+<strong>T=1:</strong> <span class="bx ded">Old-1↓</span><span class="bx ded">Old-2↓</span><span class="bx ded">Old-3↓</span> ALL terminated<br>
+<strong>T=2:</strong> <span style="color:var(--rd);font-weight:700">⚠ DOWNTIME — zero Pods serving!</span><br>
+<strong>T=3:</strong> <span class="bx new">New-1⏳</span><span class="bx new">New-2⏳</span><span class="bx new">New-3⏳</span> creating<br>
+<strong>T=4:</strong> <span class="bx v2">New-1✓</span><span class="bx v2">New-2✓</span><span class="bx v2">New-3✓</span> ready</div></div>
+<div class="pnl" data-i="2"><div class="tl">When Recreate is the right choice</div>
+<table>
+<tr><th>Scenario</th><th>Why Recreate?</th></tr>
+<tr><td>Database migration</td><td>Old code can't work with new schema</td></tr>
+<tr><td>Shared volume with lock</td><td>Two versions would corrupt data</td></tr>
+<tr><td>License restriction</td><td>Only 1 instance of the software allowed</td></tr>
+<tr><td>Dev/test environments</td><td>Speed matters more than uptime</td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S12: maxSurge/maxUnavail ═════════════ -->
+<section id="s12"><h2><span class="n">12</span> maxSurge &amp; maxUnavailable Deep Dive ▶</h2>
+<div class="W" id="w-mx"><div class="bar"><div class="tab on" data-i="0">Safest (1/0)</div><div class="tab" data-i="1">Default (25%/25%)</div><div class="tab" data-i="2">Fastest (100%/0)</div><div class="tab" data-i="3">Constrained (0/1)</div><div class="tab" data-i="4">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Safest: maxSurge=1, maxUnavailable=0</div>
+<pre><code><span class="k">maxSurge:</span> <span class="nm">1</span>
+<span class="k">maxUnavailable:</span> <span class="nm">0</span></code></pre>
+<div class="vis">replicas=4: During update → always 4 ready, max 5 total<br>Creates 1 new → waits for ready → kills 1 old → repeat<br><br><span style="color:var(--gn)">Zero capacity loss. Slowest but safest.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Default: maxSurge=25%, maxUnavailable=25%</div>
+<pre><code><span class="k">maxSurge:</span> <span class="s">25%</span>      <span class="cm"># replicas=4 → ceil(25%×4) = 1 extra</span>
+<span class="k">maxUnavailable:</span> <span class="s">25%</span> <span class="cm"># replicas=4 → floor(25%×4) = 1 can be down</span></code></pre>
+<div class="vis">replicas=4: max 5 total, min 3 ready<br>Can create 1 new AND kill 1 old simultaneously<br><br><span style="color:var(--yl)">Balanced speed and safety.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Fastest: maxSurge=100%, maxUnavailable=0</div>
+<pre><code><span class="k">maxSurge:</span> <span class="s">100%</span>
+<span class="k">maxUnavailable:</span> <span class="nm">0</span></code></pre>
+<div class="vis">replicas=3: creates 3 NEW Pods first (6 total!)<br>All new Pods ready → kills 3 old Pods<br><br><span style="color:var(--gn)">Fastest possible. Needs 2× cluster resources temporarily.</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">Constrained: maxSurge=0, maxUnavailable=1</div>
+<pre><code><span class="k">maxSurge:</span> <span class="nm">0</span>
+<span class="k">maxUnavailable:</span> <span class="nm">1</span></code></pre>
+<div class="vis">replicas=3: kills 1 old first → creates 1 new → wait → repeat<br>Max 3 total (no extra resources needed). Min 2 ready.<br><br><span style="color:var(--yl)">No extra resources. Some capacity loss (2/3 during update).</span></div></div>
+<div class="pnl" data-i="4">
+<table>
+<tr><th>Setting</th><th>Max total</th><th>Min ready</th><th>Speed</th><th>Resources</th></tr>
+<tr><td>1 / 0 (safest)</td><td>N+1</td><td>N</td><td>Slow</td><td>+1 Pod</td></tr>
+<tr><td>25% / 25% (default)</td><td>~N×1.25</td><td>~N×0.75</td><td>Medium</td><td>+25%</td></tr>
+<tr><td>100% / 0 (fastest)</td><td>N×2</td><td>N</td><td>Fast</td><td>+100%</td></tr>
+<tr><td>0 / 1 (constrained)</td><td>N</td><td>N-1</td><td>Slow</td><td>+0</td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 5</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═══════════════════════════════════ -->
+<!-- PATTERNS                            -->
+<!-- ═══════════════════════════════════ -->
+<section id="s13"><h2><span class="n">13</span> Blue/Green Deployment — Full Workflow ▶</h2>
+<div class="def"><b>Definition</b>Run two complete, identical environments: Blue (current, serving traffic) and Green (new, ready to go). Test Green. Switch ALL traffic instantly by changing Service selector. Rollback = switch back. Not built into Deployments — uses Service selector manipulation.</div>
+<div class="W" id="w-bg"><div class="bar"><div class="tab on" data-i="0">① Blue Live</div><div class="tab" data-i="1">② Deploy Green</div><div class="tab" data-i="2">③ Test Green</div><div class="tab" data-i="3">④ Switch Traffic</div><div class="tab" data-i="4">⑤ Verify</div><div class="tab" data-i="5">⑥ Rollback</div><div class="tab" data-i="6">Full YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">① Blue is live — serving all traffic</div>
+<div class="vis"><span class="bx svc">Service: web-svc (selector: version=blue)</span><br><span class="ar">└──→</span> <span class="bx dep">Deployment: blue (nginx:1.25, replicas:3)</span><br><span class="ar">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="bx v1">Pod</span><span class="bx v1">Pod</span><span class="bx v1">Pod</span> ← all traffic goes here</div></div>
+<div class="pnl" data-i="1"><div class="tl">② Deploy Green — runs in parallel, receives NO traffic</div>
+<div class="vis"><span class="bx svc">Service: web-svc (selector: version=blue)</span><br><span class="ar">└──→</span> <span class="bx dep">Blue (nginx:1.25, 3 Pods)</span> ← still serving<br><br><span class="bx dep">Green (nginx:1.26, 3 Pods)</span> ← running but NO traffic<br><span class="bx v2">Pod</span><span class="bx v2">Pod</span><span class="bx v2">Pod</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">③ Test Green in isolation</div>
+<pre><code><span class="cm"># Port-forward to a green Pod to test</span>
+kubectl port-forward deployment/green 8080:80
+<span class="cm"># curl localhost:8080 → verify new version works</span>
+
+<span class="cm"># Or create a temporary test Service</span>
+kubectl expose deployment green --name=green-test --port=80 --type=ClusterIP</code></pre></div>
+<div class="pnl" data-i="3"><div class="tl">④ Switch ALL traffic to Green — instant</div>
+<pre><code>kubectl patch svc web-svc -p '{"spec":{"selector":{"version":"green"}}}'</code></pre>
+<div class="vis"><span class="bx svc">Service: web-svc (selector: version=<strong>green</strong>)</span><br><span class="ar">└──→</span> <span class="bx dep">Green (nginx:1.26)</span> ← NOW serving all traffic<br><br><span class="bx dep">Blue (nginx:1.25)</span> ← still running, no traffic (standby for rollback)</div></div>
+<div class="pnl" data-i="4"><div class="tl">⑤ Verify — monitor errors</div>
+<pre><code><span class="cm"># Check endpoints switched</span>
+kubectl describe svc web-svc | grep Selector
+
+<span class="cm"># Monitor green Pod logs for errors</span>
+kubectl logs -l version=green -f
+
+<span class="cm"># If everything looks good after 30min → delete blue</span>
+kubectl delete deployment blue</code></pre></div>
+<div class="pnl" data-i="5"><div class="tl">⑥ Rollback — switch back to Blue (instant!)</div>
+<pre><code>kubectl patch svc web-svc -p '{"spec":{"selector":{"version":"blue"}}}'
+<span class="cm"># ALL traffic instantly goes back to blue (still running!)</span></code></pre></div>
+<div class="pnl" data-i="6"><div class="tl">Complete YAML</div>
+<pre><code><span class="cm"># blue-deployment.yaml</span>
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">blue</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+      <span class="k">version:</span> <span class="s">blue</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+        <span class="k">version:</span> <span class="s">blue</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+---
+<span class="cm"># green-deployment.yaml (same but version=green, image=1.26)</span>
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">green</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+      <span class="k">version:</span> <span class="s">green</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+        <span class="k">version:</span> <span class="s">green</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.26</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+---
+<span class="cm"># service.yaml — selector switches between blue/green</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">version:</span> <span class="s">blue</span>           <span class="cm"># ← change to "green" to switch</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 7</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S14: CANARY ═════════════ -->
+<section id="s14"><h2><span class="n">14</span> Canary Deployment — Full Workflow ▶</h2>
+<div class="def"><b>Definition</b>Send a small % of traffic to the new version. Monitor for errors. If healthy → gradually increase. If bad → kill canary, all traffic stays on stable. Named after canaries in coal mines — detects danger before it affects everyone.</div>
+<div class="W" id="w-can"><div class="bar"><div class="tab on" data-i="0">① Stable Running</div><div class="tab" data-i="1">② Deploy Canary</div><div class="tab" data-i="2">③ Traffic Split</div><div class="tab" data-i="3">④ Monitor</div><div class="tab" data-i="4">⑤ Promote</div><div class="tab" data-i="5">⑤b Rollback</div><div class="tab" data-i="6">Full YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">① Stable version running</div>
+<div class="vis"><span class="bx svc">Service: web-svc (selector: app=web)</span><br><span class="ar">└──→</span> <span class="bx dep">Stable (nginx:1.25, replicas:3)</span><br><span class="ar">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="bx v1">Pod</span><span class="bx v1">Pod</span><span class="bx v1">Pod</span> ← all traffic (100%)</div></div>
+<div class="pnl" data-i="1"><div class="tl">② Deploy canary (1 replica)</div>
+<div class="vis"><span class="bx svc">Service: web-svc (selector: app=web)</span><br><span class="ar">├──→</span> <span class="bx dep">Stable (1.25, 3 Pods)</span> <span class="bx v1">P</span><span class="bx v1">P</span><span class="bx v1">P</span><br><span class="ar">└──→</span> <span class="bx dep">Canary (1.26, 1 Pod)</span> <span class="bx v2">P</span><br><br><span style="color:var(--dm);font-size:10px">Both Deployments have label app=web. Service routes to ALL 4 Pods.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">③ Traffic split: ~75% stable, ~25% canary</div>
+<div class="vis"><span style="color:var(--dm)">4 Pods total behind Service. Load balanced round-robin:</span><br><br>Request 1 → <span class="bx v1">Stable Pod</span> (1.25)<br>Request 2 → <span class="bx v1">Stable Pod</span> (1.25)<br>Request 3 → <span class="bx v1">Stable Pod</span> (1.25)<br>Request 4 → <span class="bx v2">Canary Pod</span> (1.26) ← ~25% of traffic<br><br><span style="color:var(--dm);font-size:10px">Exact split depends on number of Pods: 3 stable + 1 canary = 75%/25%</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">④ Monitor canary health</div>
+<pre><code><span class="cm"># Watch canary logs</span>
+kubectl logs -l app=web,version=canary -f
+
+<span class="cm"># Compare error rates (if Prometheus):</span>
+<span class="cm"># rate(http_errors{version="canary"}[5m]) vs rate(http_errors{version="stable"}[5m])</span>
+
+<span class="cm"># Check canary Pod restarts</span>
+kubectl get pods -l version=canary</code></pre></div>
+<div class="pnl" data-i="4"><div class="tl">⑤a Promote — canary is healthy</div>
+<pre><code><span class="cm"># Gradually increase canary</span>
+kubectl scale deployment web-canary --replicas=2   <span class="cm"># 3+2 = 40% canary</span>
+kubectl scale deployment web-canary --replicas=3   <span class="cm"># 3+3 = 50% canary</span>
+
+<span class="cm"># Full promote: canary takes over</span>
+kubectl scale deployment web-stable --replicas=0
+kubectl scale deployment web-canary --replicas=3
+
+<span class="cm"># Clean up</span>
+kubectl delete deployment web-stable</code></pre></div>
+<div class="pnl" data-i="5"><div class="tl">⑤b Rollback — canary has errors</div>
+<pre><code><span class="cm"># Kill canary immediately — all traffic goes to stable</span>
+kubectl delete deployment web-canary
+
+<span class="cm"># 100% traffic back on stable. Instant recovery.</span></code></pre></div>
+<div class="pnl" data-i="6"><div class="tl">Complete YAML</div>
+<pre><code><span class="cm"># stable-deployment.yaml</span>
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-stable</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+      <span class="k">version:</span> <span class="s">stable</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+        <span class="k">version:</span> <span class="s">stable</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.25</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+---
+<span class="cm"># canary-deployment.yaml</span>
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-canary</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="nm">1</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+      <span class="k">version:</span> <span class="s">canary</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+        <span class="k">version:</span> <span class="s">canary</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx:1.26</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+---
+<span class="cm"># service.yaml — routes to BOTH via shared "app: web" label</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>               <span class="cm"># matches BOTH stable AND canary Pods</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 7</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S15: ROLLBACK ═════════════ -->
+<section id="s15"><h2><span class="n">15</span> Rollback ▶</h2>
+<div class="W" id="w-rb"><div class="bar"><div class="tab on" data-i="0">Undo previous</div><div class="tab" data-i="1">Undo to revision</div><div class="tab" data-i="2">Internal mechanism</div></div><div class="body">
+<div class="pnl on" data-i="0"><pre><code>kubectl rollout undo deployment/web-deploy</code></pre></div>
+<div class="pnl" data-i="1"><pre><code>kubectl rollout history deployment/web-deploy              <span class="cm"># see all revisions</span>
+kubectl rollout history deployment/web-deploy --revision=2 <span class="cm"># inspect one</span>
+kubectl rollout undo deployment/web-deploy --to-revision=1 <span class="cm"># rollback to it</span></code></pre></div>
+<div class="pnl" data-i="2"><div class="tl">What happens internally</div>
+<div class="vis"><strong>Current state (revision 3, nginx:1.27):</strong><br>
+<span class="bx rs">RS-1(0, 1.25)</span> <span class="bx rs">RS-2(0, 1.26)</span> <span class="bx rs">RS-3(3, 1.27) ← active</span><br><br>
+<strong>After <code>rollout undo --to-revision=1</code>:</strong><br>
+<span class="bx rs">RS-1(3, 1.25) ← scaled UP (rolling update)</span><br>
+<span class="bx rs">RS-2(0)</span> <span class="bx rs">RS-3(0) ← scaled DOWN</span><br><br>
+Same rolling update process — zero downtime.<br>
+Revision 1 becomes revision 4 (number always increases).</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S16: PAUSE/RESUME ═════════════ -->
+<section id="s16"><h2><span class="n">16</span> Pause &amp; Resume ▶</h2>
+<div class="W" id="w-pr"><div class="bar"><div class="tab on" data-i="0">Without Pause</div><div class="tab" data-i="1">With Pause</div><div class="tab" data-i="2">Commands</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><code>set image</code> → <span class="bx rs">RS-2</span> rollout starts<br><code>set env</code> → <span class="bx rs">RS-3</span> created, RS-2 <strong>abandoned mid-rollout!</strong><br><code>set resources</code> → <span class="bx rs">RS-4</span> created, RS-3 <strong>abandoned!</strong><br><br><span style="color:var(--rd)">3 RS. 3 partial rollouts. Messy.</span></div></div>
+<div class="pnl" data-i="1"><div class="vis"><code>pause</code> → <code>set image</code> + <code>set env</code> + <code>set resources</code> → <code>resume</code><br><br><span class="bx rs">RS-2 created with ALL 3 changes</span> → 1 clean rollout<br><span style="color:var(--gn)">1 RS. 1 rollout. Clean.</span></div></div>
+<div class="pnl" data-i="2"><pre><code>kubectl rollout pause deployment/web-deploy
+<span class="cm"># make multiple changes...</span>
+kubectl rollout resume deployment/web-deploy</code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S17: MONITORING ═════════════ -->
+<section id="s17"><h2><span class="n">17</span> Monitoring &amp; Best Practices</h2>
+<div class="c g"><div class="l">Always set readiness probes</div><p style="margin:0">Without them, rolling updates can't verify Pods are serving before killing old ones.</p></div>
+<div class="c b"><div class="l">Set maxSurge=1, maxUnavailable=0</div><p style="margin:0">Safest strategy. Never fewer than desired Pods serving.</p></div>
+<div class="c p"><div class="l">Use pause/resume for multi-field changes</div><p style="margin:0">Prevents unnecessary intermediate RS and partial rollouts.</p></div>
+<div class="c o"><div class="l">Annotate every change</div><p style="margin:0"><code>kubernetes.io/change-cause</code> makes rollout history meaningful.</p></div>
+<div class="c r"><div class="l">Stuck rollouts do NOT auto-rollback</div><p style="margin:0"><code>Progressing=False</code> is informational only. You must <code>rollout undo</code> manually.</p></div>
+<div class="sre"><div class="tag">SRE Wisdom</div><p style="margin:0">Every SRE should be able to: trigger a rollout, watch progress, diagnose a stuck rollout, and rollback — all in under 60 seconds. Practice until these commands are muscle memory.</p></div></section>
+
+<!-- ═════════════ S18: COMMANDS ═════════════ -->
+<section id="s18"><h2><span class="n">18</span> Command Reference</h2>
+<pre><code><span class="cm"># ══ CREATE ══</span>
+kubectl create deployment web --image=nginx:1.25 --replicas=3
+kubectl create deployment web --image=nginx --dry-run=client -o yaml > d.yaml
+
+<span class="cm"># ══ UPDATE (triggers rollout) ══</span>
+kubectl set image deployment/web nginx=nginx:1.26
+kubectl set env deployment/web LOG=debug
+kubectl set resources deployment/web -c nginx --limits=memory=256Mi
+kubectl apply -f deploy.yaml
+
+<span class="cm"># ══ DOES NOT TRIGGER ROLLOUT ══</span>
+kubectl scale deployment/web --replicas=5
+kubectl patch deployment/web -p '{"spec":{"minReadySeconds":10}}'
+
+<span class="cm"># ══ ROLLOUT ══</span>
+kubectl rollout status deployment/web
+kubectl rollout history deployment/web
+kubectl rollout undo deployment/web
+kubectl rollout undo deployment/web --to-revision=1
+kubectl rollout pause deployment/web
+kubectl rollout resume deployment/web
+kubectl rollout restart deployment/web</code></pre></section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>
