@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKAD DaemonSet Labs — Hands-On Exam Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#0891b2;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.8;font-size:14px}
+nav{position:fixed;top:0;left:0;width:252px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:12px 9px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:15px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2px 6px;border-radius:3px;color:var(--dm);text-decoration:none;font-size:9.5px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:6.5px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:8px 0 2px 6px;font-weight:700}
+main{margin-left:252px;max-width:1020px;padding:20px 34px 80px}
+.hero{text-align:center;padding:24px 0 16px}
+.hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:6px}
+.hero p{color:var(--dm);font-size:12px;max-width:640px;margin:0 auto}
+h2{font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:#fff;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--bd)}
+p{margin-bottom:5px;font-size:12.5px}strong{color:#eee}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;overflow-x:auto;margin:4px 0 7px;font-size:10px;line-height:1.45}
+code{font-family:'JetBrains Mono',monospace;font-size:9.5px}
+p code,li code,td code{background:var(--sf2);padding:1px 3px;border-radius:3px;color:var(--ac2)}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:11px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:4px 7px;font-size:8.5px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:4px 7px;border-bottom:1px solid var(--bd);vertical-align:top}
+.L{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.L .lh{padding:8px 11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.L .ln{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);font-weight:700;background:rgba(8,145,178,.1);padding:2px 6px;border-radius:3px;white-space:nowrap}
+.L .lt{font-size:13px;font-weight:700;color:#fff;flex:1}
+.L .lw{font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 6px;border-radius:8px;font-weight:600}
+.L .lw.w1{background:rgba(22,163,74,.12);color:var(--gn)}.L .lw.w2{background:rgba(8,145,178,.12);color:var(--ac)}.L .lw.w3{background:rgba(220,38,38,.12);color:var(--rd)}
+.L .task{padding:8px 11px;font-size:12px}
+.L .task ul{margin:2px 0 5px 14px}.L .task li{margin-bottom:2px;font-size:11.5px}
+.L .verify{background:rgba(14,164,114,.03);border-top:1px solid rgba(14,164,114,.06);padding:5px 11px;font-size:10.5px}
+.L .verify b{color:#0ea472;font-size:7.5px;text-transform:uppercase;letter-spacing:1px}
+.L .sol-btn{display:block;width:100%;padding:7px 11px;background:rgba(8,145,178,.04);border:none;border-top:1px solid var(--bd);color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;text-align:left;transition:.1s}
+.L .sol-btn:hover{background:rgba(8,145,178,.08)}
+.L .sol{display:none;padding:9px 11px;border-top:1px solid var(--bd)}
+.L.open .sol{display:block}
+.M{border:1px solid var(--bd);border-radius:7px;margin:6px 0;overflow:hidden}
+.M .mt{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.M .mb{padding:4px 9px;font-size:8.5px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:'JetBrains Mono',monospace;transition:.1s}
+.M .mb:hover{color:var(--tx);background:var(--sf2)}
+.M .mb.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(8,145,178,.04)}
+.M .mp{display:none;padding:8px 10px}.M .mp.on{display:block}
+.why{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.why b{color:var(--bl);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.trap{background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.trap b{color:var(--rd);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.best{background:rgba(22,163,74,.03);border:1px solid rgba(22,163,74,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.best b{color:var(--gn);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.vis{background:var(--cb);border:1px solid var(--bd);border-radius:6px;padding:10px;margin:5px 0;font-size:11.5px;line-height:1.6}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.nod{background:rgba(8,145,178,.1);color:var(--ac);border:1px solid rgba(8,145,178,.25)}
+.bx.ds{background:rgba(13,148,136,.1);color:var(--tl);border:1px solid rgba(13,148,136,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:11px}
+.sre{background:linear-gradient(135deg,rgba(8,145,178,.03),rgba(13,148,136,.02));border:1px solid rgba(8,145,178,.08);border-radius:var(--r);padding:7px 10px;margin:6px 0;font-size:11.5px}
+.sre .tag{display:inline-block;padding:1px 4px;border-radius:3px;background:rgba(8,145,178,.12);color:var(--ac);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:12px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ CKAD DS Labs</div>
+<div class="sub">Hands-On Practice</div>
+<div class="sl">Create &amp; Basics</div>
+<ul><li><a href="#L01">01 Create DaemonSet</a></li><li><a href="#L02">02 Exam Trick</a></li><li><a href="#L03">03 Inspect DS</a></li><li><a href="#L04">04 Verify One-Per-Node</a></li></ul>
+<div class="sl">Node Selection</div>
+<ul><li><a href="#L05">05 nodeSelector</a></li><li><a href="#L06">06 Remove Label</a></li><li><a href="#L07">07 Node Affinity</a></li></ul>
+<div class="sl">Tolerations</div>
+<ul><li><a href="#L08">08 Tolerate Control-Plane</a></li><li><a href="#L09">09 Tolerate ALL</a></li><li><a href="#L10">10 Custom Taint</a></li></ul>
+<div class="sl">Updates</div>
+<ul><li><a href="#L11">11 RollingUpdate</a></li><li><a href="#L12">12 OnDelete</a></li><li><a href="#L13">13 Rollback</a></li></ul>
+<div class="sl">Lifecycle</div>
+<ul><li><a href="#L14">14 New Node Added</a></li><li><a href="#L15">15 Node Drain</a></li></ul>
+<div class="sl">Host Access</div>
+<ul><li><a href="#L16">16 hostPath Volume</a></li><li><a href="#L17">17 hostNetwork</a></li></ul>
+<div class="sl">Troubleshooting</div>
+<ul><li><a href="#L18">18 Fix DS Not on Node</a></li><li><a href="#L19">19 Fix DS Wrong Image</a></li><li><a href="#L20">20 Fix Pending Pods</a></li></ul>
+<div class="sl">Scenarios</div>
+<ul><li><a href="#L21">21 Log Collector</a></li><li><a href="#L22">22 Monitoring Agent</a></li><li><a href="#L23">23 GPU-Only DS</a></li><li><a href="#L24">24 System DaemonSets</a></li><li><a href="#L25">25 Full Production</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>CKAD DaemonSet Labs</h1><p>25 hands-on tasks covering create, node selection, tolerations, updates, host access, and troubleshooting. Every solution shows the exam trick + YAML + multiple methods.</p></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Create &amp; Basics</h2>
+
+<div class="L" id="L01"><div class="lh"><span class="ln">LAB 01</span><div class="lt">Create a DaemonSet (YAML)</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create DaemonSet <code>log-agent</code> with image <code>fluentd:v1.16</code> in namespace <code>default</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get ds log-agent</code> → DESIRED = number of nodes, READY = same</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">log-agent</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">log-agent</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">log-agent</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">fluentd</span>
+        <span class="k">image:</span> <span class="s">fluentd:v1.16</span></code></pre>
+<pre><code>kubectl apply -f ds.yaml</code></pre>
+<div class="trap"><b>No imperative create</b>There is NO <code>kubectl create daemonset</code> command. You MUST use YAML. But see Lab 02 for the fast exam trick.</div>
+</div></div>
+
+<div class="L" id="L02"><div class="lh"><span class="ln">LAB 02</span><div class="lt">Exam Trick — Create DS from Deployment Skeleton</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Create DaemonSet <code>monitor</code> with image <code>prom/node-exporter</code> using the fastest exam method.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Generate Deployment YAML skeleton</span>
+kubectl create deployment monitor --image=prom/node-exporter --dry-run=client -o yaml > ds.yaml
+
+<span class="cm"># Step 2: Edit ds.yaml — change 3 things:</span>
+<span class="cm"># ① kind: Deployment → kind: DaemonSet</span>
+<span class="cm"># ② Remove spec.replicas line</span>
+<span class="cm"># ③ Remove spec.strategy section (DaemonSets use updateStrategy)</span>
+
+<span class="cm"># Step 3: Apply</span>
+kubectl apply -f ds.yaml</code></pre>
+<div class="best"><b>30-second method</b>Generate → change kind → remove replicas → remove strategy → apply. This is the fastest way to create DaemonSets on the CKAD exam. Memorize it.</div>
+</div></div>
+
+<div class="L" id="L03"><div class="lh"><span class="ln">LAB 03</span><div class="lt">Inspect DaemonSet — Extract Information</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Extract: desired/current/ready counts, which node each Pod runs on, update strategy, and image.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Overview (DESIRED, CURRENT, READY, UP-TO-DATE, AVAILABLE)</span>
+kubectl get ds log-agent
+
+<span class="cm"># Which node each Pod runs on</span>
+kubectl get pods -l app=log-agent -o wide
+<span class="cm"># NODE column shows the node for each Pod</span>
+
+<span class="cm"># Image</span>
+kubectl get ds log-agent -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+<span class="cm"># Update strategy</span>
+kubectl get ds log-agent -o jsonpath='{.spec.updateStrategy.type}'
+
+<span class="cm"># Node selector (if any)</span>
+kubectl get ds log-agent -o jsonpath='{.spec.template.spec.nodeSelector}'
+
+<span class="cm"># Full details + events</span>
+kubectl describe ds log-agent</code></pre>
+</div></div>
+
+<div class="L" id="L04"><div class="lh"><span class="ln">LAB 04</span><div class="lt">Verify One Pod Per Node</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Prove DaemonSet <code>log-agent</code> has exactly one Pod on each worker node. No node has 0 or 2 Pods.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># List Pods with their nodes</span>
+kubectl get pods -l app=log-agent -o wide
+
+<span class="cm"># Count: DESIRED should equal number of eligible nodes</span>
+kubectl get ds log-agent
+<span class="cm"># DESIRED   CURRENT   READY</span>
+<span class="cm"># 3         3         3       ← 3 worker nodes = 3 Pods</span>
+
+<span class="cm"># Verify no node has 0 or 2 Pods</span>
+kubectl get pods -l app=log-agent -o jsonpath='{range .items[*]}{.spec.nodeName}{"\n"}{end}' | sort | uniq -c
+<span class="cm"># 1 node-1</span>
+<span class="cm"># 1 node-2</span>
+<span class="cm"># 1 node-3   ← exactly 1 Pod per node ✓</span></code></pre>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Node Selection</h2>
+
+<div class="L" id="L05"><div class="lh"><span class="ln">LAB 05</span><div class="lt">nodeSelector — Run Only on Labeled Nodes</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Label <code>node01</code> with <code>disk=ssd</code>. Create DaemonSet <code>ssd-monitor</code> that only runs on nodes with <code>disk=ssd</code>.</p></div>
+<div class="verify"><b>Verify: </b>Pod only exists on node01, not on other nodes</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Label the node</span>
+kubectl label node node01 disk=ssd</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">ssd-monitor</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">ssd-monitor</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">ssd-monitor</span>
+    <span class="k">spec:</span>
+      <span class="k">nodeSelector:</span>
+        <span class="k">disk:</span> <span class="s">ssd</span>               <span class="cm"># Only nodes with this label</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">monitor</span>
+        <span class="k">image:</span> <span class="s">busybox</span>
+        <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"while true; do echo SSD check; sleep 60; done"</span>]</code></pre>
+<pre><code><span class="cm"># Verify: Pod only on node01</span>
+kubectl get pods -l app=ssd-monitor -o wide
+<span class="cm"># ssd-monitor-xxx   Running   node01   ← only on labeled node</span>
+
+kubectl get ds ssd-monitor
+<span class="cm"># DESIRED=1 (only 1 node matches)</span></code></pre>
+</div></div>
+
+<div class="L" id="L06"><div class="lh"><span class="ln">LAB 06</span><div class="lt">Dynamic — Add/Remove Labels</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>DaemonSet <code>ssd-monitor</code> uses <code>nodeSelector: disk=ssd</code>. Add the label to another node. Observe: Pod auto-appears. Remove the label. Observe: Pod auto-disappears.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Add label to node02 → Pod should auto-appear</span>
+kubectl label node node02 disk=ssd
+
+kubectl get pods -l app=ssd-monitor -o wide
+<span class="cm"># ssd-monitor-xxx   Running   node01</span>
+<span class="cm"># ssd-monitor-yyy   Running   node02   ← new Pod appeared!</span>
+
+kubectl get ds ssd-monitor
+<span class="cm"># DESIRED=2 (now 2 nodes match)</span>
+
+<span class="cm"># Remove label from node02 → Pod should auto-disappear</span>
+kubectl label node node02 disk-
+
+kubectl get pods -l app=ssd-monitor -o wide
+<span class="cm"># ssd-monitor-xxx   Running   node01   ← only 1 Pod again</span>
+
+kubectl get ds ssd-monitor
+<span class="cm"># DESIRED=1</span></code></pre>
+<div class="why"><b>Key</b>DaemonSet controller constantly reconciles. Add matching label → Pod created. Remove label → Pod deleted. No manual intervention needed. This is how you dynamically control which nodes run the DaemonSet.</div>
+</div></div>
+
+<div class="L" id="L07"><div class="lh"><span class="ln">LAB 07</span><div class="lt">Node Affinity — Advanced Selection</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Create DaemonSet <code>zone-agent</code> that runs ONLY on nodes where label <code>topology.kubernetes.io/zone</code> is either <code>us-east-1a</code> or <code>us-east-1b</code>.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">zone-agent</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">zone-agent</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">zone-agent</span>
+    <span class="k">spec:</span>
+      <span class="k">affinity:</span>
+        <span class="k">nodeAffinity:</span>
+          <span class="k">requiredDuringSchedulingIgnoredDuringExecution:</span>
+            <span class="k">nodeSelectorTerms:</span>
+            - <span class="k">matchExpressions:</span>
+              - <span class="k">key:</span> <span class="s">topology.kubernetes.io/zone</span>
+                <span class="k">operator:</span> <span class="v">In</span>
+                <span class="k">values:</span>
+                - <span class="s">us-east-1a</span>
+                - <span class="s">us-east-1b</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">agent</span>
+        <span class="k">image:</span> <span class="s">busybox</span>
+        <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"while true; do echo zone check; sleep 60; done"</span>]</code></pre>
+<div class="why"><b>nodeSelector vs nodeAffinity</b><code>nodeSelector</code> is simple key=value. <code>nodeAffinity</code> supports operators: <code>In</code>, <code>NotIn</code>, <code>Exists</code>, <code>DoesNotExist</code>, <code>Gt</code>, <code>Lt</code>. Use affinity when you need "OR" logic (multiple values) or "NOT" logic.</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Tolerations</h2>
+
+<div class="L" id="L08"><div class="lh"><span class="ln">LAB 08</span><div class="lt">Tolerate Control-Plane — Run on Master Nodes</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create DaemonSet <code>all-nodes-agent</code> that runs on ALL nodes including the control-plane.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get pods -l app=all-nodes-agent -o wide</code> shows Pods on control-plane too</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">all-nodes-agent</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">all-nodes-agent</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">all-nodes-agent</span>
+    <span class="k">spec:</span>
+      <span class="k">tolerations:</span>
+      - <span class="k">key:</span> <span class="s">node-role.kubernetes.io/control-plane</span>
+        <span class="k">operator:</span> <span class="v">Exists</span>
+        <span class="k">effect:</span> <span class="v">NoSchedule</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">agent</span>
+        <span class="k">image:</span> <span class="s">busybox</span>
+        <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"while true; do echo running on $(hostname); sleep 60; done"</span>]</code></pre>
+<pre><code>kubectl get pods -l app=all-nodes-agent -o wide
+<span class="cm"># Pod on controlplane ✓</span>
+<span class="cm"># Pod on node01 ✓</span>
+<span class="cm"># Pod on node02 ✓</span></code></pre>
+<div class="trap"><b>Why needed</b>Control-plane nodes have taint <code>node-role.kubernetes.io/control-plane:NoSchedule</code>. Without this toleration, DaemonSet Pods skip the control-plane.</div>
+</div></div>
+
+<div class="L" id="L09"><div class="lh"><span class="ln">LAB 09</span><div class="lt">Tolerate ALL Taints — Run Everywhere</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create DaemonSet <code>infra-agent</code> that tolerates ALL taints — runs on every node regardless of any taint.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>      <span class="k">tolerations:</span>
+      - <span class="k">operator:</span> <span class="v">Exists</span>          <span class="cm"># No key/value/effect = match EVERYTHING</span></code></pre>
+<div class="vis">This single toleration matches ANY taint on any node:<br>
+<span class="bx nod">control-plane (tainted)</span> <span class="ar">→</span> <span class="bx run">Pod ✓</span><br>
+<span class="bx nod">gpu-node (tainted)</span> <span class="ar">→</span> <span class="bx run">Pod ✓</span><br>
+<span class="bx nod">unhealthy (tainted)</span> <span class="ar">→</span> <span class="bx run">Pod ✓</span><br>
+<span class="bx nod">worker (no taint)</span> <span class="ar">→</span> <span class="bx run">Pod ✓</span></div>
+<div class="why"><b>Use for</b>Critical infrastructure like CNI plugins (Calico, Cilium), kube-proxy, and log agents that MUST run on every single node to function.</div>
+</div></div>
+
+<div class="L" id="L10"><div class="lh"><span class="ln">LAB 10</span><div class="lt">Custom Taint + Toleration</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Taint <code>node01</code> with <code>dedicated=gpu:NoSchedule</code>. Create DaemonSet <code>gpu-driver</code> that tolerates this taint AND uses nodeSelector <code>dedicated=gpu</code>.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Apply taint</span>
+kubectl taint node node01 dedicated=gpu:NoSchedule</code></pre>
+<pre><code><span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">nodeSelector:</span>
+        <span class="k">dedicated:</span> <span class="s">gpu</span>
+      <span class="k">tolerations:</span>
+      - <span class="k">key:</span> <span class="s">dedicated</span>
+        <span class="k">operator:</span> <span class="v">Equal</span>
+        <span class="k">value:</span> <span class="s">gpu</span>
+        <span class="k">effect:</span> <span class="v">NoSchedule</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">gpu-driver</span>
+        <span class="k">image:</span> <span class="s">nvidia/driver:latest</span></code></pre>
+<div class="trap"><b>Both needed</b><code>nodeSelector</code> = which nodes to target. <code>toleration</code> = permission to run on tainted nodes. You need BOTH: the selector says "go to GPU nodes" and the toleration says "I'm allowed on tainted GPU nodes."</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Updates</h2>
+
+<div class="L" id="L11"><div class="lh"><span class="ln">LAB 11</span><div class="lt">RollingUpdate — Update Image</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Update DaemonSet <code>log-agent</code> from <code>fluentd:v1.16</code> to <code>fluentd:v1.17</code>. Watch the rolling update node by node.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="11" data-i="0">set image</div><div class="mb" data-g="11" data-i="1">Apply YAML</div></div>
+<div class="mp on" data-g="11" data-i="0">
+<pre><code>kubectl set image ds/log-agent fluentd=fluentd:v1.17
+
+<span class="cm"># Watch rollout</span>
+kubectl rollout status ds/log-agent</code></pre></div>
+<div class="mp" data-g="11" data-i="1">
+<pre><code><span class="cm"># Edit YAML: image: fluentd:v1.16 → fluentd:v1.17</span>
+kubectl apply -f ds.yaml</code></pre></div></div>
+<div class="vis"><strong>RollingUpdate (default, maxUnavailable=1):</strong><br>
+<span class="bx nod">N1</span>: <span class="bx ded">kill old</span> → <span class="bx run">new v1.17 ✓</span><br>
+<span class="ar">then →</span> <span class="bx nod">N2</span>: <span class="bx ded">kill old</span> → <span class="bx run">new v1.17 ✓</span><br>
+<span class="ar">then →</span> <span class="bx nod">N3</span>: <span class="bx ded">kill old</span> → <span class="bx run">new v1.17 ✓</span></div>
+</div></div>
+
+<div class="L" id="L12"><div class="lh"><span class="ln">LAB 12</span><div class="lt">OnDelete Update Strategy</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Set <code>log-agent</code> to <code>OnDelete</code> strategy. Update the image. Verify: Pods NOT replaced until you manually delete them.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Change strategy to OnDelete</span>
+kubectl patch ds log-agent -p '{"spec":{"updateStrategy":{"type":"OnDelete"}}}'
+
+<span class="cm"># Update image</span>
+kubectl set image ds/log-agent fluentd=fluentd:v1.18
+
+<span class="cm"># Check — ALL Pods still on old image!</span>
+kubectl get pods -l app=log-agent -o jsonpath='{range .items[*]}{.spec.nodeName}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
+<span class="cm"># node01   fluentd:v1.17   ← still old!</span>
+<span class="cm"># node02   fluentd:v1.17</span>
+
+<span class="cm"># Manually delete Pod on node01 → recreated with new image</span>
+kubectl delete pod $(kubectl get pods -l app=log-agent --field-selector spec.nodeName=node01 -o name)
+
+<span class="cm"># Verify node01 updated</span>
+kubectl get pods -l app=log-agent -o wide
+<span class="cm"># node01 now running fluentd:v1.18 ✓</span></code></pre>
+</div></div>
+
+<div class="L" id="L13"><div class="lh"><span class="ln">LAB 13</span><div class="lt">Rollback a DaemonSet Update</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>DaemonSet <code>log-agent</code> was updated to a bad image. Rollback to the previous version.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># View history</span>
+kubectl rollout history ds/log-agent
+
+<span class="cm"># Rollback to previous</span>
+kubectl rollout undo ds/log-agent
+
+<span class="cm"># Rollback to specific revision</span>
+kubectl rollout undo ds/log-agent --to-revision=1
+
+<span class="cm"># Watch</span>
+kubectl rollout status ds/log-agent</code></pre>
+<div class="why"><b>Same as Deployments</b>DaemonSets support <code>rollout status</code>, <code>rollout history</code>, <code>rollout undo</code>, and <code>rollout undo --to-revision=N</code> — identical commands to Deployments.</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Lifecycle</h2>
+
+<div class="L" id="L14"><div class="lh"><span class="ln">LAB 14</span><div class="lt">New Node Added — Pod Auto-Created</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>DaemonSet <code>log-agent</code> runs on all nodes. A new node joins. Verify: a Pod is automatically created on the new node.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Check current state</span>
+kubectl get ds log-agent
+<span class="cm"># DESIRED=2 (2 nodes)</span>
+
+<span class="cm"># Simulate: add a new node (in minikube)</span>
+<span class="cm"># minikube node add</span>
+
+<span class="cm"># Or if a new node already joined, just check:</span>
+kubectl get ds log-agent
+<span class="cm"># DESIRED=3 (now 3 nodes!) ← auto-increased</span>
+
+kubectl get pods -l app=log-agent -o wide
+<span class="cm"># New Pod automatically running on the new node ✓</span></code></pre>
+<div class="vis"><strong>Before:</strong> 2 nodes → 2 Pods<br>
+<strong>New node joins:</strong><br>
+→ DS controller detects new node<br>
+→ Creates Pod on new node automatically<br>
+<strong>After:</strong> 3 nodes → 3 Pods ✓</div>
+</div></div>
+
+<div class="L" id="L15"><div class="lh"><span class="ln">LAB 15</span><div class="lt">Node Drain — DaemonSet Pod Stays</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Drain <code>node01</code> for maintenance. Prove DaemonSet Pods are NOT evicted (they stay on the node).</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Drain the node (must ignore DaemonSets!)</span>
+kubectl drain node01 --ignore-daemonsets --delete-emptydir-data
+
+<span class="cm"># Check: DaemonSet Pod STILL on node01</span>
+kubectl get pods -l app=log-agent -o wide
+<span class="cm"># log-agent-xxx   Running   node01   ← still there!</span>
+
+<span class="cm"># Deployment Pods were evicted to other nodes</span>
+
+<span class="cm"># Uncordon after maintenance</span>
+kubectl uncordon node01</code></pre>
+<div class="trap"><b>--ignore-daemonsets is required</b>Without this flag, <code>kubectl drain</code> fails because it can't evict DaemonSet Pods. DaemonSet Pods are infrastructure — they should keep running during maintenance.</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Host Access</h2>
+
+<div class="L" id="L16"><div class="lh"><span class="ln">LAB 16</span><div class="lt">hostPath — Mount Node's /var/log</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create DaemonSet <code>log-reader</code> that mounts the node's <code>/var/log</code> directory (read-only) and lists its contents.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">log-reader</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">log-reader</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">log-reader</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">reader</span>
+        <span class="k">image:</span> <span class="s">busybox</span>
+        <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"ls /host-logs && sleep 3600"</span>]
+        <span class="k">volumeMounts:</span>
+        - <span class="k">name:</span> <span class="s">varlog</span>
+          <span class="k">mountPath:</span> <span class="s">/host-logs</span>
+          <span class="k">readOnly:</span> <span class="v">true</span>
+      <span class="k">volumes:</span>
+      - <span class="k">name:</span> <span class="s">varlog</span>
+        <span class="k">hostPath:</span>
+          <span class="k">path:</span> <span class="s">/var/log</span></code></pre>
+<pre><code><span class="cm"># Verify: see the node's log files from inside the Pod</span>
+kubectl exec log-reader-xxx -- ls /host-logs</code></pre>
+</div></div>
+
+<div class="L" id="L17"><div class="lh"><span class="ln">LAB 17</span><div class="lt">hostNetwork — Use Node's Network Stack</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Create DaemonSet <code>net-agent</code> that uses the host's network namespace. Verify: Pod sees node's IP, not Pod IP.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>      <span class="k">spec:</span>
+        <span class="k">hostNetwork:</span> <span class="v">true</span>            <span class="cm"># Use node's network</span>
+        <span class="k">containers:</span>
+        - <span class="k">name:</span> <span class="s">net</span>
+          <span class="k">image:</span> <span class="s">busybox</span>
+          <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"hostname -i && sleep 3600"</span>]</code></pre>
+<pre><code><span class="cm"># Verify: Pod IP = Node IP (not 10.244.x.x Pod network)</span>
+kubectl exec net-agent-xxx -- hostname -i
+<span class="cm"># 192.168.1.10  ← node's IP, not Pod IP</span></code></pre>
+<div class="trap"><b>Security</b><code>hostNetwork: true</code> gives the Pod access to the node's full network stack (all ports, interfaces). Only use for network plugins (CNI), monitoring agents, or trusted infrastructure.</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Troubleshooting</h2>
+
+<div class="L" id="L18"><div class="lh"><span class="ln">LAB 18</span><div class="lt">Fix — DS Not Running on a Specific Node</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>DaemonSet <code>log-agent</code> runs on node01 and node02 but NOT on node03. Diagnose and fix.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Check if node03 has a taint</span>
+kubectl describe node node03 | grep Taints
+<span class="cm"># Taints: dedicated=special:NoSchedule</span>
+
+<span class="cm"># Step 2: Check if DS has matching toleration</span>
+kubectl get ds log-agent -o jsonpath='{.spec.template.spec.tolerations}'
+<span class="cm"># [] — no tolerations!</span>
+
+<span class="cm"># Step 3: Fix — add toleration</span>
+kubectl patch ds log-agent --type=json -p='[{"op":"add","path":"/spec/template/spec/tolerations","value":[{"key":"dedicated","operator":"Equal","value":"special","effect":"NoSchedule"}]}]'
+
+<span class="cm"># OR: could also be a nodeSelector/affinity issue</span>
+<span class="cm"># Step 1b: Check if DS has nodeSelector that excludes node03</span>
+kubectl get ds log-agent -o jsonpath='{.spec.template.spec.nodeSelector}'
+
+<span class="cm"># Step 2b: Check node03 labels</span>
+kubectl get node node03 --show-labels</code></pre>
+<div class="vis"><strong>3 reasons a DS Pod is missing from a node:</strong><br>
+① Node has a <strong>taint</strong> that DS doesn't tolerate → add toleration<br>
+② DS has <strong>nodeSelector</strong> and node doesn't have matching label → add label<br>
+③ Node is <strong>cordoned</strong> (<code>kubectl cordon</code>) → uncordon it</div>
+</div></div>
+
+<div class="L" id="L19"><div class="lh"><span class="ln">LAB 19</span><div class="lt">Fix — DaemonSet Wrong Image (Stuck Pods)</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>DaemonSet <code>log-agent</code> was updated to a nonexistent image. Pods are in ImagePullBackOff. Fix it.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Diagnose</span>
+kubectl get pods -l app=log-agent
+<span class="cm"># ImagePullBackOff on some/all nodes</span>
+
+<span class="cm"># Fix A: Set correct image</span>
+kubectl set image ds/log-agent fluentd=fluentd:v1.16
+
+<span class="cm"># Fix B: Rollback</span>
+kubectl rollout undo ds/log-agent
+
+<span class="cm"># Watch recovery</span>
+kubectl rollout status ds/log-agent</code></pre>
+</div></div>
+
+<div class="L" id="L20"><div class="lh"><span class="ln">LAB 20</span><div class="lt">Fix — DS Pod Pending (Insufficient Resources)</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>DaemonSet Pod is Pending on one node. Diagnose why.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Find the Pending Pod</span>
+kubectl get pods -l app=log-agent -o wide | grep Pending
+
+<span class="cm"># Check events</span>
+kubectl describe pod <pending-pod-name> | tail -10
+<span class="cm"># Possible reasons:</span>
+<span class="cm"># - Insufficient cpu/memory on that node</span>
+<span class="cm"># - Node has taint DS doesn't tolerate</span>
+<span class="cm"># - PVC can't be bound</span>
+
+<span class="cm"># Fix A: Reduce resource requests in DS</span>
+kubectl edit ds log-agent
+<span class="cm"># Lower cpu/memory requests</span>
+
+<span class="cm"># Fix B: Free resources on the node</span>
+<span class="cm"># Delete other Pods or evict low-priority workloads</span>
+
+<span class="cm"># Fix C: Add priorityClassName to ensure DS Pod wins scheduling</span>
+<span class="cm"># priorityClassName: system-node-critical</span></code></pre>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Real-World Scenarios</h2>
+
+<div class="L" id="L21"><div class="lh"><span class="ln">LAB 21</span><div class="lt">Log Collector DaemonSet with hostPath</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create DaemonSet <code>filebeat</code> that mounts <code>/var/log</code> and <code>/var/lib/docker/containers</code> from each node (read-only).</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">filebeat</span>
+<span class="k">spec:</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">filebeat</span> }
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span> { <span class="k">app:</span> <span class="s">filebeat</span> }
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">filebeat</span>
+        <span class="k">image:</span> <span class="s">elastic/filebeat:8.10.0</span>
+        <span class="k">volumeMounts:</span>
+        - { <span class="k">name:</span> <span class="s">varlog</span>, <span class="k">mountPath:</span> <span class="s">/var/log</span>, <span class="k">readOnly:</span> <span class="v">true</span> }
+        - { <span class="k">name:</span> <span class="s">containers</span>, <span class="k">mountPath:</span> <span class="s">/var/lib/docker/containers</span>, <span class="k">readOnly:</span> <span class="v">true</span> }
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"100m"</span>, <span class="k">memory:</span> <span class="s">"128Mi"</span> }
+          <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"200m"</span>, <span class="k">memory:</span> <span class="s">"256Mi"</span> }
+      <span class="k">volumes:</span>
+      - <span class="k">name:</span> <span class="s">varlog</span>
+        <span class="k">hostPath:</span> { <span class="k">path:</span> <span class="s">/var/log</span> }
+      - <span class="k">name:</span> <span class="s">containers</span>
+        <span class="k">hostPath:</span> { <span class="k">path:</span> <span class="s">/var/lib/docker/containers</span> }</code></pre>
+</div></div>
+
+<div class="L" id="L22"><div class="lh"><span class="ln">LAB 22</span><div class="lt">Monitoring Agent with Priority</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create DaemonSet <code>node-exporter</code> with <code>priorityClassName: system-node-critical</code> so it's never evicted under resource pressure.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>      <span class="k">spec:</span>
+        <span class="k">priorityClassName:</span> <span class="s">system-node-critical</span>   <span class="cm"># Never evicted</span>
+        <span class="k">tolerations:</span>
+        - <span class="k">operator:</span> <span class="v">Exists</span>                        <span class="cm"># Run everywhere</span>
+        <span class="k">containers:</span>
+        - <span class="k">name:</span> <span class="s">exporter</span>
+          <span class="k">image:</span> <span class="s">prom/node-exporter:v1.7.0</span>
+          <span class="k">ports:</span>
+          - { <span class="k">containerPort:</span> <span class="nm">9100</span> }
+          <span class="k">resources:</span>
+            <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"50m"</span>, <span class="k">memory:</span> <span class="s">"64Mi"</span> }</code></pre>
+<div class="why"><b>Why priority?</b>If a node runs out of resources, the kubelet evicts low-priority Pods first. <code>system-node-critical</code> (priority 2000001000) ensures your monitoring agent is the LAST thing evicted — you never want to lose visibility into a node that's under resource pressure.</div>
+</div></div>
+
+<div class="L" id="L23"><div class="lh"><span class="ln">LAB 23</span><div class="lt">GPU-Only DaemonSet</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create DaemonSet <code>gpu-plugin</code> that runs ONLY on GPU nodes (label <code>accelerator=nvidia</code>, taint <code>nvidia.com/gpu=:NoSchedule</code>).</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Label and taint GPU nodes</span>
+kubectl label node node01 accelerator=nvidia
+kubectl taint node node01 nvidia.com/gpu=:NoSchedule</code></pre>
+<pre><code><span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">nodeSelector:</span>
+        <span class="k">accelerator:</span> <span class="s">nvidia</span>
+      <span class="k">tolerations:</span>
+      - <span class="k">key:</span> <span class="s">nvidia.com/gpu</span>
+        <span class="k">operator:</span> <span class="v">Exists</span>
+        <span class="k">effect:</span> <span class="v">NoSchedule</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">gpu-plugin</span>
+        <span class="k">image:</span> <span class="s">nvidia/k8s-device-plugin:v0.14.0</span></code></pre>
+</div></div>
+
+<div class="L" id="L24"><div class="lh"><span class="ln">LAB 24</span><div class="lt">Explore System DaemonSets</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>List all DaemonSets in the <code>kube-system</code> namespace. Identify kube-proxy and the CNI plugin.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl get ds -n kube-system
+
+<span class="cm"># Typical output:</span>
+<span class="cm"># NAME          DESIRED   CURRENT   READY</span>
+<span class="cm"># kube-proxy    3         3         3      ← network proxy on every node</span>
+<span class="cm"># calico-node   3         3         3      ← CNI plugin (or flannel, cilium, etc.)</span>
+
+<span class="cm"># Inspect kube-proxy</span>
+kubectl describe ds kube-proxy -n kube-system
+
+<span class="cm"># Check its tolerations (usually tolerates everything)</span>
+kubectl get ds kube-proxy -n kube-system -o jsonpath='{.spec.template.spec.tolerations}'</code></pre>
+<div class="why"><b>Learning from system DaemonSets</b>Inspect <code>kube-proxy</code> — it's a perfect example of a production DaemonSet: tolerates all taints, has <code>system-node-critical</code> priority, uses <code>hostNetwork: true</code>, and mounts host paths.</div>
+</div></div>
+
+<div class="L" id="L25"><div class="lh"><span class="ln">LAB 25</span><div class="lt">Full Production DaemonSet</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Create production DaemonSet in namespace <code>monitoring</code>:</p>
+<ul>
+<li>Name: <code>node-monitor</code>, image: <code>prom/node-exporter:v1.7.0</code>, port 9100</li>
+<li>Runs on ALL nodes including control-plane</li>
+<li>Priority: <code>system-node-critical</code></li>
+<li>Resources: cpu 50m/100m, memory 64Mi/128Mi</li>
+<li>Mount <code>/proc</code> (read-only) and <code>/sys</code> (read-only) from node</li>
+<li>RollingUpdate with maxUnavailable=1</li>
+</ul></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create namespace monitoring</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">node-monitor</span>
+  <span class="k">namespace:</span> <span class="s">monitoring</span>
+<span class="k">spec:</span>
+  <span class="k">updateStrategy:</span>
+    <span class="k">type:</span> <span class="v">RollingUpdate</span>
+    <span class="k">rollingUpdate:</span>
+      <span class="k">maxUnavailable:</span> <span class="nm">1</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">node-monitor</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">node-monitor</span>
+    <span class="k">spec:</span>
+      <span class="k">priorityClassName:</span> <span class="s">system-node-critical</span>
+      <span class="k">tolerations:</span>
+      - <span class="k">operator:</span> <span class="v">Exists</span>          <span class="cm"># Run on ALL nodes (including tainted)</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">exporter</span>
+        <span class="k">image:</span> <span class="s">prom/node-exporter:v1.7.0</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">9100</span>
+          <span class="k">name:</span> <span class="s">metrics</span>
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"50m"</span>, <span class="k">memory:</span> <span class="s">"64Mi"</span> }
+          <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"100m"</span>, <span class="k">memory:</span> <span class="s">"128Mi"</span> }
+        <span class="k">volumeMounts:</span>
+        - { <span class="k">name:</span> <span class="s">proc</span>, <span class="k">mountPath:</span> <span class="s">/host/proc</span>, <span class="k">readOnly:</span> <span class="v">true</span> }
+        - { <span class="k">name:</span> <span class="s">sys</span>, <span class="k">mountPath:</span> <span class="s">/host/sys</span>, <span class="k">readOnly:</span> <span class="v">true</span> }
+      <span class="k">volumes:</span>
+      - <span class="k">name:</span> <span class="s">proc</span>
+        <span class="k">hostPath:</span> { <span class="k">path:</span> <span class="s">/proc</span> }
+      - <span class="k">name:</span> <span class="s">sys</span>
+        <span class="k">hostPath:</span> { <span class="k">path:</span> <span class="s">/sys</span> }</code></pre>
+<pre><code>kubectl apply -f node-monitor.yaml
+
+<span class="cm"># Verify — Pods on ALL nodes including control-plane</span>
+kubectl -n monitoring get pods -l app=node-monitor -o wide</code></pre>
+</div></div>
+
+<div class="sre" style="margin-top:16px"><div class="tag">Key Takeaways</div><p style="margin:0"><strong>1.</strong> No imperative create — use the Deployment trick (change kind, remove replicas + strategy). <strong>2.</strong> No <code>replicas</code> field — Pod count = number of matching nodes. <strong>3.</strong> <code>nodeSelector</code> limits which nodes get Pods. Add/remove labels dynamically controls Pod placement. <strong>4.</strong> <code>tolerations</code> allow Pods on tainted nodes. <code>operator: Exists</code> (no key) tolerates ALL taints. <strong>5.</strong> Control-plane needs explicit toleration for <code>node-role.kubernetes.io/control-plane:NoSchedule</code>. <strong>6.</strong> <code>updateStrategy</code> (not <code>strategy</code>!): RollingUpdate (default, node by node) or OnDelete (manual). <strong>7.</strong> <code>kubectl drain</code> requires <code>--ignore-daemonsets</code>. <strong>8.</strong> <code>hostPath</code> mounts node's filesystem into Pod. <strong>9.</strong> <code>priorityClassName: system-node-critical</code> prevents eviction. <strong>10.</strong> Explore <code>kubectl get ds -n kube-system</code> to learn from real system DaemonSets.</p></div>
+
+</main>
+
+<script>
+document.querySelectorAll('.sol-btn').forEach(btn=>{btn.addEventListener('click',function(){const L=this.parentElement;L.classList.toggle('open');this.textContent=L.classList.contains('open')?'▲ Hide Solution':'▶ Show Solution'})});
+document.querySelectorAll('.M .mb').forEach(tab=>{tab.addEventListener('click',function(){const g=this.dataset.g,i=this.dataset.i;document.querySelectorAll('.mb[data-g="'+g+'"]').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.mp[data-g="'+g+'"]').forEach(p=>p.classList.remove('on'));this.classList.add('on');document.querySelector('.mp[data-g="'+g+'"][data-i="'+i+'"]').classList.add('on')})});
+</script>
+</body>
+</html>

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes DaemonSets — Complete Deep-Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#0891b2;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1010px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(8,145,178,.06) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:38px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(8,145,178,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(8,145,178,.03);border:1px solid rgba(8,145,178,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(8,145,178,.03),rgba(13,148,136,.02));border:1px solid rgba(8,145,178,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(8,145,178,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:8px 12px;margin:5px 0 8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.42;color:#6d7b90;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(8,145,178,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(8,145,178,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:11px;margin:7px 0;min-height:40px;font-size:12px;line-height:1.7}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.nod{background:rgba(8,145,178,.1);color:var(--ac);border:1px solid rgba(8,145,178,.25)}
+.bx.ds{background:rgba(13,148,136,.1);color:var(--tl);border:1px solid rgba(13,148,136,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:12px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ K8s DaemonSets</div>
+<div class="sub">Complete Deep-Dive</div>
+<div class="sl">Fundamentals</div>
+<ul><li><a href="#s01">What &amp; Why</a></li><li><a href="#s02">How It Works ▶</a></li><li><a href="#s03">DS vs Deployment</a></li></ul>
+<div class="sl">YAML &amp; Create</div>
+<ul><li><a href="#s04">Full YAML</a></li><li><a href="#s05">Create ▶</a></li></ul>
+<div class="sl">Node Selection</div>
+<ul><li><a href="#s06">All Nodes (default) ▶</a></li><li><a href="#s07">nodeSelector ▶</a></li><li><a href="#s08">Node Affinity ▶</a></li><li><a href="#s09">Tolerations ▶</a></li></ul>
+<div class="sl">Updates</div>
+<ul><li><a href="#s10">RollingUpdate ▶</a></li><li><a href="#s11">OnDelete ▶</a></li></ul>
+<div class="sl">Lifecycle</div>
+<ul><li><a href="#s12">Node Added/Removed ▶</a></li><li><a href="#s13">Pod Eviction ▶</a></li></ul>
+<div class="sl">Advanced</div>
+<ul><li><a href="#s14">hostNetwork / hostPID</a></li><li><a href="#s15">Priority &amp; Preemption</a></li></ul>
+<div class="sl">SRE</div>
+<ul><li><a href="#s16">Monitoring</a></li><li><a href="#s17">Commands</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Kubernetes DaemonSets</h1><p>The complete guide — one Pod per node, node selection, tolerations, rolling updates, and SRE operations. Interactive step-by-step workflows.</p></div>
+
+<!-- ═════════════ S01 ═════════════ -->
+<section id="s01"><h2><span class="n">01</span> What Is a DaemonSet &amp; Why?</h2>
+<div class="def"><b>Definition — DaemonSet</b>A DaemonSet ensures that <strong>exactly one copy of a Pod runs on every node</strong> (or a subset of nodes) in the cluster. When a new node is added, the DaemonSet automatically places a Pod on it. When a node is removed, the Pod is garbage collected. It's the workload controller for <strong>node-level infrastructure</strong>.</div>
+
+<div class="def"><b>Definition — One Pod Per Node</b>Unlike Deployments (which run N Pods wherever the scheduler decides), a DaemonSet ties Pods to nodes: <strong>1 node = 1 Pod</strong>. You don't set <code>replicas</code> — the number of Pods equals the number of matching nodes.</div>
+
+<table>
+<tr><th>Use Case</th><th>Example</th><th>Why DaemonSet?</th></tr>
+<tr><td>Log collection</td><td>Fluentd, Filebeat, Fluent Bit</td><td>Must collect logs from every node</td></tr>
+<tr><td>Monitoring agent</td><td>Prometheus Node Exporter, Datadog</td><td>Must scrape metrics from every node</td></tr>
+<tr><td>Network plugin</td><td>Calico, Cilium, Flannel, Weave</td><td>CNI must run on every node for networking</td></tr>
+<tr><td>Storage plugin</td><td>Ceph, GlusterFS, Longhorn</td><td>CSI must run on every node for volumes</td></tr>
+<tr><td>Security agent</td><td>Falco, Sysdig, Aqua</td><td>Must audit every node</td></tr>
+<tr><td>Node maintenance</td><td>kured (reboot daemon)</td><td>Must be present on every node to handle reboots</td></tr>
+<tr><td>GPU driver</td><td>NVIDIA device plugin</td><td>Must install driver on every GPU node</td></tr>
+</table>
+
+<div class="c g"><div class="l">Analogy</div><p style="margin:0">A Deployment is a <strong>pizza delivery service</strong> — you order 3 pizzas, they go wherever. A DaemonSet is a <strong>fire alarm system</strong> — exactly one alarm on every floor (node). Add a new floor? It automatically gets an alarm. Remove a floor? The alarm goes with it.</p></div>
+</section>
+
+<!-- ═════════════ S02 ═════════════ -->
+<section id="s02"><h2><span class="n">02</span> How It Works ▶</h2>
+<div class="W" id="w-how"><div class="bar"><div class="tab on" data-i="0">Architecture</div><div class="tab" data-i="1">Scheduling</div><div class="tab" data-i="2">No replicas field</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">One Pod per node — automatic</div>
+<div class="vis"><span class="bx ds">DaemonSet: log-agent</span><br><br>
+<span class="bx nod">Node-1</span> <span class="ar">→</span> <span class="bx run">log-agent-abc12</span><br>
+<span class="bx nod">Node-2</span> <span class="ar">→</span> <span class="bx run">log-agent-def34</span><br>
+<span class="bx nod">Node-3</span> <span class="ar">→</span> <span class="bx run">log-agent-ghi56</span><br>
+<span class="bx nod">Node-4 (new)</span> <span class="ar">→</span> <span class="bx run">log-agent-jkl78</span> ← auto-placed!<br><br>
+<span style="color:var(--gn);font-size:11px">4 nodes = 4 Pods. Always. Automatically.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">How Pods are scheduled on nodes</div>
+<div class="vis"><strong>Before v1.12:</strong> DaemonSet controller placed Pods directly (bypassed scheduler).<br><br>
+<strong>v1.12+ (current):</strong> DaemonSet controller creates Pods with <code>nodeAffinity</code> targeting each node. The <strong>default scheduler</strong> schedules them. This means DaemonSet Pods respect taints, tolerations, node affinity, and priority — just like any other Pod.</div>
+<div class="ds">The DaemonSet controller watches nodes. For each eligible node, it ensures exactly one Pod exists. If a Pod is missing, it creates one. If an extra Pod exists, it deletes it.</div></div>
+<div class="pnl" data-i="2"><div class="tl">No replicas field — nodes determine Pod count</div>
+<div class="vis"><strong>Deployment:</strong> <code>replicas: 3</code> → always 3 Pods<br>
+<strong>DaemonSet:</strong> No <code>replicas</code> field → Pods = number of matching nodes<br><br>
+3 nodes → 3 Pods<br>
+Add 2 nodes → 5 Pods<br>
+Remove 1 node → 4 Pods<br><br>
+<span style="color:var(--dm);font-size:10px">You never set a Pod count. It's always "one per node" (or "one per matching node" if using nodeSelector/affinity).</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S03 ═════════════ -->
+<section id="s03"><h2><span class="n">03</span> DaemonSet vs Deployment vs StatefulSet</h2>
+<table>
+<tr><th></th><th>Deployment</th><th>DaemonSet</th><th>StatefulSet</th></tr>
+<tr><td><strong>Pod count</strong></td><td><code>replicas: N</code></td><td>1 per matching node</td><td><code>replicas: N</code></td></tr>
+<tr><td><strong>Scheduling</strong></td><td>Wherever scheduler decides</td><td><span class="bg gn">Every node</span> (or subset)</td><td>Wherever scheduler decides</td></tr>
+<tr><td><strong>Pod names</strong></td><td>Random hash</td><td>Random hash</td><td>Ordered (pod-0, pod-1)</td></tr>
+<tr><td><strong>Scaling</strong></td><td>Change replicas</td><td>Add/remove nodes</td><td>Change replicas</td></tr>
+<tr><td><strong>Update</strong></td><td>RollingUpdate / Recreate</td><td>RollingUpdate / OnDelete</td><td>RollingUpdate / OnDelete</td></tr>
+<tr><td><strong>Storage</strong></td><td>Shared or ephemeral</td><td>Usually hostPath or emptyDir</td><td>Dedicated PVC per Pod</td></tr>
+<tr><td><strong>Use for</strong></td><td>Stateless apps</td><td>Node-level infra</td><td>Stateful apps</td></tr>
+</table>
+</section>
+
+<!-- ═════════════ S04 ═════════════ -->
+<section id="s04"><h2><span class="n">04</span> Full DaemonSet YAML — Every Field Explained</h2>
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">DaemonSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">log-agent</span>
+  <span class="k">namespace:</span> <span class="s">kube-system</span>            <span class="cm"># Infra DaemonSets often go here</span>
+  <span class="k">labels:</span>
+    <span class="k">app:</span> <span class="s">log-agent</span>
+<span class="k">spec:</span>
+  <span class="cm"># NO replicas field! Pod count = number of matching nodes</span>
+
+  <span class="k">updateStrategy:</span>
+    <span class="k">type:</span> <span class="v">RollingUpdate</span>              <span class="cm"># RollingUpdate (default) or OnDelete</span>
+    <span class="k">rollingUpdate:</span>
+      <span class="k">maxUnavailable:</span> <span class="nm">1</span>             <span class="cm"># Max Pods that can be down during update</span>
+      <span class="k">maxSurge:</span> <span class="nm">0</span>                   <span class="cm"># Extra Pods allowed (v1.22+)</span>
+
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">log-agent</span>
+
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">log-agent</span>
+    <span class="k">spec:</span>
+      <span class="k">tolerations:</span>                    <span class="cm"># Tolerate master/control-plane taints</span>
+      - <span class="k">key:</span> <span class="s">node-role.kubernetes.io/control-plane</span>
+        <span class="k">effect:</span> <span class="v">NoSchedule</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">fluentd</span>
+        <span class="k">image:</span> <span class="s">fluentd:v1.16</span>
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"100m"</span>, <span class="k">memory:</span> <span class="s">"200Mi"</span> }
+          <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"200m"</span>, <span class="k">memory:</span> <span class="s">"400Mi"</span> }
+        <span class="k">volumeMounts:</span>
+        - <span class="k">name:</span> <span class="s">varlog</span>
+          <span class="k">mountPath:</span> <span class="s">/var/log</span>
+          <span class="k">readOnly:</span> <span class="v">true</span>
+      <span class="k">volumes:</span>
+      - <span class="k">name:</span> <span class="s">varlog</span>
+        <span class="k">hostPath:</span>                     <span class="cm"># Mount node's /var/log into Pod</span>
+          <span class="k">path:</span> <span class="s">/var/log</span></code></pre>
+
+<div class="def"><b>Key Differences from Deployment YAML</b>① No <code>replicas</code> field. ② <code>updateStrategy</code> instead of <code>strategy</code>. ③ Usually includes <code>tolerations</code> (to run on tainted nodes like control-plane). ④ Often uses <code>hostPath</code> volumes (to access node-level files like <code>/var/log</code>).</div>
+</section>
+
+<!-- ═════════════ S05 ═════════════ -->
+<section id="s05"><h2><span class="n">05</span> Creating a DaemonSet ▶</h2>
+<div class="W" id="w-create"><div class="bar"><div class="tab on" data-i="0">YAML</div><div class="tab" data-i="1">Trick: from Deployment</div><div class="tab" data-i="2">What happens</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<pre><code>kubectl apply -f daemonset.yaml</code></pre>
+<div class="trap"><b>No imperative create</b>There is NO <code>kubectl create daemonset</code> command. You must use YAML. But there's a fast exam trick — see next tab.</div></div>
+<div class="pnl" data-i="1"><div class="tl">Exam Trick — Generate from Deployment, change kind</div>
+<pre><code><span class="cm"># Step 1: Generate Deployment YAML</span>
+kubectl create deployment log-agent --image=fluentd:v1.16 --dry-run=client -o yaml > ds.yaml
+
+<span class="cm"># Step 2: Edit ds.yaml:</span>
+<span class="cm"># - Change kind: Deployment → kind: DaemonSet</span>
+<span class="cm"># - Remove spec.replicas (DaemonSets don't have replicas)</span>
+<span class="cm"># - Remove spec.strategy (DaemonSets use updateStrategy)</span>
+
+<span class="cm"># Step 3: Apply</span>
+kubectl apply -f ds.yaml</code></pre>
+<div class="best"><b>Fastest exam method</b>Generate Deployment skeleton → change 3 things (kind, remove replicas, remove strategy) → apply. Takes 30 seconds.</div></div>
+<div class="pnl" data-i="2"><div class="tl">What happens after creation</div>
+<div class="vis">① <span class="bx ds">DaemonSet created</span><br>
+② Controller lists all eligible nodes<br>
+③ For each node → creates a Pod with <code>nodeAffinity</code> targeting that node<br>
+④ Scheduler places each Pod on its target node<br><br>
+<span class="bx nod">Node-1</span> → <span class="bx run">log-agent-abc</span> scheduled<br>
+<span class="bx nod">Node-2</span> → <span class="bx run">log-agent-def</span> scheduled<br>
+<span class="bx nod">Node-3</span> → <span class="bx run">log-agent-ghi</span> scheduled</div>
+<div class="T">$ kubectl get ds log-agent
+NAME        DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+log-agent   3         3         3       3            3           &lt;none&gt;          30s
+
+$ kubectl get pods -l app=log-agent -o wide
+NAME              READY   STATUS    NODE
+log-agent-abc12   1/1     Running   node-1
+log-agent-def34   1/1     Running   node-2
+log-agent-ghi56   1/1     Running   node-3</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S06 ═════════════ -->
+<section id="s06"><h2><span class="n">06</span> Default: Runs on All Nodes ▶</h2>
+<div class="W" id="w-all"><div class="bar"><div class="tab on" data-i="0">All worker nodes</div><div class="tab" data-i="1">Why not control-plane?</div><div class="tab" data-i="2">Include control-plane</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Default — Pods on all worker nodes</div>
+<div class="vis"><span class="bx nod">control-plane</span> <span style="color:var(--rd)">✗ no Pod (tainted)</span><br>
+<span class="bx nod">worker-1</span> <span class="ar">→</span> <span class="bx run">log-agent Pod</span><br>
+<span class="bx nod">worker-2</span> <span class="ar">→</span> <span class="bx run">log-agent Pod</span><br>
+<span class="bx nod">worker-3</span> <span class="ar">→</span> <span class="bx run">log-agent Pod</span></div>
+<div class="ds">By default, DaemonSet Pods run on all nodes EXCEPT those with taints that the Pod doesn't tolerate. Control-plane nodes typically have <code>node-role.kubernetes.io/control-plane:NoSchedule</code> taint, so DaemonSet Pods don't run there unless you add a matching toleration.</div></div>
+<div class="pnl" data-i="1"><div class="tl">Why not on control-plane?</div>
+<div class="vis"><strong>Control-plane node has taint:</strong><br>
+<code>node-role.kubernetes.io/control-plane:NoSchedule</code><br><br>
+This taint prevents ALL Pods from being scheduled there (unless they tolerate it). This protects the control-plane from workload interference.<br><br>
+<span style="color:var(--dm);font-size:10px">Some DaemonSets SHOULD run on control-plane (logging, monitoring, CNI). You must add a toleration.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Add toleration to run on control-plane too</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">tolerations:</span>
+      - <span class="k">key:</span> <span class="s">node-role.kubernetes.io/control-plane</span>
+        <span class="k">effect:</span> <span class="v">NoSchedule</span>
+      <span class="cm"># OR tolerate ALL taints (run EVERYWHERE):</span>
+      - <span class="k">operator:</span> <span class="v">Exists</span></code></pre>
+<div class="vis"><strong>With toleration:</strong><br>
+<span class="bx nod">control-plane</span> <span class="ar">→</span> <span class="bx run">log-agent Pod</span> ← now runs here too!<br>
+<span class="bx nod">worker-1</span> <span class="ar">→</span> <span class="bx run">log-agent Pod</span><br>
+<span class="bx nod">worker-2</span> <span class="ar">→</span> <span class="bx run">log-agent Pod</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S07 ═════════════ -->
+<section id="s07"><h2><span class="n">07</span> nodeSelector — Run on Specific Nodes ▶</h2>
+<div class="def"><b>Definition — nodeSelector</b>The simplest way to restrict a DaemonSet to specific nodes. The DaemonSet only creates Pods on nodes that have ALL the specified labels. Simple key-value matching — no operators or complex logic.</div>
+<div class="W" id="w-ns"><div class="bar"><div class="tab on" data-i="0">Example</div><div class="tab" data-i="1">YAML</div><div class="tab" data-i="2">Label nodes</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span class="bx ds">DaemonSet: gpu-driver (nodeSelector: gpu=true)</span><br><br>
+<span class="bx nod">node-1 (gpu=true)</span> <span class="ar">→</span> <span class="bx run">gpu-driver Pod ✓</span><br>
+<span class="bx nod">node-2 (no gpu label)</span> <span style="color:var(--rd)">✗ no Pod</span><br>
+<span class="bx nod">node-3 (gpu=true)</span> <span class="ar">→</span> <span class="bx run">gpu-driver Pod ✓</span><br>
+<span class="bx nod">node-4 (no gpu label)</span> <span style="color:var(--rd)">✗ no Pod</span><br><br>
+<span style="color:var(--gn);font-size:10px">Only 2 Pods (on GPU nodes). Not all nodes.</span></div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">nodeSelector:</span>
+        <span class="k">gpu:</span> <span class="s">"true"</span>          <span class="cm"># Only nodes with this label</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">gpu-driver</span>
+        <span class="k">image:</span> <span class="s">nvidia/driver:latest</span></code></pre></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="cm"># Label a node</span>
+kubectl label node node-1 gpu=true
+
+<span class="cm"># Verify</span>
+kubectl get nodes --show-labels | grep gpu
+
+<span class="cm"># Remove label (DaemonSet Pod will be removed from this node)</span>
+kubectl label node node-1 gpu-</code></pre>
+<div class="why"><b>Dynamic</b>If you add the <code>gpu=true</code> label to a new node, the DaemonSet automatically creates a Pod on it. If you remove the label, the Pod is removed. The DaemonSet controller constantly reconciles.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S08 ═════════════ -->
+<section id="s08"><h2><span class="n">08</span> Node Affinity — Advanced Node Selection ▶</h2>
+<div class="def"><b>Definition</b>More powerful than nodeSelector. Supports operators (In, NotIn, Exists, DoesNotExist, Gt, Lt) and soft preferences (preferred vs required). Use when nodeSelector isn't flexible enough.</div>
+<div class="W" id="w-aff"><div class="bar"><div class="tab on" data-i="0">Required (hard)</div><div class="tab" data-i="1">Preferred (soft)</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">requiredDuringSchedulingIgnoredDuringExecution</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">affinity:</span>
+        <span class="k">nodeAffinity:</span>
+          <span class="k">requiredDuringSchedulingIgnoredDuringExecution:</span>
+            <span class="k">nodeSelectorTerms:</span>
+            - <span class="k">matchExpressions:</span>
+              - <span class="k">key:</span> <span class="s">disk-type</span>
+                <span class="k">operator:</span> <span class="v">In</span>
+                <span class="k">values:</span> [<span class="s">"ssd"</span>, <span class="s">"nvme"</span>]</code></pre>
+<div class="ds">Pod only runs on nodes where <code>disk-type</code> is <code>ssd</code> OR <code>nvme</code>. Hard requirement — no match, no Pod.</div></div>
+<div class="pnl" data-i="1"><div class="tl">preferredDuringSchedulingIgnoredDuringExecution</div>
+<pre><code>          <span class="k">preferredDuringSchedulingIgnoredDuringExecution:</span>
+          - <span class="k">weight:</span> <span class="nm">1</span>
+            <span class="k">preference:</span>
+              <span class="k">matchExpressions:</span>
+              - <span class="k">key:</span> <span class="s">zone</span>
+                <span class="k">operator:</span> <span class="v">In</span>
+                <span class="k">values:</span> [<span class="s">"us-east-1a"</span>]</code></pre>
+<div class="ds">Prefer nodes in <code>us-east-1a</code>, but run elsewhere if needed. Soft preference — best effort.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S09 ═════════════ -->
+<section id="s09"><h2><span class="n">09</span> Tolerations — Run on Tainted Nodes ▶</h2>
+<div class="def"><b>Definition — Taints &amp; Tolerations</b>Nodes can have <strong>taints</strong> that repel Pods. Pods need <strong>tolerations</strong> to be scheduled on tainted nodes. DaemonSets often need tolerations because infrastructure Pods must run everywhere — even on tainted nodes like control-plane or dedicated GPU nodes.</div>
+<div class="W" id="w-tol"><div class="bar"><div class="tab on" data-i="0">Common taints</div><div class="tab" data-i="1">Tolerate specific</div><div class="tab" data-i="2">Tolerate ALL</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Common taints you'll encounter</div>
+<table>
+<tr><th>Taint</th><th>On</th><th>Meaning</th></tr>
+<tr><td><code>node-role.kubernetes.io/control-plane:NoSchedule</code></td><td>Control-plane</td><td>No workloads on master</td></tr>
+<tr><td><code>node.kubernetes.io/not-ready:NoExecute</code></td><td>Unhealthy nodes</td><td>Evict Pods from failing node</td></tr>
+<tr><td><code>node.kubernetes.io/unreachable:NoExecute</code></td><td>Unreachable nodes</td><td>Evict when node can't be contacted</td></tr>
+<tr><td><code>node.kubernetes.io/disk-pressure:NoSchedule</code></td><td>Low disk nodes</td><td>Don't schedule new Pods</td></tr>
+<tr><td><code>dedicated=gpu:NoSchedule</code></td><td>GPU nodes</td><td>Only GPU workloads allowed</td></tr>
+</table></div>
+<div class="pnl" data-i="1"><div class="tl">Tolerate a specific taint</div>
+<pre><code><span class="k">tolerations:</span>
+<span class="cm"># Tolerate control-plane</span>
+- <span class="k">key:</span> <span class="s">node-role.kubernetes.io/control-plane</span>
+  <span class="k">operator:</span> <span class="v">Exists</span>
+  <span class="k">effect:</span> <span class="v">NoSchedule</span>
+
+<span class="cm"># Tolerate GPU dedicated nodes</span>
+- <span class="k">key:</span> <span class="s">dedicated</span>
+  <span class="k">operator:</span> <span class="v">Equal</span>
+  <span class="k">value:</span> <span class="s">"gpu"</span>
+  <span class="k">effect:</span> <span class="v">NoSchedule</span></code></pre></div>
+<div class="pnl" data-i="2"><div class="tl">Tolerate ALL taints — run absolutely everywhere</div>
+<pre><code><span class="k">tolerations:</span>
+- <span class="k">operator:</span> <span class="v">Exists</span>             <span class="cm"># Match ANY taint key</span>
+  <span class="cm"># No key, no value, no effect = tolerate everything</span></code></pre>
+<div class="vis"><span class="bx nod">control-plane (tainted)</span> <span class="ar">→</span> <span class="bx run">Pod ✓</span><br>
+<span class="bx nod">gpu-node (tainted)</span> <span class="ar">→</span> <span class="bx run">Pod ✓</span><br>
+<span class="bx nod">worker-1</span> <span class="ar">→</span> <span class="bx run">Pod ✓</span><br>
+<span class="bx nod">unhealthy-node (tainted)</span> <span class="ar">→</span> <span class="bx run">Pod ✓</span><br><br>
+<span style="color:var(--yl);font-size:10px">Use for critical infrastructure: CNI plugins, kube-proxy, log agents that MUST run on every node regardless of taints.</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S10 ═════════════ -->
+<section id="s10"><h2><span class="n">10</span> RollingUpdate Strategy ▶</h2>
+<div class="def"><b>Definition</b>Default update strategy. Updates Pods one node at a time. On each node: old Pod is killed, new Pod is created. Controlled by <code>maxUnavailable</code> (how many nodes can have their Pod down simultaneously) and <code>maxSurge</code> (extra Pods allowed during update, v1.22+).</div>
+<div class="W" id="w-roll"><div class="bar"><div class="tab on" data-i="0">Flow</div><div class="tab" data-i="1">maxUnavailable</div><div class="tab" data-i="2">maxSurge</div><div class="tab" data-i="3">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Rolling Update — node by node</div>
+<div class="vis"><span style="color:var(--dm)">Update fluentd:v1.16 → v1.17 (3 nodes, maxUnavail=1):</span><br><br>
+<strong>T=0:</strong> <span class="bx nod">N1</span>:<span class="bx run">v1.16</span> | <span class="bx nod">N2</span>:<span class="bx run">v1.16</span> | <span class="bx nod">N3</span>:<span class="bx run">v1.16</span><br>
+<strong>T=1:</strong> <span class="bx nod">N1</span>:<span class="bx ded">kill</span>→<span class="bx run">v1.17✓</span> | <span class="bx nod">N2</span>:<span class="bx run">v1.16</span> | <span class="bx nod">N3</span>:<span class="bx run">v1.16</span><br>
+<strong>T=2:</strong> <span class="bx nod">N1</span>:<span class="bx run">v1.17</span> | <span class="bx nod">N2</span>:<span class="bx ded">kill</span>→<span class="bx run">v1.17✓</span> | <span class="bx nod">N3</span>:<span class="bx run">v1.16</span><br>
+<strong>T=3:</strong> <span class="bx nod">N1</span>:<span class="bx run">v1.17</span> | <span class="bx nod">N2</span>:<span class="bx run">v1.17</span> | <span class="bx nod">N3</span>:<span class="bx ded">kill</span>→<span class="bx run">v1.17✓</span><br><br>
+<span style="color:var(--gn)">Done. All nodes on v1.17.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">maxUnavailable — how many nodes can be down</div>
+<table>
+<tr><th>maxUnavailable</th><th>Behavior (10 nodes)</th><th>Speed</th></tr>
+<tr><td><code>1</code> (default)</td><td>1 node updated at a time</td><td>Slowest, safest</td></tr>
+<tr><td><code>3</code></td><td>3 nodes updated simultaneously</td><td>Faster</td></tr>
+<tr><td><code>25%</code></td><td>25% of nodes (= 2-3 nodes)</td><td>Scaled</td></tr>
+<tr><td><code>100%</code></td><td>ALL nodes at once (like Recreate)</td><td>Fastest, risky</td></tr>
+</table></div>
+<div class="pnl" data-i="2"><div class="tl">maxSurge (v1.22+) — create new BEFORE killing old</div>
+<pre><code><span class="k">maxSurge:</span> <span class="nm">1</span>          <span class="cm"># Create new Pod first, then kill old</span>
+<span class="k">maxUnavailable:</span> <span class="nm">0</span>    <span class="cm"># Zero downtime on each node</span></code></pre>
+<div class="vis"><strong>Without maxSurge:</strong> kill old → gap (no Pod) → create new<br>
+<strong>With maxSurge=1:</strong> create new → new ready → kill old → <span style="color:var(--gn)">no gap!</span><br><br>
+<span style="color:var(--dm);font-size:10px">Temporarily 2 DaemonSet Pods on one node. Requires node to have capacity.</span></div></div>
+<div class="pnl" data-i="3">
+<pre><code><span class="k">spec:</span>
+  <span class="k">updateStrategy:</span>
+    <span class="k">type:</span> <span class="v">RollingUpdate</span>
+    <span class="k">rollingUpdate:</span>
+      <span class="k">maxUnavailable:</span> <span class="nm">1</span>    <span class="cm"># 1 node at a time</span>
+      <span class="k">maxSurge:</span> <span class="nm">0</span>           <span class="cm"># No extra Pods (default)</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S11 ═════════════ -->
+<section id="s11"><h2><span class="n">11</span> OnDelete Strategy ▶</h2>
+<div class="def"><b>Definition</b>Template is updated but Pods are NOT automatically replaced. You must <strong>manually delete</strong> each Pod. When deleted, the DaemonSet controller recreates it with the new template. Full manual control over update timing — one node at a time, at your pace.</div>
+<div class="W" id="w-ondel"><div class="bar"><div class="tab on" data-i="0">Flow</div><div class="tab" data-i="1">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span style="color:var(--dm)">Update template (fluentd v1.16 → v1.17) with OnDelete:</span><br><br>
+<span class="bx nod">N1</span>:<span class="bx run">v1.16</span> | <span class="bx nod">N2</span>:<span class="bx run">v1.16</span> | <span class="bx nod">N3</span>:<span class="bx run">v1.16</span> ← nothing happens!<br><br>
+<code>kubectl delete pod &lt;pod-on-N1&gt;</code> → <span class="bx nod">N1</span>:<span class="bx run">v1.17</span> ← updated<br>
+<span style="color:var(--dm)">...verify N1 is healthy...</span><br>
+<code>kubectl delete pod &lt;pod-on-N2&gt;</code> → <span class="bx nod">N2</span>:<span class="bx run">v1.17</span><br>
+<code>kubectl delete pod &lt;pod-on-N3&gt;</code> → <span class="bx nod">N3</span>:<span class="bx run">v1.17</span></div></div>
+<div class="pnl" data-i="1"><pre><code><span class="k">updateStrategy:</span>
+  <span class="k">type:</span> <span class="v">OnDelete</span></code></pre>
+<div class="sre"><div class="tag">SRE Use Case</div><p style="margin:0">Use OnDelete for critical node-level infrastructure (CNI, kube-proxy) where you want to verify each node after update before proceeding. A bad CNI update can take down all networking on a node.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S12 ═════════════ -->
+<section id="s12"><h2><span class="n">12</span> Node Added / Removed ▶</h2>
+<div class="W" id="w-node"><div class="bar"><div class="tab on" data-i="0">Node added</div><div class="tab" data-i="1">Node removed</div><div class="tab" data-i="2">Label added/removed</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">New node joins the cluster</div>
+<div class="vis"><strong>Before:</strong> 3 nodes, 3 DaemonSet Pods<br>
+<strong>Event:</strong> node-4 joins cluster<br>
+<strong>After:</strong> DaemonSet controller detects new node → <span class="bx run">Pod auto-created on node-4</span><br><br>
+<span style="color:var(--gn);font-size:10px">Automatic. No manual action needed. New node immediately gets the DaemonSet Pod.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Node removed from cluster</div>
+<div class="vis"><strong>Before:</strong> 4 nodes, 4 Pods<br>
+<strong>Event:</strong> node-4 removed (kubectl delete node / drain / shutdown)<br>
+<strong>After:</strong> Pod on node-4 is garbage collected<br><br>
+<span style="color:var(--dm);font-size:10px">Automatic cleanup. DaemonSet Pods = number of nodes. Always.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Label added/removed (with nodeSelector)</div>
+<div class="vis"><span class="bx ds">DaemonSet (nodeSelector: gpu=true)</span><br><br>
+<code>kubectl label node node-3 gpu=true</code><br>
+→ <span class="bx run">Pod automatically created on node-3</span><br><br>
+<code>kubectl label node node-3 gpu-</code><br>
+→ <span class="bx ded">Pod automatically removed from node-3</span><br><br>
+<span style="color:var(--gn);font-size:10px">DaemonSet controller constantly reconciles: matching labels → Pod exists. No match → Pod removed.</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S13 ═════════════ -->
+<section id="s13"><h2><span class="n">13</span> Pod Eviction &amp; Node Drain ▶</h2>
+<div class="def"><b>Definition — kubectl drain</b>Safely evicts all Pods from a node (for maintenance). DaemonSet Pods are <strong>NOT evicted by default</strong> because they're infrastructure — you must add <code>--ignore-daemonsets</code> flag. Even then, the DaemonSet Pod is only removed when the node is actually deleted.</div>
+<div class="W" id="w-drain"><div class="bar"><div class="tab on" data-i="0">Drain behavior</div><div class="tab" data-i="1">Commands</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><code>kubectl drain node-2 --ignore-daemonsets</code><br><br>
+<strong>Deployment Pods:</strong> evicted → rescheduled to other nodes<br>
+<strong>DaemonSet Pods:</strong> <span style="color:var(--gn)">STAY on the node</span> (ignored by drain)<br><br>
+<span style="color:var(--dm);font-size:10px">DaemonSet Pods are infrastructure. They should keep running even during maintenance — they're collecting the node's final logs, monitoring its health, etc.</span></div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="cm"># Drain node (ignoring DaemonSet Pods)</span>
+kubectl drain node-2 --ignore-daemonsets --delete-emptydir-data
+
+<span class="cm"># Uncordon node (allow scheduling again)</span>
+kubectl uncordon node-2</code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S14 ═════════════ -->
+<section id="s14"><h2><span class="n">14</span> hostNetwork, hostPID, hostPath</h2>
+<div class="def"><b>Why DaemonSets often need host-level access</b>DaemonSet Pods are infrastructure agents that need to interact with the node directly. They often need: <code>hostNetwork</code> (use node's network stack), <code>hostPID</code> (see node's processes), <code>hostPath</code> (read node's files like <code>/var/log</code>).</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">hostNetwork:</span> <span class="v">true</span>       <span class="cm"># Use node's network (for network plugins)</span>
+      <span class="k">hostPID:</span> <span class="v">true</span>           <span class="cm"># See node's processes (for security agents)</span>
+      <span class="k">volumes:</span>
+      - <span class="k">name:</span> <span class="s">varlog</span>
+        <span class="k">hostPath:</span>             <span class="cm"># Mount node's filesystem (for log collectors)</span>
+          <span class="k">path:</span> <span class="s">/var/log</span>
+      - <span class="k">name:</span> <span class="s">dockersock</span>
+        <span class="k">hostPath:</span>             <span class="cm"># Access container runtime (for monitoring)</span>
+          <span class="k">path:</span> <span class="s">/var/run/docker.sock</span></code></pre>
+<div class="c r"><div class="l">Security Warning</div><p style="margin:0"><code>hostNetwork</code>, <code>hostPID</code>, and <code>hostPath</code> are powerful — they break Pod isolation. Only use for trusted infrastructure Pods. In production, restrict these via PodSecurityAdmission or OPA/Gatekeeper policies.</p></div>
+</section>
+
+<!-- ═════════════ S15 ═════════════ -->
+<section id="s15"><h2><span class="n">15</span> Priority &amp; Preemption</h2>
+<div class="def"><b>Definition</b>DaemonSet Pods can be given a high <code>priorityClassName</code> to ensure they're never evicted by lower-priority workloads. Critical infrastructure (logging, monitoring, CNI) should always have high priority so they survive resource pressure.</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">priorityClassName:</span> <span class="s">system-node-critical</span>  <span class="cm"># Highest priority</span></code></pre>
+<table>
+<tr><th>Priority Class</th><th>Value</th><th>Use for</th></tr>
+<tr><td><code>system-node-critical</code></td><td>2000001000</td><td>CNI, kube-proxy — never evict</td></tr>
+<tr><td><code>system-cluster-critical</code></td><td>2000000000</td><td>CoreDNS, metrics-server</td></tr>
+<tr><td>Custom high priority</td><td>1000000</td><td>Your critical DaemonSets</td></tr>
+<tr><td>Default</td><td>0</td><td>Normal workloads</td></tr>
+</table>
+</section>
+
+<!-- ═════════════ S16 ═════════════ -->
+<section id="s16"><h2><span class="n">16</span> Monitoring &amp; Best Practices</h2>
+<div class="c g"><div class="l">Set resource requests and limits</div><p style="margin:0">DaemonSet Pods run on EVERY node. A memory leak multiplied across 100 nodes can consume enormous cluster resources. Always set limits.</p></div>
+<div class="c b"><div class="l">Use the exam trick: Deployment → DaemonSet</div><p style="margin:0">Generate Deployment YAML → change kind to DaemonSet → remove replicas → remove strategy → apply. Fastest way to create DaemonSets on the exam.</p></div>
+<div class="c p"><div class="l">Add tolerations for control-plane if needed</div><p style="margin:0">Logging and monitoring agents should run on ALL nodes including control-plane. Add the toleration explicitly.</p></div>
+<div class="c o"><div class="l">Use priorityClassName for critical DaemonSets</div><p style="margin:0"><code>system-node-critical</code> prevents eviction under resource pressure. Your CNI and logging should never be evicted.</p></div>
+<div class="c r"><div class="l">Use OnDelete for CNI/kube-proxy updates</div><p style="margin:0">A bad CNI update can take down networking on the entire node. Update one node manually, verify, then continue.</p></div>
+<div class="sre"><div class="tag">SRE Wisdom</div><p style="margin:0">DaemonSets are your <strong>eyes and ears</strong> on every node. If your logging DaemonSet goes down, you're flying blind. If your CNI DaemonSet breaks, the node loses networking. Treat DaemonSet updates with the same care as control-plane upgrades — one node at a time, verify after each.</p></div>
+</section>
+
+<!-- ═════════════ S17 ═════════════ -->
+<section id="s17"><h2><span class="n">17</span> Command Reference</h2>
+<pre><code><span class="cm"># ══ CREATE ══</span>
+kubectl apply -f daemonset.yaml
+<span class="cm"># No imperative create! Use the Deployment trick:</span>
+kubectl create deploy X --image=Y --dry-run=client -o yaml > ds.yaml
+<span class="cm"># Edit: kind: DaemonSet, remove replicas + strategy</span>
+
+<span class="cm"># ══ INSPECT ══</span>
+kubectl get ds                              <span class="cm"># DaemonSets in current namespace</span>
+kubectl get ds -A                           <span class="cm"># All namespaces (see system DaemonSets)</span>
+kubectl get ds log-agent -o wide
+kubectl describe ds log-agent
+kubectl get pods -l app=log-agent -o wide   <span class="cm"># See which node each Pod is on</span>
+
+<span class="cm"># ══ UPDATE ══</span>
+kubectl set image ds/log-agent fluentd=fluentd:v1.17
+kubectl rollout status ds/log-agent
+kubectl rollout undo ds/log-agent
+kubectl rollout history ds/log-agent
+
+<span class="cm"># ══ NODE SELECTION ══</span>
+kubectl label node node-1 gpu=true          <span class="cm"># DS Pod appears on this node</span>
+kubectl label node node-1 gpu-              <span class="cm"># DS Pod removed from this node</span>
+
+<span class="cm"># ══ DELETE ══</span>
+kubectl delete ds log-agent                 <span class="cm"># Deletes DS + all Pods on all nodes</span>
+
+<span class="cm"># ══ SEE SYSTEM DAEMONSETS ══</span>
+kubectl get ds -n kube-system               <span class="cm"># kube-proxy, calico, etc.</span></code></pre>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>
