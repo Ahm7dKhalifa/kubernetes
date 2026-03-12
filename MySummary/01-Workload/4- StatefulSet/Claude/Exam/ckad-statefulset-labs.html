@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKAD StatefulSet Labs — Hands-On Exam Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#dc2626;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.8;font-size:14px}
+nav{position:fixed;top:0;left:0;width:252px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:12px 9px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:15px;background:linear-gradient(135deg,var(--ac),var(--og));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2px 6px;border-radius:3px;color:var(--dm);text-decoration:none;font-size:9.5px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:6.5px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:8px 0 2px 6px;font-weight:700}
+main{margin-left:252px;max-width:1020px;padding:20px 34px 80px}
+.hero{text-align:center;padding:24px 0 16px}
+.hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:6px}
+.hero p{color:var(--dm);font-size:12px;max-width:640px;margin:0 auto}
+h2{font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:#fff;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--bd)}
+h3{font-size:13px;font-weight:700;color:#dde2ea;margin:10px 0 4px}
+p{margin-bottom:5px;font-size:12.5px}strong{color:#eee}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;overflow-x:auto;margin:4px 0 7px;font-size:10px;line-height:1.45}
+code{font-family:'JetBrains Mono',monospace;font-size:9.5px}
+p code,li code,td code{background:var(--sf2);padding:1px 3px;border-radius:3px;color:var(--ac2)}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:11px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:4px 7px;font-size:8.5px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:4px 7px;border-bottom:1px solid var(--bd);vertical-align:top}
+.L{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.L .lh{padding:8px 11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.L .ln{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);font-weight:700;background:rgba(220,38,38,.1);padding:2px 6px;border-radius:3px;white-space:nowrap}
+.L .lt{font-size:13px;font-weight:700;color:#fff;flex:1}
+.L .lw{font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 6px;border-radius:8px;font-weight:600}
+.L .lw.w1{background:rgba(22,163,74,.12);color:var(--gn)}.L .lw.w2{background:rgba(220,38,38,.12);color:var(--rd)}.L .lw.w3{background:rgba(220,38,38,.2);color:var(--rd)}
+.L .task{padding:8px 11px;font-size:12px}
+.L .task ul{margin:2px 0 5px 14px}.L .task li{margin-bottom:2px;font-size:11.5px}
+.L .verify{background:rgba(14,164,114,.03);border-top:1px solid rgba(14,164,114,.06);padding:5px 11px;font-size:10.5px}
+.L .verify b{color:#0ea472;font-size:7.5px;text-transform:uppercase;letter-spacing:1px}
+.L .sol-btn{display:block;width:100%;padding:7px 11px;background:rgba(220,38,38,.04);border:none;border-top:1px solid var(--bd);color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;text-align:left;transition:.1s}
+.L .sol-btn:hover{background:rgba(220,38,38,.08)}
+.L .sol{display:none;padding:9px 11px;border-top:1px solid var(--bd)}
+.L.open .sol{display:block}
+.M{border:1px solid var(--bd);border-radius:7px;margin:6px 0;overflow:hidden}
+.M .mt{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.M .mb{padding:4px 9px;font-size:8.5px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:'JetBrains Mono',monospace;transition:.1s}
+.M .mb:hover{color:var(--tx);background:var(--sf2)}
+.M .mb.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(220,38,38,.04)}
+.M .mp{display:none;padding:8px 10px}.M .mp.on{display:block}
+.why{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.why b{color:var(--bl);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.trap{background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.trap b{color:var(--rd);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.best{background:rgba(22,163,74,.03);border:1px solid rgba(22,163,74,.06);border-radius:5px;padding:6px 8px;margin:4px 0;font-size:11px}
+.best b{color:var(--gn);font-size:7.5px;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:1px}
+.vis{background:var(--cb);border:1px solid var(--bd);border-radius:6px;padding:10px;margin:5px 0;font-size:11.5px;line-height:1.6}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.sts{background:rgba(220,38,38,.1);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.pvc{background:rgba(147,51,234,.08);color:var(--pp);border:1px solid rgba(147,51,234,.25)}
+.bx.svc{background:rgba(59,130,246,.08);color:var(--bl);border:1px solid rgba(59,130,246,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:11px}
+.sre{background:linear-gradient(135deg,rgba(220,38,38,.03),rgba(8,145,178,.02));border:1px solid rgba(220,38,38,.08);border-radius:var(--r);padding:7px 10px;margin:6px 0;font-size:11.5px}
+.sre .tag{display:inline-block;padding:1px 4px;border-radius:3px;background:rgba(220,38,38,.12);color:var(--ac);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:12px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ CKAD STS Labs</div>
+<div class="sub">Hands-On Practice</div>
+<div class="sl">Create &amp; Basics</div>
+<ul><li><a href="#L01">01 Headless Service</a></li><li><a href="#L02">02 Create StatefulSet</a></li><li><a href="#L03">03 Inspect STS</a></li><li><a href="#L04">04 Verify Ordering</a></li></ul>
+<div class="sl">Identity &amp; DNS</div>
+<ul><li><a href="#L05">05 Pod DNS Names</a></li><li><a href="#L06">06 Stable Hostname</a></li><li><a href="#L07">07 Pod-to-Pod DNS</a></li></ul>
+<div class="sl">Storage</div>
+<ul><li><a href="#L08">08 Verify Auto PVCs</a></li><li><a href="#L09">09 Data Survives Restart</a></li><li><a href="#L10">10 Scale Down + Up PVC</a></li></ul>
+<div class="sl">Scaling</div>
+<ul><li><a href="#L11">11 Scale Up (ordered)</a></li><li><a href="#L12">12 Scale Down (reverse)</a></li><li><a href="#L13">13 Parallel Mode</a></li></ul>
+<div class="sl">Updates</div>
+<ul><li><a href="#L14">14 RollingUpdate</a></li><li><a href="#L15">15 OnDelete</a></li><li><a href="#L16">16 Partitioned Canary</a></li></ul>
+<div class="sl">Delete &amp; Recovery</div>
+<ul><li><a href="#L17">17 Delete Pod (identity)</a></li><li><a href="#L18">18 Delete STS Keep Pods</a></li><li><a href="#L19">19 PVC Cleanup</a></li></ul>
+<div class="sl">Troubleshooting</div>
+<ul><li><a href="#L20">20 Fix No Headless Svc</a></li><li><a href="#L21">21 Fix serviceName</a></li><li><a href="#L22">22 Fix Stuck Ordering</a></li></ul>
+<div class="sl">Scenarios</div>
+<ul><li><a href="#L23">23 MySQL Primary/Replica</a></li><li><a href="#L24">24 Redis Cluster</a></li><li><a href="#L25">25 Full Production</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>CKAD StatefulSet Labs</h1><p>25 hands-on tasks covering create, identity, DNS, storage, scaling, updates, and troubleshooting. Every solution shows full YAML + commands + diagrams.</p></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Create &amp; Basics</h2>
+
+<div class="L" id="L01"><div class="lh"><span class="ln">LAB 01</span><div class="lt">Create a Headless Service</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Create a Headless Service named <code>web-svc</code> for Pods with label <code>app=web</code>, port 80. A Headless Service has <code>clusterIP: None</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get svc web-svc</code> → CLUSTER-IP shows <code>None</code></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<div class="M"><div class="mt"><div class="mb on" data-g="01" data-i="0">YAML</div><div class="mb" data-g="01" data-i="1">Imperative + patch</div></div>
+<div class="mp on" data-g="01" data-i="0">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">clusterIP:</span> <span class="v">None</span>          <span class="cm"># ← THIS makes it headless</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>
+    <span class="k">name:</span> <span class="s">http</span></code></pre></div>
+<div class="mp" data-g="01" data-i="1">
+<pre><code><span class="cm"># No direct imperative for headless. Create normal then it won't work.</span>
+<span class="cm"># Best: generate YAML, add clusterIP: None</span>
+kubectl create service clusterip web-svc --tcp=80:80 --dry-run=client -o yaml > svc.yaml
+<span class="cm"># Edit: add clusterIP: None under spec, change selector to app: web</span>
+kubectl apply -f svc.yaml</code></pre></div></div>
+<div class="trap"><b>Exam trap</b>There's no <code>--clusterip=None</code> flag in imperative commands. You MUST use YAML for headless services. Generate a skeleton and add <code>clusterIP: None</code>.</div>
+</div></div>
+
+<div class="L" id="L02"><div class="lh"><span class="ln">LAB 02</span><div class="lt">Create a StatefulSet with Headless Service</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create StatefulSet <code>web</code> with 3 replicas, image <code>nginx</code>, using Headless Service <code>web-svc</code> from Lab 01. Each Pod gets a 1Gi PVC at <code>/usr/share/nginx/html</code>.</p></div>
+<div class="verify"><b>Verify: </b><code>kubectl get sts web</code> → READY 3/3. <code>kubectl get pvc</code> → 3 PVCs.</div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">StatefulSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web</span>
+<span class="k">spec:</span>
+  <span class="k">serviceName:</span> <span class="s">web-svc</span>             <span class="cm"># MUST match Headless Service name</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">web</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">nginx</span>
+        <span class="k">image:</span> <span class="s">nginx</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">80</span>
+          <span class="k">name:</span> <span class="s">http</span>
+        <span class="k">volumeMounts:</span>
+        - <span class="k">name:</span> <span class="s">data</span>
+          <span class="k">mountPath:</span> <span class="s">/usr/share/nginx/html</span>
+  <span class="k">volumeClaimTemplates:</span>
+  - <span class="k">metadata:</span>
+      <span class="k">name:</span> <span class="s">data</span>
+    <span class="k">spec:</span>
+      <span class="k">accessModes:</span> [<span class="s">"ReadWriteOnce"</span>]
+      <span class="k">resources:</span>
+        <span class="k">requests:</span>
+          <span class="k">storage:</span> <span class="s">1Gi</span></code></pre>
+<pre><code>kubectl apply -f sts.yaml</code></pre>
+<div class="trap"><b>Key rules</b>① No imperative <code>kubectl create statefulset</code> — YAML only. ② <code>serviceName</code> MUST match the Headless Service. ③ Headless Service must exist BEFORE applying the StatefulSet.</div>
+</div></div>
+
+<div class="L" id="L03"><div class="lh"><span class="ln">LAB 03</span><div class="lt">Inspect StatefulSet — Extract Information</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Extract: replicas, current replicas, Pod names, PVC names, serviceName, and update strategy.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Overview</span>
+kubectl get sts web
+
+<span class="cm"># Replicas</span>
+kubectl get sts web -o jsonpath='{.spec.replicas}'
+
+<span class="cm"># Pod names (ordered!)</span>
+kubectl get pods -l app=web
+<span class="cm"># web-0, web-1, web-2</span>
+
+<span class="cm"># PVC names (auto-created!)</span>
+kubectl get pvc
+<span class="cm"># data-web-0, data-web-1, data-web-2</span>
+
+<span class="cm"># serviceName</span>
+kubectl get sts web -o jsonpath='{.spec.serviceName}'
+
+<span class="cm"># Update strategy</span>
+kubectl get sts web -o jsonpath='{.spec.updateStrategy}'
+
+<span class="cm"># Full details + events</span>
+kubectl describe sts web</code></pre>
+</div></div>
+
+<div class="L" id="L04"><div class="lh"><span class="ln">LAB 04</span><div class="lt">Verify Ordered Creation</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Delete StatefulSet <code>web</code> (keep PVCs), recreate it, and watch Pods created in order: web-0 → web-1 → web-2. Prove each waits for the previous to be Ready.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Delete STS but keep PVCs</span>
+kubectl delete sts web
+
+<span class="cm"># Terminal 1: Watch Pods</span>
+kubectl get pods -l app=web -w
+
+<span class="cm"># Terminal 2: Recreate STS</span>
+kubectl apply -f sts.yaml
+
+<span class="cm"># Terminal 1 shows:</span>
+<span class="cm"># web-0   0/1   Pending → ContainerCreating → Running → Ready</span>
+<span class="cm"># (only after web-0 is 1/1 Ready...)</span>
+<span class="cm"># web-1   0/1   Pending → ContainerCreating → Running → Ready</span>
+<span class="cm"># (only after web-1 is 1/1 Ready...)</span>
+<span class="cm"># web-2   0/1   Pending → ContainerCreating → Running → Ready</span></code></pre>
+<div class="vis"><span class="bx sts">web-0 created</span> → must be Ready ✓ → <span class="bx sts">web-1 created</span> → Ready ✓ → <span class="bx sts">web-2 created</span> → Ready ✓<br><br><span style="color:var(--gn);font-size:10px">Sequential. Each Pod waits for the previous to be Running + Ready before starting.</span></div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Identity &amp; DNS</h2>
+
+<div class="L" id="L05"><div class="lh"><span class="ln">LAB 05</span><div class="lt">Verify Per-Pod DNS Names</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Prove each StatefulSet Pod has its own unique DNS record. Resolve <code>web-0.web-svc</code>, <code>web-1.web-svc</code>, <code>web-2.web-svc</code>.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Launch a temporary DNS test Pod</span>
+kubectl run -it --rm dns-test --image=busybox:1.36 --restart=Never -- sh
+
+<span class="cm"># Inside the Pod:</span>
+nslookup web-svc
+<span class="cm"># Returns ALL 3 Pod IPs (headless = no VIP)</span>
+
+nslookup web-0.web-svc
+<span class="cm"># Returns web-0's IP specifically</span>
+
+nslookup web-1.web-svc
+<span class="cm"># Returns web-1's IP</span>
+
+nslookup web-2.web-svc
+<span class="cm"># Returns web-2's IP</span>
+
+<span class="cm"># Full FQDN form:</span>
+nslookup web-0.web-svc.default.svc.cluster.local</code></pre>
+<div class="vis"><strong>DNS format:</strong> <code>{pod}.{service}.{namespace}.svc.cluster.local</code><br><br>
+<span class="bx sts">web-0</span> → <code>web-0.web-svc.default.svc.cluster.local</code><br>
+<span class="bx sts">web-1</span> → <code>web-1.web-svc.default.svc.cluster.local</code><br>
+<span class="bx sts">web-2</span> → <code>web-2.web-svc.default.svc.cluster.local</code></div>
+</div></div>
+
+<div class="L" id="L06"><div class="lh"><span class="ln">LAB 06</span><div class="lt">Verify Stable Hostname After Restart</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Check the hostname of <code>web-1</code>. Delete it. Wait for recreation. Check hostname again — prove it's the same.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Before: check hostname</span>
+kubectl exec web-1 -- hostname
+<span class="cm"># web-1</span>
+
+<span class="cm"># Delete the Pod</span>
+kubectl delete pod web-1
+
+<span class="cm"># Wait for recreation</span>
+kubectl get pods -l app=web -w
+<span class="cm"># web-1 goes Terminating → new web-1 Created → Running</span>
+
+<span class="cm"># After: check hostname again</span>
+kubectl exec web-1 -- hostname
+<span class="cm"># web-1 ← SAME hostname! Identity preserved.</span></code></pre>
+<div class="vis"><strong>Before:</strong> <span class="bx sts">web-1 (hostname: web-1, IP: 10.244.2.8)</span><br>
+<strong>After restart:</strong> <span class="bx sts">web-1 (hostname: web-1, IP: 10.244.2.12)</span><br><br>
+<span style="color:var(--gn)">Name ✓ Hostname ✓ DNS ✓ PVC ✓</span> | <span style="color:var(--yl)">IP may change — use DNS!</span></div>
+</div></div>
+
+<div class="L" id="L07"><div class="lh"><span class="ln">LAB 07</span><div class="lt">Connect Pod-to-Pod Using DNS</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>From inside <code>web-0</code>, connect to <code>web-2</code> using its stable DNS name (not IP).</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Exec into web-0</span>
+kubectl exec -it web-0 -- sh
+
+<span class="cm"># Connect to web-2 using DNS (short form)</span>
+wget -qO- http://web-2.web-svc:80
+
+<span class="cm"># Or full FQDN</span>
+wget -qO- http://web-2.web-svc.default.svc.cluster.local:80</code></pre>
+<div class="why"><b>Why DNS, not IP?</b>If web-2 restarts, its IP changes. But <code>web-2.web-svc</code> always resolves to the current IP automatically. Apps should ALWAYS use DNS names for StatefulSet Pods.</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Storage</h2>
+
+<div class="L" id="L08"><div class="lh"><span class="ln">LAB 08</span><div class="lt">Verify Auto-Created PVCs</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>StatefulSet <code>web</code> has 3 replicas with <code>volumeClaimTemplates</code> named <code>data</code>. Verify 3 PVCs were auto-created with correct naming.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl get pvc
+<span class="cm"># NAME         STATUS   VOLUME     CAPACITY   ACCESS MODES</span>
+<span class="cm"># data-web-0   Bound    pv-xxx     1Gi        RWO</span>
+<span class="cm"># data-web-1   Bound    pv-yyy     1Gi        RWO</span>
+<span class="cm"># data-web-2   Bound    pv-zzz     1Gi        RWO</span></code></pre>
+<div class="vis"><strong>PVC naming formula:</strong> <code>{volumeClaimTemplate.name}-{sts.name}-{ordinal}</code><br><br>
+Template name: <code>data</code>, STS: <code>web</code><br>
+→ <span class="bx pvc">data-web-0</span> <span class="bx pvc">data-web-1</span> <span class="bx pvc">data-web-2</span></div>
+</div></div>
+
+<div class="L" id="L09"><div class="lh"><span class="ln">LAB 09</span><div class="lt">Prove Data Survives Pod Restart</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Write data to <code>web-1</code>'s volume. Delete the Pod. After recreation, verify data is still there.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Write data to web-1's persistent volume</span>
+kubectl exec web-1 -- sh -c 'echo "IMPORTANT DATA" > /usr/share/nginx/html/test.txt'
+
+<span class="cm"># Step 2: Verify it exists</span>
+kubectl exec web-1 -- cat /usr/share/nginx/html/test.txt
+<span class="cm"># IMPORTANT DATA</span>
+
+<span class="cm"># Step 3: Delete the Pod (simulating crash)</span>
+kubectl delete pod web-1
+
+<span class="cm"># Step 4: Wait for recreation</span>
+kubectl get pods -l app=web -w
+<span class="cm"># web-1 recreated with same name</span>
+
+<span class="cm"># Step 5: Verify data SURVIVED the restart!</span>
+kubectl exec web-1 -- cat /usr/share/nginx/html/test.txt
+<span class="cm"># IMPORTANT DATA  ← STILL THERE! PVC preserved the data.</span></code></pre>
+<div class="vis"><span class="bx ded">web-1 deleted</span> → <span class="bx pvc">data-web-1 KEPT</span> → <span class="bx sts">web-1 recreated</span> → re-mounts <span class="bx pvc">data-web-1</span> → <span style="color:var(--gn)">data intact ✓</span></div>
+</div></div>
+
+<div class="L" id="L10"><div class="lh"><span class="ln">LAB 10</span><div class="lt">Scale Down + Up — PVC Preserved</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Write data to web-2. Scale down to 1 (web-2 deleted). Scale back to 3. Verify web-2 remounts its old PVC with data intact.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Write data to web-2</span>
+kubectl exec web-2 -- sh -c 'echo "SCALE TEST" > /usr/share/nginx/html/scale.txt'
+
+<span class="cm"># Scale down to 1 (web-2 and web-1 deleted)</span>
+kubectl scale sts web --replicas=1
+
+<span class="cm"># Verify PVCs still exist!</span>
+kubectl get pvc
+<span class="cm"># data-web-0   Bound</span>
+<span class="cm"># data-web-1   Bound   ← STILL EXISTS (no Pod using it)</span>
+<span class="cm"># data-web-2   Bound   ← STILL EXISTS</span>
+
+<span class="cm"># Scale back to 3</span>
+kubectl scale sts web --replicas=3
+
+<span class="cm"># Verify data survived!</span>
+kubectl exec web-2 -- cat /usr/share/nginx/html/scale.txt
+<span class="cm"># SCALE TEST  ← data preserved through scale down + up!</span></code></pre>
+<div class="trap"><b>Key</b>PVCs are NEVER auto-deleted when scaling down. Scale back up → old PVCs remounted with all data. This is critical for databases — you never lose data just because you temporarily scaled down.</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Scaling</h2>
+
+<div class="L" id="L11"><div class="lh"><span class="ln">LAB 11</span><div class="lt">Scale Up — Observe Ordered Creation</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Scale <code>web</code> from 3 to 5. Watch: web-3 created first, must be Ready, then web-4.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl scale sts web --replicas=5
+
+<span class="cm"># Watch</span>
+kubectl get pods -l app=web -w
+<span class="cm"># web-3 Created → Running → Ready</span>
+<span class="cm"># (only after web-3 Ready) → web-4 Created → Running → Ready</span></code></pre>
+</div></div>
+
+<div class="L" id="L12"><div class="lh"><span class="ln">LAB 12</span><div class="lt">Scale Down — Observe Reverse Order</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Scale <code>web</code> from 5 to 2. Watch: web-4 deleted first, then web-3, then web-2.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl scale sts web --replicas=2
+
+kubectl get pods -l app=web -w
+<span class="cm"># web-4 Terminating → gone</span>
+<span class="cm"># web-3 Terminating → gone</span>
+<span class="cm"># web-2 Terminating → gone</span>
+<span class="cm"># Only web-0 and web-1 remain</span></code></pre>
+<div class="vis"><strong>Scale down is REVERSE order:</strong> highest ordinal first.<br>
+<span class="bx ded">web-4</span> → <span class="bx ded">web-3</span> → <span class="bx ded">web-2</span><br>
+<span style="color:var(--dm);font-size:10px">Index 0 (primary) is ALWAYS the last to be deleted. This protects the leader.</span></div>
+</div></div>
+
+<div class="L" id="L13"><div class="lh"><span class="ln">LAB 13</span><div class="lt">Parallel Pod Management</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create a StatefulSet with <code>podManagementPolicy: Parallel</code>. Observe: all Pods created simultaneously (no ordering).</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="k">spec:</span>
+  <span class="k">podManagementPolicy:</span> <span class="v">Parallel</span>    <span class="cm"># All at once, skip ordering</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">serviceName:</span> <span class="s">web-svc</span></code></pre>
+<pre><code>kubectl get pods -l app=web -w
+<span class="cm"># web-0, web-1, web-2 all appear simultaneously!</span>
+<span class="cm"># No waiting for Ready between them.</span></code></pre>
+<div class="why"><b>When to use Parallel</b>When startup order doesn't matter — e.g., Cassandra or other peer-to-peer databases where all nodes are equal. For MySQL/PostgreSQL (primary + replicas), always use <code>OrderedReady</code> (default).</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Updates</h2>
+
+<div class="L" id="L14"><div class="lh"><span class="ln">LAB 14</span><div class="lt">RollingUpdate — Reverse Order</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Update <code>web</code> StatefulSet image from <code>nginx</code> to <code>nginx:1.25</code>. Watch: Pods updated in reverse order (web-2 → web-1 → web-0).</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Trigger update</span>
+kubectl set image sts/web nginx=nginx:1.25
+
+<span class="cm"># Watch (another terminal)</span>
+kubectl get pods -l app=web -w
+<span class="cm"># web-2 Terminating → web-2 ContainerCreating → web-2 Running (1.25)</span>
+<span class="cm"># web-1 Terminating → web-1 Running (1.25)</span>
+<span class="cm"># web-0 Terminating → web-0 Running (1.25)</span>
+
+<span class="cm"># Watch rollout</span>
+kubectl rollout status sts/web</code></pre>
+<div class="vis"><strong>Update order is REVERSE:</strong> highest ordinal first<br>
+<span class="bx ded">web-2 updated</span> → Ready ✓ → <span class="bx ded">web-1 updated</span> → Ready ✓ → <span class="bx ded">web-0 updated</span> → Ready ✓<br>
+<span style="color:var(--gn);font-size:10px">Primary (web-0) updated LAST — replicas updated first to minimize risk.</span></div>
+</div></div>
+
+<div class="L" id="L15"><div class="lh"><span class="ln">LAB 15</span><div class="lt">OnDelete Update Strategy</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Set StatefulSet <code>web</code> to <code>updateStrategy: OnDelete</code>. Update the image. Observe: Pods are NOT replaced until you manually delete them.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Set OnDelete strategy</span>
+kubectl patch sts web -p '{"spec":{"updateStrategy":{"type":"OnDelete"}}}'
+
+<span class="cm"># Update image (template changes, but nothing happens!)</span>
+kubectl set image sts/web nginx=nginx:1.26
+
+<span class="cm"># Check — all Pods still running old image!</span>
+kubectl get pods -l app=web -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
+<span class="cm"># web-0  nginx:1.25</span>
+<span class="cm"># web-1  nginx:1.25</span>
+<span class="cm"># web-2  nginx:1.25</span>
+
+<span class="cm"># Manually delete web-2 → recreated with new image</span>
+kubectl delete pod web-2
+<span class="cm"># web-2 now runs nginx:1.26. Others still on 1.25.</span>
+
+<span class="cm"># Delete web-1 when ready</span>
+kubectl delete pod web-1
+
+<span class="cm"># Delete web-0 last (primary)</span>
+kubectl delete pod web-0</code></pre>
+<div class="why"><b>Use case</b>Critical databases where you want to verify each node after update before proceeding. You control exactly when each Pod is replaced — full manual control.</div>
+</div></div>
+
+<div class="L" id="L16"><div class="lh"><span class="ln">LAB 16</span><div class="lt">Partitioned Rolling Update (Canary)</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Update only <code>web-2</code> first (canary). Verify it works. Then update all remaining Pods.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Set partition=2 (only ordinal ≥ 2 updated)</span>
+kubectl patch sts web -p '{"spec":{"updateStrategy":{"type":"RollingUpdate","rollingUpdate":{"partition":2}}}}'
+
+<span class="cm"># Step 2: Update image</span>
+kubectl set image sts/web nginx=nginx:1.27
+
+<span class="cm"># Step 3: Only web-2 is updated!</span>
+kubectl get pods -l app=web -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
+<span class="cm"># web-0  nginx:1.26  ← old</span>
+<span class="cm"># web-1  nginx:1.26  ← old</span>
+<span class="cm"># web-2  nginx:1.27  ← UPDATED (canary)</span>
+
+<span class="cm"># Step 4: Verify web-2 works correctly... then promote</span>
+
+<span class="cm"># Step 5: Set partition=0 → update ALL remaining</span>
+kubectl patch sts web -p '{"spec":{"updateStrategy":{"rollingUpdate":{"partition":0}}}}'
+<span class="cm"># web-1 updated → web-0 updated → all on 1.27 ✓</span></code></pre>
+<div class="vis"><strong>Partition=2:</strong> <span class="bx sts">web-0 (old)</span> <span class="bx sts">web-1 (old)</span> <span class="bx sts">web-2 (NEW) ← canary</span><br>
+<strong>Partition=0:</strong> <span class="bx sts">web-0 (new)</span> <span class="bx sts">web-1 (new)</span> <span class="bx sts">web-2 (new)</span> ← all updated ✓</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Delete &amp; Recovery</h2>
+
+<div class="L" id="L17"><div class="lh"><span class="ln">LAB 17</span><div class="lt">Delete Pod — Verify Identity Preserved</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Delete <code>web-1</code>. Verify the replacement has the same name, hostname, and PVC.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Note the IP before</span>
+kubectl get pod web-1 -o wide
+
+<span class="cm"># Delete</span>
+kubectl delete pod web-1
+
+<span class="cm"># Wait for recreation</span>
+kubectl get pods -l app=web -w
+
+<span class="cm"># Verify identity</span>
+kubectl get pod web-1 -o wide
+<span class="cm"># Name: web-1 ✓ (same)</span>
+<span class="cm"># IP: may be different (that's OK — use DNS)</span>
+
+kubectl exec web-1 -- hostname
+<span class="cm"># web-1 ✓ (same hostname)</span>
+
+<span class="cm"># PVC still bound to same Pod</span>
+kubectl get pvc data-web-1
+<span class="cm"># Still Bound ✓</span></code></pre>
+</div></div>
+
+<div class="L" id="L18"><div class="lh"><span class="ln">LAB 18</span><div class="lt">Delete StatefulSet — Keep Pods (Orphan)</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Delete STS <code>web</code> without deleting its Pods. Verify Pods are still running. Recreate STS to re-adopt them.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Delete STS, keep Pods</span>
+kubectl delete sts web --cascade=orphan
+
+<span class="cm"># Pods still running!</span>
+kubectl get pods -l app=web
+<span class="cm"># web-0 Running, web-1 Running, web-2 Running</span>
+
+<span class="cm"># Recreate STS with same name + selector → adopts orphan Pods</span>
+kubectl apply -f sts.yaml
+<span class="cm"># Pods adopted, no restart needed</span></code></pre>
+<div class="why"><b>Use case</b>Updating the StatefulSet spec (e.g., changing strategy or adding fields) without restarting any Pods. Orphan → edit spec → recreate → adopt.</div>
+</div></div>
+
+<div class="L" id="L19"><div class="lh"><span class="ln">LAB 19</span><div class="lt">Clean Up PVCs After Deleting StatefulSet</div><span class="lw w1">Easy</span></div>
+<div class="task"><p>Delete StatefulSet <code>web</code>. Verify PVCs still exist. Delete them manually.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Delete StatefulSet (Pods deleted, PVCs kept!)</span>
+kubectl delete sts web
+
+<span class="cm"># PVCs still exist</span>
+kubectl get pvc
+<span class="cm"># data-web-0   Bound</span>
+<span class="cm"># data-web-1   Bound</span>
+<span class="cm"># data-web-2   Bound</span>
+
+<span class="cm"># Manual cleanup</span>
+kubectl delete pvc data-web-0 data-web-1 data-web-2
+
+<span class="cm"># Also delete the Headless Service if decommissioning</span>
+kubectl delete svc web-svc</code></pre>
+<div class="trap"><b>Key</b>Deleting a StatefulSet does NOT delete PVCs. This is a safety feature — prevents accidental data loss. You must always clean up PVCs manually (or use <code>persistentVolumeClaimRetentionPolicy</code>).</div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Troubleshooting</h2>
+
+<div class="L" id="L20"><div class="lh"><span class="ln">LAB 20</span><div class="lt">Fix — No Headless Service (Pods Have No DNS)</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>StatefulSet <code>web</code> is running but <code>nslookup web-0.web-svc</code> fails. Diagnose and fix.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Check if Headless Service exists</span>
+kubectl get svc web-svc
+<span class="cm"># Either: not found, OR ClusterIP is NOT "None"</span>
+
+<span class="cm"># Step 2: If missing — create it</span></code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">clusterIP:</span> <span class="v">None</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">ports:</span>
+  - { <span class="k">port:</span> <span class="nm">80</span>, <span class="k">name:</span> <span class="s">http</span> }</code></pre>
+<pre><code><span class="cm"># Step 3: If exists but NOT headless (has a ClusterIP)</span>
+kubectl delete svc web-svc
+<span class="cm"># Recreate with clusterIP: None</span>
+
+<span class="cm"># Step 4: Verify DNS now works</span>
+kubectl run -it --rm test --image=busybox -- nslookup web-0.web-svc</code></pre>
+<div class="trap"><b>3 common DNS failures</b>① Service doesn't exist. ② Service exists but is NOT headless (has ClusterIP). ③ Service name doesn't match <code>spec.serviceName</code> in the StatefulSet.</div>
+</div></div>
+
+<div class="L" id="L21"><div class="lh"><span class="ln">LAB 21</span><div class="lt">Fix — serviceName Mismatch</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>StatefulSet has <code>serviceName: mysql-svc</code> but the Service is named <code>db-svc</code>. Pods exist but have no DNS records. Fix it.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Diagnose</span>
+kubectl get sts web -o jsonpath='{.spec.serviceName}'
+<span class="cm"># mysql-svc</span>
+
+kubectl get svc
+<span class="cm"># db-svc   ClusterIP   None   ← wrong name!</span>
+
+<span class="cm"># Fix: serviceName is IMMUTABLE — must delete and recreate STS</span>
+<span class="cm"># Option A: Rename the Service</span>
+kubectl delete svc db-svc
+<span class="cm"># Create new Service with name mysql-svc</span>
+
+<span class="cm"># Option B: Recreate STS with correct serviceName</span>
+kubectl delete sts web --cascade=orphan   <span class="cm"># keep Pods</span>
+<span class="cm"># Edit YAML: serviceName: db-svc (match existing Service)</span>
+kubectl apply -f sts-fixed.yaml          <span class="cm"># adopts orphan Pods</span></code></pre>
+<div class="trap"><b>Key rule</b><code>serviceName</code> is immutable. You cannot change it on a running StatefulSet. You must delete (orphan) and recreate. The Service name and <code>serviceName</code> MUST match exactly.</div>
+</div></div>
+
+<div class="L" id="L22"><div class="lh"><span class="ln">LAB 22</span><div class="lt">Fix — Pod Stuck Pending (Blocks Ordered Creation)</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>StatefulSet has replicas=3 but only web-0 is Running. web-1 is stuck Pending. web-2 is never created. Diagnose and fix.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Step 1: Check Pod status</span>
+kubectl get pods -l app=web
+<span class="cm"># web-0   1/1   Running</span>
+<span class="cm"># web-1   0/1   Pending   ← stuck!</span>
+<span class="cm"># web-2 doesn't exist (blocked by web-1)</span>
+
+<span class="cm"># Step 2: Why is web-1 Pending?</span>
+kubectl describe pod web-1 | tail -10
+<span class="cm"># Events: FailedScheduling — insufficient cpu/memory</span>
+<span class="cm"># OR: no PV available for PVC data-web-1</span>
+
+<span class="cm"># Step 3: Fix based on cause</span>
+<span class="cm"># Cause A: Not enough resources → add node or reduce requests</span>
+<span class="cm"># Cause B: No PV for PVC → create a PV or fix StorageClass</span>
+kubectl get pvc data-web-1
+<span class="cm"># If Pending → StorageClass can't provision volume</span>
+
+<span class="cm"># Cause C: PVC exists but wrong size → delete PVC, let STS recreate</span>
+kubectl delete pvc data-web-1
+<span class="cm"># STS controller will create a new PVC and retry scheduling</span></code></pre>
+<div class="vis"><strong>Why web-2 doesn't exist:</strong><br>
+OrderedReady policy requires web-1 to be Ready before web-2 is created.<br>
+web-1 is stuck Pending → web-2 is blocked forever.<br><br>
+<span style="color:var(--rd);font-size:10px">One stuck Pod blocks ALL subsequent Pods in ordered creation. Fix the stuck Pod to unblock the chain.</span></div>
+</div></div>
+
+<!-- ═══════════════════════════════ -->
+<h2>Real-World Scenarios</h2>
+
+<div class="L" id="L23"><div class="lh"><span class="ln">LAB 23</span><div class="lt">MySQL Primary/Replica Cluster</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Create a StatefulSet simulating a MySQL cluster: 3 replicas, each with 5Gi storage, Headless Service. Pod-0 is the "primary" (writes), Pod-1 and Pod-2 are "replicas" (reads).</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># Headless Service</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">mysql-svc</span>
+<span class="k">spec:</span>
+  <span class="k">clusterIP:</span> <span class="v">None</span>
+  <span class="k">selector:</span> { <span class="k">app:</span> <span class="s">mysql</span> }
+  <span class="k">ports:</span>
+  - { <span class="k">port:</span> <span class="nm">3306</span>, <span class="k">name:</span> <span class="s">mysql</span> }
+---
+<span class="cm"># StatefulSet</span>
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">StatefulSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">mysql</span>
+<span class="k">spec:</span>
+  <span class="k">serviceName:</span> <span class="s">mysql-svc</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">mysql</span> }
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span> { <span class="k">app:</span> <span class="s">mysql</span> }
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">mysql</span>
+        <span class="k">image:</span> <span class="s">mysql:8.0</span>
+        <span class="k">ports:</span>
+        - { <span class="k">containerPort:</span> <span class="nm">3306</span> }
+        <span class="k">env:</span>
+        - { <span class="k">name:</span> <span class="s">MYSQL_ROOT_PASSWORD</span>, <span class="k">value:</span> <span class="s">"rootpass"</span> }
+        <span class="k">volumeMounts:</span>
+        - { <span class="k">name:</span> <span class="s">data</span>, <span class="k">mountPath:</span> <span class="s">/var/lib/mysql</span> }
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"250m"</span>, <span class="k">memory:</span> <span class="s">"256Mi"</span> }
+  <span class="k">volumeClaimTemplates:</span>
+  - <span class="k">metadata:</span>
+      <span class="k">name:</span> <span class="s">data</span>
+    <span class="k">spec:</span>
+      <span class="k">accessModes:</span> [<span class="s">"ReadWriteOnce"</span>]
+      <span class="k">resources:</span>
+        <span class="k">requests:</span>
+          <span class="k">storage:</span> <span class="s">5Gi</span></code></pre>
+<pre><code><span class="cm"># Usage from app Pods:</span>
+<span class="cm"># Writes → mysql-0.mysql-svc:3306 (primary)</span>
+<span class="cm"># Reads  → mysql-1.mysql-svc:3306 or mysql-2.mysql-svc:3306 (replicas)</span></code></pre>
+</div></div>
+
+<div class="L" id="L24"><div class="lh"><span class="ln">LAB 24</span><div class="lt">Verify Unique Identity Per Pod</div><span class="lw w2">Medium</span></div>
+<div class="task"><p>Create a StatefulSet where each Pod prints its hostname and ordinal index. Verify each Pod has a unique identity.</p></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code><span class="cm"># StatefulSet with command that prints identity</span>
+<span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">identity</span>
+        <span class="k">image:</span> <span class="s">busybox</span>
+        <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"echo I am $(hostname) && sleep 3600"</span>]</code></pre>
+<pre><code><span class="cm"># Check each Pod's identity</span>
+kubectl logs web-0
+<span class="cm"># I am web-0</span>
+
+kubectl logs web-1
+<span class="cm"># I am web-1</span>
+
+kubectl logs web-2
+<span class="cm"># I am web-2</span>
+
+<span class="cm"># Each Pod KNOWS who it is. Apps can use $(hostname) to determine their role:</span>
+<span class="cm"># if hostname == "mysql-0" → I am the PRIMARY</span>
+<span class="cm"># else → I am a REPLICA</span></code></pre>
+</div></div>
+
+<div class="L" id="L25"><div class="lh"><span class="ln">LAB 25</span><div class="lt">Full Production StatefulSet</div><span class="lw w3">Hard</span></div>
+<div class="task"><p>Create a production StatefulSet in namespace <code>production</code>:</p>
+<ul>
+<li>Headless Service <code>db-svc</code>, port 5432</li>
+<li>StatefulSet <code>postgres</code>: 3 replicas, image <code>postgres:16</code></li>
+<li>Resources: cpu 500m/1, memory 512Mi/1Gi</li>
+<li>Env: <code>POSTGRES_PASSWORD=secret</code></li>
+<li>volumeClaimTemplate: name <code>pgdata</code>, 10Gi at <code>/var/lib/postgresql/data</code></li>
+<li>Readiness probe: exec <code>pg_isready</code></li>
+<li>RollingUpdate strategy with partition=0</li>
+</ul></div>
+<button class="sol-btn">▶ Show Solution</button>
+<div class="sol">
+<pre><code>kubectl create namespace production</code></pre>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">db-svc</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="k">clusterIP:</span> <span class="v">None</span>
+  <span class="k">selector:</span> { <span class="k">app:</span> <span class="s">postgres</span> }
+  <span class="k">ports:</span>
+  - { <span class="k">port:</span> <span class="nm">5432</span>, <span class="k">name:</span> <span class="s">postgres</span> }
+---
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">StatefulSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">postgres</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="k">serviceName:</span> <span class="s">db-svc</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">updateStrategy:</span>
+    <span class="k">type:</span> <span class="v">RollingUpdate</span>
+    <span class="k">rollingUpdate:</span>
+      <span class="k">partition:</span> <span class="nm">0</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">postgres</span> }
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span> { <span class="k">app:</span> <span class="s">postgres</span> }
+    <span class="k">spec:</span>
+      <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">30</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">postgres</span>
+        <span class="k">image:</span> <span class="s">postgres:16</span>
+        <span class="k">ports:</span>
+        - { <span class="k">containerPort:</span> <span class="nm">5432</span> }
+        <span class="k">env:</span>
+        - { <span class="k">name:</span> <span class="s">POSTGRES_PASSWORD</span>, <span class="k">value:</span> <span class="s">"secret"</span> }
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"500m"</span>, <span class="k">memory:</span> <span class="s">"512Mi"</span> }
+          <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"1"</span>, <span class="k">memory:</span> <span class="s">"1Gi"</span> }
+        <span class="k">readinessProbe:</span>
+          <span class="k">exec:</span>
+            <span class="k">command:</span> [<span class="s">"pg_isready"</span>, <span class="s">"-U"</span>, <span class="s">"postgres"</span>]
+          <span class="k">periodSeconds:</span> <span class="nm">10</span>
+        <span class="k">volumeMounts:</span>
+        - { <span class="k">name:</span> <span class="s">pgdata</span>, <span class="k">mountPath:</span> <span class="s">/var/lib/postgresql/data</span> }
+  <span class="k">volumeClaimTemplates:</span>
+  - <span class="k">metadata:</span>
+      <span class="k">name:</span> <span class="s">pgdata</span>
+    <span class="k">spec:</span>
+      <span class="k">accessModes:</span> [<span class="s">"ReadWriteOnce"</span>]
+      <span class="k">resources:</span>
+        <span class="k">requests:</span>
+          <span class="k">storage:</span> <span class="s">10Gi</span></code></pre>
+<pre><code>kubectl apply -f production-postgres.yaml
+
+<span class="cm"># Verify</span>
+kubectl -n production get sts,pods,pvc,svc
+
+<span class="cm"># Test DNS</span>
+kubectl run -n production -it --rm test --image=busybox -- nslookup postgres-0.db-svc.production.svc.cluster.local</code></pre>
+</div></div>
+
+<div class="sre" style="margin-top:16px"><div class="tag">Key Takeaways</div><p style="margin:0"><strong>1.</strong> No imperative create — YAML only. <strong>2.</strong> Headless Service (<code>clusterIP: None</code>) MUST exist BEFORE StatefulSet. <strong>3.</strong> <code>serviceName</code> must match Service name (immutable). <strong>4.</strong> Pod names are ordered: web-0, web-1, web-2. <strong>5.</strong> Each Pod gets its own PVC (<code>{template}-{sts}-{ordinal}</code>). <strong>6.</strong> PVCs are NEVER auto-deleted. <strong>7.</strong> Create order: 0→1→2. Delete/update order: 2→1→0 (primary last). <strong>8.</strong> Use partition for canary updates. <strong>9.</strong> Use DNS names (<code>pod.svc</code>), not IPs. <strong>10.</strong> One stuck Pod blocks all subsequent Pods in ordered mode.</p></div>
+
+</main>
+
+<script>
+document.querySelectorAll('.sol-btn').forEach(btn=>{btn.addEventListener('click',function(){const L=this.parentElement;L.classList.toggle('open');this.textContent=L.classList.contains('open')?'▲ Hide Solution':'▶ Show Solution'})});
+document.querySelectorAll('.M .mb').forEach(tab=>{tab.addEventListener('click',function(){const g=this.dataset.g,i=this.dataset.i;document.querySelectorAll('.mb[data-g="'+g+'"]').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.mp[data-g="'+g+'"]').forEach(p=>p.classList.remove('on'));this.classList.add('on');document.querySelector('.mp[data-g="'+g+'"][data-i="'+i+'"]').classList.add('on')})});
+</script>
+</body>
+</html>

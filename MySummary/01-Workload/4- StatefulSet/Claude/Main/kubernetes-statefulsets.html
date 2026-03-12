@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes StatefulSets — Complete Deep-Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#dc2626;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--og));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1010px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(220,38,38,.05) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:38px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(220,38,38,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(220,38,38,.03),rgba(8,145,178,.02));border:1px solid rgba(220,38,38,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(220,38,38,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:8px 12px;margin:5px 0 8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.42;color:#6d7b90;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.og{background:rgba(234,88,12,.15);color:var(--og)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(220,38,38,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(220,38,38,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:11px;margin:7px 0;min-height:40px;font-size:12px;line-height:1.7}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.new{background:rgba(37,99,235,.1);color:var(--bl);border:1px solid rgba(37,99,235,.25)}
+.bx.pen{background:rgba(202,138,4,.1);color:var(--yl);border:1px solid rgba(202,138,4,.25)}
+.bx.sts{background:rgba(220,38,38,.1);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.pvc{background:rgba(147,51,234,.08);color:var(--pp);border:1px solid rgba(147,51,234,.25)}
+.bx.svc{background:rgba(59,130,246,.08);color:var(--bl);border:1px solid rgba(59,130,246,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:12px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ K8s StatefulSets</div>
+<div class="sub">Complete Deep-Dive</div>
+<div class="sl">Fundamentals</div>
+<ul><li><a href="#s01">What &amp; Why</a></li><li><a href="#s02">Deployment vs StatefulSet ▶</a></li><li><a href="#s03">3 Guarantees ▶</a></li></ul>
+<div class="sl">Identity</div>
+<ul><li><a href="#s04">Stable Network ID ▶</a></li><li><a href="#s05">Headless Service ▶</a></li><li><a href="#s06">Pod DNS ▶</a></li></ul>
+<div class="sl">Storage</div>
+<ul><li><a href="#s07">VolumeClaimTemplates ▶</a></li><li><a href="#s08">PVC Lifecycle ▶</a></li></ul>
+<div class="sl">YAML &amp; Create</div>
+<ul><li><a href="#s09">Full YAML</a></li><li><a href="#s10">Create ▶</a></li></ul>
+<div class="sl">Operations</div>
+<ul><li><a href="#s11">Ordered Scaling ▶</a></li><li><a href="#s12">Update Strategies ▶</a></li><li><a href="#s13">Partitioned Update ▶</a></li></ul>
+<div class="sl">Delete &amp; Recovery</div>
+<ul><li><a href="#s14">Delete Behavior ▶</a></li><li><a href="#s15">PVC Retention ▶</a></li></ul>
+<div class="sl">SRE</div>
+<ul><li><a href="#s16">Monitoring</a></li><li><a href="#s17">Commands</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Kubernetes StatefulSets</h1><p>The complete guide — stable identity, ordered operations, persistent storage, headless services, and update strategies. Interactive step-by-step workflows.</p></div>
+
+<!-- ═════════════ S01 ═════════════ -->
+<section id="s01"><h2><span class="n">01</span> What Is a StatefulSet &amp; Why?</h2>
+<div class="def"><b>Definition — StatefulSet</b>A StatefulSet manages stateful applications by providing <strong>stable, unique Pod identities</strong> (name + hostname + DNS), <strong>persistent storage</strong> (each Pod gets its own PVC that survives restarts), and <strong>ordered operations</strong> (Pods are created, deleted, and updated in a predictable sequence). It's the workload controller for databases, message queues, and any app that needs to remember who it is.</div>
+
+<div class="def"><b>Definition — Stateful vs Stateless</b><strong>Stateless:</strong> any Pod can handle any request, Pods are interchangeable (web servers, APIs). Use Deployments.<br><strong>Stateful:</strong> each Pod has a unique role or data. Losing a Pod's identity or storage would break the app (databases, Kafka, ZooKeeper, Elasticsearch). Use StatefulSets.</div>
+
+<table>
+<tr><th>Use Case</th><th>Why StatefulSet?</th></tr>
+<tr><td>MySQL/PostgreSQL replicas</td><td>Primary needs stable identity. Each replica has its own data volume.</td></tr>
+<tr><td>MongoDB replica set</td><td>Members discover each other by stable DNS name.</td></tr>
+<tr><td>Kafka brokers</td><td>Each broker has a unique ID and persistent log storage.</td></tr>
+<tr><td>ZooKeeper ensemble</td><td>Ordered startup required. Stable hostnames for leader election.</td></tr>
+<tr><td>Elasticsearch cluster</td><td>Each node has persistent data, unique node name.</td></tr>
+<tr><td>Redis cluster</td><td>Slot assignment tied to node identity.</td></tr>
+<tr><td>Consul/etcd</td><td>Cluster membership requires stable network addresses.</td></tr>
+</table>
+
+<div class="c g"><div class="l">Analogy</div><p style="margin:0">A Deployment manages <strong>cattle</strong> — identical, replaceable, numbered by random hash. A StatefulSet manages <strong>pets</strong> — each has a name (mysql-0, mysql-1, mysql-2), its own bedroom (PVC), and a fixed address (DNS). If a pet dies, it's replaced with the <strong>same name and same room</strong> — not a random new one.</p></div>
+</section>
+
+<!-- ═════════════ S02 ═════════════ -->
+<section id="s02"><h2><span class="n">02</span> Deployment vs StatefulSet ▶</h2>
+<div class="W" id="w-vs"><div class="bar"><div class="tab on" data-i="0">Side-by-Side</div><div class="tab" data-i="1">Pod Names</div><div class="tab" data-i="2">Storage</div><div class="tab" data-i="3">Ordering</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<table>
+<tr><th></th><th>Deployment</th><th>StatefulSet</th></tr>
+<tr><td><strong>Pod names</strong></td><td>Random hash: <code>web-6d4f-abc12</code></td><td>Ordered index: <code>web-0</code>, <code>web-1</code>, <code>web-2</code></td></tr>
+<tr><td><strong>Pod hostname</strong></td><td>Random — changes on restart</td><td><span class="bg gn">Stable</span> — same after restart</td></tr>
+<tr><td><strong>Storage</strong></td><td>Shared or ephemeral</td><td><span class="bg gn">Each Pod gets own PVC</span> — survives restart</td></tr>
+<tr><td><strong>Create order</strong></td><td>All at once (parallel)</td><td><span class="bg gn">Ordered</span>: 0 → 1 → 2 (sequential)</td></tr>
+<tr><td><strong>Delete order</strong></td><td>All at once</td><td><span class="bg gn">Reverse</span>: 2 → 1 → 0</td></tr>
+<tr><td><strong>DNS</strong></td><td>Via Service (load balanced)</td><td><span class="bg gn">Per-Pod DNS</span> via Headless Service</td></tr>
+<tr><td><strong>Requires</strong></td><td>Nothing special</td><td><span class="bg yl">Headless Service</span> (clusterIP: None)</td></tr>
+<tr><td><strong>Use for</strong></td><td>Stateless (web, API)</td><td>Stateful (DB, queue, cache cluster)</td></tr>
+</table></div>
+<div class="pnl" data-i="1"><div class="tl">Pod Naming — The Critical Difference</div>
+<div class="vis"><strong>Deployment Pods (random, disposable):</strong><br>
+<span class="bx run">web-6d4f5b-abc12</span> <span class="bx run">web-6d4f5b-def34</span> <span class="bx run">web-6d4f5b-ghi56</span><br>
+<span style="color:var(--dm);font-size:10px">If Pod dies → replacement gets NEW random name. App can't rely on names.</span><br><br>
+<strong>StatefulSet Pods (ordered, persistent identity):</strong><br>
+<span class="bx sts">mysql-0</span> <span class="bx sts">mysql-1</span> <span class="bx sts">mysql-2</span><br>
+<span style="color:var(--gn);font-size:10px">If mysql-1 dies → replacement is ALSO named mysql-1. Same name, same DNS, same PVC.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Storage — Shared vs Dedicated</div>
+<div class="vis"><strong>Deployment:</strong> All Pods share 1 PVC (or use ephemeral emptyDir)<br>
+<span class="bx run">Pod A</span> <span class="bx run">Pod B</span> <span class="bx run">Pod C</span> <span class="ar">→ all mount →</span> <span class="bx pvc">PVC-shared</span><br><br>
+<strong>StatefulSet:</strong> Each Pod gets its own dedicated PVC<br>
+<span class="bx sts">mysql-0</span> <span class="ar">→</span> <span class="bx pvc">data-mysql-0</span><br>
+<span class="bx sts">mysql-1</span> <span class="ar">→</span> <span class="bx pvc">data-mysql-1</span><br>
+<span class="bx sts">mysql-2</span> <span class="ar">→</span> <span class="bx pvc">data-mysql-2</span><br>
+<span style="color:var(--gn);font-size:10px">If mysql-1 dies and restarts → it re-mounts data-mysql-1. Data preserved!</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">Ordering — Sequential vs Parallel</div>
+<div class="vis"><strong>Deployment scale up (parallel):</strong><br>
+<span class="bx run">Pod A</span> <span class="bx run">Pod B</span> <span class="bx run">Pod C</span> ← all created simultaneously<br><br>
+<strong>StatefulSet scale up (ordered):</strong><br>
+<span class="bx sts">mysql-0</span> created → must be Ready ✓<br>
+<span class="ar">then →</span> <span class="bx sts">mysql-1</span> created → must be Ready ✓<br>
+<span class="ar">then →</span> <span class="bx sts">mysql-2</span> created → must be Ready ✓<br><br>
+<span style="color:var(--dm);font-size:10px">Why? Databases need the primary (index 0) up first. Replicas join only after primary is ready.</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S03 ═════════════ -->
+<section id="s03"><h2><span class="n">03</span> The 3 Guarantees ▶</h2>
+<div class="W" id="w-guar"><div class="bar"><div class="tab on" data-i="0">① Stable Identity</div><div class="tab" data-i="1">② Stable Storage</div><div class="tab" data-i="2">③ Ordered Operations</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Guarantee 1 — Stable, Unique Network Identity</div>
+<div class="def"><b>Definition</b>Each Pod gets a <strong>predictable name</strong> (<code>{statefulset}-{ordinal}</code>), a <strong>stable hostname</strong> (same after restart), and a <strong>unique DNS record</strong> (<code>{pod}.{service}.{namespace}.svc.cluster.local</code>). These never change for the lifetime of the StatefulSet.</div>
+<div class="vis"><span class="bx sts">StatefulSet: mysql (replicas: 3)</span><br><br>
+<span class="bx sts">mysql-0</span> → hostname: mysql-0 → DNS: <code>mysql-0.mysql-svc.default.svc.cluster.local</code><br>
+<span class="bx sts">mysql-1</span> → hostname: mysql-1 → DNS: <code>mysql-1.mysql-svc.default.svc.cluster.local</code><br>
+<span class="bx sts">mysql-2</span> → hostname: mysql-2 → DNS: <code>mysql-2.mysql-svc.default.svc.cluster.local</code><br><br>
+<span style="color:var(--gn);font-size:10px">If mysql-1 crashes → new mysql-1 gets SAME name, SAME hostname, SAME DNS.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Guarantee 2 — Stable, Persistent Storage</div>
+<div class="def"><b>Definition</b>Each Pod gets its own <strong>PersistentVolumeClaim</strong> auto-created from <code>volumeClaimTemplates</code>. The PVC name is <code>{volumeClaimTemplate}-{pod}</code>. When a Pod is deleted and recreated, it re-mounts the <strong>same PVC</strong> — data is preserved.</div>
+<div class="vis"><span class="bx sts">mysql-0</span> <span class="ar">→</span> <span class="bx pvc">data-mysql-0 (10Gi)</span> ← created automatically<br>
+<span class="bx sts">mysql-1</span> <span class="ar">→</span> <span class="bx pvc">data-mysql-1 (10Gi)</span><br>
+<span class="bx sts">mysql-2</span> <span class="ar">→</span> <span class="bx pvc">data-mysql-2 (10Gi)</span><br><br>
+<strong>mysql-1 dies →</strong> new mysql-1 created → re-mounts <span class="bx pvc">data-mysql-1</span><br>
+<span style="color:var(--gn);font-size:10px">All data intact. No data loss. PVCs are NOT deleted when Pods are deleted.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Guarantee 3 — Ordered, Graceful Operations</div>
+<div class="def"><b>Definition</b><strong>Creation:</strong> Pods are created in order: 0, 1, 2. Each must be Running+Ready before the next starts.<br><strong>Deletion:</strong> Pods are deleted in reverse: 2, 1, 0.<br><strong>Update:</strong> Pods are updated in reverse: 2, 1, 0 (newest first).</div>
+<div class="vis"><strong>Scale 0→3:</strong> <span class="bx sts">0</span> <span class="ar">→ ready →</span> <span class="bx sts">1</span> <span class="ar">→ ready →</span> <span class="bx sts">2</span><br><br>
+<strong>Scale 3→1:</strong> <span class="bx ded">2 deleted</span> <span class="ar">→ gone →</span> <span class="bx ded">1 deleted</span><br><br>
+<strong>Update:</strong> <span class="bx ded">2 updated</span> <span class="ar">→ ready →</span> <span class="bx ded">1 updated</span> <span class="ar">→ ready →</span> <span class="bx ded">0 updated</span><br><br>
+<span style="color:var(--dm);font-size:10px">Why reverse for update/delete? Index 0 is usually the primary/leader. It should be the last to go down.</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S04 ═════════════ -->
+<section id="s04"><h2><span class="n">04</span> Stable Network Identity ▶</h2>
+<div class="W" id="w-net"><div class="bar"><div class="tab on" data-i="0">Pod naming</div><div class="tab" data-i="1">Before/after crash</div><div class="tab" data-i="2">ordinalStart</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Pod naming formula</div>
+<div class="vis"><strong>Format:</strong> <code>{statefulset-name}-{ordinal}</code><br><br>
+StatefulSet name: <code>mysql</code>, replicas: 3<br><br>
+<span class="bx sts">mysql-0</span> (ordinal 0 — always first, usually primary)<br>
+<span class="bx sts">mysql-1</span> (ordinal 1 — second, replica)<br>
+<span class="bx sts">mysql-2</span> (ordinal 2 — third, replica)<br><br>
+<strong>Hostname inside Pod:</strong> <code>$(hostname)</code> returns <code>mysql-0</code>, <code>mysql-1</code>, etc.<br>
+<strong>This is predictable and stable.</strong> Apps can use ordinal to determine their role.</div></div>
+<div class="pnl" data-i="1"><div class="tl">Before and after crash — identity preserved</div>
+<div class="vis"><strong>Before crash:</strong><br>
+<span class="bx sts">mysql-0 (IP: 10.244.1.5)</span> <span class="bx sts">mysql-1 (IP: 10.244.2.8)</span> <span class="bx sts">mysql-2 (IP: 10.244.3.2)</span><br><br>
+<strong>mysql-1 crashes → replaced:</strong><br>
+<span class="bx sts">mysql-0 (10.244.1.5)</span> <span class="bx sts">mysql-1 (10.244.2.12)</span> <span class="bx sts">mysql-2 (10.244.3.2)</span><br><br>
+<span style="color:var(--gn)">Name: same (mysql-1) ✓</span><br>
+<span style="color:var(--gn)">Hostname: same (mysql-1) ✓</span><br>
+<span style="color:var(--gn)">DNS: same (mysql-1.mysql-svc...) ✓</span><br>
+<span style="color:var(--gn)">PVC: same (data-mysql-1) ✓</span><br>
+<span style="color:var(--yl)">IP: may change (10.244.2.8 → 10.244.2.12) — use DNS, not IP!</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">ordinalStart (v1.27+ beta)</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">ordinals:</span>
+    <span class="k">start:</span> <span class="nm">5</span>   <span class="cm"># Pods named: mysql-5, mysql-6, mysql-7 instead of 0,1,2</span></code></pre>
+<div class="ds">Useful when migrating from another system where IDs start at a different number.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S05 ═════════════ -->
+<section id="s05"><h2><span class="n">05</span> Headless Service ▶</h2>
+<div class="def"><b>Definition — Headless Service</b>A Service with <code>clusterIP: None</code>. Instead of load-balancing to a single VIP, DNS returns the individual Pod IPs. Each Pod gets its own DNS A record. This is <strong>required</strong> for StatefulSets — it's how Pods get their stable DNS names.</div>
+
+<div class="W" id="w-hl"><div class="bar"><div class="tab on" data-i="0">Normal vs Headless</div><div class="tab" data-i="1">Headless DNS</div><div class="tab" data-i="2">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Normal Service vs Headless Service</div>
+<div class="vis"><strong>Normal Service (clusterIP: auto):</strong><br>
+<span class="bx svc">web-svc (10.96.0.15)</span> <span class="ar">→ load balance →</span> <span class="bx run">Pod A</span> / <span class="bx run">Pod B</span> / <span class="bx run">Pod C</span><br>
+DNS: <code>web-svc.default.svc</code> → <code>10.96.0.15</code> (single VIP)<br><br>
+<strong>Headless Service (clusterIP: None):</strong><br>
+<span class="bx svc">mysql-svc (no ClusterIP!)</span><br>
+DNS: <code>mysql-svc.default.svc</code> → <code>10.244.1.5, 10.244.2.8, 10.244.3.2</code> (all Pod IPs!)<br>
+DNS: <code>mysql-0.mysql-svc.default.svc</code> → <code>10.244.1.5</code> (specific Pod!)<br>
+DNS: <code>mysql-1.mysql-svc.default.svc</code> → <code>10.244.2.8</code> (specific Pod!)</div></div>
+<div class="pnl" data-i="1"><div class="tl">Per-Pod DNS Records</div>
+<div class="vis"><strong>Full DNS format:</strong><br>
+<code>{pod-name}.{service-name}.{namespace}.svc.cluster.local</code><br><br>
+<span class="bx sts">mysql-0</span> → <code>mysql-0.mysql-svc.default.svc.cluster.local</code><br>
+<span class="bx sts">mysql-1</span> → <code>mysql-1.mysql-svc.default.svc.cluster.local</code><br>
+<span class="bx sts">mysql-2</span> → <code>mysql-2.mysql-svc.default.svc.cluster.local</code><br><br>
+<span style="color:var(--gn);font-size:10px">Apps use these DNS names to connect to SPECIFIC Pods (e.g., always connect to mysql-0 for writes).</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Headless Service YAML</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">mysql-svc</span>                 <span class="cm"># Must match StatefulSet's serviceName</span>
+<span class="k">spec:</span>
+  <span class="k">clusterIP:</span> <span class="v">None</span>                 <span class="cm"># ← THIS makes it headless</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">mysql</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">3306</span>
+    <span class="k">name:</span> <span class="s">mysql</span></code></pre>
+<div class="trap"><b>Critical</b>The headless Service MUST be created BEFORE the StatefulSet. The Service name must match <code>spec.serviceName</code> in the StatefulSet. Without it, Pods won't get DNS names.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S06 ═════════════ -->
+<section id="s06"><h2><span class="n">06</span> Pod DNS — How Apps Discover Each Other ▶</h2>
+<div class="W" id="w-dns"><div class="bar"><div class="tab on" data-i="0">From inside Pod</div><div class="tab" data-i="1">From another Pod</div><div class="tab" data-i="2">Use in app config</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">From inside mysql-0 — discover peers</div>
+<pre><code><span class="cm"># Inside mysql-0 container:</span>
+nslookup mysql-svc
+<span class="cm"># Returns all 3 Pod IPs (discover all members)</span>
+
+nslookup mysql-1.mysql-svc
+<span class="cm"># Returns mysql-1's IP specifically</span>
+
+<span class="cm"># Connect to a specific peer:</span>
+mysql -h mysql-1.mysql-svc -u root -p</code></pre></div>
+<div class="pnl" data-i="1"><div class="tl">From any Pod in the cluster</div>
+<pre><code><span class="cm"># Connect to the primary (mysql-0) from any app Pod:</span>
+mysql -h mysql-0.mysql-svc.default.svc.cluster.local -u root -p
+
+<span class="cm"># Short form (within same namespace):</span>
+mysql -h mysql-0.mysql-svc -u root -p</code></pre></div>
+<div class="pnl" data-i="2"><div class="tl">Use in application config (e.g., MongoDB replica set)</div>
+<pre><code><span class="cm"># MongoDB connection string using stable DNS names:</span>
+mongodb://mongo-0.mongo-svc:27017,mongo-1.mongo-svc:27017,mongo-2.mongo-svc:27017/mydb?replicaSet=rs0
+
+<span class="cm"># Kafka broker list:</span>
+bootstrap.servers=kafka-0.kafka-svc:9092,kafka-1.kafka-svc:9092,kafka-2.kafka-svc:9092</code></pre>
+<div class="sre"><div class="tag">SRE Principle</div><p style="margin:0">Always use DNS names, never Pod IPs. Pod IPs change on restart. DNS names are stable and automatically point to the new IP. This is the entire point of StatefulSets + Headless Services.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S07 ═════════════ -->
+<section id="s07"><h2><span class="n">07</span> VolumeClaimTemplates ▶</h2>
+<div class="def"><b>Definition — volumeClaimTemplates</b>A template for creating PVCs automatically. For each Pod, the StatefulSet controller creates a PVC named <code>{volumeClaimTemplate.name}-{pod-name}</code>. The PVC is bound to a PersistentVolume and mounted into the Pod. PVCs are <strong>NOT deleted</strong> when Pods are deleted — data survives.</div>
+
+<div class="W" id="w-vct"><div class="bar"><div class="tab on" data-i="0">How it works</div><div class="tab" data-i="1">Naming</div><div class="tab" data-i="2">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Auto-PVC creation for each Pod</div>
+<div class="vis"><span class="bx sts">StatefulSet: mysql (replicas: 3)</span><br>
+<code>volumeClaimTemplates: name=data, 10Gi</code><br><br>
+<strong>Creates automatically:</strong><br>
+<span class="bx pvc">PVC: data-mysql-0 (10Gi)</span> → mounted in <span class="bx sts">mysql-0</span> at <code>/var/lib/mysql</code><br>
+<span class="bx pvc">PVC: data-mysql-1 (10Gi)</span> → mounted in <span class="bx sts">mysql-1</span> at <code>/var/lib/mysql</code><br>
+<span class="bx pvc">PVC: data-mysql-2 (10Gi)</span> → mounted in <span class="bx sts">mysql-2</span> at <code>/var/lib/mysql</code></div></div>
+<div class="pnl" data-i="1"><div class="tl">PVC naming formula</div>
+<div class="vis"><strong>Format:</strong> <code>{volumeClaimTemplate.name}-{statefulset}-{ordinal}</code><br><br>
+Template name: <code>data</code>, StatefulSet: <code>mysql</code><br>
+→ <code>data-mysql-0</code>, <code>data-mysql-1</code>, <code>data-mysql-2</code><br><br>
+Template name: <code>logs</code>, StatefulSet: <code>kafka</code><br>
+→ <code>logs-kafka-0</code>, <code>logs-kafka-1</code>, <code>logs-kafka-2</code></div></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="k">volumeClaimTemplates:</span>
+- <span class="k">metadata:</span>
+    <span class="k">name:</span> <span class="s">data</span>                  <span class="cm"># PVC name prefix</span>
+  <span class="k">spec:</span>
+    <span class="k">accessModes:</span> [<span class="s">"ReadWriteOnce"</span>]
+    <span class="k">storageClassName:</span> <span class="s">standard</span>  <span class="cm"># Or your StorageClass</span>
+    <span class="k">resources:</span>
+      <span class="k">requests:</span>
+        <span class="k">storage:</span> <span class="s">10Gi</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S08 ═════════════ -->
+<section id="s08"><h2><span class="n">08</span> PVC Lifecycle ▶</h2>
+<div class="W" id="w-pvc"><div class="bar"><div class="tab on" data-i="0">Pod deleted</div><div class="tab" data-i="1">Pod recreated</div><div class="tab" data-i="2">Scale down + up</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Pod deleted → PVC stays!</div>
+<div class="vis"><span class="bx ded">mysql-1 deleted</span><br><br>
+<span class="bx pvc">data-mysql-1 (10Gi) — STILL EXISTS</span><br>
+<span style="color:var(--gn);font-size:10px">PVC is NOT deleted when Pod is deleted. Data is preserved.</span><br>
+<span style="color:var(--dm);font-size:10px">This is by design — you never want to lose database data just because a Pod restarted.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Pod recreated → re-mounts same PVC</div>
+<div class="vis"><span class="bx sts">mysql-1 recreated (new Pod, same name)</span><br><span class="ar">→</span> <span class="bx pvc">data-mysql-1 re-mounted</span><br><br>
+<span style="color:var(--gn);font-size:10px">New Pod → same name → finds existing PVC → mounts it → all data intact.</span><br>
+<span style="color:var(--dm);font-size:10px">The app starts up and sees all its previous data. As if nothing happened.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Scale down 3→1 then back 1→3</div>
+<div class="vis"><strong>Scale 3→1:</strong><br>
+<span class="bx ded">mysql-2 deleted</span> → <span class="bx pvc">data-mysql-2 kept</span><br>
+<span class="bx ded">mysql-1 deleted</span> → <span class="bx pvc">data-mysql-1 kept</span><br>
+<span class="bx sts">mysql-0 running</span> → <span class="bx pvc">data-mysql-0 in use</span><br><br>
+<strong>Scale 1→3:</strong><br>
+<span class="bx sts">mysql-1 created</span> → <span class="bx pvc">data-mysql-1 re-mounted (old data!)</span><br>
+<span class="bx sts">mysql-2 created</span> → <span class="bx pvc">data-mysql-2 re-mounted (old data!)</span><br><br>
+<span style="color:var(--gn);font-size:10px">Scale down + up = data preserved. PVCs survive the entire lifecycle.</span></div>
+<div class="c r"><div class="l">Cleanup warning</div><p style="margin:0">PVCs are NEVER auto-deleted by default. After deleting a StatefulSet, you must manually delete PVCs: <code>kubectl delete pvc data-mysql-0 data-mysql-1 data-mysql-2</code>. Abandoned PVCs keep consuming storage.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S09 ═════════════ -->
+<section id="s09"><h2><span class="n">09</span> Full StatefulSet YAML</h2>
+<pre><code><span class="cm"># Step 1: Headless Service (MUST create first)</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">mysql-svc</span>
+<span class="k">spec:</span>
+  <span class="k">clusterIP:</span> <span class="v">None</span>                   <span class="cm"># ← Headless</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">mysql</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">3306</span>
+    <span class="k">name:</span> <span class="s">mysql</span>
+---
+<span class="cm"># Step 2: StatefulSet</span>
+<span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">StatefulSet</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">mysql</span>
+<span class="k">spec:</span>
+  <span class="k">serviceName:</span> <span class="s">mysql-svc</span>            <span class="cm"># Must match Headless Service name</span>
+  <span class="k">replicas:</span> <span class="nm">3</span>
+  <span class="k">podManagementPolicy:</span> <span class="v">OrderedReady</span>  <span class="cm"># OrderedReady (default) or Parallel</span>
+
+  <span class="k">updateStrategy:</span>
+    <span class="k">type:</span> <span class="v">RollingUpdate</span>             <span class="cm"># RollingUpdate (default) or OnDelete</span>
+    <span class="k">rollingUpdate:</span>
+      <span class="k">partition:</span> <span class="nm">0</span>                  <span class="cm"># Update all Pods (see section 13)</span>
+
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">mysql</span>
+
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span>
+        <span class="k">app:</span> <span class="s">mysql</span>
+    <span class="k">spec:</span>
+      <span class="k">terminationGracePeriodSeconds:</span> <span class="nm">30</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">mysql</span>
+        <span class="k">image:</span> <span class="s">mysql:8.0</span>
+        <span class="k">ports:</span>
+        - <span class="k">containerPort:</span> <span class="nm">3306</span>
+          <span class="k">name:</span> <span class="s">mysql</span>
+        <span class="k">env:</span>
+        - <span class="k">name:</span> <span class="s">MYSQL_ROOT_PASSWORD</span>
+          <span class="k">value:</span> <span class="s">"rootpass"</span>
+        <span class="k">volumeMounts:</span>
+        - <span class="k">name:</span> <span class="s">data</span>
+          <span class="k">mountPath:</span> <span class="s">/var/lib/mysql</span>
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"500m"</span>, <span class="k">memory:</span> <span class="s">"512Mi"</span> }
+          <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"1"</span>, <span class="k">memory:</span> <span class="s">"1Gi"</span> }
+        <span class="k">readinessProbe:</span>
+          <span class="k">exec:</span>
+            <span class="k">command:</span> [<span class="s">"mysqladmin"</span>, <span class="s">"ping"</span>]
+          <span class="k">periodSeconds:</span> <span class="nm">10</span>
+
+  <span class="k">volumeClaimTemplates:</span>              <span class="cm"># Auto-creates PVC per Pod</span>
+  - <span class="k">metadata:</span>
+      <span class="k">name:</span> <span class="s">data</span>
+    <span class="k">spec:</span>
+      <span class="k">accessModes:</span> [<span class="s">"ReadWriteOnce"</span>]
+      <span class="k">resources:</span>
+        <span class="k">requests:</span>
+          <span class="k">storage:</span> <span class="s">10Gi</span></code></pre>
+</section>
+
+<!-- ═════════════ S10 ═════════════ -->
+<section id="s10"><h2><span class="n">10</span> Creating a StatefulSet ▶</h2>
+<div class="W" id="w-create"><div class="bar"><div class="tab on" data-i="0">Steps</div><div class="tab" data-i="1">What happens</div><div class="tab" data-i="2">Verify</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Two-step creation (Service first, then StatefulSet)</div>
+<pre><code><span class="cm"># Step 1: Create Headless Service FIRST</span>
+kubectl apply -f headless-svc.yaml
+
+<span class="cm"># Step 2: Create StatefulSet</span>
+kubectl apply -f statefulset.yaml</code></pre>
+<div class="trap"><b>Order matters</b>Headless Service MUST exist before StatefulSet. Without it, Pods won't get DNS records. There is NO imperative <code>kubectl create statefulset</code> command — YAML only.</div></div>
+<div class="pnl" data-i="1"><div class="tl">What happens internally (ordered creation)</div>
+<div class="vis">① <span class="bx sts">StatefulSet created</span> (replicas: 3)<br>
+② Controller creates <span class="bx sts">mysql-0</span> + <span class="bx pvc">PVC: data-mysql-0</span><br>
+③ mysql-0 scheduled → image pulled → started → <span style="color:var(--gn)">Ready ✓</span><br>
+④ <strong>Only after mysql-0 is Ready</strong> → creates <span class="bx sts">mysql-1</span> + <span class="bx pvc">PVC: data-mysql-1</span><br>
+⑤ mysql-1 Ready ✓ → creates <span class="bx sts">mysql-2</span> + <span class="bx pvc">PVC: data-mysql-2</span><br>
+⑥ mysql-2 Ready ✓ → <span style="color:var(--gn)">StatefulSet fully deployed ✓</span></div></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="cm"># Check StatefulSet</span>
+kubectl get statefulset mysql
+
+<span class="cm"># Check Pods (ordered names)</span>
+kubectl get pods -l app=mysql
+<span class="cm"># mysql-0   1/1   Running</span>
+<span class="cm"># mysql-1   1/1   Running</span>
+<span class="cm"># mysql-2   1/1   Running</span>
+
+<span class="cm"># Check auto-created PVCs</span>
+kubectl get pvc
+<span class="cm"># data-mysql-0   Bound   10Gi</span>
+<span class="cm"># data-mysql-1   Bound   10Gi</span>
+<span class="cm"># data-mysql-2   Bound   10Gi</span>
+
+<span class="cm"># Test DNS</span>
+kubectl run -it --rm dns-test --image=busybox -- nslookup mysql-0.mysql-svc</code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S11 ═════════════ -->
+<section id="s11"><h2><span class="n">11</span> Ordered Scaling ▶</h2>
+<div class="W" id="w-scale"><div class="bar"><div class="tab on" data-i="0">Scale Up</div><div class="tab" data-i="1">Scale Down</div><div class="tab" data-i="2">Parallel mode</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Scale Up 3→5 (ordered: 3, then 4)</div>
+<div class="vis"><span class="bx sts">mysql-0 ✓</span> <span class="bx sts">mysql-1 ✓</span> <span class="bx sts">mysql-2 ✓</span> (existing)<br><br>
+<span class="bx sts">mysql-3 creating</span> + <span class="bx pvc">data-mysql-3 created</span> → wait for Ready ✓<br>
+<span class="ar">then →</span> <span class="bx sts">mysql-4 creating</span> + <span class="bx pvc">data-mysql-4 created</span> → Ready ✓</div>
+<pre><code>kubectl scale statefulset mysql --replicas=5</code></pre></div>
+<div class="pnl" data-i="1"><div class="tl">Scale Down 5→2 (reverse order: 4, 3, 2)</div>
+<div class="vis"><span class="bx ded">mysql-4 terminating</span> → gone<br>
+<span class="ar">then →</span> <span class="bx ded">mysql-3 terminating</span> → gone<br>
+<span class="ar">then →</span> <span class="bx ded">mysql-2 terminating</span> → gone<br><br>
+<span class="bx sts">mysql-0 ✓</span> <span class="bx sts">mysql-1 ✓</span> (remaining)<br>
+<span class="bx pvc">data-mysql-2</span> <span class="bx pvc">data-mysql-3</span> <span class="bx pvc">data-mysql-4</span> ← <strong>PVCs still exist!</strong></div>
+<div class="c o"><div class="l">PVCs not deleted</div><p style="margin:0">Scaling down does NOT delete PVCs. If you scale back up, Pods remount their old PVCs with all data intact. To free storage, delete PVCs manually.</p></div></div>
+<div class="pnl" data-i="2"><div class="tl">Parallel mode — skip ordering</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">podManagementPolicy:</span> <span class="v">Parallel</span>   <span class="cm"># All Pods created/deleted at once</span></code></pre>
+<div class="vis"><strong>With OrderedReady (default):</strong> 0 → ready → 1 → ready → 2<br>
+<strong>With Parallel:</strong> 0, 1, 2 all created simultaneously<br><br>
+<span style="color:var(--yl);font-size:10px">Use Parallel only when startup order doesn't matter (e.g., Cassandra where all nodes are peers).</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S12 ═════════════ -->
+<section id="s12"><h2><span class="n">12</span> Update Strategies ▶</h2>
+<div class="W" id="w-upd"><div class="bar"><div class="tab on" data-i="0">RollingUpdate</div><div class="tab" data-i="1">OnDelete</div><div class="tab" data-i="2">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">RollingUpdate (default) — Reverse order</div>
+<div class="def"><b>Definition</b>Updates Pods one at a time in <strong>reverse ordinal order</strong> (highest index first). Each Pod must become Ready before the next is updated. Index 0 (primary) is updated last.</div>
+<pre><code><span class="k">updateStrategy:</span>
+  <span class="k">type:</span> <span class="v">RollingUpdate</span></code></pre>
+<div class="vis"><span style="color:var(--dm)">Update image mysql:8.0 → mysql:8.1:</span><br><br>
+<span class="bx ded">mysql-2 terminated</span> → <span class="bx sts">mysql-2 (8.1) created</span> → Ready ✓<br>
+<span class="ar">then →</span> <span class="bx ded">mysql-1 terminated</span> → <span class="bx sts">mysql-1 (8.1)</span> → Ready ✓<br>
+<span class="ar">then →</span> <span class="bx ded">mysql-0 terminated</span> → <span class="bx sts">mysql-0 (8.1)</span> → Ready ✓<br><br>
+<span style="color:var(--gn);font-size:10px">Primary (index 0) updated LAST. Replicas updated first to minimize downtime risk.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">OnDelete — Manual control</div>
+<div class="def"><b>Definition</b>Template is updated but Pods are NOT automatically replaced. You must <strong>manually delete</strong> each Pod. When deleted, the controller recreates it with the new template. Gives you full control over update timing.</div>
+<pre><code><span class="k">updateStrategy:</span>
+  <span class="k">type:</span> <span class="v">OnDelete</span></code></pre>
+<div class="vis"><span style="color:var(--dm)">Update template (image mysql:8.0 → 8.1):</span><br>
+<span class="bx sts">mysql-0 (8.0)</span> <span class="bx sts">mysql-1 (8.0)</span> <span class="bx sts">mysql-2 (8.0)</span> ← nothing happens!<br><br>
+<span style="color:var(--dm)">You manually delete mysql-2:</span><br>
+<code>kubectl delete pod mysql-2</code> → <span class="bx sts">mysql-2 (8.1) recreated</span><br><br>
+<span style="color:var(--dm)">You delete mysql-1 when ready:</span><br>
+<code>kubectl delete pod mysql-1</code> → <span class="bx sts">mysql-1 (8.1) recreated</span></div>
+<div class="sre"><div class="tag">SRE Use Case</div><p style="margin:0">Use OnDelete for critical databases where you want to verify each node after update before proceeding to the next. You control exactly when each Pod is replaced.</p></div></div>
+<div class="pnl" data-i="2">
+<table>
+<tr><th></th><th>RollingUpdate</th><th>OnDelete</th></tr>
+<tr><td>Automatic?</td><td>Yes — reverse order</td><td>No — must delete Pods manually</td></tr>
+<tr><td>Control</td><td>Less (automatic)</td><td>Full manual control</td></tr>
+<tr><td>Use for</td><td>Most stateful apps</td><td>Critical databases, manual verification needed</td></tr>
+<tr><td>Partition support</td><td>Yes (canary updates)</td><td>N/A</td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S13 ═════════════ -->
+<section id="s13"><h2><span class="n">13</span> Partitioned Rolling Update ▶</h2>
+<div class="def"><b>Definition — partition</b>Only Pods with ordinal ≥ partition value are updated. Pods below the partition keep the old template. This lets you do a <strong>canary update</strong> — update one Pod first, verify, then update the rest.</div>
+
+<div class="W" id="w-part"><div class="bar"><div class="tab on" data-i="0">Canary (partition=2)</div><div class="tab" data-i="1">Promote (partition=0)</div><div class="tab" data-i="2">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Canary — Update only mysql-2 first</div>
+<pre><code>kubectl patch statefulset mysql -p '{"spec":{"updateStrategy":{"rollingUpdate":{"partition":2}}}}'
+kubectl set image statefulset/mysql mysql=mysql:8.1</code></pre>
+<div class="vis"><span class="bx sts">mysql-0 (8.0)</span> <span class="bx sts">mysql-1 (8.0)</span> <span class="bx sts">mysql-2 (8.1) ← UPDATED (ordinal ≥ 2)</span><br><br>
+<span style="color:var(--dm);font-size:10px">Only mysql-2 updated. mysql-0 and mysql-1 untouched. Verify mysql-2 works correctly.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Promote — Update the rest</div>
+<pre><code><span class="cm"># Set partition to 0 → update ALL remaining Pods</span>
+kubectl patch statefulset mysql -p '{"spec":{"updateStrategy":{"rollingUpdate":{"partition":0}}}}'</code></pre>
+<div class="vis"><span class="bx sts">mysql-1 (8.0)</span> → <span class="bx sts">mysql-1 (8.1)</span> ← updated (ordinal ≥ 0)<br>
+<span class="bx sts">mysql-0 (8.0)</span> → <span class="bx sts">mysql-0 (8.1)</span> ← updated last<br><br>
+<span style="color:var(--gn)">All 3 now running 8.1 ✓</span></div></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="k">updateStrategy:</span>
+  <span class="k">type:</span> <span class="v">RollingUpdate</span>
+  <span class="k">rollingUpdate:</span>
+    <span class="k">partition:</span> <span class="nm">2</span>       <span class="cm"># Only Pods with ordinal ≥ 2 are updated</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S14 ═════════════ -->
+<section id="s14"><h2><span class="n">14</span> Delete Behavior ▶</h2>
+<div class="W" id="w-del"><div class="bar"><div class="tab on" data-i="0">Delete STS</div><div class="tab" data-i="1">Non-cascading</div><div class="tab" data-i="2">Delete Pod</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Delete StatefulSet (cascading — default)</div>
+<pre><code>kubectl delete statefulset mysql</code></pre>
+<div class="vis"><span class="bx ded">mysql-2 terminating</span> → <span class="bx ded">mysql-1 terminating</span> → <span class="bx ded">mysql-0 terminating</span><br>(reverse order)<br><br>
+<span class="bx pvc">data-mysql-0</span> <span class="bx pvc">data-mysql-1</span> <span class="bx pvc">data-mysql-2</span> ← <strong>PVCs STILL EXIST!</strong><br>
+<span class="bx svc">mysql-svc</span> ← <strong>Service STILL EXISTS!</strong><br><br>
+<span style="color:var(--yl);font-size:10px">You must manually delete PVCs and Service if you want full cleanup.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Non-cascading delete — keep Pods</div>
+<pre><code>kubectl delete statefulset mysql --cascade=orphan</code></pre>
+<div class="vis">StatefulSet deleted. Pods become orphans (still running).<br>
+Recreate StatefulSet with same name + selector → adopts orphan Pods.</div></div>
+<div class="pnl" data-i="2"><div class="tl">Delete individual Pod — replaced with same name</div>
+<pre><code>kubectl delete pod mysql-1</code></pre>
+<div class="vis"><span class="bx ded">mysql-1 deleted</span> → <span class="bx sts">mysql-1 recreated</span> (same name, same PVC)<br><br>
+<span style="color:var(--gn);font-size:10px">StatefulSet controller recreates the Pod with the same ordinal and re-mounts the same PVC.</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S15 ═════════════ -->
+<section id="s15"><h2><span class="n">15</span> PVC Retention Policy ▶</h2>
+<div class="def"><b>Definition — persistentVolumeClaimRetentionPolicy (v1.27+)</b>Controls whether PVCs are automatically deleted when the StatefulSet is deleted or scaled down. Default: Retain (keep PVCs). Can be set to Delete for automatic cleanup.</div>
+<div class="W" id="w-ret"><div class="bar"><div class="tab on" data-i="0">Retain (default)</div><div class="tab" data-i="1">Delete</div><div class="tab" data-i="2">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Retain (default) — PVCs kept forever</div>
+<div class="vis">Delete STS → PVCs stay. Scale down → PVCs stay.<br><strong>Pro:</strong> Data safety. <strong>Con:</strong> Must clean up manually.</div></div>
+<div class="pnl" data-i="1"><div class="tl">Delete — PVCs auto-deleted</div>
+<div class="vis">Delete STS → PVCs deleted. Scale down → PVCs deleted.<br><strong>Pro:</strong> No manual cleanup. <strong>Con:</strong> <span style="color:var(--rd)">DATA LOSS if accidental!</span></div></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="k">spec:</span>
+  <span class="k">persistentVolumeClaimRetentionPolicy:</span>
+    <span class="k">whenDeleted:</span> <span class="v">Retain</span>     <span class="cm"># When STS deleted: Retain or Delete</span>
+    <span class="k">whenScaled:</span> <span class="v">Retain</span>      <span class="cm"># When scaled down: Retain or Delete</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S16 ═════════════ -->
+<section id="s16"><h2><span class="n">16</span> Monitoring &amp; Best Practices</h2>
+<div class="c g"><div class="l">Always create Headless Service first</div><p style="margin:0">Without it, Pods don't get DNS records. Create Service before StatefulSet.</p></div>
+<div class="c b"><div class="l">Use DNS names, never Pod IPs</div><p style="margin:0">Pod IPs change on restart. DNS names (<code>mysql-0.mysql-svc</code>) are stable and auto-update.</p></div>
+<div class="c p"><div class="l">Set readiness probes</div><p style="margin:0">Ordered creation waits for Ready. Without probes, Pods are "Ready" immediately — the next Pod starts before the app is actually serving. Can break cluster formation.</p></div>
+<div class="c o"><div class="l">Plan PVC cleanup</div><p style="margin:0">PVCs are never auto-deleted (by default). After decommissioning, manually delete PVCs or use <code>persistentVolumeClaimRetentionPolicy</code>.</p></div>
+<div class="c r"><div class="l">Use partition for canary updates</div><p style="margin:0">Update one replica first (partition=N-1), verify, then promote (partition=0). Critical for database version upgrades.</p></div>
+<div class="sre"><div class="tag">SRE Wisdom</div><p style="margin:0">StatefulSets are for <strong>pets</strong> — treat them carefully. Every operation (scale, update, delete) should be planned and verified. Unlike Deployments where you can "move fast and break things," a StatefulSet mistake can mean data loss. Use OnDelete for production databases, partition for canary updates, and always backup before upgrades.</p></div>
+</section>
+
+<!-- ═════════════ S17 ═════════════ -->
+<section id="s17"><h2><span class="n">17</span> Command Reference</h2>
+<pre><code><span class="cm"># ══ CREATE ══</span>
+kubectl apply -f headless-svc.yaml      <span class="cm"># Service FIRST</span>
+kubectl apply -f statefulset.yaml       <span class="cm"># StatefulSet SECOND</span>
+<span class="cm"># No imperative create command for StatefulSets — YAML only</span>
+
+<span class="cm"># ══ INSPECT ══</span>
+kubectl get statefulset mysql
+kubectl get pods -l app=mysql -o wide   <span class="cm"># Ordered names: mysql-0, mysql-1, mysql-2</span>
+kubectl get pvc                         <span class="cm"># Auto-created PVCs</span>
+kubectl describe statefulset mysql
+
+<span class="cm"># ══ SCALE ══</span>
+kubectl scale statefulset mysql --replicas=5
+kubectl patch statefulset mysql -p '{"spec":{"replicas":5}}'
+
+<span class="cm"># ══ UPDATE ══</span>
+kubectl set image statefulset/mysql mysql=mysql:8.1
+kubectl rollout status statefulset/mysql
+kubectl rollout undo statefulset/mysql
+
+<span class="cm"># ══ PARTITIONED UPDATE (canary) ══</span>
+kubectl patch statefulset mysql -p '{"spec":{"updateStrategy":{"rollingUpdate":{"partition":2}}}}'
+<span class="cm"># Update only ordinal ≥ 2, then set partition=0 to update rest</span>
+
+<span class="cm"># ══ DELETE ══</span>
+kubectl delete statefulset mysql                   <span class="cm"># Pods deleted, PVCs kept</span>
+kubectl delete statefulset mysql --cascade=orphan   <span class="cm"># Keep Pods too</span>
+kubectl delete pvc data-mysql-0 data-mysql-1 data-mysql-2  <span class="cm"># Manual PVC cleanup</span>
+
+<span class="cm"># ══ DNS TEST ══</span>
+kubectl run -it --rm dns-test --image=busybox -- nslookup mysql-0.mysql-svc
+kubectl run -it --rm dns-test --image=busybox -- nslookup mysql-svc</code></pre>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>
