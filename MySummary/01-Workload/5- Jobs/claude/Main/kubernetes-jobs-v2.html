@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Jobs — Complete Deep-Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#16a34a;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1010px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(22,163,74,.05) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:38px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(22,163,74,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(22,163,74,.03);border:1px solid rgba(22,163,74,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(22,163,74,.03),rgba(8,145,178,.02));border:1px solid rgba(22,163,74,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(22,163,74,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:8px 12px;margin:5px 0 8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.42;color:#6d7b90;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.og{background:rgba(234,88,12,.15);color:var(--og)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(22,163,74,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(22,163,74,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:11px;margin:7px 0;min-height:40px;font-size:12px;line-height:1.7}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.ok{background:rgba(22,163,74,.12);color:var(--gn);border:1px solid rgba(22,163,74,.3)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.new{background:rgba(37,99,235,.1);color:var(--bl);border:1px solid rgba(37,99,235,.25)}
+.bx.pen{background:rgba(202,138,4,.1);color:var(--yl);border:1px solid rgba(202,138,4,.25)}
+.bx.job{background:rgba(22,163,74,.1);color:var(--gn);border:1px solid rgba(22,163,74,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:12px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ K8s Jobs</div>
+<div class="sub">Complete Deep-Dive</div>
+<div class="sl">Fundamentals</div>
+<ul><li><a href="#s01">What &amp; Why</a></li><li><a href="#s02">Job vs Deployment</a></li><li><a href="#s03">Job Types ▶</a></li></ul>
+<div class="sl">YAML &amp; Create</div>
+<ul><li><a href="#s04">Full YAML</a></li><li><a href="#s05">Create ▶</a></li></ul>
+<div class="sl">Completions &amp; Parallelism</div>
+<ul><li><a href="#s06">Completions ▶</a></li><li><a href="#s07">Parallelism ▶</a></li><li><a href="#s08">Fixed vs Work Queue ▶</a></li></ul>
+<div class="sl">Failure Handling</div>
+<ul><li><a href="#s09">Backoff Policy ▶</a></li><li><a href="#s10">Pod Failure Policy ▶</a></li><li><a href="#s11">activeDeadlineSeconds</a></li></ul>
+<div class="sl">Lifecycle</div>
+<ul><li><a href="#s12">Job Lifecycle ▶</a></li><li><a href="#s13">Termination &amp; Cleanup</a></li><li><a href="#s14">TTL Controller</a></li></ul>
+<div class="sl">Patterns</div>
+<ul><li><a href="#s15">Job Patterns ▶</a></li></ul>
+<div class="sl">SRE</div>
+<ul><li><a href="#s16">Monitoring</a></li><li><a href="#s17">Commands</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Kubernetes Jobs</h1><p>The complete guide — completions, parallelism, failure policies, backoff behavior, TTL cleanup, and job patterns. Interactive step-by-step workflows.</p></div>
+
+<!-- ═════════════ S01 ═════════════ -->
+<section id="s01"><h2><span class="n">01</span> What Is a Job &amp; Why?</h2>
+<div class="def"><b>Definition — Job</b>A Job creates one or more Pods and ensures that a specified number of them <strong>successfully complete</strong> (exit code 0). Unlike Deployments (which run forever), Jobs are <strong>run-to-completion</strong> — they start, do work, and stop. The Job controller tracks successful completions and stops when enough Pods have succeeded.</div>
+
+<div class="def"><b>Definition — Run-to-Completion</b>A workload pattern where the process starts, performs a finite task, and exits with code 0 (success). Opposite of long-running services (Deployments) that run indefinitely.</div>
+
+<table>
+<tr><th>Use Case</th><th>Example</th></tr>
+<tr><td>Batch processing</td><td>Process 10,000 images, then stop</td></tr>
+<tr><td>Data migration</td><td>Move data from MySQL to PostgreSQL</td></tr>
+<tr><td>Report generation</td><td>Generate monthly PDF report</td></tr>
+<tr><td>Database backup</td><td>Dump database to S3, then exit</td></tr>
+<tr><td>ETL pipeline</td><td>Extract, transform, load data</td></tr>
+<tr><td>ML training</td><td>Train model on dataset, save weights</td></tr>
+<tr><td>Email sending</td><td>Send 5000 notification emails</td></tr>
+<tr><td>Cleanup tasks</td><td>Delete old logs, expired sessions</td></tr>
+</table>
+
+<div class="c g"><div class="l">Analogy</div><p style="margin:0">A Deployment is a <strong>restaurant</strong> — open all day, continuously serving. A Job is a <strong>catering order</strong> — prepare 100 meals, deliver them, done. You don't keep the kitchen running after the order is fulfilled.</p></div>
+</section>
+
+<!-- ═════════════ S02 ═════════════ -->
+<section id="s02"><h2><span class="n">02</span> Job vs Deployment vs CronJob</h2>
+<table>
+<tr><th></th><th>Deployment</th><th>Job</th><th>CronJob</th></tr>
+<tr><td><strong>Purpose</strong></td><td>Run forever (web servers, APIs)</td><td>Run once until complete</td><td>Run on a schedule</td></tr>
+<tr><td><strong>restartPolicy</strong></td><td><code>Always</code> (required)</td><td><code>Never</code> or <code>OnFailure</code></td><td><code>Never</code> or <code>OnFailure</code></td></tr>
+<tr><td><strong>Completion</strong></td><td>Never — runs indefinitely</td><td>When N Pods exit 0</td><td>Each schedule creates a Job</td></tr>
+<tr><td><strong>Replaces dead Pods?</strong></td><td>Yes — forever</td><td>Yes — until backoffLimit</td><td>Each run is a new Job</td></tr>
+<tr><td><strong>After success</strong></td><td>Keeps running</td><td>Pods stop (Completed)</td><td>Job completes, waits for next schedule</td></tr>
+<tr><td><strong>Use for</strong></td><td>nginx, APIs, databases</td><td>Batch, migration, ML training</td><td>Hourly backup, nightly report</td></tr>
+</table></section>
+
+<!-- ═════════════ S03 ═════════════ -->
+<section id="s03"><h2><span class="n">03</span> Job Types ▶</h2>
+<div class="W" id="w-types"><div class="bar"><div class="tab on" data-i="0">Single Pod</div><div class="tab" data-i="1">Fixed Completion</div><div class="tab" data-i="2">Parallel Fixed</div><div class="tab" data-i="3">Work Queue</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Type 1 — Single Pod Job (simplest)</div>
+<div class="vis"><span class="bx job">Job</span> <span class="ar">→</span> <span class="bx run">Pod 1 runs</span> <span class="ar">→</span> <span class="bx ok">exit 0 ✓</span> <span class="ar">→</span> <span class="bx job">Job Complete</span></div>
+<pre><code><span class="k">completions:</span> <span class="nm">1</span>    <span class="cm"># default — 1 Pod must succeed</span>
+<span class="k">parallelism:</span> <span class="nm">1</span>    <span class="cm"># default — 1 Pod at a time</span></code></pre>
+<div class="ds">One Pod runs. If it succeeds (exit 0) → Job complete. If it fails → Job retries up to <code>backoffLimit</code> times. Most common for simple tasks: backup, migration, one-off script.</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Type 2 — Fixed Completion Count (sequential)</div>
+<div class="vis"><span class="bx job">Job (completions:5, parallelism:1)</span><br><br>
+<span class="bx run">Pod 1</span> <span class="ar">→</span> <span class="bx ok">✓</span> <span class="ar">→</span> <span class="bx run">Pod 2</span> <span class="ar">→</span> <span class="bx ok">✓</span> <span class="ar">→</span> <span class="bx run">Pod 3</span> <span class="ar">→</span> <span class="bx ok">✓</span> <span class="ar">→</span> <span class="bx run">Pod 4</span> <span class="ar">→</span> <span class="bx ok">✓</span> <span class="ar">→</span> <span class="bx run">Pod 5</span> <span class="ar">→</span> <span class="bx ok">✓</span><br><span style="color:var(--gn);font-size:11px">5/5 succeeded → Job Complete</span></div>
+<pre><code><span class="k">completions:</span> <span class="nm">5</span>    <span class="cm"># 5 Pods must succeed</span>
+<span class="k">parallelism:</span> <span class="nm">1</span>    <span class="cm"># one at a time</span></code></pre>
+<div class="ds">Runs 5 Pods one after another. Each must exit 0. Job is complete when 5 Pods have succeeded. If one fails, it retries that task, then continues.</div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Type 3 — Parallel with Fixed Completions</div>
+<div class="vis"><span class="bx job">Job (completions:6, parallelism:3)</span><br><br>
+<strong>Batch 1:</strong> <span class="bx run">Pod 1</span> <span class="bx run">Pod 2</span> <span class="bx run">Pod 3</span> (3 running in parallel)<br>
+<span class="ar">→</span> all complete → <strong>Batch 2:</strong> <span class="bx run">Pod 4</span> <span class="bx run">Pod 5</span> <span class="bx run">Pod 6</span><br>
+<span class="ar">→</span> all complete → <span style="color:var(--gn)">6/6 succeeded → Job Complete</span></div>
+<pre><code><span class="k">completions:</span> <span class="nm">6</span>    <span class="cm"># 6 Pods must succeed</span>
+<span class="k">parallelism:</span> <span class="nm">3</span>    <span class="cm"># 3 at a time</span></code></pre>
+<div class="ds">Runs up to 3 Pods simultaneously. As one finishes, a new one starts (until 6 total have succeeded). Much faster than sequential. Each Pod gets a unique <strong>completion index</strong> (0-5) via <code>JOB_COMPLETION_INDEX</code> env var.</div></div>
+
+<div class="pnl" data-i="3"><div class="tl">Type 4 — Work Queue (parallel, no fixed completions)</div>
+<div class="vis"><span class="bx job">Job (completions: unset, parallelism:3)</span><br><br>
+<span class="bx run">Pod 1</span> <span class="bx run">Pod 2</span> <span class="bx run">Pod 3</span> (all pull from queue)<br>
+<span style="color:var(--dm)">Each Pod pulls work items from a shared queue (Redis, RabbitMQ)</span><br>
+<span style="color:var(--dm)">When queue is empty → Pod exits 0 → eventually all Pods done</span><br>
+<span class="ar">→</span> <span style="color:var(--gn)">Any Pod exits 0 → Job stops creating new Pods</span></div>
+<pre><code><span class="cm"># Do NOT set completions (leave unset)</span>
+<span class="k">parallelism:</span> <span class="nm">3</span>    <span class="cm"># 3 workers pulling from queue</span></code></pre>
+<div class="ds">Pods are workers that pull tasks from an external queue. No fixed count — the Job runs until a Pod signals "queue is empty" by exiting 0. Once one Pod succeeds, no new Pods are created (existing ones finish their current work).</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S04 ═════════════ -->
+<section id="s04"><h2><span class="n">04</span> Full Job YAML — Every Field Explained</h2>
+<pre><code><span class="k">apiVersion:</span> <span class="v">batch/v1</span>                 <span class="cm"># Jobs are in batch API group</span>
+<span class="k">kind:</span> <span class="v">Job</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">data-migration</span>
+<span class="k">spec:</span>
+  <span class="k">completions:</span> <span class="nm">5</span>                     <span class="cm"># Total successful Pods needed (default 1)</span>
+  <span class="k">parallelism:</span> <span class="nm">2</span>                     <span class="cm"># Max concurrent Pods (default 1)</span>
+  <span class="k">backoffLimit:</span> <span class="nm">6</span>                    <span class="cm"># Max retries before Job fails (default 6)</span>
+  <span class="k">activeDeadlineSeconds:</span> <span class="nm">3600</span>        <span class="cm"># Max total runtime — 1 hour, then Job killed</span>
+  <span class="k">ttlSecondsAfterFinished:</span> <span class="nm">86400</span>     <span class="cm"># Auto-delete Job 24h after completion</span>
+  <span class="k">completionMode:</span> <span class="s">Indexed</span>            <span class="cm"># Indexed or NonIndexed (default)</span>
+  <span class="k">suspend:</span> <span class="v">false</span>                     <span class="cm"># true = Job is paused</span>
+
+  <span class="k">template:</span>                            <span class="cm"># Pod template — same as in Deployments</span>
+    <span class="k">spec:</span>
+      <span class="k">restartPolicy:</span> <span class="v">Never</span>            <span class="cm"># MUST be Never or OnFailure (not Always!)</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">worker</span>
+        <span class="k">image:</span> <span class="s">python:3.11</span>
+        <span class="k">command:</span> [<span class="s">"python"</span>, <span class="s">"migrate.py"</span>]
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"500m"</span>, <span class="k">memory:</span> <span class="s">"256Mi"</span> }
+          <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"1"</span>, <span class="k">memory:</span> <span class="s">"512Mi"</span> }
+        <span class="k">env:</span>
+        - <span class="k">name:</span> <span class="s">DB_HOST</span>
+          <span class="k">value:</span> <span class="s">"mysql.default.svc"</span></code></pre>
+
+<div class="def"><b>restartPolicy Rules for Jobs</b><code>Always</code> is forbidden for Jobs (that's for Deployments). You must use:<br>
+<strong>Never</strong> — failed Pod stays dead, Job controller creates a NEW Pod. Best for debugging (you can inspect the failed Pod's logs).<br>
+<strong>OnFailure</strong> — kubelet restarts the failed CONTAINER inside the same Pod. Pod stays, container retries. Uses less resources but you lose crash logs.</div>
+</section>
+
+<!-- ═════════════ S05 ═════════════ -->
+<section id="s05"><h2><span class="n">05</span> Creating a Job ▶</h2>
+<div class="W" id="w-create"><div class="bar"><div class="tab on" data-i="0">Imperative</div><div class="tab" data-i="1">YAML</div><div class="tab" data-i="2">Hybrid (exam)</div><div class="tab" data-i="3">What happens</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<pre><code>kubectl create job math-job --image=busybox -- /bin/sh -c "expr 3 + 2"</code></pre></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="k">apiVersion:</span> <span class="v">batch/v1</span>
+<span class="k">kind:</span> <span class="v">Job</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">math-job</span>
+<span class="k">spec:</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">restartPolicy:</span> <span class="v">Never</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">calc</span>
+        <span class="k">image:</span> <span class="s">busybox</span>
+        <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"expr 3 + 2"</span>]</code></pre></div>
+<div class="pnl" data-i="2">
+<pre><code>kubectl create job math-job --image=busybox --dry-run=client -o yaml -- /bin/sh -c "expr 3 + 2" > job.yaml
+<span class="cm"># Edit: add completions, parallelism, etc.</span>
+kubectl apply -f job.yaml</code></pre></div>
+<div class="pnl" data-i="3"><div class="tl">What happens internally</div>
+<div class="vis">① <span class="bx job">Job created</span> (completions:1)<br>
+② Job controller creates <span class="bx new">Pod 1</span><br>
+③ Pod scheduled → image pulled → command runs<br>
+④ <code>expr 3 + 2</code> outputs <code>5</code> → exits code 0<br>
+⑤ <span class="bx ok">Pod status: Completed</span><br>
+⑥ <span class="bx job">Job status: Complete (1/1 succeeded)</span></div>
+<div class="T">$ kubectl get job math-job
+NAME       COMPLETIONS   DURATION   AGE
+math-job   1/1           5s         10s
+
+$ kubectl logs job/math-job
+5</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S06 ═════════════ -->
+<section id="s06"><h2><span class="n">06</span> Completions — How Many Pods Must Succeed ▶</h2>
+<div class="def"><b>Definition — completions</b>The total number of Pods that must successfully complete (exit 0) for the Job to be considered done. Default: 1. The Job tracks <code>succeeded</code> count and stops when it reaches <code>completions</code>.</div>
+<div class="W" id="w-comp"><div class="bar"><div class="tab on" data-i="0">completions=1</div><div class="tab" data-i="1">completions=5</div><div class="tab" data-i="2">With failure</div><div class="tab" data-i="3">Indexed mode</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">completions: 1 (default)</div>
+<div class="vis"><span class="bx run">Pod 1 runs</span> <span class="ar">→</span> <span class="bx ok">exit 0 ✓</span> <span class="ar">→</span> <span class="bx job">Job Complete (1/1)</span></div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">completions:</span> <span class="nm">1</span></code></pre></div>
+<div class="pnl" data-i="1"><div class="tl">completions: 5 (parallelism: 1 — sequential)</div>
+<div class="vis"><span class="bx run">P1</span><span class="ar">→</span><span class="bx ok">✓</span> <span class="bx run">P2</span><span class="ar">→</span><span class="bx ok">✓</span> <span class="bx run">P3</span><span class="ar">→</span><span class="bx ok">✓</span> <span class="bx run">P4</span><span class="ar">→</span><span class="bx ok">✓</span> <span class="bx run">P5</span><span class="ar">→</span><span class="bx ok">✓</span><br><span style="color:var(--gn);font-size:11px">5/5 → Job Complete. One at a time.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">What if Pod 3 fails?</div>
+<div class="vis"><span class="bx ok">P1 ✓</span> <span class="bx ok">P2 ✓</span> <span class="bx ded">P3 ✗ (exit 1)</span> <span class="ar">→</span> <span class="bx run">P3-retry</span> <span class="ar">→</span> <span class="bx ok">P3 ✓</span> <span class="bx ok">P4 ✓</span> <span class="bx ok">P5 ✓</span><br><span style="color:var(--gn);font-size:11px">Job retries P3 (up to backoffLimit). Then continues to P4, P5. 5/5 Complete.</span></div>
+<div class="ds">A failed Pod doesn't count toward completions. The Job creates a replacement. The failure counter increments. If total failures reach <code>backoffLimit</code> (default 6), the Job stops and is marked Failed.</div></div>
+<div class="pnl" data-i="3"><div class="tl">Indexed Completion Mode (v1.24+)</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">completions:</span> <span class="nm">5</span>
+  <span class="k">completionMode:</span> <span class="s">Indexed</span>    <span class="cm"># Each Pod gets a unique index 0-4</span></code></pre>
+<div class="vis"><span class="bx run">Pod 0 (index=0)</span> <span class="bx run">Pod 1 (index=1)</span> <span class="bx run">Pod 2 (index=2)</span> ...<br><br>
+Each Pod has env <code>JOB_COMPLETION_INDEX</code> = 0, 1, 2, 3, 4<br>
+Pod hostname: <code>jobname-{index}</code><br><br>
+<span style="color:var(--dm);font-size:10px">Use when each Pod processes a different chunk: "Pod 0 handles rows 0-999, Pod 1 handles 1000-1999, etc."</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S07 ═════════════ -->
+<section id="s07"><h2><span class="n">07</span> Parallelism — How Many Pods Run Simultaneously ▶</h2>
+<div class="def"><b>Definition — parallelism</b>The maximum number of Pods that can run at the same time. Default: 1 (sequential). The Job controller ensures no more than this many Pods are active simultaneously.</div>
+<div class="W" id="w-par"><div class="bar"><div class="tab on" data-i="0">parallelism=1</div><div class="tab" data-i="1">parallelism=3</div><div class="tab" data-i="2">Dynamic behavior</div><div class="tab" data-i="3">YAML examples</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">parallelism: 1 (sequential — default)</div>
+<div class="vis"><strong>completions=5, parallelism=1</strong><br><br>
+T=0: <span class="bx run">P1 running</span><br>
+T=1: <span class="bx ok">P1 ✓</span> → <span class="bx run">P2 running</span><br>
+T=2: <span class="bx ok">P2 ✓</span> → <span class="bx run">P3 running</span><br>
+...<br>
+T=5: <span class="bx ok">P5 ✓</span> → <span class="bx job">Job Complete (5/5)</span><br><br>
+<span style="color:var(--dm);font-size:11px">Total time = 5 × single Pod time. Slowest but simplest.</span></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">parallelism: 3 (3 Pods at once)</div>
+<div class="vis"><strong>completions=6, parallelism=3</strong><br><br>
+T=0: <span class="bx run">P1</span> <span class="bx run">P2</span> <span class="bx run">P3</span> (3 running simultaneously)<br>
+T=1: <span class="bx ok">P1 ✓</span> → <span class="bx run">P4</span> starts | <span class="bx run">P2</span> <span class="bx run">P3</span> still running<br>
+T=2: <span class="bx ok">P2 ✓</span> → <span class="bx run">P5</span> starts | <span class="bx ok">P3 ✓</span> → <span class="bx run">P6</span> starts<br>
+T=3: <span class="bx ok">P4 ✓</span> <span class="bx ok">P5 ✓</span> <span class="bx ok">P6 ✓</span> → <span class="bx job">Job Complete (6/6)</span><br><br>
+<span style="color:var(--gn);font-size:11px">Total time ≈ 2× single Pod time (3× faster than sequential)</span></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Dynamic behavior — as Pods finish, new ones fill their slot</div>
+<div class="vis"><strong>completions=10, parallelism=4</strong><br><br>
+<span style="color:var(--dm)">Active slots:</span> [<span class="bx run">1</span>] [<span class="bx run">2</span>] [<span class="bx run">3</span>] [<span class="bx run">4</span>]<br>
+<span style="color:var(--dm)">P1 finishes:</span> [<span class="bx run">5</span>] [<span class="bx run">2</span>] [<span class="bx run">3</span>] [<span class="bx run">4</span>] ← P5 immediately fills the slot<br>
+<span style="color:var(--dm)">P3 finishes:</span> [<span class="bx run">5</span>] [<span class="bx run">2</span>] [<span class="bx run">6</span>] [<span class="bx run">4</span>] ← P6 fills<br>
+...<br>
+<span style="color:var(--dm)">Near end (8 done):</span> [<span class="bx run">9</span>] [<span class="bx run">10</span>] [ ] [ ] ← only 2 remaining, 2 slots empty</div>
+<div class="ds">The Job controller maintains up to <code>parallelism</code> active Pods. When one completes, a new one starts immediately (if needed). Near the end, fewer than <code>parallelism</code> Pods may be running because there's not enough work left.</div></div>
+
+<div class="pnl" data-i="3"><div class="tl">YAML Examples</div>
+<pre><code><span class="cm"># Sequential: 1 at a time, 5 total</span>
+<span class="k">completions:</span> <span class="nm">5</span>
+<span class="k">parallelism:</span> <span class="nm">1</span>
+
+<span class="cm"># Parallel: 3 at a time, 10 total</span>
+<span class="k">completions:</span> <span class="nm">10</span>
+<span class="k">parallelism:</span> <span class="nm">3</span>
+
+<span class="cm"># Max parallel: all 5 at once</span>
+<span class="k">completions:</span> <span class="nm">5</span>
+<span class="k">parallelism:</span> <span class="nm">5</span>
+
+<span class="cm"># Work queue: no fixed count, 4 workers</span>
+<span class="cm"># (do NOT set completions)</span>
+<span class="k">parallelism:</span> <span class="nm">4</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S08 ═════════════ -->
+<section id="s08"><h2><span class="n">08</span> Fixed Completion vs Work Queue ▶</h2>
+<div class="W" id="w-fvw"><div class="bar"><div class="tab on" data-i="0">Fixed Completion</div><div class="tab" data-i="1">Work Queue</div><div class="tab" data-i="2">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Fixed Completion Count</div>
+<div class="def"><b>Definition</b>The Job knows in advance how many Pods must succeed. Each Pod runs the same command independently. The Job tracks the count and stops when enough have succeeded.</div>
+<pre><code><span class="k">completions:</span> <span class="nm">10</span>   <span class="cm"># I know I need exactly 10 successes</span>
+<span class="k">parallelism:</span> <span class="nm">3</span></code></pre>
+<div class="vis"><span style="color:var(--dm)">Use when:</span> You know the total work count upfront.<br>
+Process 10 files → completions=10<br>
+Send 5 emails → completions=5<br>
+Each Pod processes 1 unit of work independently.</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Work Queue</div>
+<div class="def"><b>Definition</b>Pods pull work items from an external queue (Redis, RabbitMQ, SQS). No fixed completion count. The Job runs until a Pod signals the queue is empty (exit 0). You do NOT set <code>completions</code>.</div>
+<pre><code><span class="cm"># completions: NOT SET (or null)</span>
+<span class="k">parallelism:</span> <span class="nm">5</span></code></pre>
+<div class="vis"><span style="color:var(--dm)">Use when:</span> Work count is dynamic or unknown.<br>
+<span class="bx run">Pod 1</span> pulls from queue → processes → pulls more<br>
+<span class="bx run">Pod 2</span> pulls from queue → processes → pulls more<br>
+<span style="color:var(--dm)">Queue empty →</span> <span class="bx ok">Pod 1 exits 0</span> → Job stops creating new Pods<br>
+<span style="color:var(--dm)">Remaining Pods finish their current item, then exit.</span></div></div>
+
+<div class="pnl" data-i="2">
+<table>
+<tr><th></th><th>Fixed Completion</th><th>Work Queue</th></tr>
+<tr><td><code>completions</code></td><td>Set (e.g., 10)</td><td>Unset / null</td></tr>
+<tr><td>Work distribution</td><td>Each Pod = 1 task</td><td>Pods pull from queue</td></tr>
+<tr><td>Done when</td><td>N Pods exit 0</td><td>Any Pod exits 0</td></tr>
+<tr><td>External queue</td><td>Not needed</td><td>Required (Redis, etc.)</td></tr>
+<tr><td>Good for</td><td>Known work count</td><td>Dynamic/unknown count</td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S09 ═════════════ -->
+<section id="s09"><h2><span class="n">09</span> Backoff Failure Policy ▶</h2>
+<div class="def"><b>Definition — backoffLimit</b>Maximum number of Pod failures before the Job is considered Failed. Default: 6. The Job controller uses <strong>exponential backoff</strong> to retry: 10s, 20s, 40s, 80s, 160s, capped at 6 minutes. After <code>backoffLimit</code> failures, the Job stops creating Pods and its condition becomes <code>Failed</code>.</div>
+
+<div class="W" id="w-back"><div class="bar"><div class="tab on" data-i="0">Backoff sequence</div><div class="tab" data-i="1">restartPolicy effect</div><div class="tab" data-i="2">YAML examples</div><div class="tab" data-i="3">Counting rules</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Exponential backoff timing</div>
+<div class="vis"><span class="bx ded">Fail 1</span> → wait <strong>10s</strong> → retry<br>
+<span class="bx ded">Fail 2</span> → wait <strong>20s</strong> → retry<br>
+<span class="bx ded">Fail 3</span> → wait <strong>40s</strong> → retry<br>
+<span class="bx ded">Fail 4</span> → wait <strong>80s</strong> → retry<br>
+<span class="bx ded">Fail 5</span> → wait <strong>160s</strong> → retry<br>
+<span class="bx ded">Fail 6</span> → <span style="color:var(--rd);font-weight:700">backoffLimit reached! Job FAILED.</span><br><br>
+<span style="color:var(--dm);font-size:10px">Formula: min(10s × 2^(n-1), 360s). Capped at 6 minutes.</span></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">How restartPolicy affects counting</div>
+<table>
+<tr><th>restartPolicy</th><th>On failure</th><th>What counts as 1 failure</th></tr>
+<tr><td><code>Never</code></td><td>Pod stays dead. Job creates NEW Pod.</td><td>Each failed Pod = 1 failure. Old Pod kept (check logs).</td></tr>
+<tr><td><code>OnFailure</code></td><td>Kubelet restarts CONTAINER in same Pod.</td><td>Each container restart = 1 failure. Pod reused.</td></tr>
+</table>
+<div class="why"><b>When to use which</b><code>Never</code> = best for debugging (failed Pods kept, logs accessible). <code>OnFailure</code> = best for resource efficiency (reuses Pod, but loses crash logs after restart).</div></div>
+
+<div class="pnl" data-i="2"><div class="tl">YAML examples</div>
+<pre><code><span class="cm"># Default: 6 retries</span>
+<span class="k">backoffLimit:</span> <span class="nm">6</span>
+
+<span class="cm"># No retries: fail immediately</span>
+<span class="k">backoffLimit:</span> <span class="nm">0</span>
+
+<span class="cm"># Many retries: 20 attempts</span>
+<span class="k">backoffLimit:</span> <span class="nm">20</span>
+
+<span class="cm"># With activeDeadlineSeconds as safety net:</span>
+<span class="k">backoffLimit:</span> <span class="nm">100</span>
+<span class="k">activeDeadlineSeconds:</span> <span class="nm">3600</span>   <span class="cm"># Even with 100 retries, kill after 1 hour</span></code></pre></div>
+
+<div class="pnl" data-i="3"><div class="tl">What counts toward backoffLimit</div>
+<table>
+<tr><th>Event</th><th>Counts?</th></tr>
+<tr><td>Container exits non-zero (exit 1)</td><td><span class="bg rd">Yes</span></td></tr>
+<tr><td>Container OOMKilled (exit 137)</td><td><span class="bg rd">Yes</span></td></tr>
+<tr><td>Pod evicted by node</td><td><span class="bg rd">Yes</span></td></tr>
+<tr><td>Container exits 0 (success)</td><td><span class="bg gn">No — counts as completion</span></td></tr>
+<tr><td>Image pull error</td><td><span class="bg rd">Yes (Pod fails to start)</span></td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S10 ═════════════ -->
+<section id="s10"><h2><span class="n">10</span> Pod Failure Policy (v1.26+) ▶</h2>
+<div class="def"><b>Definition — podFailurePolicy</b>Advanced rules that let you customize how the Job reacts to specific failure types. Instead of blindly retrying all failures, you can say: "If exit code 42, don't retry (FailJob). If exit code 137 (OOM), retry. If disruption, ignore and don't count against backoffLimit."</div>
+
+<div class="W" id="w-pfp"><div class="bar"><div class="tab on" data-i="0">Why it exists</div><div class="tab" data-i="1">Actions</div><div class="tab" data-i="2">Full YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Problem with basic backoffLimit</div>
+<div class="vis"><strong>Without podFailurePolicy:</strong><br>
+Pod fails with "invalid input" (exit 42) → Job retries 6 times → all fail with same error → wasted 6 Pods<br><br>
+<strong>With podFailurePolicy:</strong><br>
+Pod fails with exit 42 → rule says <code>FailJob</code> → <span style="color:var(--rd)">Job immediately marked Failed</span> — no wasted retries</div></div>
+<div class="pnl" data-i="1"><div class="tl">Three possible actions</div>
+<table>
+<tr><th>Action</th><th>Meaning</th><th>Use when</th></tr>
+<tr><td><code>FailJob</code></td><td>Immediately fail entire Job, stop all Pods</td><td>Non-retryable error (bad input, config error)</td></tr>
+<tr><td><code>Ignore</code></td><td>Don't count this failure against backoffLimit</td><td>Transient error (node eviction, preemption)</td></tr>
+<tr><td><code>Count</code></td><td>Normal behavior — count toward backoffLimit</td><td>Default for everything else</td></tr>
+</table></div>
+<div class="pnl" data-i="2"><div class="tl">Full YAML example</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">batch/v1</span>
+<span class="k">kind:</span> <span class="v">Job</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">smart-job</span>
+<span class="k">spec:</span>
+  <span class="k">backoffLimit:</span> <span class="nm">6</span>
+  <span class="k">podFailurePolicy:</span>
+    <span class="k">rules:</span>
+    <span class="cm"># Rule 1: Exit code 42 = bad input → fail immediately, don't retry</span>
+    - <span class="k">action:</span> <span class="v">FailJob</span>
+      <span class="k">onExitCodes:</span>
+        <span class="k">containerName:</span> <span class="s">worker</span>
+        <span class="k">operator:</span> <span class="v">In</span>
+        <span class="k">values:</span> [<span class="nm">42</span>]
+    <span class="cm"># Rule 2: Node disruption → ignore, don't count against limit</span>
+    - <span class="k">action:</span> <span class="v">Ignore</span>
+      <span class="k">onPodConditions:</span>
+      - <span class="k">type:</span> <span class="v">DisruptionTarget</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">restartPolicy:</span> <span class="v">Never</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">worker</span>
+        <span class="k">image:</span> <span class="s">myapp:v1</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S11 ═════════════ -->
+<section id="s11"><h2><span class="n">11</span> activeDeadlineSeconds — Job Timeout</h2>
+<div class="def"><b>Definition</b>Maximum time (in seconds) the Job can be active. After this deadline, ALL running Pods are terminated and the Job is marked Failed. Counts from Job creation. Overrides backoffLimit — even if you have retries left, the deadline kills everything.</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">activeDeadlineSeconds:</span> <span class="nm">3600</span>   <span class="cm"># Job MUST finish within 1 hour</span>
+  <span class="k">backoffLimit:</span> <span class="nm">10</span>             <span class="cm"># Can retry 10 times, but deadline wins</span></code></pre>
+<div class="vis"><span class="bx run">Pod running...</span> at 59min <span class="ar">→</span> <span class="bx ded">60min reached → ALL Pods killed!</span><br><span class="bx job">Job status: Failed (reason: DeadlineExceeded)</span></div>
+<div class="sre"><div class="tag">SRE Principle</div><p style="margin:0">Always set <code>activeDeadlineSeconds</code> on Jobs. Without it, a stuck Job retries forever, wasting cluster resources. The deadline is your safety net.</p></div></section>
+
+<!-- ═════════════ S12 ═════════════ -->
+<section id="s12"><h2><span class="n">12</span> Job Lifecycle ▶</h2>
+<div class="W" id="w-life"><div class="bar"><div class="tab on" data-i="0">Success path</div><div class="tab" data-i="1">Failure + retry</div><div class="tab" data-i="2">Failure → Failed</div><div class="tab" data-i="3">Deadline exceeded</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Happy path — Pod succeeds</div>
+<div class="vis">① <span class="bx job">Job created</span><br>
+② <span class="bx new">Pod created</span> → scheduled → running<br>
+③ Command completes → <span class="bx ok">exit 0</span><br>
+④ <span class="bx ok">Pod status: Completed</span><br>
+⑤ <span class="bx job">Job status: Complete</span> (succeeded=1/1)<br>
+⑥ Pod stays in <code>Completed</code> state (logs accessible)<br>
+⑦ <span style="color:var(--dm)">If TTL set → auto-deleted after ttlSecondsAfterFinished</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Failure + successful retry</div>
+<div class="vis">① <span class="bx new">Pod 1 created</span> → runs → <span class="bx ded">exit 1 (FAIL)</span><br>
+② Wait 10s (backoff) → <span class="bx new">Pod 2 created</span> → runs → <span class="bx ded">exit 1 (FAIL)</span><br>
+③ Wait 20s → <span class="bx new">Pod 3 created</span> → runs → <span class="bx ok">exit 0 (SUCCESS!)</span><br>
+④ <span class="bx job">Job Complete</span> (succeeded=1, failed=2)</div></div>
+<div class="pnl" data-i="2"><div class="tl">All retries exhausted → Job Failed</div>
+<div class="vis">① <span class="bx ded">Pod 1: exit 1</span> → wait 10s<br>
+② <span class="bx ded">Pod 2: exit 1</span> → wait 20s<br>
+③ <span class="bx ded">Pod 3: exit 1</span> → wait 40s<br>
+④ <span class="bx ded">Pod 4: exit 1</span> → wait 80s<br>
+⑤ <span class="bx ded">Pod 5: exit 1</span> → wait 160s<br>
+⑥ <span class="bx ded">Pod 6: exit 1</span> → <span style="color:var(--rd);font-weight:700">backoffLimit=6 reached → JOB FAILED</span><br><br>
+<span style="color:var(--dm);font-size:10px">All 6 failed Pods stay (restartPolicy: Never). You can inspect their logs.</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">Deadline exceeded — forced termination</div>
+<div class="vis">① <span class="bx run">Pod running for 3500s...</span><br>
+② <span class="bx run">Pod still running at 3600s...</span><br>
+③ <span style="color:var(--rd)">activeDeadlineSeconds=3600 reached!</span><br>
+④ <span class="bx ded">ALL Pods terminated (SIGTERM → SIGKILL)</span><br>
+⑤ <span class="bx job">Job status: Failed (reason: DeadlineExceeded)</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S13 ═════════════ -->
+<section id="s13"><h2><span class="n">13</span> Termination &amp; Cleanup</h2>
+<div class="def"><b>Key Problem</b>Completed/Failed Jobs and their Pods are NOT auto-deleted. They stay forever, cluttering your cluster. You must clean them up manually or use TTL.</div>
+<pre><code><span class="cm"># Manual cleanup</span>
+kubectl delete job math-job                  <span class="cm"># Deletes Job + all its Pods</span>
+kubectl delete jobs --field-selector status.successful=1   <span class="cm"># Delete all completed Jobs</span>
+
+<span class="cm"># See completed Pods (still consuming etcd)</span>
+kubectl get pods --field-selector=status.phase=Succeeded</code></pre>
+<div class="c o"><div class="l">Why Pods are kept</div><p style="margin:0">Completed Pods stay so you can check their logs and exit codes. But they consume etcd storage and make <code>kubectl get pods</code> output noisy. Always plan for cleanup.</p></div></section>
+
+<!-- ═════════════ S14 ═════════════ -->
+<section id="s14"><h2><span class="n">14</span> TTL Controller — Automatic Cleanup</h2>
+<div class="def"><b>Definition — ttlSecondsAfterFinished</b>Automatically deletes the Job (and its Pods) a specified number of seconds after the Job finishes (succeeds or fails). Set to 0 to delete immediately after completion.</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">ttlSecondsAfterFinished:</span> <span class="nm">3600</span>   <span class="cm"># Delete 1 hour after Job finishes</span>
+
+<span class="cm"># Delete immediately after completion:</span>
+  <span class="k">ttlSecondsAfterFinished:</span> <span class="nm">0</span>
+
+<span class="cm"># Keep forever (default — no auto-cleanup):</span>
+<span class="cm"># Don't set ttlSecondsAfterFinished</span></code></pre>
+<div class="sre"><div class="tag">SRE Best Practice</div><p style="margin:0">Always set <code>ttlSecondsAfterFinished</code>. Common values: <code>3600</code> (1h — enough to check logs) or <code>86400</code> (24h). For CronJobs that run frequently, use <code>0</code> or <code>3600</code> to prevent accumulation of thousands of completed Pods.</p></div></section>
+
+<!-- ═════════════ S15 ═════════════ -->
+<section id="s15"><h2><span class="n">15</span> Job Patterns ▶</h2>
+<div class="W" id="w-pat"><div class="bar"><div class="tab on" data-i="0">One-shot</div><div class="tab" data-i="1">Parallel batch</div><div class="tab" data-i="2">Indexed</div><div class="tab" data-i="3">Work queue</div><div class="tab" data-i="4">Fan-out</div><div class="tab" data-i="5">Summary table</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Pattern 1 — One-shot Task</div>
+<pre><code><span class="k">completions:</span> <span class="nm">1</span>
+<span class="k">parallelism:</span> <span class="nm">1</span></code></pre>
+<div class="vis"><span class="bx run">1 Pod</span> <span class="ar">→</span> <span class="bx ok">done ✓</span></div>
+<div class="ds"><strong>Use for:</strong> database backup, migration script, send one email, generate one report.</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Pattern 2 — Parallel Batch (fixed count)</div>
+<pre><code><span class="k">completions:</span> <span class="nm">100</span>
+<span class="k">parallelism:</span> <span class="nm">10</span></code></pre>
+<div class="vis"><span class="bx run">10 Pods running simultaneously</span> <span class="ar">→</span> as one finishes, next starts <span class="ar">→</span> until 100 done</div>
+<div class="ds"><strong>Use for:</strong> process 100 files, resize 100 images, run 100 test suites.</div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Pattern 3 — Indexed Job (each Pod gets unique index)</div>
+<pre><code><span class="k">completions:</span> <span class="nm">5</span>
+<span class="k">parallelism:</span> <span class="nm">5</span>
+<span class="k">completionMode:</span> <span class="s">Indexed</span></code></pre>
+<div class="vis"><span class="bx run">Pod 0 (rows 0-999)</span> <span class="bx run">Pod 1 (rows 1000-1999)</span> ... <span class="bx run">Pod 4 (rows 4000-4999)</span></div>
+<div class="ds"><strong>Use for:</strong> shard processing. Each Pod knows its index via <code>JOB_COMPLETION_INDEX</code> env var and processes a unique slice of data.</div></div>
+
+<div class="pnl" data-i="3"><div class="tl">Pattern 4 — Work Queue</div>
+<pre><code><span class="cm"># completions: NOT SET</span>
+<span class="k">parallelism:</span> <span class="nm">5</span></code></pre>
+<div class="vis"><span class="bx run">5 Pods</span> all pull from Redis queue <span class="ar">→</span> queue empty <span class="ar">→</span> one exits 0 <span class="ar">→</span> Job stops</div>
+<div class="ds"><strong>Use for:</strong> dynamic work: email queue, event processing, message consumption. Requires external queue (Redis, RabbitMQ, SQS).</div></div>
+
+<div class="pnl" data-i="4"><div class="tl">Pattern 5 — Fan-out / Fan-in</div>
+<div class="vis"><strong>Fan-out:</strong> Job 1 (completions:10, parallelism:10) → 10 workers process data<br><br>
+<strong>Fan-in:</strong> Job 2 (completions:1) → waits for Job 1, aggregates results<br><br>
+<span style="color:var(--dm);font-size:10px">Requires external orchestration (Argo Workflows, Tekton) for Job dependencies.</span></div></div>
+
+<div class="pnl" data-i="5">
+<table>
+<tr><th>Pattern</th><th>completions</th><th>parallelism</th><th>External queue?</th></tr>
+<tr><td>One-shot</td><td>1</td><td>1</td><td>No</td></tr>
+<tr><td>Sequential batch</td><td>N</td><td>1</td><td>No</td></tr>
+<tr><td>Parallel batch</td><td>N</td><td>M</td><td>No</td></tr>
+<tr><td>Indexed parallel</td><td>N</td><td>M (+ Indexed mode)</td><td>No</td></tr>
+<tr><td>Work queue</td><td>Unset</td><td>M</td><td>Yes</td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 6</span><button class="btn" data-dir="next">Next →</button></div></div></div></section>
+
+<!-- ═════════════ S16 ═════════════ -->
+<section id="s16"><h2><span class="n">16</span> Monitoring &amp; Best Practices</h2>
+<table>
+<tr><th>Metric</th><th>Alert When</th></tr>
+<tr><td><code>kube_job_status_failed</code></td><td>failed > 0 (any failure)</td></tr>
+<tr><td><code>kube_job_status_active</code></td><td>active > 0 for > expectedDuration</td></tr>
+<tr><td><code>kube_job_complete</code></td><td>Job didn't complete within SLA</td></tr>
+</table>
+<div class="c g"><div class="l">Always set activeDeadlineSeconds</div><p style="margin:0">Without it, a stuck Job retries forever. The deadline is your safety net against runaway Jobs.</p></div>
+<div class="c b"><div class="l">Always set ttlSecondsAfterFinished</div><p style="margin:0">Without it, completed Jobs and Pods accumulate forever, cluttering etcd and kubectl output.</p></div>
+<div class="c p"><div class="l">Use restartPolicy: Never for debugging</div><p style="margin:0">Failed Pods are kept — you can check their logs. With OnFailure, crash logs are lost on restart.</p></div>
+<div class="c o"><div class="l">Set resource requests on Job Pods</div><p style="margin:0">Jobs often run batch work that's CPU/memory intensive. Without requests, they may be scheduled on overloaded nodes and OOMKilled.</p></div>
+<div class="c r"><div class="l">Use podFailurePolicy for smart retries</div><p style="margin:0">Don't waste retries on non-retryable errors. FailJob on bad-input errors. Ignore transient disruptions.</p></div></section>
+
+<!-- ═════════════ S17 ═════════════ -->
+<section id="s17"><h2><span class="n">17</span> Command Reference</h2>
+<pre><code><span class="cm"># ══ CREATE ══</span>
+kubectl create job my-job --image=busybox -- /bin/sh -c "echo hello"
+kubectl create job my-job --image=busybox --dry-run=client -o yaml > job.yaml
+kubectl apply -f job.yaml
+
+<span class="cm"># ══ INSPECT ══</span>
+kubectl get jobs
+kubectl get job my-job -o wide
+kubectl describe job my-job
+kubectl get pods -l job-name=my-job         <span class="cm"># Pods owned by Job</span>
+kubectl logs job/my-job                     <span class="cm"># Logs of Job's Pod</span>
+kubectl logs job/my-job --all-containers    <span class="cm"># If multi-container</span>
+
+<span class="cm"># ══ STATUS ══</span>
+kubectl get job my-job -o jsonpath='{.status.succeeded}'
+kubectl get job my-job -o jsonpath='{.status.failed}'
+kubectl get job my-job -o jsonpath='{.status.conditions[0].type}'
+
+<span class="cm"># ══ DELETE ══</span>
+kubectl delete job my-job                   <span class="cm"># Job + all its Pods</span>
+kubectl delete jobs --all                   <span class="cm"># All Jobs in namespace</span>
+kubectl delete jobs --field-selector status.successful=1   <span class="cm"># Only completed</span>
+
+<span class="cm"># ══ CREATE FROM CRONJOB ══</span>
+kubectl create job manual-run --from=cronjob/my-cron   <span class="cm"># Manual trigger of CronJob</span>
+
+<span class="cm"># ══ SUSPEND / RESUME ══</span>
+kubectl patch job my-job -p '{"spec":{"suspend":true}}'   <span class="cm"># Pause</span>
+kubectl patch job my-job -p '{"spec":{"suspend":false}}'  <span class="cm"># Resume</span></code></pre></section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>
