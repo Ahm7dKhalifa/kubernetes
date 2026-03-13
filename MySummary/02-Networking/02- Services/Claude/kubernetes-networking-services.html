@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Networking & Services — Complete Deep-Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#2563eb;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1010px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(37,99,235,.06) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:36px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(37,99,235,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(37,99,235,.03),rgba(8,145,178,.02));border:1px solid rgba(37,99,235,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(37,99,235,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(37,99,235,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(37,99,235,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:11px;margin:7px 0;min-height:40px;font-size:12px;line-height:1.7}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.svc{background:rgba(37,99,235,.08);color:var(--bl);border:1px solid rgba(37,99,235,.25)}
+.bx.nod{background:rgba(8,145,178,.1);color:var(--ac2);border:1px solid rgba(8,145,178,.25)}
+.bx.ext{background:rgba(147,51,234,.08);color:var(--pp);border:1px solid rgba(147,51,234,.25)}
+.bx.ing{background:rgba(234,88,12,.08);color:var(--og);border:1px solid rgba(234,88,12,.25)}
+.bx.np{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:12px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ K8s Networking</div>
+<div class="sub">Complete Deep-Dive</div>
+<div class="sl">Fundamentals</div>
+<ul><li><a href="#s01">Networking Model ▶</a></li><li><a href="#s02">Pod Communication ▶</a></li><li><a href="#s03">Port Types ▶</a></li></ul>
+<div class="sl">Services</div>
+<ul><li><a href="#s04">What is a Service?</a></li><li><a href="#s05">ClusterIP ▶</a></li><li><a href="#s06">NodePort ▶</a></li><li><a href="#s07">LoadBalancer ▶</a></li><li><a href="#s08">ExternalName</a></li><li><a href="#s09">Headless ▶</a></li><li><a href="#s10">Comparison</a></li></ul>
+<div class="sl">Discovery</div>
+<ul><li><a href="#s11">DNS ▶</a></li><li><a href="#s12">Endpoints ▶</a></li></ul>
+<div class="sl">Ingress</div>
+<ul><li><a href="#s13">Ingress ▶</a></li><li><a href="#s14">Ingress Rules ▶</a></li></ul>
+<div class="sl">Network Policy</div>
+<ul><li><a href="#s15">NetworkPolicy ▶</a></li><li><a href="#s16">Policy Examples ▶</a></li></ul>
+<div class="sl">SRE</div>
+<ul><li><a href="#s17">Monitoring</a></li><li><a href="#s18">Commands</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Kubernetes Networking &amp; Services</h1><p>The complete guide — networking model, all Service types, Ingress, NetworkPolicy, DNS discovery, and SRE operations. Interactive step-by-step workflows.</p></div>
+
+<!-- ═════════════ S01 ═════════════ -->
+<section id="s01"><h2><span class="n">01</span> Kubernetes Networking Model ▶</h2>
+<div class="W" id="w-model"><div class="bar"><div class="tab on" data-i="0">3 Rules</div><div class="tab" data-i="1">IP-per-Pod</div><div class="tab" data-i="2">CNI Plugins</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">The 3 Fundamental Rules</div>
+<div class="def"><b>Rule 1 — Every Pod gets its own IP</b>Each Pod has a unique IP address in the cluster. Containers WITHIN a Pod share the same IP and communicate via <code>localhost</code>.</div>
+<div class="def"><b>Rule 2 — Pods can talk to any Pod directly</b>Any Pod can reach any other Pod by its IP — no NAT required. Even across nodes. The network is flat.</div>
+<div class="def"><b>Rule 3 — Pods can talk to any Service by name</b>Services provide stable DNS names and virtual IPs. Pods use DNS to discover Services. The cluster DNS (CoreDNS) resolves Service names to ClusterIPs.</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">IP-per-Pod Model</div>
+<div class="vis"><span class="bx nod">Node 1 (192.168.1.10)</span><br>
+├── <span class="bx run">Pod A (10.244.1.5)</span> ← unique Pod IP<br>
+├── <span class="bx run">Pod B (10.244.1.6)</span><br><br>
+<span class="bx nod">Node 2 (192.168.1.11)</span><br>
+├── <span class="bx run">Pod C (10.244.2.3)</span><br>
+├── <span class="bx run">Pod D (10.244.2.4)</span><br><br>
+<strong>Pod A → Pod D:</strong> <code>curl 10.244.2.4:80</code> ← works directly, no NAT!<br>
+<strong>Same-Pod containers:</strong> Container 1 → Container 2: <code>curl localhost:8080</code></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">CNI — Who Implements This?</div>
+<div class="def"><b>Definition — CNI (Container Network Interface)</b>A plugin that implements the Pod-to-Pod networking. Kubernetes defines the rules (flat network, no NAT). The CNI plugin makes it happen. Without a CNI, Pods can't communicate across nodes.</div>
+<table>
+<tr><th>CNI Plugin</th><th>How</th><th>NetworkPolicy?</th></tr>
+<tr><td>Calico</td><td>BGP routing or VXLAN overlay</td><td><span class="bg gn">Yes</span></td></tr>
+<tr><td>Cilium</td><td>eBPF (high performance)</td><td><span class="bg gn">Yes (advanced)</span></td></tr>
+<tr><td>Flannel</td><td>VXLAN overlay (simple)</td><td><span class="bg rd">No</span></td></tr>
+<tr><td>Weave</td><td>Encrypted mesh overlay</td><td><span class="bg gn">Yes</span></td></tr>
+</table>
+<div class="c r"><div class="l">Key</div><p style="margin:0">Flannel does NOT support NetworkPolicy. If you need NetworkPolicy (you do in production), use Calico or Cilium.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S02 ═════════════ -->
+<section id="s02"><h2><span class="n">02</span> Pod Communication ▶</h2>
+<div class="W" id="w-comm"><div class="bar"><div class="tab on" data-i="0">Same Pod</div><div class="tab" data-i="1">Pod to Pod</div><div class="tab" data-i="2">Pod to Service</div><div class="tab" data-i="3">External to Pod</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Container-to-Container (same Pod)</div>
+<div class="vis"><span class="bx run">Pod (10.244.1.5)</span><br>
+├── Container A (port 80)<br>
+└── Container B (port 8080)<br><br>
+Container A → B: <code>curl localhost:8080</code> ← share network namespace<br>
+Container B → A: <code>curl localhost:80</code></div>
+<div class="ds">Containers in the same Pod share the same network namespace (same IP, same loopback). They communicate via <code>localhost</code>. Port conflicts ARE possible — two containers can't use the same port.</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Pod-to-Pod (any node)</div>
+<div class="vis"><span class="bx run">Pod A (10.244.1.5, Node 1)</span> <span class="ar">→</span> <span class="bx run">Pod B (10.244.2.3, Node 2)</span><br><br>
+<code>curl 10.244.2.3:80</code> ← works directly, flat network<br><br>
+<span style="color:var(--rd);font-size:10px">Problem: Pod IPs change on restart! Don't hardcode them.</span><br>
+<span style="color:var(--gn);font-size:10px">Solution: Use Services (stable VIP + DNS name).</span></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Pod-to-Service (the normal way)</div>
+<div class="vis"><span class="bx run">App Pod</span> <span class="ar">→</span> <span class="bx svc">web-svc (10.96.0.15:80)</span> <span class="ar">→ load balance →</span> <span class="bx run">web-0</span> / <span class="bx run">web-1</span> / <span class="bx run">web-2</span><br><br>
+<code>curl web-svc:80</code> ← DNS name (stable)<br>
+<code>curl 10.96.0.15:80</code> ← ClusterIP (stable)<br><br>
+<span style="color:var(--gn);font-size:10px">Service IP never changes. DNS auto-resolves. Load balanced across all matching Pods.</span></div></div>
+
+<div class="pnl" data-i="3"><div class="tl">External-to-Pod (from internet/users)</div>
+<div class="vis"><span class="bx ext">Internet</span> <span class="ar">→</span> <span class="bx ing">Ingress / LB (public IP)</span> <span class="ar">→</span> <span class="bx svc">Service</span> <span class="ar">→</span> <span class="bx run">Pod</span><br><br>
+<strong>3 ways to expose:</strong><br>
+① <span class="bx svc">NodePort</span> — Service on every node's IP:port (30000-32767)<br>
+② <span class="bx svc">LoadBalancer</span> — Cloud LB with public IP<br>
+③ <span class="bx ing">Ingress</span> — HTTP/HTTPS routing (host/path based)</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S03 ═════════════ -->
+<section id="s03"><h2><span class="n">03</span> Port Types — The 4 Ports ▶</h2>
+<div class="def"><b>The most confusing topic in K8s networking</b>There are 4 different "port" fields. Each refers to a different layer. Getting them wrong means traffic doesn't flow.</div>
+<div class="W" id="w-ports"><div class="bar"><div class="tab on" data-i="0">All 4 Ports</div><div class="tab" data-i="1">Traffic Flow</div><div class="tab" data-i="2">YAML Example</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<table>
+<tr><th>Field</th><th>Where</th><th>Meaning</th><th>Example</th></tr>
+<tr><td><code>containerPort</code></td><td>Pod spec</td><td>Port the container listens on (informational)</td><td>80 (nginx)</td></tr>
+<tr><td><code>targetPort</code></td><td>Service spec</td><td>Port on the Pod the Service forwards TO</td><td>80 (must match containerPort)</td></tr>
+<tr><td><code>port</code></td><td>Service spec</td><td>Port the Service listens on (the ClusterIP port)</td><td>80 or any</td></tr>
+<tr><td><code>nodePort</code></td><td>Service spec</td><td>Port on every node's IP (NodePort Service only)</td><td>30000-32767</td></tr>
+</table></div>
+<div class="pnl" data-i="1"><div class="tl">Traffic Flow — Which Port at Each Step</div>
+<div class="vis"><strong>ClusterIP:</strong><br>
+App <span class="ar">→</span> <code>web-svc:<strong>port</strong> (80)</code> <span class="ar">→</span> Pod:<code><strong>targetPort</strong> (80)</code><br><br>
+<strong>NodePort:</strong><br>
+External <span class="ar">→</span> <code>Node-IP:<strong>nodePort</strong> (30080)</code> <span class="ar">→</span> <code>web-svc:<strong>port</strong> (80)</code> <span class="ar">→</span> Pod:<code><strong>targetPort</strong> (80)</code><br><br>
+<strong>LoadBalancer:</strong><br>
+Internet <span class="ar">→</span> <code>LB-IP:<strong>port</strong> (80)</code> <span class="ar">→</span> <code>Node:<strong>nodePort</strong></code> <span class="ar">→</span> Pod:<code><strong>targetPort</strong> (80)</code></div></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="cm"># Pod</span>
+<span class="k">containers:</span>
+- <span class="k">ports:</span>
+  - <span class="k">containerPort:</span> <span class="nm">80</span>     <span class="cm"># Container listens here</span>
+
+<span class="cm"># Service</span>
+<span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">NodePort</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>              <span class="cm"># Service ClusterIP port</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span>        <span class="cm"># Forward to Pod's containerPort</span>
+    <span class="k">nodePort:</span> <span class="nm">30080</span>       <span class="cm"># Port on every node (external access)</span></code></pre>
+<div class="c o"><div class="l">Shortcut</div><p style="margin:0">If <code>targetPort</code> is omitted, it defaults to the same value as <code>port</code>. If <code>nodePort</code> is omitted (NodePort type), K8s auto-assigns one from 30000-32767.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S04 ═════════════ -->
+<section id="s04"><h2><span class="n">04</span> What Is a Service?</h2>
+<div class="def"><b>Definition — Service</b>A stable abstraction that provides a <strong>fixed IP address</strong> (ClusterIP) and <strong>DNS name</strong> for a set of Pods. The Service load-balances traffic across all matching Pods. It solves the problem: "Pod IPs change on restart — how do I reliably connect to my app?"</div>
+
+<div class="def"><b>Definition — How It Finds Pods</b>A Service uses a <code>selector</code> to find Pods with matching labels. The selector is continuously evaluated — when Pods are added or removed, the Service's endpoint list updates automatically. No manual registration.</div>
+
+<div class="c g"><div class="l">Analogy</div><p style="margin:0">A Service is a <strong>phone number for a team</strong>. You call the team number (Service IP), and it routes to whoever is available (healthy Pod). Team members (Pods) can come and go, but the team number never changes.</p></div>
+</section>
+
+<!-- ═════════════ S05 ═════════════ -->
+<section id="s05"><h2><span class="n">05</span> ClusterIP Service (Default) ▶</h2>
+<div class="def"><b>Definition</b>The default Service type. Creates a <strong>virtual IP (ClusterIP)</strong> that is only reachable from INSIDE the cluster. Provides stable internal DNS name. Pods use this to talk to other Pods. Not accessible from outside.</div>
+<div class="W" id="w-cip"><div class="bar"><div class="tab on" data-i="0">How it works</div><div class="tab" data-i="1">YAML</div><div class="tab" data-i="2">Create</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span class="bx run">App Pod</span> <span class="ar">→</span> <span class="bx svc">web-svc (ClusterIP: 10.96.0.15:80)</span> <span class="ar">→ round-robin →</span><br>
+├── <span class="bx run">web-pod-1 (10.244.1.5:80)</span><br>
+├── <span class="bx run">web-pod-2 (10.244.2.3:80)</span><br>
+└── <span class="bx run">web-pod-3 (10.244.3.7:80)</span><br><br>
+<span style="color:var(--gn)">Internal only. Not reachable from outside the cluster.</span><br>
+DNS: <code>web-svc.default.svc.cluster.local</code> → <code>10.96.0.15</code></div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">ClusterIP</span>              <span class="cm"># Default — can omit</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>                  <span class="cm"># Matches Pods with label app=web</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>                  <span class="cm"># Service listens on 80</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span>            <span class="cm"># Forwards to Pod's port 80</span>
+    <span class="k">protocol:</span> <span class="v">TCP</span></code></pre></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="cm"># Imperative</span>
+kubectl expose deployment web --port=80 --target-port=80 --name=web-svc
+
+<span class="cm"># Or with create</span>
+kubectl create service clusterip web-svc --tcp=80:80</code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S06 ═════════════ -->
+<section id="s06"><h2><span class="n">06</span> NodePort Service ▶</h2>
+<div class="def"><b>Definition</b>Exposes the Service on each node's IP at a static port (30000-32767). Accessible from OUTSIDE the cluster via <code>NodeIP:NodePort</code>. Creates a ClusterIP automatically (NodePort is a superset of ClusterIP).</div>
+<div class="W" id="w-np"><div class="bar"><div class="tab on" data-i="0">How it works</div><div class="tab" data-i="1">YAML</div><div class="tab" data-i="2">Create</div><div class="tab" data-i="3">Access</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span class="bx ext">User (browser)</span><br>
+<span class="ar">↓</span> <code>http://192.168.1.10:<strong>30080</strong></code> (any node's IP)<br>
+<span class="bx nod">Node 1 (192.168.1.10)</span> or <span class="bx nod">Node 2 (192.168.1.11)</span> or <span class="bx nod">Node 3 (192.168.1.12)</span><br>
+<span class="ar">↓</span> kube-proxy routes to Service<br>
+<span class="bx svc">web-svc (ClusterIP: 10.96.0.15:80)</span><br>
+<span class="ar">↓</span> round-robin<br>
+<span class="bx run">Pod 1</span> / <span class="bx run">Pod 2</span> / <span class="bx run">Pod 3</span><br><br>
+<span style="color:var(--yl);font-size:10px">Works on ANY node's IP — even if the Pod isn't on that node. kube-proxy handles routing.</span></div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">NodePort</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>                  <span class="cm"># ClusterIP port</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span>            <span class="cm"># Pod port</span>
+    <span class="k">nodePort:</span> <span class="nm">30080</span>           <span class="cm"># External port (30000-32767)</span></code></pre></div>
+<div class="pnl" data-i="2">
+<pre><code>kubectl expose deployment web --type=NodePort --port=80 --target-port=80 --name=web-svc</code></pre></div>
+<div class="pnl" data-i="3">
+<pre><code><span class="cm"># Access from outside (any node IP works)</span>
+curl http://&lt;any-node-ip&gt;:30080
+
+<span class="cm"># Find nodePort</span>
+kubectl get svc web-svc
+<span class="cm"># PORT(S): 80:30080/TCP   ← port:nodePort</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S07 ═════════════ -->
+<section id="s07"><h2><span class="n">07</span> LoadBalancer Service ▶</h2>
+<div class="def"><b>Definition</b>Provisions an external load balancer (cloud provider: AWS ELB, GCP LB, Azure LB) with a public IP. Traffic flows: Internet → LB → NodePort → Pod. Superset of NodePort (which is a superset of ClusterIP). Only works in cloud environments.</div>
+<div class="W" id="w-lb"><div class="bar"><div class="tab on" data-i="0">How it works</div><div class="tab" data-i="1">YAML</div><div class="tab" data-i="2">Flow</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span class="bx ext">Internet users</span><br>
+<span class="ar">↓</span> <code>http://35.192.0.1:80</code> (public LB IP)<br>
+<span class="bx svc">Cloud Load Balancer (35.192.0.1)</span><br>
+<span class="ar">↓</span><br>
+<span class="bx nod">Node 1:30080</span> or <span class="bx nod">Node 2:30080</span> (NodePort)<br>
+<span class="ar">↓</span><br>
+<span class="bx run">Pod</span> (targetPort 80)</div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">LoadBalancer</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span></code></pre></div>
+<div class="pnl" data-i="2"><div class="vis"><strong>What K8s creates:</strong><br>
+① ClusterIP (internal VIP) ← always<br>
+② NodePort (on every node) ← always<br>
+③ Cloud LB (public IP) ← only in cloud<br><br>
+<span style="color:var(--yl);font-size:10px">In bare-metal/minikube: stays Pending forever (no cloud LB). Use MetalLB or minikube tunnel.</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S08 ═════════════ -->
+<section id="s08"><h2><span class="n">08</span> ExternalName Service</h2>
+<div class="def"><b>Definition</b>Maps a Service name to an external DNS name (CNAME record). No proxy, no ClusterIP. Just DNS aliasing. Pods use the Service name and get redirected to the external hostname.</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">external-db</span>
+<span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">ExternalName</span>
+  <span class="k">externalName:</span> <span class="s">db.example.com</span>     <span class="cm"># External DNS name</span></code></pre>
+<div class="vis"><span class="bx run">App Pod</span> → <code>curl external-db:3306</code> → DNS resolves to <code>db.example.com</code> → connects to external DB<br><br>
+<span style="color:var(--dm);font-size:10px">No selector. No ClusterIP. No endpoints. Just a DNS CNAME alias. Useful for external databases, APIs, or services outside K8s.</span></div>
+</section>
+
+<!-- ═════════════ S09 ═════════════ -->
+<section id="s09"><h2><span class="n">09</span> Headless Service (clusterIP: None) ▶</h2>
+<div class="def"><b>Definition</b>A Service with <code>clusterIP: None</code>. No virtual IP. DNS returns <strong>all Pod IPs</strong> instead of one VIP. Each Pod gets its own DNS A record. Required for StatefulSets. Used when you need to connect to a SPECIFIC Pod.</div>
+<div class="W" id="w-hl"><div class="bar"><div class="tab on" data-i="0">Normal vs Headless</div><div class="tab" data-i="1">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><strong>Normal ClusterIP:</strong><br>
+<code>nslookup web-svc</code> → <code>10.96.0.15</code> (1 VIP, load balanced)<br><br>
+<strong>Headless:</strong><br>
+<code>nslookup web-svc</code> → <code>10.244.1.5, 10.244.2.3, 10.244.3.7</code> (all Pod IPs!)<br>
+<code>nslookup web-0.web-svc</code> → <code>10.244.1.5</code> (specific Pod — StatefulSet)</div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="k">spec:</span>
+  <span class="k">clusterIP:</span> <span class="v">None</span>    <span class="cm"># ← This makes it headless</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S10 ═════════════ -->
+<section id="s10"><h2><span class="n">10</span> Service Type Comparison</h2>
+<table>
+<tr><th>Type</th><th>ClusterIP</th><th>External Access</th><th>Use For</th></tr>
+<tr><td><code>ClusterIP</code></td><td>Yes (auto)</td><td><span class="bg rd">No</span></td><td>Internal communication</td></tr>
+<tr><td><code>NodePort</code></td><td>Yes (auto)</td><td><span class="bg gn">Yes</span> (NodeIP:30000-32767)</td><td>Dev, testing, simple external</td></tr>
+<tr><td><code>LoadBalancer</code></td><td>Yes (auto)</td><td><span class="bg gn">Yes</span> (public IP)</td><td>Production external (cloud)</td></tr>
+<tr><td><code>ExternalName</code></td><td>No</td><td>DNS alias only</td><td>External DB/API mapping</td></tr>
+<tr><td><code>Headless</code></td><td>None</td><td><span class="bg rd">No</span></td><td>StatefulSets, peer discovery</td></tr>
+</table>
+<div class="vis"><strong>Superset chain:</strong><br>
+<span class="bx svc">ClusterIP</span> <span class="ar">⊂</span> <span class="bx svc">NodePort</span> <span class="ar">⊂</span> <span class="bx svc">LoadBalancer</span><br><br>
+LoadBalancer creates a NodePort (which creates a ClusterIP). Each type includes all features of the previous type.</div>
+</section>
+
+<!-- ═════════════ S11 ═════════════ -->
+<section id="s11"><h2><span class="n">11</span> Service Discovery — DNS ▶</h2>
+<div class="def"><b>Definition</b>CoreDNS automatically creates DNS records for every Service. Pods use DNS names (not IPs) to discover Services. This is the primary discovery mechanism in Kubernetes.</div>
+<div class="W" id="w-dns"><div class="bar"><div class="tab on" data-i="0">DNS Format</div><div class="tab" data-i="1">Examples</div><div class="tab" data-i="2">Env Vars</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">DNS naming convention</div>
+<div class="vis"><strong>Service:</strong> <code>{service}.{namespace}.svc.cluster.local</code><br>
+<code>web-svc.default.svc.cluster.local</code> → ClusterIP<br><br>
+<strong>Short forms (same namespace):</strong><br>
+<code>web-svc</code> ← works within same namespace<br>
+<code>web-svc.default</code> ← explicit namespace<br><br>
+<strong>Pod (headless/StatefulSet):</strong><br>
+<code>{pod}.{service}.{namespace}.svc.cluster.local</code><br>
+<code>mysql-0.mysql-svc.default.svc.cluster.local</code></div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="cm"># From inside any Pod:</span>
+
+<span class="cm"># Same namespace — short name works</span>
+curl http://web-svc:80
+curl http://db-svc:5432
+
+<span class="cm"># Cross-namespace — must include namespace</span>
+curl http://web-svc.production:80
+curl http://db-svc.database.svc.cluster.local:5432
+
+<span class="cm"># DNS lookup</span>
+nslookup web-svc.default.svc.cluster.local</code></pre></div>
+<div class="pnl" data-i="2"><div class="tl">Environment Variables (legacy method)</div>
+<pre><code><span class="cm"># Kubernetes auto-injects env vars for every Service in the same namespace:</span>
+WEB_SVC_SERVICE_HOST=10.96.0.15
+WEB_SVC_SERVICE_PORT=80
+
+<span class="cm"># But DNS is preferred because:</span>
+<span class="cm"># - Env vars are only set at Pod creation (not updated if Service changes)</span>
+<span class="cm"># - Service must exist BEFORE the Pod is created</span>
+<span class="cm"># - DNS works cross-namespace</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S12 ═════════════ -->
+<section id="s12"><h2><span class="n">12</span> Endpoints ▶</h2>
+<div class="def"><b>Definition</b>An Endpoints object lists all Pod IPs that match a Service's selector. Created and updated automatically. When a Pod becomes Ready, its IP is added. When it's deleted or fails readiness, it's removed. The Service reads Endpoints to know where to send traffic.</div>
+<div class="W" id="w-ep"><div class="bar"><div class="tab on" data-i="0">How it works</div><div class="tab" data-i="1">Inspect</div><div class="tab" data-i="2">No endpoints?</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span class="bx svc">Service: web-svc (selector: app=web)</span><br>
+<span class="ar">↓</span> automatically finds Pods with <code>app=web</code><br>
+<span class="bx run">Endpoints: 10.244.1.5:80, 10.244.2.3:80, 10.244.3.7:80</span><br><br>
+Pod fails readiness → <span class="bx run">10.244.2.3 removed from endpoints</span><br>
+New Pod created → <span class="bx run">10.244.2.9 added to endpoints</span></div></div>
+<div class="pnl" data-i="1">
+<pre><code>kubectl get endpoints web-svc
+<span class="cm"># NAME      ENDPOINTS</span>
+<span class="cm"># web-svc   10.244.1.5:80,10.244.2.3:80,10.244.3.7:80</span>
+
+kubectl describe endpoints web-svc</code></pre></div>
+<div class="pnl" data-i="2"><div class="tl">Service with NO endpoints — common bug</div>
+<div class="vis"><strong>Symptom:</strong> <code>kubectl get endpoints web-svc</code> shows <code>&lt;none&gt;</code><br><br>
+<strong>Causes:</strong><br>
+① Selector mismatch — Service selector doesn't match any Pod labels<br>
+② No Pods exist with matching labels<br>
+③ All matching Pods fail readiness probes<br><br>
+<span style="color:var(--rd)">If endpoints are empty, the Service has nowhere to send traffic → connection refused.</span></div>
+<pre><code><span class="cm"># Debug: compare Service selector vs Pod labels</span>
+kubectl get svc web-svc -o jsonpath='{.spec.selector}'
+<span class="cm"># {app: web}</span>
+
+kubectl get pods --show-labels | grep app=web
+<span class="cm"># If no Pods match → that's the problem!</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S13 ═════════════ -->
+<section id="s13"><h2><span class="n">13</span> Ingress ▶</h2>
+<div class="def"><b>Definition — Ingress</b>An API object that manages external HTTP/HTTPS access to Services. Provides <strong>host-based routing</strong> (example.com → service A), <strong>path-based routing</strong> (/api → service B), and <strong>TLS termination</strong>. Much more powerful than NodePort — one entry point routes to many services. Requires an Ingress Controller (nginx, traefik, etc.).</div>
+<div class="W" id="w-ing"><div class="bar"><div class="tab on" data-i="0">Architecture</div><div class="tab" data-i="1">Why Ingress?</div><div class="tab" data-i="2">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="vis"><span class="bx ext">Internet (users)</span><br>
+<span class="ar">↓</span> <code>https://app.example.com/api</code><br>
+<span class="bx ing">Ingress Controller (nginx Pod)</span> ← reads Ingress rules<br>
+<span class="ar">↓</span> route by host/path<br>
+├── <code>app.example.com/</code> → <span class="bx svc">frontend-svc:80</span> → <span class="bx run">Frontend Pods</span><br>
+├── <code>app.example.com/api</code> → <span class="bx svc">api-svc:80</span> → <span class="bx run">API Pods</span><br>
+└── <code>admin.example.com</code> → <span class="bx svc">admin-svc:80</span> → <span class="bx run">Admin Pods</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Why not just use NodePort/LoadBalancer?</div>
+<table>
+<tr><th>Without Ingress</th><th>With Ingress</th></tr>
+<tr><td>3 services = 3 LoadBalancers = 3 public IPs ($$$)</td><td>1 Ingress = 1 LB = 1 IP → routes to all 3 services</td></tr>
+<tr><td>No path-based routing</td><td>/api → svc A, /web → svc B</td></tr>
+<tr><td>No host-based routing</td><td>app.com → svc A, admin.com → svc B</td></tr>
+<tr><td>No TLS termination</td><td>HTTPS with cert managed by Ingress</td></tr>
+</table></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">Ingress</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">app-ingress</span>
+<span class="k">spec:</span>
+  <span class="k">ingressClassName:</span> <span class="s">nginx</span>
+  <span class="k">rules:</span>
+  - <span class="k">host:</span> <span class="s">app.example.com</span>
+    <span class="k">http:</span>
+      <span class="k">paths:</span>
+      - <span class="k">path:</span> <span class="s">/</span>
+        <span class="k">pathType:</span> <span class="v">Prefix</span>
+        <span class="k">backend:</span>
+          <span class="k">service:</span>
+            <span class="k">name:</span> <span class="s">frontend-svc</span>
+            <span class="k">port:</span>
+              <span class="k">number:</span> <span class="nm">80</span>
+      - <span class="k">path:</span> <span class="s">/api</span>
+        <span class="k">pathType:</span> <span class="v">Prefix</span>
+        <span class="k">backend:</span>
+          <span class="k">service:</span>
+            <span class="k">name:</span> <span class="s">api-svc</span>
+            <span class="k">port:</span>
+              <span class="k">number:</span> <span class="nm">80</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S14 ═════════════ -->
+<section id="s14"><h2><span class="n">14</span> Ingress Rules ▶</h2>
+<div class="W" id="w-irules"><div class="bar"><div class="tab on" data-i="0">Path-based</div><div class="tab" data-i="1">Host-based</div><div class="tab" data-i="2">TLS</div><div class="tab" data-i="3">Default backend</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Path-based routing — one host, multiple paths</div>
+<pre><code><span class="k">rules:</span>
+- <span class="k">host:</span> <span class="s">app.example.com</span>
+  <span class="k">http:</span>
+    <span class="k">paths:</span>
+    - <span class="k">path:</span> <span class="s">/</span>
+      <span class="k">pathType:</span> <span class="v">Prefix</span>
+      <span class="k">backend:</span>
+        <span class="k">service:</span> { <span class="k">name:</span> <span class="s">frontend-svc</span>, <span class="k">port:</span> { <span class="k">number:</span> <span class="nm">80</span> } }
+    - <span class="k">path:</span> <span class="s">/api</span>
+      <span class="k">pathType:</span> <span class="v">Prefix</span>
+      <span class="k">backend:</span>
+        <span class="k">service:</span> { <span class="k">name:</span> <span class="s">api-svc</span>, <span class="k">port:</span> { <span class="k">number:</span> <span class="nm">80</span> } }</code></pre>
+<div class="ds"><code>pathType: Prefix</code> = <code>/api</code> matches <code>/api</code>, <code>/api/v1</code>, <code>/api/users</code>. <code>pathType: Exact</code> = only exact match.</div></div>
+<div class="pnl" data-i="1"><div class="tl">Host-based routing — multiple domains</div>
+<pre><code><span class="k">rules:</span>
+- <span class="k">host:</span> <span class="s">app.example.com</span>
+  <span class="k">http:</span>
+    <span class="k">paths:</span>
+    - <span class="k">path:</span> <span class="s">/</span>
+      <span class="k">pathType:</span> <span class="v">Prefix</span>
+      <span class="k">backend:</span>
+        <span class="k">service:</span> { <span class="k">name:</span> <span class="s">app-svc</span>, <span class="k">port:</span> { <span class="k">number:</span> <span class="nm">80</span> } }
+- <span class="k">host:</span> <span class="s">admin.example.com</span>
+  <span class="k">http:</span>
+    <span class="k">paths:</span>
+    - <span class="k">path:</span> <span class="s">/</span>
+      <span class="k">pathType:</span> <span class="v">Prefix</span>
+      <span class="k">backend:</span>
+        <span class="k">service:</span> { <span class="k">name:</span> <span class="s">admin-svc</span>, <span class="k">port:</span> { <span class="k">number:</span> <span class="nm">80</span> } }</code></pre></div>
+<div class="pnl" data-i="2"><div class="tl">TLS — HTTPS termination</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">tls:</span>
+  - <span class="k">hosts:</span>
+    - <span class="s">app.example.com</span>
+    <span class="k">secretName:</span> <span class="s">app-tls-secret</span>    <span class="cm"># Secret with tls.crt and tls.key</span>
+  <span class="k">rules:</span>
+  - <span class="k">host:</span> <span class="s">app.example.com</span>
+    ...</code></pre>
+<pre><code><span class="cm"># Create TLS secret</span>
+kubectl create secret tls app-tls-secret --cert=tls.crt --key=tls.key</code></pre></div>
+<div class="pnl" data-i="3"><div class="tl">Default backend — catch-all</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">defaultBackend:</span>
+    <span class="k">service:</span>
+      <span class="k">name:</span> <span class="s">default-svc</span>
+      <span class="k">port:</span>
+        <span class="k">number:</span> <span class="nm">80</span>
+  <span class="k">rules:</span>
+  - ...</code></pre>
+<div class="ds">Handles requests that don't match any rule. Usually serves a 404 page or redirects.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S15 ═════════════ -->
+<section id="s15"><h2><span class="n">15</span> NetworkPolicy ▶</h2>
+<div class="def"><b>Definition — NetworkPolicy</b>A firewall rule for Pods. By default, all Pods can talk to all other Pods (flat network, no restrictions). NetworkPolicy lets you restrict: which Pods can receive traffic (<strong>ingress</strong>) and which Pods can send traffic (<strong>egress</strong>). Requires a CNI that supports it (Calico, Cilium — NOT Flannel).</div>
+<div class="W" id="w-netpol"><div class="bar"><div class="tab on" data-i="0">Default behavior</div><div class="tab" data-i="1">How it works</div><div class="tab" data-i="2">Key concepts</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Default — NO NetworkPolicy = allow ALL</div>
+<div class="vis"><span class="bx run">Pod A</span> <span class="ar">→</span> <span class="bx run">Pod B</span> ← allowed<br>
+<span class="bx run">Pod A</span> <span class="ar">→</span> <span class="bx run">Pod C</span> ← allowed<br>
+<span class="bx run">Any Pod</span> <span class="ar">→</span> <span class="bx run">Any Pod</span> ← everything allowed!<br><br>
+<span style="color:var(--rd);font-size:10px">No NetworkPolicy = completely open network. Any Pod can reach any other Pod on any port.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">With NetworkPolicy — deny by default, allow explicitly</div>
+<div class="vis"><strong>Step 1:</strong> Create a "deny all" policy on target Pods<br>
+→ <span class="bx np">ALL traffic to target Pods is BLOCKED</span><br><br>
+<strong>Step 2:</strong> Create allow rules for specific sources<br>
+→ <span class="bx run">Only allowed Pods can reach target Pods</span><br><br>
+<span style="color:var(--gn);font-size:10px">Think of it as: "deny everything, then poke holes for what you need."</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Key concepts</div>
+<table>
+<tr><th>Concept</th><th>Meaning</th></tr>
+<tr><td><code>podSelector</code></td><td>Which Pods this policy applies TO (target)</td></tr>
+<tr><td><code>policyTypes: [Ingress]</code></td><td>Controls incoming traffic to target Pods</td></tr>
+<tr><td><code>policyTypes: [Egress]</code></td><td>Controls outgoing traffic from target Pods</td></tr>
+<tr><td><code>ingress.from</code></td><td>Who is allowed to send traffic IN</td></tr>
+<tr><td><code>egress.to</code></td><td>Where target Pods are allowed to send traffic OUT</td></tr>
+<tr><td><code>namespaceSelector</code></td><td>Allow traffic from Pods in specific namespaces</td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S16 ═════════════ -->
+<section id="s16"><h2><span class="n">16</span> NetworkPolicy Examples ▶</h2>
+<div class="W" id="w-npex"><div class="bar"><div class="tab on" data-i="0">Deny all ingress</div><div class="tab" data-i="1">Allow specific</div><div class="tab" data-i="2">Allow namespace</div><div class="tab" data-i="3">Egress DNS only</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Deny all ingress to Pods with app=db</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">deny-all-db</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">db</span>           <span class="cm"># Applies to Pods with app=db</span>
+  <span class="k">policyTypes:</span>
+  - <span class="v">Ingress</span>               <span class="cm"># Controls incoming traffic</span>
+  <span class="cm"># No ingress rules = deny ALL incoming traffic</span></code></pre>
+<div class="vis"><span class="bx run">Any Pod</span> <span class="ar">→</span> <span class="bx np">db Pod ✗ BLOCKED</span><br>
+<span style="color:var(--rd);font-size:10px">All incoming traffic to db Pods is denied. No exceptions (yet).</span></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Allow ONLY app=api Pods to reach app=db on port 5432</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">allow-api-to-db</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">db</span>
+  <span class="k">policyTypes:</span>
+  - <span class="v">Ingress</span>
+  <span class="k">ingress:</span>
+  - <span class="k">from:</span>
+    - <span class="k">podSelector:</span>
+        <span class="k">matchLabels:</span>
+          <span class="k">app:</span> <span class="s">api</span>       <span class="cm"># Only from Pods with app=api</span>
+    <span class="k">ports:</span>
+    - <span class="k">port:</span> <span class="nm">5432</span>
+      <span class="k">protocol:</span> <span class="v">TCP</span></code></pre>
+<div class="vis"><span class="bx run">api Pod (app=api)</span> <span class="ar">→ port 5432 →</span> <span class="bx run">db Pod ✓ ALLOWED</span><br>
+<span class="bx run">web Pod (app=web)</span> <span class="ar">→</span> <span class="bx np">db Pod ✗ BLOCKED</span></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Allow from specific namespace</div>
+<pre><code>  <span class="k">ingress:</span>
+  - <span class="k">from:</span>
+    - <span class="k">namespaceSelector:</span>
+        <span class="k">matchLabels:</span>
+          <span class="k">env:</span> <span class="s">production</span>    <span class="cm"># Only from Pods in namespaces labeled env=production</span>
+      <span class="k">podSelector:</span>
+        <span class="k">matchLabels:</span>
+          <span class="k">app:</span> <span class="s">api</span>          <span class="cm"># AND only from Pods with app=api</span></code></pre>
+<div class="c o"><div class="l">AND vs OR</div><p style="margin:0">When <code>namespaceSelector</code> and <code>podSelector</code> are in the SAME <code>from</code> entry → AND (both must match). In SEPARATE <code>from</code> entries → OR (either can match).</p></div></div>
+
+<div class="pnl" data-i="3"><div class="tl">Egress — Allow only DNS (port 53)</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">restricted</span>
+  <span class="k">policyTypes:</span>
+  - <span class="v">Egress</span>
+  <span class="k">egress:</span>
+  - <span class="k">ports:</span>
+    - <span class="k">port:</span> <span class="nm">53</span>
+      <span class="k">protocol:</span> <span class="v">UDP</span>
+    - <span class="k">port:</span> <span class="nm">53</span>
+      <span class="k">protocol:</span> <span class="v">TCP</span></code></pre>
+<div class="ds">Pods with <code>app=restricted</code> can ONLY make DNS queries (port 53). All other outgoing traffic is blocked. Useful for Pods that should only talk to Services (via DNS) and nothing else.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S17 ═════════════ -->
+<section id="s17"><h2><span class="n">17</span> Monitoring &amp; Best Practices</h2>
+<div class="c g"><div class="l">Always use DNS names, not Pod IPs</div><p style="margin:0">Pod IPs change on restart. Service DNS names and ClusterIPs are stable.</p></div>
+<div class="c b"><div class="l">Check endpoints when Service doesn't work</div><p style="margin:0"><code>kubectl get endpoints svc-name</code> — if empty, selector doesn't match any Pods.</p></div>
+<div class="c p"><div class="l">Use Ingress for HTTP, NodePort only for dev</div><p style="margin:0">NodePort wastes ports (30000-32767) and requires knowing node IPs. Ingress provides clean URLs and TLS.</p></div>
+<div class="c o"><div class="l">Start with deny-all NetworkPolicy</div><p style="margin:0">Apply a deny-all policy first, then add allow rules. This is zero-trust networking. Without NetworkPolicy, all Pods can talk to all Pods.</p></div>
+<div class="c r"><div class="l">Flannel doesn't support NetworkPolicy</div><p style="margin:0">If you need NetworkPolicy (you do), use Calico or Cilium as your CNI plugin.</p></div>
+<div class="sre"><div class="tag">SRE Wisdom</div><p style="margin:0">Networking issues are the #1 cause of "it works in dev but not in prod." Check: ① Are endpoints populated? ② Is the selector correct? ③ Is there a NetworkPolicy blocking traffic? ④ Is the Pod passing readiness probes? ⑤ Is the targetPort correct?</p></div>
+</section>
+
+<!-- ═════════════ S18 ═════════════ -->
+<section id="s18"><h2><span class="n">18</span> Command Reference</h2>
+<pre><code><span class="cm"># ══ SERVICES ══</span>
+kubectl expose deployment web --port=80 --target-port=80 --name=web-svc
+kubectl expose deployment web --type=NodePort --port=80 --name=web-np
+kubectl create service clusterip my-svc --tcp=80:80
+kubectl get svc
+kubectl describe svc web-svc
+kubectl get endpoints web-svc
+
+<span class="cm"># ══ INGRESS ══</span>
+kubectl create ingress app-ing --rule="app.example.com/=frontend-svc:80" --rule="app.example.com/api=api-svc:80"
+kubectl get ingress
+kubectl describe ingress app-ing
+
+<span class="cm"># ══ NETWORK POLICY ══</span>
+kubectl get networkpolicy
+kubectl describe networkpolicy deny-all-db
+
+<span class="cm"># ══ DEBUG ══</span>
+kubectl run -it --rm debug --image=busybox -- sh
+<span class="cm"># Inside: nslookup web-svc / curl web-svc:80 / wget -qO- web-svc</span>
+
+kubectl get svc web-svc -o jsonpath='{.spec.selector}'  <span class="cm"># Check selector</span>
+kubectl get endpoints web-svc                            <span class="cm"># Check endpoints</span>
+kubectl get pods --show-labels | grep app=web            <span class="cm"># Check Pod labels</span>
+
+<span class="cm"># ══ PORT-FORWARD (debug access) ══</span>
+kubectl port-forward svc/web-svc 8080:80      <span class="cm"># localhost:8080 → Service</span>
+kubectl port-forward pod/web-pod 8080:80      <span class="cm"># localhost:8080 → specific Pod</span></code></pre>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>
