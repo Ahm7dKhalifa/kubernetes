@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Services — Request Lifecycle &amp; Component Workflows</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#2563eb;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1020px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(37,99,235,.06) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:34px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(37,99,235,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(37,99,235,.03),rgba(8,145,178,.02));border:1px solid rgba(37,99,235,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(37,99,235,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(37,99,235,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(37,99,235,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:11px;margin:7px 0;min-height:40px;font-size:12px;line-height:1.7}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+/* ═══ DIAGRAM SYSTEM ═══ */
+.dia{background:var(--cb);border:1px solid var(--bd);border-radius:8px;padding:16px;margin:8px 0;overflow-x:auto}
+.dia .row{display:flex;align-items:center;gap:0;margin:4px 0;flex-wrap:wrap}
+.dia .col{display:flex;flex-direction:column;align-items:center;gap:4px}
+.dia .b{display:inline-flex;align-items:center;gap:4px;border:1.5px solid;border-radius:6px;padding:5px 10px;font-family:'JetBrains Mono',monospace;font-size:9.5px;text-align:center;white-space:nowrap}
+.dia .b .i{font-size:14px;margin-right:2px}
+.dia .b .sub{display:block;font-size:7.5px;color:var(--dm);margin-top:1px;font-weight:400}
+.dia .b.pod{border-color:#0ea472;color:#0ea472;background:rgba(14,164,114,.04)}
+.dia .b.svc{border-color:var(--bl);color:var(--bl);background:rgba(37,99,235,.05)}
+.dia .b.node{border-color:var(--ac2);color:var(--ac2);background:rgba(8,145,178,.04);padding:8px 12px}
+.dia .b.kp{border-color:var(--yl);color:var(--yl);background:rgba(202,138,4,.04)}
+.dia .b.dns{border-color:var(--gn);color:var(--gn);background:rgba(22,163,74,.04)}
+.dia .b.ipt{border-color:var(--og);color:var(--og);background:rgba(234,88,12,.04)}
+.dia .b.ep{border-color:var(--pp);color:var(--pp);background:rgba(147,51,234,.04)}
+.dia .b.api{border-color:#fff;color:#fff;background:rgba(255,255,255,.03)}
+.dia .b.ext{border-color:var(--pp);color:var(--pp);background:rgba(147,51,234,.03)}
+.dia .b.lb{border-color:var(--rd);color:var(--rd);background:rgba(220,38,38,.03)}
+.dia .a{color:var(--dm);font-size:18px;margin:0 6px;flex-shrink:0}
+.dia .a.down{writing-mode:vertical-lr;margin:2px auto;font-size:16px}
+.dia .lbl{font-size:8px;color:var(--dm);text-align:center;margin:1px 0;font-family:'JetBrains Mono',monospace;letter-spacing:.3px}
+.dia .step{display:inline-block;width:18px;height:18px;border-radius:50%;background:rgba(37,99,235,.12);color:var(--ac);font-size:8px;font-weight:700;text-align:center;line-height:18px;margin-right:4px;flex-shrink:0}
+.dia .note{font-size:10px;color:var(--dm);background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:3px 7px;margin:3px 0;display:inline-block;max-width:100%}
+.dia .grp{border:1px dashed var(--bd);border-radius:8px;padding:10px;margin:4px 0}
+.dia .grp .gl{font-size:8px;color:var(--dm);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ Service Lifecycle</div>
+<div class="sub">Request Workflows</div>
+<div class="sl">Creation Lifecycle</div>
+<ul><li><a href="#s01">① kubectl → API Server ▶</a></li><li><a href="#s02">② Endpoint Controller ▶</a></li><li><a href="#s03">③ kube-proxy Programs ▶</a></li><li><a href="#s04">④ CoreDNS Registers ▶</a></li></ul>
+<div class="sl">Request Lifecycle</div>
+<ul><li><a href="#s05">ClusterIP Request ▶</a></li><li><a href="#s06">NodePort Request ▶</a></li><li><a href="#s07">LoadBalancer Request ▶</a></li></ul>
+<div class="sl">Topology Cases</div>
+<ul><li><a href="#s08">Same Node ▶</a></li><li><a href="#s09">Cross Node ▶</a></li></ul>
+<div class="sl">Dynamic Changes</div>
+<ul><li><a href="#s10">Pod Dies ▶</a></li><li><a href="#s11">New Pod Added ▶</a></li><li><a href="#s12">Scale Up ▶</a></li></ul>
+<div class="sl">Troubleshoot</div>
+<ul><li><a href="#s13">No Endpoints ▶</a></li><li><a href="#s14">Full Debug ▶</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Service Lifecycle &amp; Request Workflows</h1><p>How every K8s component participates — from Service creation to handling traffic. Step-by-step diagrams showing the exact path of every packet through the system.</p></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- CREATION LIFECYCLE                          -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section id="s01"><h2><span class="n">01</span> Creation Step ① — kubectl → API Server ▶</h2>
+<div class="W" id="w-s1"><div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Diagram</div><div class="tab" data-i="2">What API Server does</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">You run the command</div>
+<pre><code>kubectl expose deployment web --port=80 --target-port=80 --name=web-svc</code></pre>
+<div class="ds">kubectl sends a <code>POST /api/v1/namespaces/default/services</code> request to the API Server with the Service spec: name=web-svc, type=ClusterIP, selector={app:web}, port=80, targetPort=80.</div></div>
+<div class="pnl" data-i="1">
+<div class="dia">
+<div class="row"><span class="step">1</span> <span class="b api"><span class="i">⌨️</span> kubectl<span class="sub">sends Service spec</span></span> <span class="a">→→→</span> <span class="b api"><span class="i">🗄️</span> API Server<span class="sub">validates + stores in etcd</span></span></div>
+<div class="lbl">POST /api/v1/namespaces/default/services</div>
+<br>
+<div class="row"><span class="step">2</span> <span class="b api"><span class="i">🗄️</span> API Server</span> <span class="a">→→→</span> <span class="b svc"><span class="i">🔵</span> Service: web-svc<span class="sub">ClusterIP: 10.96.0.15 ← assigned</span></span></div>
+<div class="lbl">API Server picks unused IP from --service-cluster-ip-range (10.96.0.0/12)</div>
+</div></div>
+<div class="pnl" data-i="2"><div class="tl">What the API Server does internally</div>
+<div class="dia">
+<div class="row"><span class="step">A</span> <span class="note">Validates: selector exists, ports valid, name unique</span></div>
+<div class="row"><span class="step">B</span> <span class="note">Allocates ClusterIP from range 10.96.0.0/12 (stored in etcd bitmap)</span></div>
+<div class="row"><span class="step">C</span> <span class="note">Stores Service object in etcd</span></div>
+<div class="row"><span class="step">D</span> <span class="note">Notifies all watchers: Endpoint Controller + kube-proxy + CoreDNS</span></div>
+</div>
+<div class="def"><b>Key</b>The ClusterIP is just a number stored in etcd. No network interface has this IP. It becomes "real" only when kube-proxy programs iptables rules to intercept packets destined for it.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s02"><h2><span class="n">02</span> Creation Step ② — Endpoint Controller Builds Endpoints ▶</h2>
+<div class="W" id="w-s2"><div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Diagram</div><div class="tab" data-i="2">Readiness gate</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="ds">The <strong>Endpoint Controller</strong> (runs inside kube-controller-manager on the control plane) watches for new Services. When it sees <code>web-svc</code> with selector <code>app=web</code>, it scans ALL Pods in the namespace. For each Pod that has label <code>app=web</code> AND is <strong>Ready</strong> (passing readiness probe), it adds the Pod's IP:port to an <code>Endpoints</code> object.</div></div>
+<div class="pnl" data-i="1">
+<div class="dia">
+<div class="row"><span class="b api"><span class="i">🗄️</span> API Server<span class="sub">notifies: "new Service created"</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="step">1</span> <span class="b kp"><span class="i">👁️</span> Endpoint Controller<span class="sub">watches Services + Pods</span></span></div>
+<div class="a down">↓</div>
+<div class="lbl">Scans: "find all Pods with label app=web that are Ready"</div>
+<br>
+<div class="grp"><div class="gl">Pods found with app=web + Ready ✓</div>
+<div class="row"><span class="b pod">web-abc12<span class="sub">10.244.1.5:80 ✓ Ready</span></span> <span class="b pod">web-def34<span class="sub">10.244.2.3:80 ✓ Ready</span></span> <span class="b pod">web-ghi56<span class="sub">10.244.3.7:80 ✓ Ready</span></span></div></div>
+<div class="a down">↓</div>
+<div class="row"><span class="step">2</span> <span class="b ep"><span class="i">📋</span> Endpoints: web-svc<span class="sub">10.244.1.5:80, 10.244.2.3:80, 10.244.3.7:80</span></span></div>
+<div class="lbl">Endpoint Controller creates/updates Endpoints object in API Server</div>
+</div></div>
+<div class="pnl" data-i="2"><div class="tl">Only Ready Pods get endpoints</div>
+<div class="dia">
+<div class="row"><span class="b pod">web-abc12<span class="sub">10.244.1.5 ✓ Ready → IN endpoints</span></span></div>
+<div class="row"><span class="b pod" style="border-color:var(--rd);color:var(--rd)">web-xyz99<span class="sub">10.244.1.8 ✗ Not Ready → NOT in endpoints</span></span></div>
+<div class="row"><span class="b pod">web-def34<span class="sub">10.244.2.3 ✓ Ready → IN endpoints</span></span></div>
+</div>
+<div class="c r"><div class="l">Why readiness matters</div><p style="margin:0">A Pod that's Running but NOT Ready (e.g., app is still loading config, warming cache) is excluded from endpoints. Traffic is NEVER sent to unready Pods. This is why readiness probes are critical for zero-downtime deployments.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s03"><h2><span class="n">03</span> Creation Step ③ — kube-proxy Programs iptables on Every Node ▶</h2>
+<div class="W" id="w-s3"><div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Diagram — All nodes</div><div class="tab" data-i="2">iptables rules</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="ds"><strong>kube-proxy</strong> runs as a DaemonSet on EVERY node. It watches the API Server for Service and Endpoint changes. When it sees <code>web-svc</code> (ClusterIP 10.96.0.15) with Endpoints [10.244.1.5, 10.244.2.3, 10.244.3.7], it programs <strong>iptables NAT rules on its node</strong> so that any packet destined for 10.96.0.15:80 is intercepted and rewritten (DNAT) to one of the real Pod IPs.</div></div>
+<div class="pnl" data-i="1">
+<div class="dia">
+<div class="row"><span class="b api"><span class="i">🗄️</span> API Server<span class="sub">Service + Endpoints changed</span></span></div>
+<div class="a down">↓ watch event to all kube-proxy instances ↓</div>
+<br>
+<div class="grp"><div class="gl">Node 1 (192.168.1.10)</div>
+<div class="row"><span class="b kp"><span class="i">⚙️</span> kube-proxy</span> <span class="a">→</span> <span class="b ipt"><span class="i">🔥</span> iptables rules updated<span class="sub">10.96.0.15:80 → DNAT → 3 backends</span></span></div></div>
+<div class="grp"><div class="gl">Node 2 (192.168.1.11)</div>
+<div class="row"><span class="b kp"><span class="i">⚙️</span> kube-proxy</span> <span class="a">→</span> <span class="b ipt"><span class="i">🔥</span> iptables rules updated<span class="sub">10.96.0.15:80 → DNAT → 3 backends</span></span></div></div>
+<div class="grp"><div class="gl">Node 3 (192.168.1.12)</div>
+<div class="row"><span class="b kp"><span class="i">⚙️</span> kube-proxy</span> <span class="a">→</span> <span class="b ipt"><span class="i">🔥</span> iptables rules updated<span class="sub">10.96.0.15:80 → DNAT → 3 backends</span></span></div></div>
+<div class="note">Every node now knows: "if I see packet to 10.96.0.15:80, rewrite destination to a real Pod IP"</div>
+</div></div>
+<div class="pnl" data-i="2"><div class="tl">What the iptables rules actually look like</div>
+<div class="dia">
+<div class="lbl">Simplified iptables NAT chain on EVERY node:</div>
+<br>
+<div class="row"><span class="b ipt">KUBE-SERVICES chain<span class="sub">if dst=10.96.0.15:80 → jump to KUBE-SVC-WEB</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b ipt">KUBE-SVC-WEB chain<span class="sub">probability 0.33 → KUBE-SEP-1</span><span class="sub">probability 0.33 → KUBE-SEP-2</span><span class="sub">probability 0.33 → KUBE-SEP-3</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b ipt">KUBE-SEP-1<span class="sub">DNAT to 10.244.1.5:80</span></span> <span class="b ipt">KUBE-SEP-2<span class="sub">DNAT to 10.244.2.3:80</span></span> <span class="b ipt">KUBE-SEP-3<span class="sub">DNAT to 10.244.3.7:80</span></span></div>
+</div>
+<div class="c o"><div class="l">Key insight</div><p style="margin:0">The ClusterIP 10.96.0.15 is <strong>never assigned to a NIC</strong>. It only exists in iptables rules. When a packet with dst=10.96.0.15 enters the kernel's network stack, the PREROUTING/OUTPUT chain catches it and rewrites the destination to a real Pod IP. The packet then travels to the actual Pod as if the Service never existed.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s04"><h2><span class="n">04</span> Creation Step ④ — CoreDNS Registers DNS Record ▶</h2>
+<div class="W" id="w-s4"><div class="bar"><div class="tab on" data-i="0">What happens</div><div class="tab" data-i="1">Diagram</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="ds"><strong>CoreDNS</strong> (Deployment in kube-system) also watches the API Server. When it sees the new Service, it creates a DNS A record: <code>web-svc.default.svc.cluster.local → 10.96.0.15</code>. Every Pod's <code>/etc/resolv.conf</code> points to CoreDNS as the nameserver, so Pods can now resolve <code>web-svc</code> to the ClusterIP.</div></div>
+<div class="pnl" data-i="1">
+<div class="dia">
+<div class="row"><span class="b api"><span class="i">🗄️</span> API Server</span> <span class="a">→→→</span> <span class="b dns"><span class="i">🌐</span> CoreDNS<span class="sub">watches Service objects</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b dns">DNS A record created:<span class="sub">web-svc.default.svc.cluster.local → 10.96.0.15</span></span></div>
+<br>
+<div class="lbl">Inside every Pod:</div>
+<div class="row"><span class="b pod">Any Pod<span class="sub">/etc/resolv.conf: nameserver 10.96.0.10 (CoreDNS)</span></span></div>
+<div class="note">search default.svc.cluster.local svc.cluster.local cluster.local</div>
+<div class="lbl">↑ This search domain is why "curl web-svc" works — it appends ".default.svc.cluster.local"</div>
+</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+
+<div class="sre"><div class="tag">Creation Summary</div><p style="margin:0"><strong>① kubectl</strong> → API Server stores Service + assigns ClusterIP. <strong>② Endpoint Controller</strong> finds matching Ready Pods → builds Endpoints list. <strong>③ kube-proxy</strong> (on every node) → programs iptables DNAT rules. <strong>④ CoreDNS</strong> → creates DNS A record. Now the Service is fully operational — any Pod can <code>curl web-svc:80</code>.</p></div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- REQUEST LIFECYCLE                           -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section id="s05"><h2><span class="n">05</span> ClusterIP Request — Packet Journey Step by Step ▶</h2>
+<div class="W" id="w-r1"><div class="bar"><div class="tab on" data-i="0">① App calls DNS</div><div class="tab" data-i="1">② DNS resolves</div><div class="tab" data-i="2">③ Packet created</div><div class="tab" data-i="3">④ iptables intercepts</div><div class="tab" data-i="4">⑤ DNAT rewrites</div><div class="tab" data-i="5">⑥ CNI routes</div><div class="tab" data-i="6">⑦ Pod receives</div><div class="tab" data-i="7">⑧ Response</div></div><div class="body">
+
+<div class="pnl on" data-i="0"><div class="tl">① Application code makes HTTP request</div>
+<div class="dia">
+<div class="row"><span class="b pod"><span class="i">📱</span> App Pod (Node 1)<span class="sub">code: curl http://web-svc:80/api</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="note">App uses the SERVICE NAME, not an IP. The OS resolver is triggered.</span></div>
+</div>
+<div class="ds">The app calls <code>web-svc:80</code>. The HTTP library triggers a DNS lookup via the OS resolver. The Pod's <code>/etc/resolv.conf</code> points to CoreDNS (10.96.0.10).</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">② CoreDNS resolves the name to ClusterIP</div>
+<div class="dia">
+<div class="row"><span class="b pod"><span class="i">📱</span> App Pod</span> <span class="a">→</span> <span class="note">DNS query: "web-svc.default.svc.cluster.local?"</span> <span class="a">→</span> <span class="b dns"><span class="i">🌐</span> CoreDNS<span class="sub">10.96.0.10:53</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b dns">Response: A record<span class="sub">web-svc → 10.96.0.15</span></span> <span class="a">→</span> <span class="b pod"><span class="i">📱</span> App Pod<span class="sub">now knows: web-svc = 10.96.0.15</span></span></div>
+</div></div>
+
+<div class="pnl" data-i="2"><div class="tl">③ App Pod creates a TCP packet</div>
+<div class="dia">
+<div class="row"><span class="b pod"><span class="i">📦</span> TCP Packet created<span class="sub">src: 10.244.1.2:45678 (App Pod)</span><span class="sub">dst: 10.96.0.15:80 (ClusterIP)</span></span></div>
+<div class="a down">↓ enters kernel network stack on Node 1</div>
+<div class="row"><span class="note">Packet has destination = ClusterIP. But this IP doesn't exist on any NIC!</span></div>
+</div></div>
+
+<div class="pnl" data-i="3"><div class="tl">④ iptables intercepts the packet (OUTPUT chain)</div>
+<div class="dia">
+<div class="row"><span class="b ipt"><span class="i">🔥</span> iptables OUTPUT chain (Node 1 kernel)<span class="sub">rule: if dst = 10.96.0.15:80 → jump to KUBE-SVC-WEB</span></span></div>
+<div class="a down">↓ match!</div>
+<div class="row"><span class="note">iptables catches the packet BEFORE it reaches the wire. The packet is "trapped" in the kernel.</span></div>
+</div>
+<div class="ds">Since the packet originates FROM a Pod on this node, it hits the <strong>OUTPUT</strong> iptables chain. kube-proxy's rules match on destination=10.96.0.15 and redirect to the Service's chain.</div></div>
+
+<div class="pnl" data-i="4"><div class="tl">⑤ iptables DNAT — rewrites destination to a real Pod IP</div>
+<div class="dia">
+<div class="row"><span class="b ipt"><span class="i">🎲</span> KUBE-SVC-WEB chain<span class="sub">random probability:</span><span class="sub">33% → 10.244.1.5 | 33% → 10.244.2.3 | 33% → 10.244.3.7</span></span></div>
+<div class="a down">↓ random selects 10.244.2.3 (Pod on Node 2)</div>
+<div class="row"><span class="b ipt"><span class="i">✏️</span> DNAT (Destination NAT)<span class="sub">BEFORE: dst = 10.96.0.15:80</span><span class="sub">AFTER: dst = 10.244.2.3:80</span></span></div>
+</div>
+<div class="ds">The packet's destination IP is rewritten from the virtual ClusterIP to a real Pod IP. The packet now looks like it was always going to the Pod directly. conntrack remembers this mapping for the response.</div></div>
+
+<div class="pnl" data-i="5"><div class="tl">⑥ CNI routes the packet to the destination node</div>
+<div class="dia">
+<div class="row"><span class="b pod"><span class="i">📦</span> Packet<span class="sub">src: 10.244.1.2 | dst: 10.244.2.3</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b node"><span class="i">🖥️</span> Node 1 routing table<span class="sub">10.244.2.0/24 → via VXLAN tunnel → Node 2</span></span></div>
+<div class="a down">↓ VXLAN encapsulate (or BGP route)</div>
+<div class="row"><span class="note">Physical network: Node 1 (192.168.1.10) → Node 2 (192.168.1.11)</span></div>
+<div class="a down">↓ decapsulate on Node 2</div>
+<div class="row"><span class="b node"><span class="i">🖥️</span> Node 2<span class="sub">delivers to Pod at 10.244.2.3</span></span></div>
+</div>
+<div class="ds">The CNI plugin (Calico/Flannel/Cilium) handles cross-node routing. With VXLAN, the packet is encapsulated in a UDP packet between nodes. With BGP (Calico), nodes have direct routes. Either way, the packet reaches the destination Pod.</div></div>
+
+<div class="pnl" data-i="6"><div class="tl">⑦ Target Pod receives and processes the request</div>
+<div class="dia">
+<div class="row"><span class="b pod"><span class="i">🎯</span> web-def34 (10.244.2.3:80, Node 2)<span class="sub">nginx receives HTTP GET /api</span><span class="sub">processes request, generates response</span></span></div>
+</div></div>
+
+<div class="pnl" data-i="7"><div class="tl">⑧ Response travels back — conntrack reverses the NAT</div>
+<div class="dia">
+<div class="row"><span class="b pod"><span class="i">📦</span> Response packet<span class="sub">src: 10.244.2.3:80 | dst: 10.244.1.2:45678</span></span></div>
+<div class="a down">↓ CNI routes Node 2 → Node 1</div>
+<div class="row"><span class="b ipt"><span class="i">🔄</span> conntrack on Node 1<span class="sub">remembers: this connection was DNAT'd from 10.96.0.15</span><span class="sub">reverse: src 10.244.2.3 → rewrite to 10.96.0.15</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b pod"><span class="i">📱</span> App Pod sees response from 10.96.0.15:80<span class="sub">App thinks it talked to ClusterIP directly. It never knew about 10.244.2.3.</span></span></div>
+</div>
+<div class="c g"><div class="l">Key</div><p style="margin:0">The App Pod only ever sees the ClusterIP (10.96.0.15). It has no idea the request was routed to 10.244.2.3 on a different node. The DNAT + conntrack makes the Service completely transparent. This is the beauty of Kubernetes Services.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 8</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s06"><h2><span class="n">06</span> NodePort Request — External Packet Journey ▶</h2>
+<div class="W" id="w-r2"><div class="bar"><div class="tab on" data-i="0">Full flow</div><div class="tab" data-i="1">Any node works</div><div class="tab" data-i="2">externalTrafficPolicy</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia">
+<div class="row"><span class="step">1</span> <span class="b ext"><span class="i">🌍</span> User browser<span class="sub">curl http://192.168.1.10:30080</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="step">2</span> <span class="b node"><span class="i">🖥️</span> Node 1 (192.168.1.10)<span class="sub">port 30080 is open (kube-proxy listens)</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="step">3</span> <span class="b ipt"><span class="i">🔥</span> iptables PREROUTING chain<span class="sub">if dst-port = 30080 → jump to KUBE-NODEPORTS</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="step">4</span> <span class="b ipt"><span class="i">🎲</span> KUBE-SVC-WEB<span class="sub">same probability chain as ClusterIP</span><span class="sub">selects: 10.244.3.7:80 (Pod on Node 3)</span></span></div>
+<div class="a down">↓ DNAT: dst → 10.244.3.7:80</div>
+<div class="row"><span class="step">5</span> <span class="note">CNI routes: Node 1 → Node 3 (cross-node)</span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="step">6</span> <span class="b pod"><span class="i">🎯</span> web-ghi56 (Node 3)<span class="sub">receives request, responds</span></span></div>
+<div class="a down">↓ response: Node 3 → Node 1 → User</div>
+<div class="row"><span class="step">7</span> <span class="b ext"><span class="i">🌍</span> User receives response</span></div>
+</div></div>
+<div class="pnl" data-i="1"><div class="tl">Why ANY node's IP works — even without the Pod</div>
+<div class="dia">
+<div class="grp"><div class="gl">Node 2 (no web Pods here!)</div>
+<div class="row"><span class="b kp">kube-proxy</span> <span class="a">→</span> <span class="b ipt">iptables: port 30080 → DNAT to Pod on Node 1 or Node 3</span></div>
+</div>
+<div class="note">kube-proxy programs iptables on ALL nodes, even nodes without the target Pod. The request enters on Node 2, gets DNAT'd to a Pod on a different node, and CNI routes it there.</div>
+</div></div>
+<div class="pnl" data-i="2"><div class="tl">externalTrafficPolicy: Local — avoid extra hops</div>
+<pre><code><span class="k">spec:</span>
+  <span class="k">externalTrafficPolicy:</span> <span class="v">Local</span>   <span class="cm"># Only route to Pods on THIS node</span></code></pre>
+<div class="dia">
+<div class="row"><span class="b ext">User</span> <span class="a">→</span> <span class="b node">Node 1:30080</span> <span class="a">→</span> <span class="note">Only Pods on Node 1. If none → connection refused!</span></div>
+</div>
+<div class="ds"><strong>Cluster (default):</strong> Any backend Pod, may cross nodes. Even load. Extra hops.<br>
+<strong>Local:</strong> Only Pods on the same node. No extra hops. Preserves client IP. But uneven load — nodes without Pods return nothing.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s07"><h2><span class="n">07</span> LoadBalancer Request — Internet to Pod ▶</h2>
+<div class="W" id="w-r3"><div class="bar"><div class="tab on" data-i="0">Full flow</div><div class="tab" data-i="1">3 layers</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia">
+<div class="row"><span class="step">1</span> <span class="b ext"><span class="i">🌍</span> Internet user<span class="sub">curl http://35.192.0.1:80</span></span></div>
+<div class="a down">↓ public internet</div>
+<div class="row"><span class="step">2</span> <span class="b lb"><span class="i">⚖️</span> Cloud Load Balancer<span class="sub">35.192.0.1:80 (AWS ELB / GCP LB)</span><span class="sub">health-checks nodes on nodePort</span></span></div>
+<div class="a down">↓ forwards to healthy node</div>
+<div class="row"><span class="step">3</span> <span class="b node"><span class="i">🖥️</span> Node 2:30XXX (auto nodePort)<span class="sub">kube-proxy iptables</span></span></div>
+<div class="a down">↓ DNAT to real Pod IP</div>
+<div class="row"><span class="step">4</span> <span class="b pod"><span class="i">🎯</span> web Pod (any node)<span class="sub">processes request</span></span></div>
+<div class="a down">↓ response bubbles back up</div>
+<div class="row"><span class="step">5</span> <span class="b ext"><span class="i">🌍</span> User receives response</span></div>
+</div></div>
+<div class="pnl" data-i="1"><div class="tl">LoadBalancer = 3 layers stacked</div>
+<div class="dia">
+<div class="row"><span class="b lb"><span class="i">3️⃣</span> Cloud LB (35.192.0.1) ← only in cloud</span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b node"><span class="i">2️⃣</span> NodePort (30XXX on every node) ← auto-created</span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b svc"><span class="i">1️⃣</span> ClusterIP (10.96.0.15) ← auto-created</span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b pod">Pods</span></div>
+</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- TOPOLOGY CASES                              -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section id="s08"><h2><span class="n">08</span> Case: Pods on Same Node — Local Path ▶</h2>
+<div class="W" id="w-same"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">Packet path</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia">
+<div class="grp"><div class="gl">Node 1 — everything here</div>
+<div class="row"><span class="b kp"><span class="i">⚙️</span> kube-proxy + iptables</span></div>
+<div class="row"><span class="b pod"><span class="i">📱</span> App Pod (10.244.1.2)</span> <span class="a">→ curl web-svc →</span> <span class="b ipt"><span class="i">🔥</span> iptables<span class="sub">DNAT → 10.244.1.5</span></span> <span class="a">→</span> <span class="b pod"><span class="i">🎯</span> Web Pod (10.244.1.5)</span></div>
+<div class="note">🚀 Fastest path — packet never leaves the node. No VXLAN. No physical network. Just kernel routing.</div>
+</div></div></div>
+<div class="pnl" data-i="1"><div class="ds"><strong>Path:</strong> App Pod → kernel OUTPUT chain → iptables DNAT (10.96.0.15 → 10.244.1.5) → kernel routes locally (same subnet 10.244.1.x) → Web Pod receives. Response: Web Pod → kernel → conntrack reverses SNAT → App Pod.</div>
+<div class="c g"><div class="l">Performance</div><p style="margin:0">Local routing = microseconds. No network serialization, no encapsulation. This is why co-locating communicating Pods on the same node (via pod affinity) can improve latency-sensitive apps.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s09"><h2><span class="n">09</span> Case: Pods on Different Nodes — Cross-Node Path ▶</h2>
+<div class="W" id="w-cross"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">VXLAN detail</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia">
+<div class="grp"><div class="gl">Node 1 (192.168.1.10)</div>
+<div class="row"><span class="b pod"><span class="i">📱</span> App Pod (10.244.1.2)</span></div>
+<div class="row"><span class="a">↓</span> <span class="note">curl web-svc → DNS → 10.96.0.15</span></div>
+<div class="row"><span class="b ipt"><span class="i">🔥</span> iptables DNAT<span class="sub">10.96.0.15 → 10.244.<strong>2</strong>.3 (Node 2!)</span></span></div>
+<div class="row"><span class="a">↓</span> <span class="note">dst 10.244.2.x not local → route via VXLAN to Node 2</span></div>
+<div class="row"><span class="b node"><span class="i">📡</span> VXLAN encapsulate<span class="sub">outer: src=192.168.1.10 dst=192.168.1.11</span><span class="sub">inner: src=10.244.1.2 dst=10.244.2.3</span></span></div>
+</div>
+<div class="lbl">═══ physical network ═══</div>
+<div class="grp"><div class="gl">Node 2 (192.168.1.11)</div>
+<div class="row"><span class="b node"><span class="i">📡</span> VXLAN decapsulate<span class="sub">extract inner packet: dst=10.244.2.3</span></span></div>
+<div class="row"><span class="a">↓</span></div>
+<div class="row"><span class="b pod"><span class="i">🎯</span> Web Pod (10.244.2.3:80)</span></div>
+</div>
+</div></div>
+<div class="pnl" data-i="1"><div class="tl">Cross-node overhead</div>
+<div class="ds"><strong>VXLAN (Flannel, Calico VXLAN mode):</strong> ~50 bytes overhead per packet (UDP encapsulation). Adds ~0.1ms latency.<br><br>
+<strong>BGP (Calico native mode):</strong> No encapsulation. Direct L3 routing. Near-zero overhead. But requires network infrastructure support.<br><br>
+<strong>eBPF (Cilium):</strong> Bypasses iptables entirely. Processes packets in kernel BPF programs. Fastest option but more complex.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- DYNAMIC CHANGES                             -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section id="s10"><h2><span class="n">10</span> When a Pod Dies — How Components React ▶</h2>
+<div class="W" id="w-die"><div class="bar"><div class="tab on" data-i="0">Timeline</div><div class="tab" data-i="1">Diagram</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia">
+<div class="row"><span class="step">1</span> <span class="b pod" style="border-color:var(--rd);color:var(--rd)"><span class="i">💀</span> web-def34 (10.244.2.3) DIES<span class="sub">OOMKilled / node failure / deleted</span></span></div>
+<div class="a down">↓ kubelet reports to API Server</div>
+<div class="row"><span class="step">2</span> <span class="b api"><span class="i">🗄️</span> API Server<span class="sub">marks Pod as Terminating / removes</span></span></div>
+<div class="a down">↓ notifies watchers</div>
+<div class="row"><span class="step">3</span> <span class="b ep"><span class="i">📋</span> Endpoint Controller<span class="sub">removes 10.244.2.3 from Endpoints</span><span class="sub">Endpoints: [10.244.1.5, 10.244.3.7] ← now only 2</span></span></div>
+<div class="a down">↓ Endpoints change event</div>
+<div class="row"><span class="step">4</span> <span class="b kp"><span class="i">⚙️</span> kube-proxy (on every node)<span class="sub">updates iptables: removes 10.244.2.3 backend</span><span class="sub">now: 50% → 10.244.1.5 | 50% → 10.244.3.7</span></span></div>
+<div class="note">🕐 Total time: ~1-5 seconds from Pod death to iptables update. During this window, some requests may still be routed to the dead Pod → connection timeout.</div>
+</div></div>
+<div class="pnl" data-i="1"><div class="tl">What does NOT change when a Pod dies</div>
+<div class="dia">
+<div class="row"><span class="b svc">ClusterIP: 10.96.0.15 ← UNCHANGED ✓</span></div>
+<div class="row"><span class="b dns">DNS: web-svc → 10.96.0.15 ← UNCHANGED ✓</span></div>
+<div class="row"><span class="note">Apps never notice. They still call web-svc:80. Only the backend Pods changed. This is the entire point of Services.</span></div>
+</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s11"><h2><span class="n">11</span> When a New Pod is Added ▶</h2>
+<div class="W" id="w-new"><div class="bar"><div class="tab on" data-i="0">Timeline</div><div class="tab" data-i="1">Readiness gate</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia">
+<div class="row"><span class="step">1</span> <span class="b pod"><span class="i">🆕</span> web-xyz99 created (10.244.2.9)<span class="sub">Deployment/RS creates replacement Pod</span></span></div>
+<div class="a down">↓ scheduled, image pulled, started</div>
+<div class="row"><span class="step">2</span> <span class="note">kubelet runs readiness probe → HTTP GET /:80 → 200 OK ✓</span></div>
+<div class="a down">↓ Pod status: Ready</div>
+<div class="row"><span class="step">3</span> <span class="b ep"><span class="i">📋</span> Endpoint Controller<span class="sub">adds 10.244.2.9:80 to Endpoints</span><span class="sub">Endpoints: [10.244.1.5, 10.244.2.9, 10.244.3.7] ← back to 3</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="step">4</span> <span class="b kp"><span class="i">⚙️</span> kube-proxy (every node)<span class="sub">adds 10.244.2.9 to iptables → 33/33/33 again</span></span></div>
+<div class="note">New Pod now receives traffic! The Service "discovered" it automatically via label selector.</div>
+</div></div>
+<div class="pnl" data-i="1"><div class="tl">Critical: Pod ONLY gets traffic AFTER readiness passes</div>
+<div class="dia">
+<div class="row"><span class="b pod" style="border-color:var(--yl);color:var(--yl)">Pod Running but NOT Ready<span class="sub">readiness probe failing</span></span> <span class="a">→</span> <span class="note">NOT in endpoints → NO traffic</span></div>
+<div class="row"><span class="b pod">Pod Running AND Ready<span class="sub">readiness probe passing ✓</span></span> <span class="a">→</span> <span class="note">IN endpoints → receives traffic ✓</span></div>
+</div>
+<div class="c r"><div class="l">Without readiness probes</div><p style="margin:0">Pod is "Ready" the moment the container starts. But the app may need 30 seconds to load config, warm cache, connect to DB. During those 30s, the Pod is in endpoints and receives traffic but returns errors. Always set readiness probes!</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s12"><h2><span class="n">12</span> Scale Up — 3 to 5 Pods ▶</h2>
+<div class="W" id="w-scale"><div class="bar"><div class="tab on" data-i="0">Before</div><div class="tab" data-i="1">After</div><div class="tab" data-i="2">What changed</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia">
+<div class="row"><span class="b svc">web-svc (10.96.0.15)</span></div>
+<div class="row"><span class="b ep">Endpoints: [10.244.1.5, 10.244.2.3, 10.244.3.7]</span></div>
+<div class="row"><span class="b ipt">iptables: 33% / 33% / 33%</span></div>
+</div></div>
+<div class="pnl" data-i="1">
+<div class="dia">
+<div class="row"><span class="b svc">web-svc (10.96.0.15) ← same!</span></div>
+<div class="row"><span class="b ep">Endpoints: [10.244.1.5, 10.244.2.3, 10.244.3.7, <strong>10.244.1.8, 10.244.2.6</strong>]</span></div>
+<div class="row"><span class="b ipt">iptables: 20% / 20% / 20% / 20% / 20%</span></div>
+</div></div>
+<div class="pnl" data-i="2"><div class="dia">
+<div class="row"><span class="b svc">ClusterIP ← UNCHANGED ✓</span></div>
+<div class="row"><span class="b dns">DNS ← UNCHANGED ✓</span></div>
+<div class="row"><span class="b ep">Endpoints ← UPDATED (5 IPs now)</span></div>
+<div class="row"><span class="b ipt">iptables ← UPDATED (5 backends, 20% each)</span></div>
+<div class="note">The Service scales transparently. Clients don't know or care how many Pods are behind it. ClusterIP and DNS never change.</div>
+</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- TROUBLESHOOT                                -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section id="s13"><h2><span class="n">13</span> Troubleshoot: No Endpoints — Component Breakdown ▶</h2>
+<div class="W" id="w-noep"><div class="bar"><div class="tab on" data-i="0">Where it breaks</div><div class="tab" data-i="1">Diagnose</div><div class="tab" data-i="2">Fix</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia">
+<div class="row"><span class="b svc">Service: web-svc (selector: app=web)</span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b ep" style="border-color:var(--rd);color:var(--rd)"><span class="i">❌</span> Endpoints: &lt;none&gt;<span class="sub">No Pod IPs! Service has nowhere to send traffic.</span></span></div>
+<div class="a down">↓</div>
+<div class="row"><span class="b ipt" style="border-color:var(--rd);color:var(--rd)">iptables: no backends → connection refused</span></div>
+</div>
+<div class="ds"><strong>3 reasons Endpoints are empty:</strong><br>
+① Service selector <code>app=web</code> doesn't match any Pod labels (typo: Pods have <code>app=nginx</code>).<br>
+② No Pods exist with the matching label at all.<br>
+③ Pods exist but ALL are failing readiness probes (Ready: 0/1).</div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="cm"># Step 1: Check endpoints</span>
+kubectl get endpoints web-svc
+<span class="cm"># &lt;none&gt; — problem confirmed</span>
+
+<span class="cm"># Step 2: Check Service selector</span>
+kubectl get svc web-svc -o jsonpath='{.spec.selector}'
+<span class="cm"># {"app":"web"}</span>
+
+<span class="cm"># Step 3: Check Pods with that label</span>
+kubectl get pods -l app=web
+<span class="cm"># No resources found ← selector mismatch or no Pods!</span>
+
+<span class="cm"># Step 4: Check actual Pod labels</span>
+kubectl get pods --show-labels
+<span class="cm"># web-xxx   app=nginx  ← wrong label!</span></code></pre></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="cm"># Fix A: Change Pod labels to match Service selector</span>
+kubectl label pod web-xxx app=web --overwrite
+
+<span class="cm"># Fix B: Change Service selector to match Pod labels</span>
+kubectl patch svc web-svc -p '{"spec":{"selector":{"app":"nginx"}}}'
+
+<span class="cm"># Fix C: If Pods failing readiness → fix the probe or the app</span>
+kubectl describe pod web-xxx | grep -A5 Readiness</code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<section id="s14"><h2><span class="n">14</span> Full Debug Checklist ▶</h2>
+<div class="W" id="w-dbg"><div class="bar"><div class="tab on" data-i="0">Checklist</div><div class="tab" data-i="1">Diagram: where breaks</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<pre><code><span class="cm"># ① Does Service exist?</span>
+kubectl get svc web-svc
+
+<span class="cm"># ② Does it have endpoints?</span>
+kubectl get endpoints web-svc
+
+<span class="cm"># ③ Does selector match Pod labels?</span>
+kubectl get svc web-svc -o jsonpath='{.spec.selector}'
+kubectl get pods --show-labels
+
+<span class="cm"># ④ Are Pods Ready?</span>
+kubectl get pods -l app=web
+
+<span class="cm"># ⑤ Is targetPort correct?</span>
+kubectl get svc web-svc -o jsonpath='{.spec.ports[0].targetPort}'
+<span class="cm"># Must match what container LISTENS on</span>
+
+<span class="cm"># ⑥ Can you reach from inside cluster?</span>
+kubectl run -it --rm dbg --image=busybox -- wget -qO- web-svc:80
+
+<span class="cm"># ⑦ Check kube-proxy is running</span>
+kubectl get ds kube-proxy -n kube-system
+
+<span class="cm"># ⑧ Check CoreDNS is running</span>
+kubectl get deploy coredns -n kube-system</code></pre></div>
+<div class="pnl" data-i="1">
+<div class="dia">
+<div class="row"><span class="b pod">App Pod</span> <span class="a">→</span> <span class="b dns" style="border-color:var(--rd)">DNS fails?<span class="sub">→ CoreDNS down</span></span></div>
+<div class="row"><span class="b pod">App Pod</span> <span class="a">→</span> <span class="b ipt" style="border-color:var(--rd)">iptables miss?<span class="sub">→ kube-proxy down or not synced</span></span></div>
+<div class="row"><span class="b pod">App Pod</span> <span class="a">→</span> <span class="b ep" style="border-color:var(--rd)">No endpoints?<span class="sub">→ selector mismatch or Pods not Ready</span></span></div>
+<div class="row"><span class="b pod">App Pod</span> <span class="a">→</span> <span class="b pod" style="border-color:var(--rd)">Pod refuses?<span class="sub">→ targetPort wrong or app not listening</span></span></div>
+</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>
