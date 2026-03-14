@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Services v3 — Where Services Live & Request/Response Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#2563eb;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1060px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px}
+.hero h1{font-family:'Fraunces',serif;font-size:34px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(37,99,235,.12);padding:1px 6px;border-radius:4px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(37,99,235,.03),rgba(8,145,178,.02));border:1px solid rgba(37,99,235,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(37,99,235,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(37,99,235,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(37,99,235,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.dia{margin:8px 0;overflow-x:auto}
+.dia svg{display:block;max-width:100%;height:auto}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ Services v3</div>
+<div class="sub">Request/Response</div>
+<div class="sl">Where Services Live</div>
+<ul><li><a href="#s01">Service is Virtual ▶</a></li><li><a href="#s02">Control Plane Role ▶</a></li><li><a href="#s03">kube-proxy Role ▶</a></li></ul>
+<div class="sl">Request Flow</div>
+<ul><li><a href="#s04">ClusterIP Same Node ▶</a></li><li><a href="#s05">ClusterIP Cross Node ▶</a></li><li><a href="#s06">NodePort Full Flow ▶</a></li><li><a href="#s07">LoadBalancer Full Flow ▶</a></li><li><a href="#s08">Headless Full Flow ▶</a></li></ul>
+<div class="sl">Deep Dive</div>
+<ul><li><a href="#s09">iptables vs App</a></li><li><a href="#s10">Response Path ▶</a></li><li><a href="#s11">Summary</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Where Do Services Live?</h1><p>v3 — Request &amp; response packet flow between every component. Where the Service object actually exists and how traffic really routes through the cluster.</p></div>
+
+<!-- ═══════ S01 ═══════ -->
+<section id="s01"><h2><span class="n">01</span> A Service Is Virtual — It Lives EVERYWHERE ▶</h2>
+<div class="W" id="w-virt"><div class="bar"><div class="tab on" data-i="0">The truth</div><div class="tab" data-i="1">Where it lives</div><div class="tab" data-i="2">Full diagram</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">A Service is NOT a Pod, NOT a process, NOT on any node</div>
+<div class="def"><b>Key Insight</b>A Service has NO running process. There is NO "Service Pod" on any node. The ClusterIP (<code>10.96.0.15</code>) is a <strong>virtual IP</strong> — it exists only as <strong>iptables/IPVS rules programmed by kube-proxy on EVERY node</strong>. When a packet is sent to the ClusterIP, the Linux kernel's netfilter (iptables) intercepts it <strong>before it even leaves the node</strong> and rewrites the destination to a real Pod IP.</div>
+<div class="c r"><div class="l">Common misconception</div><p style="margin:0">"The Service lives on the control plane" → <strong>WRONG</strong>. The Service OBJECT is stored in etcd (on the control plane), but the traffic routing happens via iptables rules on EVERY worker node. The control plane never handles Service traffic.</p></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Where each part of a Service exists</div>
+<table>
+<tr><th>Component</th><th>Where</th><th>What it does</th></tr>
+<tr><td><strong>Service Object</strong> (YAML definition)</td><td>etcd (control plane)</td><td>Stores the spec: selector, ports, ClusterIP. Just data — no traffic handling.</td></tr>
+<tr><td><strong>Endpoints Object</strong></td><td>etcd (control plane)</td><td>List of Pod IPs matching the selector. Updated by the Endpoint Controller.</td></tr>
+<tr><td><strong>DNS Record</strong></td><td>CoreDNS Pods (usually on worker nodes)</td><td>Resolves <code>web-svc</code> → <code>10.96.0.15</code>. Watches Service objects.</td></tr>
+<tr><td><strong>iptables / IPVS Rules</strong></td><td><strong>EVERY node</strong> (kernel level)</td><td>The actual traffic routing. Rewrites ClusterIP → Pod IP. This is where the "magic" happens.</td></tr>
+<tr><td><strong>kube-proxy</strong></td><td><strong>EVERY node</strong> (DaemonSet)</td><td>Watches Service/Endpoints changes → programs iptables/IPVS rules. Does NOT handle traffic itself.</td></tr>
+</table>
+<div class="c g"><div class="l">Key</div><p style="margin:0">kube-proxy is NOT a proxy in the traditional sense. It doesn't forward traffic. It just <strong>programs rules</strong>. The Linux kernel (iptables) does the actual packet rewriting. kube-proxy is a "rule programmer."</p></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Where everything lives — full cluster view</div>
+<div class="dia"><svg viewBox="0 0 740 400" xmlns="http://www.w3.org/2000/svg">
+<!-- Control Plane -->
+<rect x="5" y="5" width="730" height="115" rx="12" fill="rgba(147,51,234,.03)" stroke="#9333ea" stroke-dasharray="6"/>
+<text x="18" y="22" fill="#9333ea" font-size="10" font-family="JetBrains Mono" font-weight="600">CONTROL PLANE (Master Node)</text>
+<rect x="20" y="32" width="150" height="75" rx="8" fill="#10151e" stroke="#9333ea"/>
+<text x="32" y="50" fill="#9333ea" font-size="9" font-family="JetBrains Mono" font-weight="600">etcd</text>
+<text x="32" y="66" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Service Object:</text>
+<text x="32" y="78" fill="#5f7090" font-size="7" font-family="JetBrains Mono">  name: web-svc</text>
+<text x="32" y="89" fill="#5f7090" font-size="7" font-family="JetBrains Mono">  clusterIP: 10.96.0.15</text>
+<text x="32" y="100" fill="#5f7090" font-size="7" font-family="JetBrains Mono">  selector: app=web</text>
+<rect x="190" y="32" width="170" height="75" rx="8" fill="#10151e" stroke="#9333ea"/>
+<text x="202" y="50" fill="#9333ea" font-size="9" font-family="JetBrains Mono" font-weight="600">Endpoint Controller</text>
+<text x="202" y="68" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Watches Pods with</text>
+<text x="202" y="80" fill="#5f7090" font-size="8" font-family="JetBrains Mono">app=web → creates</text>
+<text x="202" y="92" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Endpoints object with</text>
+<text x="202" y="104" fill="#0891b2" font-size="8" font-family="JetBrains Mono">Pod IPs: .1.6, .2.3, .3.7</text>
+<rect x="380" y="32" width="140" height="75" rx="8" fill="#10151e" stroke="#9333ea"/>
+<text x="392" y="50" fill="#9333ea" font-size="9" font-family="JetBrains Mono" font-weight="600">API Server</text>
+<text x="392" y="68" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Stores Service in</text>
+<text x="392" y="80" fill="#5f7090" font-size="8" font-family="JetBrains Mono">etcd. Notifies</text>
+<text x="392" y="92" fill="#5f7090" font-size="8" font-family="JetBrains Mono">watchers when</text>
+<text x="392" y="104" fill="#5f7090" font-size="8" font-family="JetBrains Mono">things change.</text>
+<rect x="540" y="32" width="140" height="48" rx="8" fill="#10151e" stroke="#2563eb"/>
+<text x="552" y="50" fill="#2563eb" font-size="9" font-family="JetBrains Mono" font-weight="600">CoreDNS</text>
+<text x="552" y="68" fill="#5f7090" font-size="8" font-family="JetBrains Mono">web-svc → 10.96.0.15</text>
+<text x="540" y="100" fill="#ca8a04" font-size="8" font-family="DM Sans" font-weight="600">⚠ Control plane stores data. It does NOT route traffic!</text>
+
+<!-- Worker Nodes -->
+<text x="18" y="140" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">WORKER NODES — where traffic actually routes (via iptables in the kernel)</text>
+<!-- Node 1 -->
+<rect x="5" y="150" width="240" height="240" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="18" y="168" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Worker Node 1 (192.168.1.10)</text>
+<rect x="18" y="178" width="210" height="38" rx="6" fill="rgba(234,88,12,.05)" stroke="#ea580c"/>
+<text x="28" y="192" fill="#ea580c" font-size="8" font-family="JetBrains Mono" font-weight="600">kube-proxy (DaemonSet Pod)</text>
+<text x="28" y="206" fill="#5f7090" font-size="7" font-family="JetBrains Mono">Watches API → programs iptables rules</text>
+<rect x="18" y="222" width="210" height="38" rx="6" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="28" y="236" fill="#9333ea" font-size="8" font-family="JetBrains Mono" font-weight="600">iptables (Linux Kernel)</text>
+<text x="28" y="250" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.96.0.15 → DNAT → Pod IP</text>
+<rect x="18" y="268" width="100" height="38" rx="6" fill="#0b1018" stroke="#0ea472"/>
+<text x="28" y="282" fill="#0ea472" font-size="8" font-family="JetBrains Mono">App-1 Pod</text>
+<text x="28" y="296" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.244.1.5</text>
+<rect x="125" y="268" width="100" height="38" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="135" y="282" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod</text>
+<text x="135" y="296" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.244.1.6</text>
+<rect x="18" y="315" width="210" height="22" rx="4" fill="rgba(37,99,235,.04)" stroke="#2563eb" stroke-dasharray="3"/>
+<text x="28" y="330" fill="#2563eb" font-size="7" font-family="JetBrains Mono">Rules: 10.96.0.15→{.1.6, .2.3, .3.7}</text>
+<!-- Node 2 -->
+<rect x="255" y="150" width="230" height="240" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="268" y="168" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Worker Node 2 (192.168.1.11)</text>
+<rect x="268" y="178" width="200" height="38" rx="6" fill="rgba(234,88,12,.05)" stroke="#ea580c"/>
+<text x="278" y="192" fill="#ea580c" font-size="8" font-family="JetBrains Mono" font-weight="600">kube-proxy (DaemonSet Pod)</text>
+<text x="278" y="206" fill="#5f7090" font-size="7" font-family="JetBrains Mono">Same rules as Node 1!</text>
+<rect x="268" y="222" width="200" height="38" rx="6" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="278" y="236" fill="#9333ea" font-size="8" font-family="JetBrains Mono" font-weight="600">iptables (Linux Kernel)</text>
+<text x="278" y="250" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.96.0.15 → DNAT → Pod IP</text>
+<rect x="268" y="268" width="100" height="38" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="278" y="282" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod</text>
+<text x="278" y="296" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.244.2.3</text>
+<rect x="268" y="315" width="200" height="22" rx="4" fill="rgba(37,99,235,.04)" stroke="#2563eb" stroke-dasharray="3"/>
+<text x="278" y="330" fill="#2563eb" font-size="7" font-family="JetBrains Mono">Rules: 10.96.0.15→{.1.6, .2.3, .3.7}</text>
+<!-- Node 3 -->
+<rect x="495" y="150" width="240" height="240" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="508" y="168" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Worker Node 3 (192.168.1.12)</text>
+<rect x="508" y="178" width="210" height="38" rx="6" fill="rgba(234,88,12,.05)" stroke="#ea580c"/>
+<text x="518" y="192" fill="#ea580c" font-size="8" font-family="JetBrains Mono" font-weight="600">kube-proxy (DaemonSet Pod)</text>
+<text x="518" y="206" fill="#5f7090" font-size="7" font-family="JetBrains Mono">Same rules as Node 1!</text>
+<rect x="508" y="222" width="210" height="38" rx="6" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="518" y="236" fill="#9333ea" font-size="8" font-family="JetBrains Mono" font-weight="600">iptables (Linux Kernel)</text>
+<text x="518" y="250" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.96.0.15 → DNAT → Pod IP</text>
+<rect x="508" y="268" width="100" height="38" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="518" y="282" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod</text>
+<text x="518" y="296" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.244.3.7</text>
+<rect x="508" y="315" width="210" height="22" rx="4" fill="rgba(37,99,235,.04)" stroke="#2563eb" stroke-dasharray="3"/>
+<text x="518" y="330" fill="#2563eb" font-size="7" font-family="JetBrains Mono">Rules: 10.96.0.15→{.1.6, .2.3, .3.7}</text>
+<text x="18" y="380" fill="#16a34a" font-size="9" font-family="DM Sans" font-weight="600">✓ The SAME iptables rules exist on ALL nodes. A Service is "everywhere" — traffic is intercepted locally by the kernel on whichever node the source Pod is on.</text>
+</svg></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S02 ═══════ -->
+<section id="s02"><h2><span class="n">02</span> Control Plane Role — Data Only, No Traffic ▶</h2>
+<div class="W" id="w-cp"><div class="bar"><div class="tab on" data-i="0">What control plane does</div><div class="tab" data-i="1">What it does NOT do</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="dia"><svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="5" width="680" height="190" rx="10" fill="rgba(147,51,234,.03)" stroke="#9333ea" stroke-dasharray="5"/>
+<text x="25" y="22" fill="#9333ea" font-size="10" font-family="JetBrains Mono" font-weight="600">Control Plane — STORES data, NOTIFIES changes</text>
+<text x="25" y="50" fill="#fff" font-size="10" font-family="DM Sans" font-weight="600">Step 1: You run kubectl apply -f service.yaml</text>
+<text x="25" y="68" fill="#5f7090" font-size="10" font-family="DM Sans">→ API Server allocates ClusterIP (10.96.0.15) → stores in etcd</text>
+<text x="25" y="90" fill="#fff" font-size="10" font-family="DM Sans" font-weight="600">Step 2: Endpoint Controller watches Pods with selector match</text>
+<text x="25" y="108" fill="#5f7090" font-size="10" font-family="DM Sans">→ Creates Endpoints object: {10.244.1.6, 10.244.2.3, 10.244.3.7}</text>
+<text x="25" y="130" fill="#fff" font-size="10" font-family="DM Sans" font-weight="600">Step 3: API Server notifies all watchers (kube-proxy, CoreDNS)</text>
+<text x="25" y="148" fill="#ea580c" font-size="10" font-family="DM Sans">→ kube-proxy on EVERY node receives the update → programs iptables</text>
+<text x="25" y="166" fill="#2563eb" font-size="10" font-family="DM Sans">→ CoreDNS receives the update → creates DNS record</text>
+<text x="25" y="188" fill="#dc2626" font-size="9" font-family="DM Sans" font-weight="600">After this, the control plane is DONE. It never touches actual traffic again.</text>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="tl">Control plane does NOT:</div>
+<div class="c r"><div class="l">Not a proxy</div><p style="margin:0">Traffic from App-1 to web-svc does NOT go through the control plane. It NEVER passes through the API server, etcd, or any master node component. Traffic is handled entirely by iptables rules on the LOCAL worker node.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S03 ═══════ -->
+<section id="s03"><h2><span class="n">03</span> kube-proxy Role — Rule Programmer, Not a Proxy ▶</h2>
+<div class="def"><b>Definition</b>kube-proxy is a DaemonSet Pod that runs on EVERY node. It watches the API server for Service/Endpoint changes and programs iptables (or IPVS) rules in the node's Linux kernel. It does <strong>NOT</strong> sit in the data path — actual packets never flow through kube-proxy. The kernel handles packet rewriting directly.</div>
+<div class="W" id="w-kp"><div class="bar"><div class="tab on" data-i="0">What kube-proxy does</div><div class="tab" data-i="1">What actually routes</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="dia"><svg viewBox="0 0 700 130" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="160" height="40" rx="6" fill="#10151e" stroke="#9333ea"/>
+<text x="22" y="34" fill="#9333ea" font-size="9" font-family="JetBrains Mono">API Server (watch)</text>
+<line x1="170" y1="30" x2="220" y2="30" stroke="#9333ea" stroke-width="1.5" marker-end="url(#a1)"/>
+<text x="175" y="22" fill="#9333ea" font-size="7" font-family="JetBrains Mono">notify</text>
+<rect x="220" y="10" width="170" height="40" rx="6" fill="rgba(234,88,12,.06)" stroke="#ea580c"/>
+<text x="235" y="28" fill="#ea580c" font-size="9" font-family="JetBrains Mono" font-weight="600">kube-proxy</text>
+<text x="235" y="42" fill="#5f7090" font-size="7" font-family="JetBrains Mono">receives change event</text>
+<line x1="390" y1="30" x2="440" y2="30" stroke="#ea580c" stroke-width="1.5" marker-end="url(#a2)"/>
+<text x="395" y="22" fill="#ea580c" font-size="7" font-family="JetBrains Mono">programs</text>
+<rect x="440" y="10" width="240" height="40" rx="6" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="455" y="28" fill="#9333ea" font-size="9" font-family="JetBrains Mono" font-weight="600">iptables / IPVS (kernel)</text>
+<text x="455" y="42" fill="#5f7090" font-size="7" font-family="JetBrains Mono">DNAT: 10.96.0.15 → {Pod IPs}</text>
+<text x="10" y="80" fill="#16a34a" font-size="10" font-family="DM Sans" font-weight="600">After programming, kube-proxy goes back to watching. It does NOT handle packets.</text>
+<text x="10" y="100" fill="#5f7090" font-size="10" font-family="DM Sans">The Linux kernel's netfilter/iptables does the actual DNAT (destination NAT) on every packet.</text>
+<text x="10" y="118" fill="#5f7090" font-size="10" font-family="DM Sans">This happens at kernel speed — no userspace process involved in routing.</text>
+<defs><marker id="a1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#9333ea"/></marker><marker id="a2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#ea580c"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="tl">The real packet path — App Pod talks to iptables directly (kernel level)</div>
+<div class="dia"><svg viewBox="0 0 700 100" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="20" width="100" height="50" rx="6" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="40" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App-1 Pod</text>
+<text x="22" y="58" fill="#5f7090" font-size="7" font-family="JetBrains Mono">sends packet</text>
+<line x1="110" y1="45" x2="165" y2="45" stroke="#2563eb" stroke-width="2" marker-end="url(#a3)"/>
+<text x="115" y="35" fill="#2563eb" font-size="7" font-family="JetBrains Mono">dst: 10.96.0.15:80</text>
+<rect x="165" y="15" width="155" height="60" rx="6" fill="rgba(147,51,234,.06)" stroke="#9333ea" stroke-width="2"/>
+<text x="178" y="35" fill="#9333ea" font-size="9" font-family="JetBrains Mono" font-weight="600">iptables (kernel)</text>
+<text x="178" y="50" fill="#5f7090" font-size="8" font-family="JetBrains Mono">DNAT: rewrite dst</text>
+<text x="178" y="63" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.96.0.15→10.244.2.3</text>
+<line x1="320" y1="45" x2="375" y2="45" stroke="#16a34a" stroke-width="2" marker-end="url(#a4)"/>
+<text x="325" y="35" fill="#16a34a" font-size="7" font-family="JetBrains Mono">dst: 10.244.2.3:80</text>
+<rect x="375" y="20" width="110" height="50" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="387" y="40" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Web Pod</text>
+<text x="387" y="55" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.244.2.3:80</text>
+<text x="510" y="30" fill="#dc2626" font-size="9" font-family="DM Sans" font-weight="600">kube-proxy is NOT</text>
+<text x="510" y="46" fill="#dc2626" font-size="9" font-family="DM Sans" font-weight="600">in this path!</text>
+<text x="510" y="66" fill="#5f7090" font-size="9" font-family="DM Sans">It only programmed</text>
+<text x="510" y="80" fill="#5f7090" font-size="9" font-family="DM Sans">the rules earlier.</text>
+<defs><marker id="a3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#2563eb"/></marker><marker id="a4" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#16a34a"/></marker></defs>
+</svg></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S04: CLUSTERIP SAME NODE ═══════ -->
+<section id="s04"><h2><span class="n">04</span> ClusterIP — Same Node Full Packet Flow ▶</h2>
+<div class="W" id="w-same"><div class="bar"><div class="tab on" data-i="0">Request flow</div><div class="tab" data-i="1">Response flow</div><div class="tab" data-i="2">Packet trace</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">App-1 → web-svc → Web Pod (same node)</div>
+<div class="dia"><svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg">
+<rect x="5" y="5" width="690" height="310" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="18" y="24" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Worker Node 1 (192.168.1.10) — ALL traffic stays LOCAL</text>
+<!-- App-1 Pod -->
+<rect x="20" y="40" width="180" height="55" rx="8" fill="#0b1018" stroke="#0ea472"/>
+<text x="35" y="58" fill="#0ea472" font-size="10" font-family="JetBrains Mono" font-weight="600">App-1 Pod</text>
+<text x="35" y="74" fill="#5f7090" font-size="8" font-family="JetBrains Mono">src: 10.244.1.5:44320</text>
+<text x="35" y="86" fill="#2563eb" font-size="8" font-family="JetBrains Mono">curl http://web-svc:80</text>
+<!-- Step 1 -->
+<line x1="200" y1="67" x2="270" y2="67" stroke="#2563eb" stroke-width="2" marker-end="url(#a5)"/>
+<text x="210" y="58" fill="#2563eb" font-size="8" font-family="JetBrains Mono" font-weight="600">①</text>
+<!-- CoreDNS -->
+<rect x="270" y="40" width="170" height="55" rx="8" fill="rgba(37,99,235,.05)" stroke="#2563eb"/>
+<text x="285" y="58" fill="#2563eb" font-size="9" font-family="JetBrains Mono" font-weight="600">CoreDNS</text>
+<text x="285" y="74" fill="#5f7090" font-size="8" font-family="JetBrains Mono">web-svc → 10.96.0.15</text>
+<text x="285" y="86" fill="#5f7090" font-size="7" font-family="JetBrains Mono">Returns ClusterIP (virtual)</text>
+<!-- Step 2 arrow back -->
+<line x1="270" y1="85" x2="200" y2="85" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#a6)"/>
+<text x="225" y="100" fill="#2563eb" font-size="8" font-family="JetBrains Mono" font-weight="600">② IP: 10.96.0.15</text>
+<!-- Step 3: App sends packet -->
+<line x1="110" y1="95" x2="110" y2="140" stroke="#2563eb" stroke-width="2" marker-end="url(#a7)"/>
+<text x="120" y="125" fill="#2563eb" font-size="8" font-family="JetBrains Mono" font-weight="600">③ sends packet</text>
+<text x="120" y="138" fill="#5f7090" font-size="7" font-family="JetBrains Mono">dst: 10.96.0.15:80</text>
+<!-- iptables -->
+<rect x="20" y="145" width="300" height="55" rx="8" fill="rgba(147,51,234,.05)" stroke="#9333ea" stroke-width="2"/>
+<text x="35" y="163" fill="#9333ea" font-size="10" font-family="JetBrains Mono" font-weight="600">④ iptables (Linux Kernel netfilter)</text>
+<text x="35" y="180" fill="#5f7090" font-size="8" font-family="JetBrains Mono">PREROUTING chain → DNAT rule matches 10.96.0.15</text>
+<text x="35" y="192" fill="#ea580c" font-size="8" font-family="JetBrains Mono">Rewrite dst: 10.96.0.15 → 10.244.1.6 (random pick)</text>
+<!-- Step 5 -->
+<line x1="170" y1="200" x2="170" y2="240" stroke="#16a34a" stroke-width="2" marker-end="url(#a8)"/>
+<text x="180" y="225" fill="#16a34a" font-size="8" font-family="JetBrains Mono" font-weight="600">⑤ local delivery</text>
+<text x="180" y="238" fill="#5f7090" font-size="7" font-family="JetBrains Mono">dst: 10.244.1.6:80</text>
+<!-- Web Pod -->
+<rect x="20" y="245" width="300" height="55" rx="8" fill="#0b1018" stroke="#16a34a" stroke-width="2"/>
+<text x="35" y="265" fill="#16a34a" font-size="10" font-family="JetBrains Mono" font-weight="600">⑥ Web Pod receives request</text>
+<text x="35" y="280" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.1.6:80 → nginx processes → HTTP 200</text>
+<text x="35" y="292" fill="#5f7090" font-size="7" font-family="JetBrains Mono">Responds to src: 10.244.1.5:44320</text>
+<!-- Side note -->
+<rect x="370" y="145" width="310" height="100" rx="8" fill="rgba(22,163,74,.03)" stroke="rgba(22,163,74,.12)"/>
+<text x="385" y="165" fill="#16a34a" font-size="9" font-family="DM Sans" font-weight="700">Key: what happens here</text>
+<text x="385" y="182" fill="#c5cdd8" font-size="9" font-family="DM Sans">① App sends DNS query to CoreDNS</text>
+<text x="385" y="197" fill="#c5cdd8" font-size="9" font-family="DM Sans">② Gets back virtual ClusterIP</text>
+<text x="385" y="212" fill="#c5cdd8" font-size="9" font-family="DM Sans">③ App sends TCP packet to ClusterIP</text>
+<text x="385" y="227" fill="#c5cdd8" font-size="9" font-family="DM Sans">④ Kernel iptables rewrites dst to Pod IP</text>
+<text x="385" y="242" fill="#c5cdd8" font-size="9" font-family="DM Sans">⑤⑥ Delivered locally (no network hop)</text>
+<defs><marker id="a5" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#2563eb"/></marker><marker id="a6" markerWidth="7" markerHeight="5" refX="0" refY="2.5" orient="auto"><path d="M7,0 L0,2.5 L7,5" fill="#2563eb"/></marker><marker id="a7" markerWidth="7" markerHeight="5" refX="3.5" refY="7" orient="auto"><path d="M0,0 L3.5,7 L7,0" fill="#2563eb"/></marker><marker id="a8" markerWidth="7" markerHeight="5" refX="3.5" refY="7" orient="auto"><path d="M0,0 L3.5,7 L7,0" fill="#16a34a"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="tl">Response — reverse path (conntrack remembers)</div>
+<div class="dia"><svg viewBox="0 0 600 80" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="120" height="35" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="22" y="32" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Web Pod</text>
+<text x="135" y="22" fill="#16a34a" font-size="7" font-family="JetBrains Mono">src: 10.244.1.6</text>
+<text x="135" y="35" fill="#16a34a" font-size="7" font-family="JetBrains Mono">dst: 10.244.1.5</text>
+<line x1="130" y1="27" x2="240" y2="27" stroke="#16a34a" stroke-width="1.5" marker-end="url(#a9)"/>
+<rect x="240" y="10" width="140" height="35" rx="6" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="252" y="28" fill="#9333ea" font-size="8" font-family="JetBrains Mono">conntrack reverse</text>
+<text x="252" y="42" fill="#5f7090" font-size="7" font-family="JetBrains Mono">src: 10.96.0.15 (original)</text>
+<line x1="380" y1="27" x2="440" y2="27" stroke="#0ea472" stroke-width="1.5" marker-end="url(#a10)"/>
+<rect x="440" y="10" width="140" height="35" rx="6" fill="#0b1018" stroke="#0ea472"/>
+<text x="452" y="28" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App-1 Pod</text>
+<text x="452" y="42" fill="#5f7090" font-size="7" font-family="JetBrains Mono">sees src: 10.96.0.15</text>
+<text x="10" y="70" fill="#5f7090" font-size="9" font-family="DM Sans">Conntrack rewrites the source back to the ClusterIP so App-1 sees the response coming from 10.96.0.15 (the Service) — not from the Pod directly.</text>
+<defs><marker id="a9" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#16a34a"/></marker><marker id="a10" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#0ea472"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="2"><div class="tl">Packet trace — before and after iptables</div>
+<pre><code><span class="cm"># BEFORE iptables (App-1 sends):</span>
+src: 10.244.1.5:44320 → dst: <span class="s">10.96.0.15:80</span>  <span class="cm"># ClusterIP (virtual)</span>
+
+<span class="cm"># AFTER iptables DNAT (kernel rewrites):</span>
+src: 10.244.1.5:44320 → dst: <span class="v">10.244.1.6:80</span>  <span class="cm"># Real Pod IP</span>
+
+<span class="cm"># RESPONSE from Pod:</span>
+src: 10.244.1.6:80 → dst: 10.244.1.5:44320
+
+<span class="cm"># AFTER conntrack reverse SNAT:</span>
+src: <span class="s">10.96.0.15:80</span> → dst: 10.244.1.5:44320  <span class="cm"># App sees ClusterIP as source</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S05: CROSS NODE ═══════ -->
+<section id="s05"><h2><span class="n">05</span> ClusterIP — Cross Node Full Packet Flow ▶</h2>
+<div class="W" id="w-cross"><div class="bar"><div class="tab on" data-i="0">Request + Response</div><div class="tab" data-i="1">Packet trace</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 720 290" xmlns="http://www.w3.org/2000/svg">
+<rect x="5" y="5" width="345" height="275" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="18" y="22" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 1 (192.168.1.10)</text>
+<!-- App-1 -->
+<rect x="20" y="35" width="155" height="42" rx="6" fill="#0b1018" stroke="#0ea472"/>
+<text x="32" y="52" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App-1 (10.244.1.5)</text>
+<text x="32" y="68" fill="#2563eb" font-size="7" font-family="JetBrains Mono">① curl web-svc:80</text>
+<!-- DNS -->
+<rect x="190" y="35" width="145" height="42" rx="6" fill="rgba(37,99,235,.04)" stroke="#2563eb"/>
+<text x="202" y="52" fill="#2563eb" font-size="8" font-family="JetBrains Mono">② CoreDNS</text>
+<text x="202" y="68" fill="#5f7090" font-size="7" font-family="JetBrains Mono">→ 10.96.0.15</text>
+<line x1="175" y1="50" x2="190" y2="50" stroke="#2563eb" stroke-width="1.5" marker-end="url(#b1)"/>
+<line x1="190" y1="65" x2="175" y2="65" stroke="#2563eb" stroke-width="1" stroke-dasharray="3" marker-end="url(#b2)"/>
+<!-- iptables -->
+<rect x="20" y="92" width="315" height="50" rx="8" fill="rgba(147,51,234,.05)" stroke="#9333ea" stroke-width="2"/>
+<text x="35" y="110" fill="#9333ea" font-size="9" font-family="JetBrains Mono" font-weight="600">③ iptables (kernel)</text>
+<text x="35" y="128" fill="#ea580c" font-size="8" font-family="JetBrains Mono">DNAT: 10.96.0.15:80 → 10.244.3.7:80 (picked Node 3 Pod)</text>
+<line x1="110" y1="77" x2="110" y2="92" stroke="#2563eb" stroke-width="1.5" marker-end="url(#b3)"/>
+<!-- Network -->
+<rect x="20" y="155" width="315" height="35" rx="6" fill="rgba(220,38,38,.04)" stroke="#dc2626"/>
+<text x="35" y="177" fill="#dc2626" font-size="9" font-family="JetBrains Mono" font-weight="600">④ CNI overlay (VXLAN/BGP) → cross-node packet</text>
+<line x1="170" y1="142" x2="170" y2="155" stroke="#dc2626" stroke-width="1.5" marker-end="url(#b4)"/>
+<!-- Cross-node arrow -->
+<line x1="340" y1="172" x2="380" y2="172" stroke="#dc2626" stroke-width="2.5" marker-end="url(#b5)"/>
+
+<!-- Node 3 -->
+<rect x="370" y="5" width="345" height="275" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="383" y="22" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 3 (192.168.1.12)</text>
+<rect x="385" y="155" width="315" height="35" rx="6" fill="rgba(220,38,38,.04)" stroke="#dc2626"/>
+<text x="400" y="177" fill="#dc2626" font-size="9" font-family="JetBrains Mono" font-weight="600">⑤ Packet arrives (dst: 10.244.3.7:80)</text>
+<!-- Web Pod -->
+<rect x="385" y="205" width="315" height="55" rx="8" fill="#0b1018" stroke="#16a34a" stroke-width="2"/>
+<text x="400" y="225" fill="#16a34a" font-size="10" font-family="JetBrains Mono" font-weight="600">⑥ Web Pod receives request</text>
+<text x="400" y="240" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.3.7:80 → nginx → HTTP 200 OK</text>
+<text x="400" y="252" fill="#5f7090" font-size="7" font-family="JetBrains Mono">Response src: 10.244.3.7 → dst: 10.244.1.5</text>
+<line x1="540" y1="190" x2="540" y2="205" stroke="#16a34a" stroke-width="1.5" marker-end="url(#b6)"/>
+<!-- Response arrow back -->
+<line x1="385" y1="250" x2="345" y2="250" stroke="#16a34a" stroke-width="2" stroke-dasharray="5" marker-end="url(#b7)"/>
+<text x="100" y="215" fill="#16a34a" font-size="8" font-family="JetBrains Mono">⑦ Response returns: CNI overlay → Node 1</text>
+<text x="100" y="230" fill="#5f7090" font-size="8" font-family="JetBrains Mono">⑧ conntrack reverses DNAT: src rewritten to 10.96.0.15</text>
+<text x="100" y="248" fill="#0ea472" font-size="8" font-family="JetBrains Mono" font-weight="600">⑨ App-1 receives response from 10.96.0.15:80 (Service IP)</text>
+<defs>
+<marker id="b1" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#2563eb"/></marker>
+<marker id="b2" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><path d="M6,0 L0,2 L6,4" fill="#2563eb"/></marker>
+<marker id="b3" markerWidth="5" markerHeight="7" refX="2.5" refY="7" orient="auto"><path d="M0,0 L2.5,7 L5,0" fill="#2563eb"/></marker>
+<marker id="b4" markerWidth="5" markerHeight="7" refX="2.5" refY="7" orient="auto"><path d="M0,0 L2.5,7 L5,0" fill="#dc2626"/></marker>
+<marker id="b5" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#dc2626"/></marker>
+<marker id="b6" markerWidth="5" markerHeight="7" refX="2.5" refY="7" orient="auto"><path d="M0,0 L2.5,7 L5,0" fill="#16a34a"/></marker>
+<marker id="b7" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><path d="M6,0 L0,2 L6,4" fill="#16a34a"/></marker>
+</defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="tl">Packet at each stage</div>
+<pre><code><span class="cm"># ① App-1 sends (after DNS resolves web-svc → 10.96.0.15):</span>
+src: 10.244.1.5:44320 → dst: <span class="s">10.96.0.15:80</span>
+
+<span class="cm"># ③ After iptables DNAT on Node 1:</span>
+src: 10.244.1.5:44320 → dst: <span class="v">10.244.3.7:80</span>  <span class="cm"># real Pod IP on Node 3</span>
+
+<span class="cm"># ④ Packet encapsulated by CNI (VXLAN):</span>
+outer: src: 192.168.1.10 → dst: 192.168.1.12  <span class="cm"># node-to-node</span>
+inner: src: 10.244.1.5 → dst: 10.244.3.7       <span class="cm"># pod-to-pod</span>
+
+<span class="cm"># ⑥ Web Pod receives:</span>
+src: 10.244.1.5:44320 → dst: 10.244.3.7:80
+
+<span class="cm"># ⑥ Web Pod responds:</span>
+src: 10.244.3.7:80 → dst: 10.244.1.5:44320
+
+<span class="cm"># ⑧ conntrack on Node 1 reverses DNAT:</span>
+src: <span class="s">10.96.0.15:80</span> → dst: 10.244.1.5:44320  <span class="cm"># App sees Service IP</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S06: NODEPORT ═══════ -->
+<section id="s06"><h2><span class="n">06</span> NodePort — Full External Request Flow ▶</h2>
+<div class="W" id="w-np"><div class="bar"><div class="tab on" data-i="0">Full flow</div><div class="tab" data-i="1">Packet trace</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg">
+<!-- Browser -->
+<rect x="250" y="5" width="220" height="38" rx="8" fill="rgba(147,51,234,.08)" stroke="#9333ea"/>
+<text x="290" y="22" fill="#9333ea" font-size="9" font-family="JetBrains Mono" font-weight="600">🌐 Browser: http://192.168.1.10:30080</text>
+<text x="290" y="35" fill="#5f7090" font-size="7" font-family="JetBrains Mono">① TCP SYN → dst: 192.168.1.10:30080</text>
+<line x1="360" y1="43" x2="120" y2="80" stroke="#9333ea" stroke-width="2" marker-end="url(#c1)"/>
+<!-- Node 1 -->
+<rect x="5" y="75" width="345" height="235" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="18" y="92" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 1 (192.168.1.10) — browser connected HERE</text>
+<!-- eth0 -->
+<rect x="20" y="102" width="315" height="30" rx="5" fill="rgba(147,51,234,.03)" stroke="#5f7090"/>
+<text x="32" y="121" fill="#5f7090" font-size="8" font-family="JetBrains Mono">② eth0 receives on port 30080 → passes to kernel</text>
+<!-- iptables -->
+<rect x="20" y="142" width="315" height="55" rx="8" fill="rgba(147,51,234,.05)" stroke="#9333ea" stroke-width="2"/>
+<text x="35" y="160" fill="#9333ea" font-size="9" font-family="JetBrains Mono" font-weight="600">③ iptables (kernel)</text>
+<text x="35" y="176" fill="#ea580c" font-size="8" font-family="JetBrains Mono">NodePort rule: :30080 → ClusterIP 10.96.0.15:80</text>
+<text x="35" y="190" fill="#ea580c" font-size="8" font-family="JetBrains Mono">DNAT: 10.96.0.15:80 → 10.244.3.7:80 (random Pod)</text>
+<line x1="170" y1="132" x2="170" y2="142" stroke="#9333ea" stroke-width="1.5" marker-end="url(#c2)"/>
+<!-- Cross-node -->
+<rect x="20" y="208" width="315" height="28" rx="5" fill="rgba(220,38,38,.04)" stroke="#dc2626"/>
+<text x="35" y="226" fill="#dc2626" font-size="8" font-family="JetBrains Mono">④ CNI overlay → Node 3 (Pod not on this node!)</text>
+<line x1="335" y1="222" x2="380" y2="222" stroke="#dc2626" stroke-width="2.5" marker-end="url(#c3)"/>
+<!-- Response arrow -->
+<rect x="20" y="250" width="315" height="48" rx="6" fill="rgba(22,163,74,.03)" stroke="rgba(22,163,74,.1)"/>
+<text x="35" y="268" fill="#16a34a" font-size="8" font-family="JetBrains Mono" font-weight="600">⑧ Response returns:</text>
+<text x="35" y="282" fill="#5f7090" font-size="8" font-family="JetBrains Mono">conntrack reverses: src→192.168.1.10:30080 → browser</text>
+<text x="35" y="295" fill="#16a34a" font-size="7" font-family="JetBrains Mono">⑨ Browser receives HTTP 200 OK ✓</text>
+<!-- Node 3 -->
+<rect x="370" y="75" width="345" height="235" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="383" y="92" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 3 (192.168.1.12) — Pod is HERE</text>
+<rect x="385" y="205" width="315" height="28" rx="6" fill="rgba(220,38,38,.04)" stroke="#dc2626"/>
+<text x="400" y="223" fill="#dc2626" font-size="8" font-family="JetBrains Mono">⑤ Packet arrives from overlay</text>
+<rect x="385" y="245" width="315" height="55" rx="8" fill="#0b1018" stroke="#16a34a" stroke-width="2"/>
+<text x="400" y="265" fill="#16a34a" font-size="10" font-family="JetBrains Mono" font-weight="600">⑥ Web Pod (10.244.3.7:80)</text>
+<text x="400" y="280" fill="#5f7090" font-size="8" font-family="JetBrains Mono">nginx processes → HTTP 200</text>
+<text x="400" y="292" fill="#5f7090" font-size="7" font-family="JetBrains Mono">⑦ Response: src .3.7 → dst .1.5 → overlay → Node 1</text>
+<line x1="540" y1="233" x2="540" y2="245" stroke="#16a34a" stroke-width="1.5" marker-end="url(#c4)"/>
+<defs>
+<marker id="c1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#9333ea"/></marker>
+<marker id="c2" markerWidth="5" markerHeight="7" refX="2.5" refY="7" orient="auto"><path d="M0,0 L2.5,7 L5,0" fill="#9333ea"/></marker>
+<marker id="c3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#dc2626"/></marker>
+<marker id="c4" markerWidth="5" markerHeight="7" refX="2.5" refY="7" orient="auto"><path d="M0,0 L2.5,7 L5,0" fill="#16a34a"/></marker>
+</defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><pre><code><span class="cm"># ① Browser sends:</span>
+src: 73.45.12.99:52100 → dst: <span class="s">192.168.1.10:30080</span>  <span class="cm"># Node IP:NodePort</span>
+
+<span class="cm"># ③ iptables on Node 1 (two rewrites):</span>
+<span class="cm">#    1st: NodePort → ClusterIP:  dst → 10.96.0.15:80</span>
+<span class="cm">#    2nd: DNAT ClusterIP → Pod:  dst → 10.244.3.7:80</span>
+src: 73.45.12.99:52100 → dst: <span class="v">10.244.3.7:80</span>
+
+<span class="cm"># ④ Cross-node via CNI overlay</span>
+
+<span class="cm"># ⑥ Web Pod responds:</span>
+src: 10.244.3.7:80 → dst: 73.45.12.99:52100
+
+<span class="cm"># ⑧ conntrack on Node 1 reverses:</span>
+src: <span class="s">192.168.1.10:30080</span> → dst: 73.45.12.99:52100  <span class="cm"># Browser sees Node IP</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S07: LOADBALANCER ═══════ -->
+<section id="s07"><h2><span class="n">07</span> LoadBalancer — Full Internet Flow ▶</h2>
+<div class="W" id="w-lb"><div class="bar"><div class="tab on" data-i="0">Full flow</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="dia"><svg viewBox="0 0 700 180" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="100" height="35" rx="6" fill="rgba(147,51,234,.08)" stroke="#9333ea"/>
+<text x="22" y="32" fill="#9333ea" font-size="8" font-family="JetBrains Mono">🌐 Internet</text>
+<line x1="110" y1="27" x2="145" y2="27" stroke="#9333ea" stroke-width="1.5" marker-end="url(#d1)"/>
+<text x="112" y="20" fill="#9333ea" font-size="7" font-family="JetBrains Mono">①</text>
+<rect x="145" y="5" width="150" height="48" rx="8" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-width="2"/>
+<text x="158" y="22" fill="#ea580c" font-size="9" font-family="JetBrains Mono" font-weight="600">☁ Cloud LB</text>
+<text x="158" y="38" fill="#5f7090" font-size="7" font-family="JetBrains Mono">② 35.192.0.1:80</text>
+<text x="158" y="48" fill="#5f7090" font-size="7" font-family="JetBrains Mono">picks healthy node</text>
+<line x1="295" y1="29" x2="335" y2="29" stroke="#ea580c" stroke-width="1.5" marker-end="url(#d2)"/>
+<text x="300" y="20" fill="#ea580c" font-size="7" font-family="JetBrains Mono">③</text>
+<rect x="335" y="5" width="150" height="48" rx="8" fill="#10151e" stroke="#1e2a3c"/>
+<text x="348" y="22" fill="#0891b2" font-size="9" font-family="JetBrains Mono">Node 1 :30080</text>
+<text x="348" y="38" fill="#9333ea" font-size="7" font-family="JetBrains Mono">④ iptables DNAT</text>
+<text x="348" y="48" fill="#5f7090" font-size="7" font-family="JetBrains Mono">→ Pod IP</text>
+<line x1="485" y1="29" x2="525" y2="29" stroke="#16a34a" stroke-width="1.5" marker-end="url(#d3)"/>
+<text x="490" y="20" fill="#16a34a" font-size="7" font-family="JetBrains Mono">⑤</text>
+<rect x="525" y="5" width="160" height="48" rx="8" fill="#0b1018" stroke="#16a34a" stroke-width="2"/>
+<text x="538" y="22" fill="#16a34a" font-size="9" font-family="JetBrains Mono" font-weight="600">Web Pod</text>
+<text x="538" y="38" fill="#5f7090" font-size="8" font-family="JetBrains Mono">⑥ 10.244.x.x:80</text>
+<text x="538" y="48" fill="#5f7090" font-size="7" font-family="JetBrains Mono">HTTP 200 OK</text>
+<!-- Response -->
+<line x1="525" y1="45" x2="110" y2="45" stroke="#16a34a" stroke-width="1" stroke-dasharray="4"/>
+<text x="250" y="80" fill="#16a34a" font-size="8" font-family="JetBrains Mono">⑦ Response: Pod → Node iptables conntrack → Cloud LB → Internet</text>
+<rect x="10" y="95" width="680" height="75" rx="8" fill="rgba(37,99,235,.03)" stroke="rgba(37,99,235,.1)"/>
+<text x="25" y="115" fill="#2563eb" font-size="10" font-family="DM Sans" font-weight="700">LoadBalancer = 3 layers stacked:</text>
+<text x="25" y="135" fill="#c5cdd8" font-size="10" font-family="DM Sans">① <strong>ClusterIP</strong> (10.96.0.15) — internal virtual IP + iptables rules on every node</text>
+<text x="25" y="152" fill="#c5cdd8" font-size="10" font-family="DM Sans">② <strong>NodePort</strong> (30080) — opens port on every node's real IP</text>
+<text x="25" y="168" fill="#c5cdd8" font-size="10" font-family="DM Sans">③ <strong>Cloud LB</strong> (35.192.0.1) — public IP → routes to healthy NodePort</text>
+<defs>
+<marker id="d1" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#9333ea"/></marker>
+<marker id="d2" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#ea580c"/></marker>
+<marker id="d3" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#16a34a"/></marker>
+</defs>
+</svg></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 1</span><button class="btn" data-dir="next" disabled>Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S08: HEADLESS ═══════ -->
+<section id="s08"><h2><span class="n">08</span> Headless — No iptables, Client Decides ▶</h2>
+<div class="W" id="w-hl"><div class="bar"><div class="tab on" data-i="0">Flow diagram</div><div class="tab" data-i="1">Packet trace</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="dia"><svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="140" height="45" rx="7" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="30" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App Client</text>
+<text x="22" y="46" fill="#2563eb" font-size="7" font-family="JetBrains Mono">① nslookup pg-svc</text>
+<line x1="150" y1="32" x2="200" y2="32" stroke="#2563eb" stroke-width="1.5" marker-end="url(#e1)"/>
+<rect x="200" y="10" width="200" height="62" rx="7" fill="rgba(37,99,235,.05)" stroke="#2563eb"/>
+<text x="215" y="28" fill="#2563eb" font-size="9" font-family="JetBrains Mono" font-weight="600">② CoreDNS</text>
+<text x="215" y="44" fill="#5f7090" font-size="8" font-family="JetBrains Mono">No ClusterIP! Returns:</text>
+<text x="215" y="58" fill="#0891b2" font-size="8" font-family="JetBrains Mono">10.244.1.6, 10.244.2.3</text>
+<text x="215" y="68" fill="#0891b2" font-size="8" font-family="JetBrains Mono">10.244.3.7 (all Pod IPs)</text>
+<line x1="200" y1="55" x2="150" y2="55" stroke="#2563eb" stroke-width="1" stroke-dasharray="3" marker-end="url(#e2)"/>
+<text x="10" y="90" fill="#fff" font-size="9" font-family="DM Sans" font-weight="700">③ Client picks Pod (app logic decides):</text>
+<!-- Direct connections -->
+<line x1="75" y1="98" x2="75" y2="130" stroke="#dc2626" stroke-width="2" marker-end="url(#e3)"/>
+<text x="90" y="120" fill="#dc2626" font-size="7" font-family="JetBrains Mono">WRITE</text>
+<rect x="10" y="132" width="170" height="38" rx="6" fill="#0b1018" stroke="#dc2626" stroke-width="2"/>
+<text x="22" y="148" fill="#dc2626" font-size="8" font-family="JetBrains Mono" font-weight="600">pg-0 PRIMARY</text>
+<text x="22" y="162" fill="#5f7090" font-size="7" font-family="JetBrains Mono">④ Direct TCP: 10.244.1.6:5432</text>
+<line x1="150" y1="98" x2="310" y2="130" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#e4)"/>
+<text x="200" y="115" fill="#16a34a" font-size="7" font-family="JetBrains Mono">READ</text>
+<rect x="230" y="132" width="170" height="38" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="242" y="148" fill="#16a34a" font-size="8" font-family="JetBrains Mono">pg-1 REPLICA</text>
+<text x="242" y="162" fill="#5f7090" font-size="7" font-family="JetBrains Mono">④ Direct TCP: 10.244.2.3:5432</text>
+<rect x="450" y="12" width="240" height="80" rx="8" fill="rgba(220,38,38,.03)" stroke="rgba(220,38,38,.1)"/>
+<text x="465" y="30" fill="#dc2626" font-size="9" font-family="DM Sans" font-weight="700">Key difference from ClusterIP:</text>
+<text x="465" y="48" fill="#c5cdd8" font-size="9" font-family="DM Sans">• NO virtual IP</text>
+<text x="465" y="63" fill="#c5cdd8" font-size="9" font-family="DM Sans">• NO iptables DNAT rules</text>
+<text x="465" y="78" fill="#c5cdd8" font-size="9" font-family="DM Sans">• Client connects to Pod IPs directly</text>
+<text x="465" y="92" fill="#c5cdd8" font-size="9" font-family="DM Sans">• CLIENT decides which Pod</text>
+<text x="10" y="192" fill="#ca8a04" font-size="9" font-family="DM Sans">With Headless, iptables/kube-proxy are NOT involved in routing at all. The client gets raw Pod IPs from DNS and connects directly.</text>
+<defs>
+<marker id="e1" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#2563eb"/></marker>
+<marker id="e2" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><path d="M6,0 L0,2 L6,4" fill="#2563eb"/></marker>
+<marker id="e3" markerWidth="5" markerHeight="7" refX="2.5" refY="7" orient="auto"><path d="M0,0 L2.5,7 L5,0" fill="#dc2626"/></marker>
+<marker id="e4" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#16a34a"/></marker>
+</defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><pre><code><span class="cm"># ① Client DNS query:</span>
+nslookup pg-svc → returns <span class="v">10.244.1.6, 10.244.2.3, 10.244.3.7</span>  <span class="cm"># raw Pod IPs</span>
+
+<span class="cm"># ③ Client WRITES → connect directly to primary (no iptables!):</span>
+psql -h <span class="s">pg-0.pg-svc</span> -U postgres  <span class="cm"># DNS → 10.244.1.6</span>
+src: 10.244.x.x → dst: <span class="v">10.244.1.6:5432</span>  <span class="cm"># direct Pod-to-Pod (CNI routes)</span>
+
+<span class="cm"># ③ Client READS → connect to replica:</span>
+psql -h <span class="s">pg-1.pg-svc</span> -U postgres  <span class="cm"># DNS → 10.244.2.3</span>
+src: 10.244.x.x → dst: <span class="v">10.244.2.3:5432</span>  <span class="cm"># direct, no DNAT</span>
+
+<span class="cm"># No ClusterIP. No iptables DNAT. Just direct Pod-to-Pod via CNI overlay.</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S09 ═══════ -->
+<section id="s09"><h2><span class="n">09</span> Does App Connect to iptables or kube-proxy?</h2>
+<div class="def"><b>Answer</b>The App Pod connects to <strong>neither directly</strong>. The App sends a normal TCP packet to the ClusterIP (e.g., <code>10.96.0.15:80</code>). The Linux kernel's netfilter (iptables) intercepts the packet <strong>transparently</strong> at the network stack level — before the packet even leaves the Pod's network namespace. The App has no idea iptables is rewriting the destination. kube-proxy is never in the packet path — it only programmed the rules earlier.</div>
+
+<table>
+<tr><th>Component</th><th>In the data path?</th><th>Role</th></tr>
+<tr><td><strong>App Pod</strong></td><td><span class="bg gn">Yes</span> — source</td><td>Sends packet to ClusterIP</td></tr>
+<tr><td><strong>iptables (kernel)</strong></td><td><span class="bg gn">Yes</span> — transparent</td><td>Rewrites destination IP (DNAT) at kernel speed</td></tr>
+<tr><td><strong>CNI (Calico/Cilium)</strong></td><td><span class="bg gn">Yes</span> — if cross-node</td><td>Delivers packet to target node via overlay/BGP</td></tr>
+<tr><td><strong>Target Pod</strong></td><td><span class="bg gn">Yes</span> — destination</td><td>Receives the request, sends response</td></tr>
+<tr><td><strong>kube-proxy</strong></td><td><span class="bg rd">NO</span></td><td>Only programs iptables rules. Not in packet path.</td></tr>
+<tr><td><strong>API Server</strong></td><td><span class="bg rd">NO</span></td><td>Only stores Service/Endpoints objects. Not in packet path.</td></tr>
+<tr><td><strong>etcd</strong></td><td><span class="bg rd">NO</span></td><td>Only stores data. Not in packet path.</td></tr>
+</table>
+</section>
+
+<!-- ═══════ S10 ═══════ -->
+<section id="s10"><h2><span class="n">10</span> Response Path — conntrack Remembers ▶</h2>
+<div class="def"><b>Definition — conntrack</b>The Linux connection tracking system. When iptables DNATs a packet (rewrites ClusterIP → Pod IP), conntrack remembers the original destination. When the response comes back from the Pod, conntrack <strong>automatically reverses</strong> the rewrite — so the App sees the response coming from the ClusterIP (not the Pod IP). The App never knows it was talking to a specific Pod.</div>
+<div class="W" id="w-resp"><div class="bar"><div class="tab on" data-i="0">Full round-trip</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="dia"><svg viewBox="0 0 700 130" xmlns="http://www.w3.org/2000/svg">
+<text x="10" y="18" fill="#2563eb" font-size="10" font-family="JetBrains Mono" font-weight="600">REQUEST (blue →)</text>
+<rect x="10" y="25" width="100" height="30" rx="5" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="44" fill="#0ea472" font-size="8" font-family="JetBrains Mono">App Pod</text>
+<line x1="110" y1="40" x2="160" y2="40" stroke="#2563eb" stroke-width="2" marker-end="url(#f1)"/>
+<text x="113" y="33" fill="#2563eb" font-size="7" font-family="JetBrains Mono">10.96.0.15</text>
+<rect x="160" y="25" width="105" height="30" rx="5" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="172" y="44" fill="#9333ea" font-size="8" font-family="JetBrains Mono">iptables</text>
+<line x1="265" y1="40" x2="315" y2="40" stroke="#16a34a" stroke-width="2" marker-end="url(#f2)"/>
+<text x="268" y="33" fill="#16a34a" font-size="7" font-family="JetBrains Mono">10.244.2.3</text>
+<rect x="315" y="25" width="100" height="30" rx="5" fill="#0b1018" stroke="#16a34a"/>
+<text x="327" y="44" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod</text>
+<text x="10" y="82" fill="#16a34a" font-size="10" font-family="JetBrains Mono" font-weight="600">RESPONSE (green ←)</text>
+<rect x="315" y="90" width="100" height="30" rx="5" fill="#0b1018" stroke="#16a34a"/>
+<text x="327" y="109" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod</text>
+<line x1="315" y1="105" x2="265" y2="105" stroke="#16a34a" stroke-width="2" marker-end="url(#f3)"/>
+<text x="268" y="98" fill="#16a34a" font-size="7" font-family="JetBrains Mono">src .2.3</text>
+<rect x="160" y="90" width="105" height="30" rx="5" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="172" y="105" fill="#9333ea" font-size="7" font-family="JetBrains Mono">conntrack</text>
+<text x="172" y="116" fill="#9333ea" font-size="6" font-family="JetBrains Mono">reverse SNAT</text>
+<line x1="160" y1="105" x2="110" y2="105" stroke="#0ea472" stroke-width="2" marker-end="url(#f4)"/>
+<text x="113" y="98" fill="#0ea472" font-size="7" font-family="JetBrains Mono">src 10.96.0.15</text>
+<rect x="10" y="90" width="100" height="30" rx="5" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="109" fill="#0ea472" font-size="8" font-family="JetBrains Mono">App Pod</text>
+<text x="460" y="50" fill="#5f7090" font-size="9" font-family="DM Sans">App sees response from</text>
+<text x="460" y="66" fill="#2563eb" font-size="10" font-family="JetBrains Mono" font-weight="600">10.96.0.15 (Service IP)</text>
+<text x="460" y="85" fill="#5f7090" font-size="9" font-family="DM Sans">NOT from 10.244.2.3 (Pod IP)</text>
+<text x="460" y="105" fill="#5f7090" font-size="9" font-family="DM Sans">App never knows which Pod</text>
+<text x="460" y="120" fill="#5f7090" font-size="9" font-family="DM Sans">handled the request.</text>
+<defs>
+<marker id="f1" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#2563eb"/></marker>
+<marker id="f2" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#16a34a"/></marker>
+<marker id="f3" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><path d="M6,0 L0,2 L6,4" fill="#16a34a"/></marker>
+<marker id="f4" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><path d="M6,0 L0,2 L6,4" fill="#0ea472"/></marker>
+</defs>
+</svg></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 1</span><button class="btn" data-dir="next" disabled>Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S11 ═══════ -->
+<section id="s11"><h2><span class="n">11</span> Summary — Where Everything Lives</h2>
+<table>
+<tr><th>Question</th><th>Answer</th></tr>
+<tr><td>Where does the Service <strong>object</strong> live?</td><td>In <strong>etcd</strong> (control plane). Just data — name, selector, ClusterIP, ports.</td></tr>
+<tr><td>Where does the Service <strong>route traffic</strong>?</td><td>Nowhere specific — <strong>iptables rules on EVERY node</strong> do the routing.</td></tr>
+<tr><td>Does traffic go through the control plane?</td><td><strong>NEVER.</strong> The control plane only stores/notifies. Zero traffic passes through it.</td></tr>
+<tr><td>Does traffic go through kube-proxy?</td><td><strong>NEVER.</strong> kube-proxy only programs iptables rules. It's not in the data path.</td></tr>
+<tr><td>What actually routes packets?</td><td><strong>iptables (Linux kernel)</strong> on the source Pod's node. Kernel-speed DNAT.</td></tr>
+<tr><td>What about cross-node?</td><td><strong>CNI plugin</strong> (Calico/Cilium/Flannel) delivers packets between nodes after iptables rewrites the destination.</td></tr>
+<tr><td>What about Headless Services?</td><td>No iptables involved at all. <strong>DNS returns Pod IPs directly</strong>. Client connects to Pods without any intermediate routing.</td></tr>
+</table>
+<div class="sre"><div class="tag">The Big Picture</div><p style="margin:0">A Service is an <strong>abstraction distributed across all nodes</strong>. The definition lives in etcd. The DNS record lives in CoreDNS. The routing rules live in iptables on every node. There is no single "Service machine" — it's a cluster-wide concept implemented by cooperation between the API server, endpoint controller, kube-proxy, iptables, and CoreDNS.</p></div>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>

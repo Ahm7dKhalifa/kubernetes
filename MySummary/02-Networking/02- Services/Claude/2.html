@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Services — Complete Visual Deep-Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#2563eb;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1060px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero h1{font-family:'Fraunces',serif;font-size:36px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(37,99,235,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(37,99,235,.03),rgba(8,145,178,.02));border:1px solid rgba(37,99,235,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(37,99,235,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(37,99,235,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(37,99,235,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.dia{margin:8px 0;overflow-x:auto}
+.dia svg{display:block;max-width:100%;height:auto}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ K8s Services v2</div>
+<div class="sub">Visual Deep-Dive</div>
+<div class="sl">Why Services</div>
+<ul><li><a href="#s01">The Problem ▶</a></li><li><a href="#s02">What Is a Service? ▶</a></li><li><a href="#s03">Technical Terms</a></li></ul>
+<div class="sl">ClusterIP</div>
+<ul><li><a href="#s04">ClusterIP ▶</a></li><li><a href="#s05">Same Node Route ▶</a></li><li><a href="#s06">Cross Node Route ▶</a></li><li><a href="#s07">Lifecycle ▶</a></li></ul>
+<div class="sl">NodePort</div>
+<ul><li><a href="#s08">NodePort ▶</a></li></ul>
+<div class="sl">LoadBalancer</div>
+<ul><li><a href="#s09">LoadBalancer ▶</a></li></ul>
+<div class="sl">Headless</div>
+<ul><li><a href="#s10">Headless ▶</a></li></ul>
+<div class="sl">Deep Dive</div>
+<ul><li><a href="#s11">Multi-Container ▶</a></li><li><a href="#s12">Unique IPs?</a></li><li><a href="#s13">Comparison</a></li></ul>
+<div class="sl">SRE</div>
+<ul><li><a href="#s14">Commands</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Kubernetes Services</h1><p>Visual edition — rich diagrams showing nodes, Pods, kube-proxy, traffic routing, and every Service type in detail.</p></div>
+
+<!-- ═══════ S01: THE PROBLEM ═══════ -->
+<section id="s01"><h2><span class="n">01</span> The Problem — Why We Need Services ▶</h2>
+<div class="W" id="w-prob"><div class="bar"><div class="tab on" data-i="0">Without Service</div><div class="tab" data-i="1">Problem: IP changes</div><div class="tab" data-i="2">Solution: Service</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Direct Pod-to-Pod — Works but fragile</div>
+<div class="dia"><svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="300" height="180" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="20" y="32" fill="#5f7090" font-size="10" font-family="JetBrains Mono">Node 1 (192.168.1.10)</text>
+<rect x="30" y="50" width="120" height="60" rx="8" fill="#0b1018" stroke="#0ea472" stroke-dasharray="4"/>
+<text x="50" y="72" fill="#0ea472" font-size="10" font-family="JetBrains Mono">App-1 Pod</text>
+<text x="42" y="95" fill="#0891b2" font-size="9" font-family="JetBrains Mono">10.244.1.5:80</text>
+<rect x="390" y="10" width="300" height="180" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="400" y="32" fill="#5f7090" font-size="10" font-family="JetBrains Mono">Node 2 (192.168.1.11)</text>
+<rect x="410" y="50" width="120" height="60" rx="8" fill="#0b1018" stroke="#16a34a" stroke-dasharray="4"/>
+<text x="430" y="72" fill="#16a34a" font-size="10" font-family="JetBrains Mono">App-2 Pod</text>
+<text x="420" y="95" fill="#0891b2" font-size="9" font-family="JetBrains Mono">10.244.2.3:80</text>
+<line x1="150" y1="80" x2="410" y2="80" stroke="#2563eb" stroke-width="2" marker-end="url(#ar)"/>
+<text x="230" y="72" fill="#2563eb" font-size="9" font-family="JetBrains Mono">curl 10.244.2.3:80</text>
+<text x="210" y="155" fill="#dc2626" font-size="11" font-family="DM Sans" font-weight="700">⚠ What if App-2 Pod dies and gets a NEW IP?</text>
+<text x="220" y="175" fill="#dc2626" font-size="10" font-family="DM Sans">App-1 still uses the OLD IP → Connection fails!</text>
+<defs><marker id="ar" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2563eb"/></marker></defs>
+</svg></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Pod IPs are ephemeral — they change on every restart</div>
+<div class="dia"><svg viewBox="0 0 700 210" xmlns="http://www.w3.org/2000/svg">
+<text x="20" y="20" fill="#fff" font-size="12" font-family="DM Sans" font-weight="700">Before crash:</text>
+<rect x="20" y="30" width="140" height="40" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="35" y="55" fill="#16a34a" font-size="10" font-family="JetBrains Mono">App-2: 10.244.2.3</text>
+<text x="20" y="100" fill="#fff" font-size="12" font-family="DM Sans" font-weight="700">After crash + restart:</text>
+<rect x="20" y="110" width="140" height="40" rx="6" fill="#0b1018" stroke="#dc2626"/>
+<text x="30" y="127" fill="#dc2626" font-size="9" font-family="JetBrains Mono">10.244.2.3 GONE</text>
+<text x="30" y="143" fill="#ea580c" font-size="9" font-family="JetBrains Mono">→ 10.244.2.9 NEW</text>
+<rect x="250" y="30" width="440" height="160" rx="8" fill="rgba(220,38,38,.04)" stroke="rgba(220,38,38,.15)"/>
+<text x="270" y="55" fill="#dc2626" font-size="11" font-family="DM Sans" font-weight="700">Problems without a Service:</text>
+<text x="270" y="80" fill="#c5cdd8" font-size="11" font-family="DM Sans">① Pod IPs change on restart — hardcoded IPs break</text>
+<text x="270" y="100" fill="#c5cdd8" font-size="11" font-family="DM Sans">② No load balancing — one Pod gets all traffic</text>
+<text x="270" y="120" fill="#c5cdd8" font-size="11" font-family="DM Sans">③ No health checking — traffic sent to dead Pods</text>
+<text x="270" y="140" fill="#c5cdd8" font-size="11" font-family="DM Sans">④ No DNS name — must know exact Pod IP</text>
+<text x="270" y="165" fill="#16a34a" font-size="11" font-family="DM Sans" font-weight="700">→ Service solves ALL of these problems</text>
+</svg></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">With Service — Stable IP + DNS + Load Balancing</div>
+<div class="dia"><svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg">
+<rect x="20" y="20" width="140" height="50" rx="8" fill="#0b1018" stroke="#0ea472"/>
+<text x="45" y="42" fill="#0ea472" font-size="10" font-family="JetBrains Mono">App-1 Pod</text>
+<text x="38" y="60" fill="#5f7090" font-size="9" font-family="JetBrains Mono">10.244.1.5</text>
+<line x1="160" y1="45" x2="260" y2="110" stroke="#2563eb" stroke-width="2" marker-end="url(#ar2)"/>
+<text x="165" y="65" fill="#2563eb" font-size="9" font-family="JetBrains Mono">curl app2-svc:80</text>
+<rect x="250" y="80" width="190" height="60" rx="10" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2"/>
+<text x="275" y="102" fill="#2563eb" font-size="11" font-family="JetBrains Mono" font-weight="600">⬡ Service: app2-svc</text>
+<text x="275" y="120" fill="#0891b2" font-size="9" font-family="JetBrains Mono">ClusterIP: 10.96.0.15:80</text>
+<text x="275" y="132" fill="#5f7090" font-size="8" font-family="JetBrains Mono">DNS: app2-svc.default.svc</text>
+<line x1="440" y1="95" x2="530" y2="55" stroke="#16a34a" stroke-width="1.5" marker-end="url(#ar3)"/>
+<line x1="440" y1="110" x2="530" y2="110" stroke="#16a34a" stroke-width="1.5" marker-end="url(#ar3)"/>
+<line x1="440" y1="125" x2="530" y2="165" stroke="#16a34a" stroke-width="1.5" marker-end="url(#ar3)"/>
+<text x="455" y="85" fill="#16a34a" font-size="8" font-family="JetBrains Mono">round-robin</text>
+<rect x="530" y="30" width="150" height="40" rx="6" fill="#0b1018" stroke="#16a34a" stroke-dasharray="4"/>
+<text x="545" y="48" fill="#16a34a" font-size="9" font-family="JetBrains Mono">App-2 Pod (1)</text>
+<text x="545" y="62" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.2.3</text>
+<rect x="530" y="85" width="150" height="40" rx="6" fill="#0b1018" stroke="#16a34a" stroke-dasharray="4"/>
+<text x="545" y="103" fill="#16a34a" font-size="9" font-family="JetBrains Mono">App-2 Pod (2)</text>
+<text x="545" y="117" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.2.9</text>
+<rect x="530" y="142" width="150" height="40" rx="6" fill="#0b1018" stroke="#16a34a" stroke-dasharray="4"/>
+<text x="545" y="160" fill="#16a34a" font-size="9" font-family="JetBrains Mono">App-2 Pod (3)</text>
+<text x="545" y="174" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.3.7</text>
+<text x="250" y="210" fill="#16a34a" font-size="10" font-family="DM Sans" font-weight="600">✓ Stable IP  ✓ DNS name  ✓ Load balanced  ✓ Auto-updates when Pods change</text>
+<defs><marker id="ar2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2563eb"/></marker><marker id="ar3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#16a34a"/></marker></defs>
+</svg></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S02: WHAT IS A SERVICE ═══════ -->
+<section id="s02"><h2><span class="n">02</span> What Is a Service? ▶</h2>
+<div class="W" id="w-what"><div class="bar"><div class="tab on" data-i="0">Definition + Diagram</div><div class="tab" data-i="1">How it finds Pods</div><div class="tab" data-i="2">Full lifecycle</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Service = Stable front door for a group of Pods</div>
+<div class="def"><b>Definition — Service</b>A Kubernetes object that provides a <strong>stable IP address</strong> (ClusterIP), <strong>DNS name</strong>, and <strong>load balancing</strong> for a set of Pods. The Service uses a <strong>label selector</strong> to find its target Pods. When Pods are added or removed, the Service's endpoint list auto-updates. Clients talk to the Service — they never need to know individual Pod IPs.</div>
+<div class="dia"><svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg">
+<!-- Cluster box -->
+<rect x="5" y="5" width="690" height="270" rx="14" fill="none" stroke="#1e2a3c" stroke-dasharray="6"/>
+<text x="15" y="25" fill="#5f7090" font-size="10" font-family="JetBrains Mono">Kubernetes Cluster</text>
+<!-- Node 1 -->
+<rect x="20" y="40" width="210" height="220" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="35" y="58" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Node 1 (192.168.1.10)</text>
+<rect x="35" y="68" width="90" height="28" rx="5" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="45" y="86" fill="#ea580c" font-size="8" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="35" y="108" width="180" height="55" rx="7" fill="#0b1018" stroke="#16a34a"/>
+<text x="50" y="126" fill="#16a34a" font-size="9" font-family="JetBrains Mono">App-2 Pod (app=web)</text>
+<text x="50" y="142" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.1.6:80</text>
+<text x="50" y="155" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">[nginx container:80]</text>
+<rect x="35" y="175" width="180" height="55" rx="7" fill="#0b1018" stroke="#0ea472"/>
+<text x="50" y="193" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App-1 Pod (app=api)</text>
+<text x="50" y="209" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.1.5:3000</text>
+<text x="50" y="222" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">[node container:3000]</text>
+<!-- Node 2 -->
+<rect x="250" y="40" width="210" height="220" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="265" y="58" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Node 2 (192.168.1.11)</text>
+<rect x="265" y="68" width="90" height="28" rx="5" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="275" y="86" fill="#ea580c" font-size="8" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="265" y="108" width="180" height="55" rx="7" fill="#0b1018" stroke="#16a34a"/>
+<text x="280" y="126" fill="#16a34a" font-size="9" font-family="JetBrains Mono">App-2 Pod (app=web)</text>
+<text x="280" y="142" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.2.3:80</text>
+<text x="280" y="155" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">[nginx container:80]</text>
+<!-- Node 3 -->
+<rect x="480" y="40" width="210" height="220" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="495" y="58" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Node 3 (192.168.1.12)</text>
+<rect x="495" y="68" width="90" height="28" rx="5" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="505" y="86" fill="#ea580c" font-size="8" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="495" y="108" width="180" height="55" rx="7" fill="#0b1018" stroke="#16a34a"/>
+<text x="510" y="126" fill="#16a34a" font-size="9" font-family="JetBrains Mono">App-2 Pod (app=web)</text>
+<text x="510" y="142" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.3.7:80</text>
+<text x="510" y="155" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">[nginx container:80]</text>
+<!-- Service overlay -->
+<rect x="250" y="180" width="210" height="50" rx="10" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2"/>
+<text x="272" y="200" fill="#2563eb" font-size="10" font-family="JetBrains Mono" font-weight="600">⬡ web-svc (ClusterIP)</text>
+<text x="280" y="218" fill="#0891b2" font-size="8" font-family="JetBrains Mono">10.96.0.15:80 | selector: app=web</text>
+</svg></div>
+<div class="ds">The Service <code>web-svc</code> (blue) selects all Pods with label <code>app=web</code> (green). It ignores the <code>app=api</code> Pod (teal). Each node runs <code>kube-proxy</code> (orange) which programs iptables/IPVS rules to route Service traffic to the correct Pods.</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Label selector matching — how Service finds Pods</div>
+<div class="dia"><svg viewBox="0 0 700 160" xmlns="http://www.w3.org/2000/svg">
+<rect x="20" y="10" width="180" height="55" rx="10" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2"/>
+<text x="40" y="32" fill="#2563eb" font-size="10" font-family="JetBrains Mono" font-weight="600">⬡ web-svc</text>
+<text x="40" y="50" fill="#0891b2" font-size="9" font-family="JetBrains Mono">selector: app=web</text>
+<line x1="200" y1="35" x2="280" y2="25" stroke="#16a34a" stroke-width="1.5" marker-end="url(#ar4)"/>
+<line x1="200" y1="35" x2="280" y2="55" stroke="#16a34a" stroke-width="1.5" marker-end="url(#ar4)"/>
+<line x1="200" y1="35" x2="280" y2="85" stroke="#16a34a" stroke-width="1.5" marker-end="url(#ar4)"/>
+<line x1="200" y1="35" x2="280" y2="130" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4"/>
+<rect x="280" y="10" width="200" height="28" rx="5" fill="#0b1018" stroke="#16a34a"/>
+<text x="290" y="28" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Pod 1 labels: {app: web} ✓</text>
+<rect x="280" y="42" width="200" height="28" rx="5" fill="#0b1018" stroke="#16a34a"/>
+<text x="290" y="60" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Pod 2 labels: {app: web} ✓</text>
+<rect x="280" y="72" width="200" height="28" rx="5" fill="#0b1018" stroke="#16a34a"/>
+<text x="290" y="90" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Pod 3 labels: {app: web} ✓</text>
+<rect x="280" y="116" width="200" height="28" rx="5" fill="#0b1018" stroke="#dc2626" stroke-dasharray="4"/>
+<text x="290" y="134" fill="#dc2626" font-size="9" font-family="JetBrains Mono">Pod 4 labels: {app: api} ✗</text>
+<text x="530" y="30" fill="#16a34a" font-size="9" font-family="DM Sans">→ Endpoints: 3 Pods</text>
+<text x="530" y="134" fill="#dc2626" font-size="9" font-family="DM Sans">→ Not selected</text>
+<defs><marker id="ar4" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#16a34a"/></marker></defs>
+</svg></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Service full lifecycle — from create to handle traffic</div>
+<div class="dia"><svg viewBox="0 0 700 310" xmlns="http://www.w3.org/2000/svg">
+<rect x="20" y="10" width="660" height="24" rx="4" fill="rgba(37,99,235,.08)"/>
+<text x="30" y="27" fill="#2563eb" font-size="10" font-family="JetBrains Mono" font-weight="600">Step 1: kubectl apply -f service.yaml</text>
+<rect x="20" y="42" width="660" height="24" rx="4" fill="rgba(37,99,235,.06)"/>
+<text x="30" y="59" fill="#0891b2" font-size="10" font-family="JetBrains Mono">Step 2: API server creates Service object → allocates ClusterIP (10.96.0.15)</text>
+<rect x="20" y="74" width="660" height="24" rx="4" fill="rgba(37,99,235,.06)"/>
+<text x="30" y="91" fill="#0891b2" font-size="10" font-family="JetBrains Mono">Step 3: Endpoint controller finds Pods matching selector → creates Endpoints object</text>
+<rect x="20" y="106" width="660" height="24" rx="4" fill="rgba(234,88,12,.06)"/>
+<text x="30" y="123" fill="#ea580c" font-size="10" font-family="JetBrains Mono">Step 4: kube-proxy on EVERY node watches Endpoints → programs iptables/IPVS rules</text>
+<rect x="20" y="138" width="660" height="24" rx="4" fill="rgba(22,163,74,.06)"/>
+<text x="30" y="155" fill="#16a34a" font-size="10" font-family="JetBrains Mono">Step 5: CoreDNS creates DNS record: web-svc.default.svc → 10.96.0.15</text>
+<rect x="20" y="170" width="660" height="24" rx="4" fill="rgba(147,51,234,.06)"/>
+<text x="30" y="187" fill="#9333ea" font-size="10" font-family="JetBrains Mono">Step 6: App-1 Pod does: curl web-svc:80</text>
+<rect x="20" y="202" width="660" height="24" rx="4" fill="rgba(147,51,234,.06)"/>
+<text x="30" y="219" fill="#9333ea" font-size="10" font-family="JetBrains Mono">Step 7: CoreDNS resolves web-svc → 10.96.0.15</text>
+<rect x="20" y="234" width="660" height="24" rx="4" fill="rgba(234,88,12,.06)"/>
+<text x="30" y="251" fill="#ea580c" font-size="10" font-family="JetBrains Mono">Step 8: kube-proxy's iptables intercepts 10.96.0.15 → picks random Pod IP from Endpoints</text>
+<rect x="20" y="266" width="660" height="24" rx="4" fill="rgba(22,163,74,.08)"/>
+<text x="30" y="283" fill="#16a34a" font-size="10" font-family="JetBrains Mono" font-weight="600">Step 9: Packet delivered to target Pod (e.g., 10.244.2.3:80) → response returns same path</text>
+</svg></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S03: TECHNICAL TERMS ═══════ -->
+<section id="s03"><h2><span class="n">03</span> Technical Terms Explained</h2>
+<table>
+<tr><th>Term</th><th>Definition</th><th>Example</th></tr>
+<tr><td><strong>Pod IP</strong></td><td>Unique IP assigned to each Pod by the CNI plugin. Changes on restart. Internal to cluster.</td><td><code>10.244.1.5</code></td></tr>
+<tr><td><strong>ClusterIP</strong></td><td>Virtual IP assigned to a Service. Stable — never changes. Only reachable from inside the cluster.</td><td><code>10.96.0.15</code></td></tr>
+<tr><td><strong>Node IP</strong></td><td>The host machine's IP address on the network. Reachable from outside cluster.</td><td><code>192.168.1.10</code></td></tr>
+<tr><td><strong>External IP</strong></td><td>Public IP assigned by cloud LoadBalancer. Reachable from the internet.</td><td><code>35.192.0.1</code></td></tr>
+<tr><td><strong>DNS (CoreDNS)</strong></td><td>Cluster DNS server that resolves Service names to ClusterIPs. Every Pod uses it automatically.</td><td><code>web-svc</code> → <code>10.96.0.15</code></td></tr>
+<tr><td><strong>kube-proxy</strong></td><td>DaemonSet on every node. Programs iptables/IPVS rules to route Service traffic to Pods. The "traffic cop."</td><td>Runs on every node</td></tr>
+<tr><td><strong>Endpoints</strong></td><td>List of Pod IPs that match a Service's selector. Auto-updated when Pods come/go.</td><td><code>10.244.1.5, 10.244.2.3</code></td></tr>
+<tr><td><strong>targetPort</strong></td><td>The port on the Pod that receives the forwarded traffic.</td><td><code>80</code> (nginx)</td></tr>
+<tr><td><strong>nodePort</strong></td><td>Port opened on every node's IP for external access (30000-32767).</td><td><code>30080</code></td></tr>
+<tr><td><strong>Selector</strong></td><td>Label query that the Service uses to find its target Pods.</td><td><code>app: web</code></td></tr>
+</table>
+<div class="def"><b>Can two Pods on different nodes have the same IP?</b><strong>NO.</strong> Every Pod in the cluster gets a globally unique IP from the Pod CIDR range. The CNI plugin ensures uniqueness across all nodes. Example: Node 1 uses <code>10.244.1.0/24</code> (Pods get 10.244.1.x), Node 2 uses <code>10.244.2.0/24</code> (Pods get 10.244.2.x). Different subnets per node → no collisions possible.</div>
+</section>
+
+<!-- ═══════ S04: CLUSTERIP ═══════ -->
+<section id="s04"><h2><span class="n">04</span> ClusterIP Service (Default) ▶</h2>
+<div class="def"><b>Definition</b>Creates a virtual IP (ClusterIP) reachable ONLY from inside the cluster. Provides DNS name + load balancing. The default and most common Service type.</div>
+<div class="W" id="w-cip"><div class="bar"><div class="tab on" data-i="0">Full Cluster Diagram</div><div class="tab" data-i="1">YAML</div><div class="tab" data-i="2">Create</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg">
+<rect x="5" y="5" width="710" height="330" rx="14" fill="none" stroke="#1e2a3c" stroke-dasharray="6"/>
+<text x="15" y="22" fill="#5f7090" font-size="9" font-family="JetBrains Mono">Kubernetes Cluster (Pod CIDR: 10.244.0.0/16 | Service CIDR: 10.96.0.0/12)</text>
+<!-- Service -->
+<rect x="230" y="35" width="260" height="52" rx="10" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2"/>
+<text x="265" y="55" fill="#2563eb" font-size="11" font-family="JetBrains Mono" font-weight="600">⬡ Service: web-svc (ClusterIP)</text>
+<text x="265" y="72" fill="#0891b2" font-size="9" font-family="JetBrains Mono">IP: 10.96.0.15:80 | selector: app=web</text>
+<text x="265" y="82" fill="#5f7090" font-size="8" font-family="JetBrains Mono">DNS: web-svc.default.svc.cluster.local</text>
+<!-- Node 1 -->
+<rect x="15" y="100" width="220" height="225" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="30" y="118" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 1 (192.168.1.10)</text>
+<rect x="30" y="126" width="85" height="22" rx="4" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="38" y="140" fill="#ea580c" font-size="7.5" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="125" y="126" width="100" height="22" rx="4" fill="rgba(147,51,234,.06)" stroke="#9333ea" stroke-dasharray="3"/>
+<text x="133" y="140" fill="#9333ea" font-size="7.5" font-family="JetBrains Mono">iptables rules</text>
+<!-- Pod with multi-container -->
+<rect x="30" y="158" width="195" height="65" rx="7" fill="#0b1018" stroke="#0ea472"/>
+<text x="42" y="176" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App-1 Pod (app=api)</text>
+<text x="42" y="190" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.1.5</text>
+<rect x="42" y="198" width="78" height="17" rx="3" fill="rgba(14,164,114,.06)" stroke="#0ea472" stroke-dasharray="2"/>
+<text x="50" y="210" fill="#5f7090" font-size="7" font-family="JetBrains Mono">node:3000</text>
+<rect x="128" y="198" width="78" height="17" rx="3" fill="rgba(14,164,114,.06)" stroke="#0ea472" stroke-dasharray="2"/>
+<text x="136" y="210" fill="#5f7090" font-size="7" font-family="JetBrains Mono">sidecar:9090</text>
+<!-- Web Pod on Node 1 -->
+<rect x="30" y="235" width="195" height="45" rx="7" fill="#0b1018" stroke="#16a34a"/>
+<text x="42" y="253" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Web Pod (app=web)</text>
+<text x="42" y="268" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.1.6:80</text>
+<!-- Node 2 -->
+<rect x="250" y="100" width="220" height="225" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="265" y="118" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 2 (192.168.1.11)</text>
+<rect x="265" y="126" width="85" height="22" rx="4" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="273" y="140" fill="#ea580c" font-size="7.5" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="360" y="126" width="100" height="22" rx="4" fill="rgba(147,51,234,.06)" stroke="#9333ea" stroke-dasharray="3"/>
+<text x="368" y="140" fill="#9333ea" font-size="7.5" font-family="JetBrains Mono">iptables rules</text>
+<rect x="265" y="158" width="195" height="45" rx="7" fill="#0b1018" stroke="#16a34a"/>
+<text x="277" y="176" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Web Pod (app=web)</text>
+<text x="277" y="191" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.2.3:80</text>
+<!-- Node 3 -->
+<rect x="485" y="100" width="220" height="225" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="500" y="118" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 3 (192.168.1.12)</text>
+<rect x="500" y="126" width="85" height="22" rx="4" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="508" y="140" fill="#ea580c" font-size="7.5" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="595" y="126" width="100" height="22" rx="4" fill="rgba(147,51,234,.06)" stroke="#9333ea" stroke-dasharray="3"/>
+<text x="603" y="140" fill="#9333ea" font-size="7.5" font-family="JetBrains Mono">iptables rules</text>
+<rect x="500" y="158" width="195" height="45" rx="7" fill="#0b1018" stroke="#16a34a"/>
+<text x="512" y="176" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Web Pod (app=web)</text>
+<text x="512" y="191" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.3.7:80</text>
+<!-- Arrows from Service to Pods -->
+<line x1="310" y1="87" x2="125" y2="235" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arb)"/>
+<line x1="360" y1="87" x2="362" y2="158" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arb)"/>
+<line x1="420" y1="87" x2="597" y2="158" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arb)"/>
+<defs><marker id="arb" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#2563eb"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">web-svc</span>
+<span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">ClusterIP</span>              <span class="cm"># Default — can omit</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">web</span>                  <span class="cm"># Finds Pods with this label</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>                  <span class="cm"># Service listens on</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span>            <span class="cm"># Forwards to Pod's port</span></code></pre></div>
+<div class="pnl" data-i="2">
+<pre><code>kubectl expose deployment web --port=80 --target-port=80 --name=web-svc</code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S05: SAME NODE ═══════ -->
+<section id="s05"><h2><span class="n">05</span> Case: Traffic Routed — Same Node ▶</h2>
+<div class="W" id="w-same"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">How kube-proxy decides</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 500 280" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="480" height="260" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="25" y="30" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Node 1 (192.168.1.10) — SAME NODE routing</text>
+<rect x="25" y="42" width="90" height="24" rx="4" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="33" y="58" fill="#ea580c" font-size="8" font-family="JetBrains Mono">kube-proxy</text>
+<!-- App-1 source -->
+<rect x="25" y="80" width="170" height="50" rx="7" fill="#0b1018" stroke="#0ea472"/>
+<text x="38" y="100" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App-1 (app=api)</text>
+<text x="38" y="118" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.1.5:3000</text>
+<!-- Step 1 arrow -->
+<line x1="195" y1="105" x2="260" y2="105" stroke="#2563eb" stroke-width="2" marker-end="url(#arc)"/>
+<text x="200" y="95" fill="#2563eb" font-size="7.5" font-family="JetBrains Mono">① curl web-svc:80</text>
+<!-- iptables box -->
+<rect x="260" y="85" width="120" height="40" rx="6" fill="rgba(147,51,234,.06)" stroke="#9333ea"/>
+<text x="275" y="104" fill="#9333ea" font-size="8" font-family="JetBrains Mono">iptables/IPVS</text>
+<text x="275" y="117" fill="#5f7090" font-size="7" font-family="JetBrains Mono">DNAT 10.96.0.15</text>
+<!-- Step 2 arrow down to local Pod -->
+<line x1="320" y1="125" x2="320" y2="170" stroke="#16a34a" stroke-width="2" marker-end="url(#ard)"/>
+<text x="330" y="155" fill="#16a34a" font-size="7.5" font-family="JetBrains Mono">② route to local Pod</text>
+<!-- Web Pod (target, same node) -->
+<rect x="240" y="175" width="170" height="50" rx="7" fill="#0b1018" stroke="#16a34a" stroke-width="2"/>
+<text x="255" y="195" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Web Pod (app=web)</text>
+<text x="255" y="213" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.1.6:80 ✓ LOCAL</text>
+<rect x="25" y="240" width="460" height="22" rx="4" fill="rgba(22,163,74,.06)"/>
+<text x="35" y="255" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Traffic stays on the SAME node. No cross-node network hop. Fastest path.</text>
+<defs><marker id="arc" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#2563eb"/></marker><marker id="ard" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#16a34a"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="tl">How kube-proxy picks which Pod to route to</div>
+<div class="def"><b>Random selection (iptables mode)</b>kube-proxy programs iptables rules with <strong>probability-based</strong> chains. Each Pod has an equal chance. With 3 Pods, each gets ~33% of traffic. kube-proxy does NOT prefer local Pods by default — it's random across all endpoints.<br><br>
+<strong>To prefer local Pods:</strong> set <code>service.spec.internalTrafficPolicy: Local</code> — only routes to Pods on the same node as the source. Reduces latency but risks uneven load.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S06: CROSS NODE ═══════ -->
+<section id="s06"><h2><span class="n">06</span> Case: Traffic Routed — Cross Node ▶</h2>
+<div class="W" id="w-cross"><div class="bar"><div class="tab on" data-i="0">Diagram</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg">
+<rect x="5" y="5" width="690" height="240" rx="14" fill="none" stroke="#1e2a3c" stroke-dasharray="6"/>
+<!-- Node 1 -->
+<rect x="15" y="20" width="220" height="210" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="30" y="38" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 1</text>
+<rect x="30" y="48" width="75" height="20" rx="3" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="38" y="62" fill="#ea580c" font-size="7" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="30" y="78" width="190" height="45" rx="6" fill="#0b1018" stroke="#0ea472"/>
+<text x="42" y="96" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App-1 (source)</text>
+<text x="42" y="113" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.1.5</text>
+<rect x="112" y="48" width="90" height="20" rx="3" fill="rgba(147,51,234,.06)" stroke="#9333ea" stroke-dasharray="3"/>
+<text x="118" y="62" fill="#9333ea" font-size="7" font-family="JetBrains Mono">iptables DNAT</text>
+<!-- Arrow from App-1 to iptables -->
+<line x1="125" y1="78" x2="155" y2="68" stroke="#2563eb" stroke-width="1.5" marker-end="url(#are)"/>
+<text x="40" y="148" fill="#2563eb" font-size="8" font-family="JetBrains Mono">① curl web-svc:80</text>
+<text x="40" y="162" fill="#9333ea" font-size="8" font-family="JetBrains Mono">② iptables: DNAT to</text>
+<text x="50" y="176" fill="#9333ea" font-size="8" font-family="JetBrains Mono">   10.244.3.7:80</text>
+<!-- Arrow cross-node -->
+<line x1="235" y1="170" x2="475" y2="105" stroke="#dc2626" stroke-width="2" marker-end="url(#arf)"/>
+<text x="300" y="120" fill="#dc2626" font-size="9" font-family="JetBrains Mono" font-weight="600">③ Cross-node via overlay/BGP</text>
+<!-- Node 3 -->
+<rect x="465" y="20" width="220" height="210" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="480" y="38" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 3</text>
+<rect x="480" y="48" width="75" height="20" rx="3" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="488" y="62" fill="#ea580c" font-size="7" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="480" y="85" width="190" height="55" rx="6" fill="#0b1018" stroke="#16a34a" stroke-width="2"/>
+<text x="492" y="103" fill="#16a34a" font-size="9" font-family="JetBrains Mono">Web Pod (target)</text>
+<text x="492" y="118" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.3.7:80</text>
+<text x="492" y="132" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">[nginx container:80]</text>
+<text x="480" y="170" fill="#16a34a" font-size="8" font-family="JetBrains Mono">④ Pod receives request</text>
+<text x="480" y="185" fill="#16a34a" font-size="8" font-family="JetBrains Mono">⑤ Response returns same path</text>
+<defs><marker id="are" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#2563eb"/></marker><marker id="arf" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#dc2626"/></marker></defs>
+</svg></div>
+<div class="ds">Traffic from App-1 on Node 1 is intercepted by kube-proxy's iptables. The iptables DNAT rewrites the destination from <code>10.96.0.15</code> (Service IP) to <code>10.244.3.7</code> (Pod IP on Node 3). The CNI overlay network (Calico/Cilium/Flannel) handles cross-node delivery. The response packet follows the reverse path.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 1</span><button class="btn" data-dir="next" disabled>Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S07: LIFECYCLE ═══════ -->
+<section id="s07"><h2><span class="n">07</span> Service Full Lifecycle ▶</h2>
+<div class="W" id="w-life"><div class="bar"><div class="tab on" data-i="0">Create</div><div class="tab" data-i="1">Pod added</div><div class="tab" data-i="2">Pod deleted</div><div class="tab" data-i="3">Pod fails readiness</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Service created — endpoints discovered</div>
+<div class="dia"><svg viewBox="0 0 600 80" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="10" width="130" height="28" rx="5" fill="rgba(37,99,235,.08)" stroke="#2563eb"/>
+<text x="8" y="28" fill="#2563eb" font-size="8" font-family="JetBrains Mono">kubectl apply svc</text>
+<line x1="130" y1="24" x2="155" y2="24" stroke="#5f7090" stroke-width="1.5" marker-end="url(#arg)"/>
+<rect x="155" y="10" width="110" height="28" rx="5" fill="rgba(37,99,235,.06)" stroke="#2563eb" stroke-dasharray="3"/>
+<text x="162" y="28" fill="#0891b2" font-size="8" font-family="JetBrains Mono">API: allocate CIP</text>
+<line x1="265" y1="24" x2="290" y2="24" stroke="#5f7090" stroke-width="1.5" marker-end="url(#arg)"/>
+<rect x="290" y="10" width="120" height="28" rx="5" fill="rgba(22,163,74,.06)" stroke="#16a34a" stroke-dasharray="3"/>
+<text x="297" y="28" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Find matching Pods</text>
+<line x1="410" y1="24" x2="435" y2="24" stroke="#5f7090" stroke-width="1.5" marker-end="url(#arg)"/>
+<rect x="435" y="10" width="145" height="28" rx="5" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="442" y="28" fill="#ea580c" font-size="8" font-family="JetBrains Mono">kube-proxy: update rules</text>
+<text x="0" y="65" fill="#16a34a" font-size="9" font-family="DM Sans">→ Endpoints populated → iptables programmed → DNS record created → Service is LIVE</text>
+<defs><marker id="arg" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#5f7090"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="tl">New Pod with matching label created</div>
+<p>Endpoint controller detects new Pod → adds its IP to Endpoints → kube-proxy updates iptables → new Pod starts receiving traffic. <strong>Automatic.</strong></p></div>
+<div class="pnl" data-i="2"><div class="tl">Pod deleted or crashes</div>
+<p>Pod removed → Endpoint controller removes its IP from Endpoints → kube-proxy removes it from iptables → traffic no longer sent to dead Pod. <strong>Automatic, ~1-2s delay.</strong></p></div>
+<div class="pnl" data-i="3"><div class="tl">Pod fails readiness probe</div>
+<p>Pod still exists but fails readiness → Endpoint controller removes it from Endpoints → no traffic. Pod passes readiness again → IP re-added. This is why <strong>readiness probes are critical</strong> — they prevent sending traffic to unhealthy Pods.</p></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S08: NODEPORT ═══════ -->
+<section id="s08"><h2><span class="n">08</span> NodePort Service ▶</h2>
+<div class="def"><b>Definition</b>Opens a port (30000-32767) on EVERY node's IP. External users connect via <code>NodeIP:NodePort</code>. Creates a ClusterIP automatically. Traffic: <code>External → Node:30080 → kube-proxy → Pod</code>.</div>
+<div class="W" id="w-np"><div class="bar"><div class="tab on" data-i="0">Full Diagram</div><div class="tab" data-i="1">Multiple Services</div><div class="tab" data-i="2">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg">
+<!-- Browser -->
+<rect x="280" y="5" width="160" height="38" rx="8" fill="rgba(147,51,234,.08)" stroke="#9333ea"/>
+<text x="310" y="22" fill="#9333ea" font-size="10" font-family="JetBrains Mono" font-weight="600">🌐 User Browser</text>
+<text x="295" y="36" fill="#5f7090" font-size="8" font-family="JetBrains Mono">http://192.168.1.10:30080</text>
+<!-- Arrow down to any node -->
+<line x1="360" y1="43" x2="130" y2="100" stroke="#9333ea" stroke-width="2" marker-end="url(#arh)"/>
+<line x1="360" y1="43" x2="360" y2="100" stroke="#9333ea" stroke-width="2" stroke-dasharray="4"/>
+<line x1="360" y1="43" x2="590" y2="100" stroke="#9333ea" stroke-width="2" stroke-dasharray="4"/>
+<text x="80" y="68" fill="#9333ea" font-size="8" font-family="JetBrains Mono">ANY node works!</text>
+<!-- Cluster -->
+<rect x="5" y="95" width="710" height="220" rx="14" fill="none" stroke="#1e2a3c" stroke-dasharray="6"/>
+<text x="15" y="110" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Cluster</text>
+<!-- Node 1 -->
+<rect x="15" y="115" width="220" height="190" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="30" y="132" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 1 :30080 open</text>
+<rect x="30" y="142" width="75" height="18" rx="3" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="37" y="154" fill="#ea580c" font-size="7" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="30" y="170" width="190" height="40" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="42" y="186" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod (app=web)</text>
+<text x="42" y="200" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.244.1.6:80</text>
+<!-- Arrow from kube-proxy to Pod -->
+<line x1="65" y1="160" x2="65" y2="170" stroke="#ea580c" stroke-width="1.5" marker-end="url(#ari)"/>
+<!-- Node 2 -->
+<rect x="250" y="115" width="220" height="190" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="265" y="132" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 2 :30080 open</text>
+<rect x="265" y="142" width="75" height="18" rx="3" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="272" y="154" fill="#ea580c" font-size="7" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="265" y="170" width="190" height="40" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="277" y="186" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod (app=web)</text>
+<text x="277" y="200" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.244.2.3:80</text>
+<!-- Node 3 -->
+<rect x="485" y="115" width="220" height="190" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="500" y="132" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node 3 :30080 open</text>
+<rect x="500" y="142" width="75" height="18" rx="3" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-dasharray="3"/>
+<text x="507" y="154" fill="#ea580c" font-size="7" font-family="JetBrains Mono">kube-proxy</text>
+<rect x="500" y="170" width="190" height="40" rx="6" fill="#0b1018" stroke="#16a34a"/>
+<text x="512" y="186" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod (app=web)</text>
+<text x="512" y="200" fill="#5f7090" font-size="7" font-family="JetBrains Mono">10.244.3.7:80</text>
+<!-- Service bar -->
+<rect x="180" y="230" width="360" height="35" rx="8" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2"/>
+<text x="210" y="248" fill="#2563eb" font-size="9" font-family="JetBrains Mono" font-weight="600">⬡ web-svc | ClusterIP: 10.96.0.15:80 | NodePort: 30080</text>
+<text x="205" y="260" fill="#5f7090" font-size="7" font-family="JetBrains Mono">type: NodePort | selector: app=web | Endpoints: 10.244.1.6, 10.244.2.3, 10.244.3.7</text>
+<text x="35" y="290" fill="#ca8a04" font-size="9" font-family="DM Sans">⚠ NodePort opens on ALL nodes even if Pod isn't on that node. kube-proxy routes cross-node if needed.</text>
+<defs><marker id="arh" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#9333ea"/></marker><marker id="ari" markerWidth="5" markerHeight="4" refX="5" refY="2" orient="auto"><path d="M0,0 L5,2 L0,4" fill="#ea580c"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="tl">Multiple Services on the same nodes — different NodePorts</div>
+<div class="dia"><svg viewBox="0 0 500 120" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="480" height="100" rx="10" fill="#10151e" stroke="#1e2a3c"/>
+<text x="25" y="30" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Each node opens ALL NodePorts:</text>
+<rect x="25" y="42" width="200" height="24" rx="5" fill="rgba(37,99,235,.06)" stroke="#2563eb"/>
+<text x="33" y="58" fill="#2563eb" font-size="9" font-family="JetBrains Mono">web-svc   :30080 → app=web</text>
+<rect x="25" y="72" width="200" height="24" rx="5" fill="rgba(22,163,74,.06)" stroke="#16a34a"/>
+<text x="33" y="88" fill="#16a34a" font-size="9" font-family="JetBrains Mono">api-svc   :30090 → app=api</text>
+<text x="260" y="58" fill="#5f7090" font-size="9" font-family="DM Sans">Each Service gets a unique</text>
+<text x="260" y="75" fill="#5f7090" font-size="9" font-family="DM Sans">NodePort (30000-32767).</text>
+<text x="260" y="92" fill="#5f7090" font-size="9" font-family="DM Sans">User picks by port number.</text>
+</svg></div></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">NodePort</span>
+  <span class="k">selector:</span> { <span class="k">app:</span> <span class="s">web</span> }
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>           <span class="cm"># ClusterIP port</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span>     <span class="cm"># Pod port</span>
+    <span class="k">nodePort:</span> <span class="nm">30080</span>    <span class="cm"># External port on all nodes</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S09: LOADBALANCER ═══════ -->
+<section id="s09"><h2><span class="n">09</span> LoadBalancer Service ▶</h2>
+<div class="def"><b>Definition</b>Cloud provider provisions a public Load Balancer with an external IP. Traffic: <code>Internet → LB (35.192.0.1) → NodePort → kube-proxy → Pod</code>. Superset of NodePort + ClusterIP.</div>
+<div class="W" id="w-lb"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
+<rect x="260" y="5" width="180" height="35" rx="8" fill="rgba(147,51,234,.08)" stroke="#9333ea"/>
+<text x="300" y="26" fill="#9333ea" font-size="10" font-family="JetBrains Mono" font-weight="600">🌐 Internet Users</text>
+<line x1="350" y1="40" x2="350" y2="65" stroke="#9333ea" stroke-width="2" marker-end="url(#arj)"/>
+<rect x="220" y="65" width="260" height="42" rx="10" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-width="2"/>
+<text x="250" y="83" fill="#ea580c" font-size="10" font-family="JetBrains Mono" font-weight="600">☁ Cloud Load Balancer</text>
+<text x="250" y="98" fill="#5f7090" font-size="8" font-family="JetBrains Mono">External IP: 35.192.0.1:80</text>
+<line x1="300" y1="107" x2="130" y2="155" stroke="#ea580c" stroke-width="1.5" marker-end="url(#ark)"/>
+<line x1="350" y1="107" x2="350" y2="155" stroke="#ea580c" stroke-width="1.5" marker-end="url(#ark)"/>
+<line x1="400" y1="107" x2="570" y2="155" stroke="#ea580c" stroke-width="1.5" marker-end="url(#ark)"/>
+<text x="150" y="130" fill="#ea580c" font-size="8" font-family="JetBrains Mono">NodePort on each</text>
+<!-- Cluster -->
+<rect x="5" y="150" width="690" height="145" rx="12" fill="none" stroke="#1e2a3c" stroke-dasharray="6"/>
+<rect x="15" y="160" width="210" height="60" rx="8" fill="#10151e" stroke="#1e2a3c"/>
+<text x="30" y="178" fill="#0891b2" font-size="8" font-family="JetBrains Mono">Node 1 :30080</text>
+<rect x="30" y="190" width="180" height="22" rx="4" fill="#0b1018" stroke="#16a34a"/>
+<text x="38" y="204" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod 10.244.1.6:80</text>
+<rect x="245" y="160" width="210" height="60" rx="8" fill="#10151e" stroke="#1e2a3c"/>
+<text x="260" y="178" fill="#0891b2" font-size="8" font-family="JetBrains Mono">Node 2 :30080</text>
+<rect x="260" y="190" width="180" height="22" rx="4" fill="#0b1018" stroke="#16a34a"/>
+<text x="268" y="204" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod 10.244.2.3:80</text>
+<rect x="475" y="160" width="210" height="60" rx="8" fill="#10151e" stroke="#1e2a3c"/>
+<text x="490" y="178" fill="#0891b2" font-size="8" font-family="JetBrains Mono">Node 3 :30080</text>
+<rect x="490" y="190" width="180" height="22" rx="4" fill="#0b1018" stroke="#16a34a"/>
+<text x="498" y="204" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Web Pod 10.244.3.7:80</text>
+<!-- Service -->
+<rect x="150" y="240" width="400" height="30" rx="8" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2"/>
+<text x="170" y="259" fill="#2563eb" font-size="9" font-family="JetBrains Mono">⬡ web-svc | ClusterIP: 10.96.0.15 | NodePort: 30080 | LB: 35.192.0.1</text>
+<defs><marker id="arj" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#9333ea"/></marker><marker id="ark" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#ea580c"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="1">
+<pre><code><span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">LoadBalancer</span>
+  <span class="k">selector:</span> { <span class="k">app:</span> <span class="s">web</span> }
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">80</span>
+    <span class="k">targetPort:</span> <span class="nm">80</span></code></pre>
+<div class="c o"><div class="l">Superset chain</div><p style="margin:0">LoadBalancer creates: ① ClusterIP ② NodePort ③ Cloud LB. You get all 3 layers. On bare-metal: LB stays Pending forever (use MetalLB).</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S10: HEADLESS ═══════ -->
+<section id="s10"><h2><span class="n">10</span> Headless Service — PostgreSQL Example ▶</h2>
+<div class="def"><b>Definition</b><code>clusterIP: None</code>. No VIP. DNS returns ALL Pod IPs. Client decides which Pod to connect to. Required for StatefulSets. Used when you need to target specific Pods (primary for writes, replica for reads).</div>
+<div class="W" id="w-hl"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">Client decision</div><div class="tab" data-i="2">YAML</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+<!-- Client -->
+<rect x="20" y="10" width="160" height="50" rx="8" fill="#0b1018" stroke="#0ea472"/>
+<text x="35" y="32" fill="#0ea472" font-size="9" font-family="JetBrains Mono">App Client Pod</text>
+<text x="35" y="48" fill="#5f7090" font-size="8" font-family="JetBrains Mono">nslookup pg-svc</text>
+<!-- Arrow to DNS -->
+<line x1="180" y1="35" x2="230" y2="35" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arl)"/>
+<!-- DNS box -->
+<rect x="230" y="10" width="200" height="50" rx="8" fill="rgba(37,99,235,.06)" stroke="#2563eb"/>
+<text x="250" y="30" fill="#2563eb" font-size="9" font-family="JetBrains Mono" font-weight="600">CoreDNS Response:</text>
+<text x="250" y="48" fill="#0891b2" font-size="8" font-family="JetBrains Mono">10.244.1.6, 10.244.2.3, 10.244.3.7</text>
+<!-- Arrow back -->
+<line x1="230" y1="52" x2="180" y2="52" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arm)"/>
+<text x="185" y="72" fill="#16a34a" font-size="7" font-family="JetBrains Mono">Returns ALL Pod IPs (no VIP!)</text>
+<!-- Client decides -->
+<text x="20" y="100" fill="#fff" font-size="10" font-family="DM Sans" font-weight="700">Client chooses target:</text>
+<!-- Arrow to primary -->
+<line x1="100" y1="108" x2="100" y2="140" stroke="#dc2626" stroke-width="2" marker-end="url(#arn)"/>
+<text x="115" y="128" fill="#dc2626" font-size="8" font-family="JetBrains Mono">WRITE → pg-0 (primary)</text>
+<!-- Pods -->
+<rect x="20" y="145" width="200" height="55" rx="8" fill="#0b1018" stroke="#dc2626" stroke-width="2"/>
+<text x="35" y="163" fill="#dc2626" font-size="9" font-family="JetBrains Mono" font-weight="600">pg-0 (PRIMARY)</text>
+<text x="35" y="178" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.1.6:5432</text>
+<text x="35" y="192" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">pg-0.pg-svc.default.svc</text>
+<rect x="250" y="145" width="200" height="55" rx="8" fill="#0b1018" stroke="#16a34a"/>
+<text x="265" y="163" fill="#16a34a" font-size="9" font-family="JetBrains Mono">pg-1 (REPLICA)</text>
+<text x="265" y="178" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.2.3:5432</text>
+<text x="265" y="192" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">pg-1.pg-svc.default.svc</text>
+<rect x="480" y="145" width="200" height="55" rx="8" fill="#0b1018" stroke="#16a34a"/>
+<text x="495" y="163" fill="#16a34a" font-size="9" font-family="JetBrains Mono">pg-2 (REPLICA)</text>
+<text x="495" y="178" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.3.7:5432</text>
+<text x="495" y="192" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">pg-2.pg-svc.default.svc</text>
+<!-- READ arrows -->
+<line x1="150" y1="108" x2="350" y2="145" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#aro)"/>
+<line x1="150" y1="108" x2="580" y2="145" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#aro)"/>
+<text x="200" y="120" fill="#16a34a" font-size="8" font-family="JetBrains Mono">READ → any replica</text>
+<text x="20" y="240" fill="#ca8a04" font-size="9" font-family="DM Sans">With Headless, the CLIENT decides which Pod to connect to — not the Service. The Service just provides the Pod IPs via DNS.</text>
+<defs><marker id="arl" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#2563eb"/></marker><marker id="arm" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto"><path d="M6,0 L0,2 L6,4" fill="#16a34a"/></marker><marker id="arn" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#dc2626"/></marker><marker id="aro" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#16a34a"/></marker></defs>
+</svg></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">How the client decides which Pod</div>
+<table>
+<tr><th>Method</th><th>How</th><th>Example</th></tr>
+<tr><td><strong>Direct DNS name</strong></td><td><code>pg-0.pg-svc</code> always targets primary</td><td>Writes → <code>pg-0.pg-svc:5432</code></td></tr>
+<tr><td><strong>DNS round-robin</strong></td><td><code>nslookup pg-svc</code> returns all IPs, client picks randomly</td><td>Simple reads</td></tr>
+<tr><td><strong>App logic</strong></td><td>Connection string lists all members, driver picks primary/replica</td><td><code>host=pg-0.pg-svc,pg-1.pg-svc,pg-2.pg-svc target_session_attrs=read-write</code></td></tr>
+</table></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="cm"># Headless Service for PostgreSQL StatefulSet</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">pg-svc</span>
+<span class="k">spec:</span>
+  <span class="k">clusterIP:</span> <span class="v">None</span>        <span class="cm"># ← Headless</span>
+  <span class="k">selector:</span>
+    <span class="k">app:</span> <span class="s">postgres</span>
+  <span class="k">ports:</span>
+  - <span class="k">port:</span> <span class="nm">5432</span>
+    <span class="k">name:</span> <span class="s">postgres</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S11: MULTI-CONTAINER ═══════ -->
+<section id="s11"><h2><span class="n">11</span> Multi-Container Pod + Service ▶</h2>
+<div class="W" id="w-mc"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">Port mapping</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 600 170" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="280" height="150" rx="10" fill="#0b1018" stroke="#0ea472"/>
+<text x="25" y="30" fill="#0ea472" font-size="10" font-family="JetBrains Mono" font-weight="600">Pod (IP: 10.244.1.5)</text>
+<rect x="25" y="42" width="120" height="45" rx="6" fill="rgba(14,164,114,.04)" stroke="#0ea472" stroke-dasharray="3"/>
+<text x="35" y="58" fill="#0ea472" font-size="9" font-family="JetBrains Mono">nginx</text>
+<text x="35" y="78" fill="#5f7090" font-size="8" font-family="JetBrains Mono">:80 (HTTP)</text>
+<rect x="155" y="42" width="120" height="45" rx="6" fill="rgba(14,164,114,.04)" stroke="#0ea472" stroke-dasharray="3"/>
+<text x="165" y="58" fill="#0ea472" font-size="9" font-family="JetBrains Mono">sidecar</text>
+<text x="165" y="78" fill="#5f7090" font-size="8" font-family="JetBrains Mono">:9090 (metrics)</text>
+<text x="25" y="112" fill="#5f7090" font-size="8" font-family="DM Sans">Both containers share the same IP.</text>
+<text x="25" y="128" fill="#5f7090" font-size="8" font-family="DM Sans">nginx → sidecar: curl localhost:9090</text>
+<text x="25" y="144" fill="#5f7090" font-size="8" font-family="DM Sans">sidecar → nginx: curl localhost:80</text>
+<!-- Service -->
+<rect x="340" y="30" width="240" height="80" rx="8" fill="rgba(37,99,235,.06)" stroke="#2563eb"/>
+<text x="355" y="50" fill="#2563eb" font-size="9" font-family="JetBrains Mono" font-weight="600">Service: web-svc</text>
+<text x="355" y="68" fill="#5f7090" font-size="8" font-family="JetBrains Mono">port: 80 → targetPort: 80</text>
+<text x="355" y="82" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Service targets the POD IP</text>
+<text x="355" y="96" fill="#5f7090" font-size="8" font-family="JetBrains Mono">+ targetPort. Container</text>
+<text x="355" y="110" fill="#ca8a04" font-size="8" font-family="JetBrains Mono">listening on that port receives.</text>
+<line x1="340" y1="70" x2="290" y2="65" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arp)"/>
+<defs><marker id="arp" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#2563eb"/></marker></defs>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="ds">The Service sends traffic to <code>PodIP:targetPort</code>. Whichever container inside the Pod is listening on that port receives the traffic. In a multi-container Pod, the Service doesn't know or care which container it is — it just sends to the port. If you need to reach the sidecar's metrics, create a second Service with <code>targetPort: 9090</code>.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S12: UNIQUE IPs ═══════ -->
+<section id="s12"><h2><span class="n">12</span> Can Two Pods Have the Same IP?</h2>
+<div class="def"><b>Answer: NO.</b> Every Pod in the entire cluster gets a globally unique IP address. The CNI plugin assigns IP ranges per node from the Pod CIDR. No two nodes share the same subnet.</div>
+<div class="dia"><svg viewBox="0 0 600 130" xmlns="http://www.w3.org/2000/svg">
+<text x="10" y="18" fill="#fff" font-size="10" font-family="JetBrains Mono" font-weight="600">Cluster Pod CIDR: 10.244.0.0/16</text>
+<rect x="10" y="30" width="180" height="90" rx="8" fill="#10151e" stroke="#1e2a3c"/>
+<text x="25" y="48" fill="#0891b2" font-size="9" font-family="JetBrains Mono">Node 1</text>
+<text x="25" y="65" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Subnet: 10.244.1.0/24</text>
+<text x="25" y="80" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Pod A: 10.244.1.5</text>
+<text x="25" y="95" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Pod B: 10.244.1.6</text>
+<text x="25" y="110" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">Range: .1 to .254</text>
+<rect x="210" y="30" width="180" height="90" rx="8" fill="#10151e" stroke="#1e2a3c"/>
+<text x="225" y="48" fill="#0891b2" font-size="9" font-family="JetBrains Mono">Node 2</text>
+<text x="225" y="65" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Subnet: 10.244.2.0/24</text>
+<text x="225" y="80" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Pod C: 10.244.2.3</text>
+<text x="225" y="95" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Pod D: 10.244.2.4</text>
+<text x="225" y="110" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">Range: .1 to .254</text>
+<rect x="410" y="30" width="180" height="90" rx="8" fill="#10151e" stroke="#1e2a3c"/>
+<text x="425" y="48" fill="#0891b2" font-size="9" font-family="JetBrains Mono">Node 3</text>
+<text x="425" y="65" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Subnet: 10.244.3.0/24</text>
+<text x="425" y="80" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Pod E: 10.244.3.7</text>
+<text x="425" y="95" fill="#16a34a" font-size="8" font-family="JetBrains Mono">Pod F: 10.244.3.8</text>
+<text x="425" y="110" fill="#3f4d65" font-size="7" font-family="JetBrains Mono">Range: .1 to .254</text>
+</svg></div>
+<div class="ds">Each node gets a different /24 subnet from the Pod CIDR. Node 1 = 10.244.<strong>1</strong>.x, Node 2 = 10.244.<strong>2</strong>.x, Node 3 = 10.244.<strong>3</strong>.x. Different subnets → impossible for two Pods to get the same IP, even across different nodes.</div>
+</section>
+
+<!-- ═══════ S13: COMPARISON ═══════ -->
+<section id="s13"><h2><span class="n">13</span> Service Type Comparison</h2>
+<table>
+<tr><th>Type</th><th>ClusterIP</th><th>External</th><th>Use For</th></tr>
+<tr><td><code>ClusterIP</code></td><td>Yes (auto)</td><td><span class="bg rd">No</span></td><td>Internal Pod-to-Pod</td></tr>
+<tr><td><code>NodePort</code></td><td>Yes</td><td><span class="bg gn">Yes</span> (NodeIP:30000-32767)</td><td>Dev/test external</td></tr>
+<tr><td><code>LoadBalancer</code></td><td>Yes</td><td><span class="bg gn">Yes</span> (public IP)</td><td>Production external (cloud)</td></tr>
+<tr><td><code>ExternalName</code></td><td>No</td><td>DNS CNAME only</td><td>Map to external DNS</td></tr>
+<tr><td><code>Headless</code></td><td>None</td><td><span class="bg rd">No</span></td><td>StatefulSets, direct Pod access</td></tr>
+</table>
+<div class="sre"><div class="tag">SRE Checklist When Service Doesn't Work</div><p style="margin:0">① <code>kubectl get endpoints svc-name</code> — empty? → selector doesn't match Pod labels.<br>② <code>kubectl get pods --show-labels</code> — do labels match?<br>③ <code>kubectl describe pod</code> — is Pod passing readiness?<br>④ Is <code>targetPort</code> correct (matches containerPort)?<br>⑤ Is there a NetworkPolicy blocking traffic?</p></div>
+</section>
+
+<!-- ═══════ S14: COMMANDS ═══════ -->
+<section id="s14"><h2><span class="n">14</span> Command Reference</h2>
+<pre><code><span class="cm"># ══ CREATE ══</span>
+kubectl expose deployment web --port=80 --target-port=80 --name=web-svc
+kubectl expose deployment web --type=NodePort --port=80 --name=web-np
+kubectl create service clusterip my-svc --tcp=80:80
+
+<span class="cm"># ══ INSPECT ══</span>
+kubectl get svc
+kubectl describe svc web-svc
+kubectl get endpoints web-svc
+kubectl get svc web-svc -o jsonpath='{.spec.selector}'
+
+<span class="cm"># ══ DEBUG ══</span>
+kubectl run -it --rm debug --image=busybox -- sh
+<span class="cm"># nslookup web-svc | curl web-svc:80 | wget -qO- web-svc</span>
+kubectl port-forward svc/web-svc 8080:80</code></pre>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>

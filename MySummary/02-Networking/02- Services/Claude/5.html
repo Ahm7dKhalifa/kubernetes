@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Egress — Pod to External Traffic Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#2563eb;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1060px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px}
+.hero h1{font-family:'Fraunces',serif;font-size:34px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:680px;margin:0 auto}
+section{margin-bottom:38px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(37,99,235,.12);padding:1px 6px;border-radius:4px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(37,99,235,.03),rgba(8,145,178,.02));border:1px solid rgba(37,99,235,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(37,99,235,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(37,99,235,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(37,99,235,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.dia{margin:8px 0;overflow-x:auto}
+.dia svg{display:block;max-width:100%;height:auto}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">⬡ Pod → External</div>
+<div class="sub">Egress Traffic Flow</div>
+<div class="sl">Overview</div>
+<ul><li><a href="#s01">Why SNAT? ▶</a></li><li><a href="#s02">Full Request Path ▶</a></li><li><a href="#s03">Full Response Path ▶</a></li></ul>
+<div class="sl">Scenarios</div>
+<ul><li><a href="#s04">curl google.com ▶</a></li><li><a href="#s05">Call External API ▶</a></li><li><a href="#s06">External Database ▶</a></li></ul>
+<div class="sl">Control</div>
+<ul><li><a href="#s07">NetworkPolicy Egress ▶</a></li><li><a href="#s08">NAT Gateway (cloud) ▶</a></li><li><a href="#s09">Summary</a></li></ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Pod → External World</h1><p>What happens when a Pod inside the cluster makes a request to an external website, API, or database outside the cluster? Full packet path with request AND response arrows.</p></div>
+
+<!-- ═══════ S01 ═══════ -->
+<section id="s01"><h2><span class="n">01</span> The Problem — Why Can't the Pod IP Go to the Internet? ▶</h2>
+<div class="W" id="w01"><div class="bar"><div class="tab on" data-i="0">The problem</div><div class="tab" data-i="1">The solution: SNAT</div><div class="tab" data-i="2">Analogy</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Pod IPs are internal — the internet doesn't know them</div>
+<div class="dia"><svg viewBox="0 0 740 200" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#dc2626"/></marker></defs>
+<rect x="10" y="10" width="310" height="180" rx="12" fill="#10151e" stroke="#1e2a3c"/>
+<text x="25" y="28" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Kubernetes Cluster</text>
+<rect x="25" y="40" width="200" height="45" rx="7" fill="#0b1018" stroke="#0ea472" stroke-width="2"/>
+<text x="40" y="58" fill="#0ea472" font-size="9" font-family="JetBrains Mono" font-weight="600">App Pod</text>
+<text x="40" y="74" fill="#5f7090" font-size="8" font-family="JetBrains Mono">IP: 10.244.1.5 (internal!)</text>
+<text x="25" y="112" fill="#dc2626" font-size="9" font-family="DM Sans" font-weight="700">Problem:</text>
+<text x="25" y="128" fill="#c5cdd8" font-size="9" font-family="DM Sans">Pod sends packet with src=10.244.1.5</text>
+<text x="25" y="144" fill="#c5cdd8" font-size="9" font-family="DM Sans">Google receives it, tries to respond to 10.244.1.5</text>
+<text x="25" y="160" fill="#dc2626" font-size="9" font-family="DM Sans" font-weight="600">But 10.244.1.5 is private! Google can't route back!</text>
+<text x="25" y="178" fill="#dc2626" font-size="9" font-family="DM Sans">Packet is LOST. Connection fails.</text>
+<line x1="225" y1="62" x2="400" y2="62" stroke="#dc2626" stroke-width="2" marker-end="url(#a1)"/>
+<text x="260" y="52" fill="#dc2626" font-size="8" font-family="JetBrains Mono">src: 10.244.1.5 ???</text>
+<rect x="400" y="30" width="320" height="70" rx="10" fill="rgba(147,51,234,.04)" stroke="#9333ea"/>
+<text x="420" y="52" fill="#9333ea" font-size="10" font-family="JetBrains Mono" font-weight="600">🌐 google.com (142.250.80.46)</text>
+<text x="420" y="72" fill="#dc2626" font-size="9" font-family="DM Sans">"Who is 10.244.1.5? I don't know that address!"</text>
+<text x="420" y="88" fill="#dc2626" font-size="9" font-family="DM Sans">"I can't send a response. Packet dropped."</text>
+</svg></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Solution: SNAT — replace Pod IP with Node IP before leaving</div>
+<div class="def"><b>Definition — SNAT (Source NAT)</b>Before the packet leaves the node, the kernel rewrites the <strong>source IP</strong> from the Pod's internal IP (<code>10.244.1.5</code>) to the <strong>Node's external IP</strong> (<code>192.168.1.10</code>). The external server sees the Node's IP as the sender and can respond to it. When the response arrives at the node, conntrack reverses the SNAT and delivers it back to the Pod.</div>
+<div class="dia"><svg viewBox="0 0 740 180" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="a2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2563eb"/></marker>
+<marker id="a3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#ea580c"/></marker>
+<marker id="a4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#16a34a"/></marker>
+</defs>
+<rect x="10" y="10" width="140" height="45" rx="7" fill="#0b1018" stroke="#0ea472" stroke-width="2"/>
+<text x="25" y="30" fill="#0ea472" font-size="9" font-family="JetBrains Mono" font-weight="600">App Pod</text>
+<text x="25" y="44" fill="#5f7090" font-size="8" font-family="JetBrains Mono">10.244.1.5</text>
+<line x1="150" y1="32" x2="205" y2="32" stroke="#2563eb" stroke-width="2" marker-end="url(#a2)"/>
+<text x="152" y="22" fill="#2563eb" font-size="7" font-family="JetBrains Mono">src: 10.244.1.5</text>
+<rect x="205" y="5" width="195" height="60" rx="8" fill="rgba(234,88,12,.05)" stroke="#ea580c" stroke-width="2"/>
+<text x="220" y="24" fill="#ea580c" font-size="9" font-family="JetBrains Mono" font-weight="600">iptables SNAT</text>
+<text x="220" y="40" fill="#5f7090" font-size="8" font-family="JetBrains Mono">POSTROUTING chain:</text>
+<text x="220" y="54" fill="#ea580c" font-size="8" font-family="JetBrains Mono">src: 10.244.1.5 → 192.168.1.10</text>
+<line x1="400" y1="32" x2="460" y2="32" stroke="#ea580c" stroke-width="2" marker-end="url(#a3)"/>
+<text x="405" y="22" fill="#ea580c" font-size="7" font-family="JetBrains Mono">src: 192.168.1.10</text>
+<rect x="460" y="5" width="120" height="60" rx="7" fill="rgba(8,145,178,.06)" stroke="#0891b2"/>
+<text x="475" y="24" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">Node NIC</text>
+<text x="475" y="40" fill="#5f7090" font-size="8" font-family="JetBrains Mono">eth0</text>
+<text x="475" y="54" fill="#5f7090" font-size="7" font-family="JetBrains Mono">192.168.1.10</text>
+<line x1="580" y1="32" x2="640" y2="32" stroke="#16a34a" stroke-width="2" marker-end="url(#a4)"/>
+<text x="585" y="22" fill="#16a34a" font-size="7" font-family="JetBrains Mono">to internet</text>
+<rect x="640" y="10" width="90" height="45" rx="7" fill="rgba(147,51,234,.06)" stroke="#9333ea"/>
+<text x="652" y="30" fill="#9333ea" font-size="9" font-family="JetBrains Mono">🌐 Google</text>
+<text x="652" y="44" fill="#5f7090" font-size="7" font-family="JetBrains Mono">142.250.80.46</text>
+<text x="10" y="95" fill="#16a34a" font-size="10" font-family="DM Sans" font-weight="600">✓ Google sees src=192.168.1.10 (routable!) → can respond!</text>
+<text x="10" y="115" fill="#5f7090" font-size="10" font-family="DM Sans">This is exactly how your home router works: your laptop has 192.168.x.x (private),</text>
+<text x="10" y="132" fill="#5f7090" font-size="10" font-family="DM Sans">your router replaces it with your public IP before sending to the internet.</text>
+<text x="10" y="152" fill="#5f7090" font-size="10" font-family="DM Sans">In K8s: Pod = your laptop. Node = your home router. SNAT = the same NAT your router does.</text>
+</svg></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Analogy: Sending mail from an office building</div>
+<div class="def"><b>Without SNAT</b>Employee in Room 203 (Pod 10.244.1.5) sends a letter with return address "Room 203, Internal Floor 2." The post office has no idea where that is — letter comes back undeliverable.<br><br>
+<b>With SNAT</b>The mailroom (iptables) crosses out "Room 203" and writes "123 Main Street" (Node's IP) as the return address. The reply arrives at 123 Main Street. The mailroom (conntrack) remembers "this was for Room 203" and delivers it internally.</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S02: FULL REQUEST ═══════ -->
+<section id="s02"><h2><span class="n">02</span> Full Request Path: Pod → External Website ▶</h2>
+<div class="W" id="w02"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">Packet at each step</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 740 420" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="b1" markerWidth="8" markerHeight="6" refX="4" refY="6" orient="auto"><path d="M0,0 L4,6 L8,0" fill="#2563eb"/></marker>
+<marker id="b2" markerWidth="8" markerHeight="6" refX="4" refY="6" orient="auto"><path d="M0,0 L4,6 L8,0" fill="#9333ea"/></marker>
+<marker id="b3" markerWidth="8" markerHeight="6" refX="4" refY="6" orient="auto"><path d="M0,0 L4,6 L8,0" fill="#ea580c"/></marker>
+<marker id="b4" markerWidth="8" markerHeight="6" refX="4" refY="6" orient="auto"><path d="M0,0 L4,6 L8,0" fill="#0891b2"/></marker>
+<marker id="b5" markerWidth="8" markerHeight="6" refX="4" refY="6" orient="auto"><path d="M0,0 L4,6 L8,0" fill="#16a34a"/></marker>
+</defs>
+<!-- Node box -->
+<rect x="5" y="5" width="730" height="300" rx="14" fill="#10151e" stroke="#0891b2"/>
+<text x="20" y="24" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Worker Node (192.168.1.10)</text>
+<!-- App Pod -->
+<rect x="25" y="35" width="680" height="45" rx="8" fill="#0b1018" stroke="#0ea472" stroke-width="2"/>
+<text x="42" y="55" fill="#0ea472" font-size="10" font-family="JetBrains Mono" font-weight="600">❶ App Pod: curl https://api.stripe.com/v1/charges</text>
+<text x="42" y="72" fill="#2563eb" font-size="8" font-family="JetBrains Mono">Packet created → src: 10.244.1.5:44320 dst: 142.250.80.46:443</text>
+<line x1="365" y1="80" x2="365" y2="100" stroke="#2563eb" stroke-width="2.5" marker-end="url(#b1)"/>
+<!-- DNS first -->
+<rect x="25" y="103" width="680" height="32" rx="6" fill="rgba(37,99,235,.04)" stroke="#2563eb"/>
+<text x="42" y="123" fill="#2563eb" font-size="9" font-family="JetBrains Mono" font-weight="600">❷ CoreDNS resolves api.stripe.com → 142.250.80.46 (external public IP)</text>
+<line x1="365" y1="135" x2="365" y2="152" stroke="#9333ea" stroke-width="2.5" marker-end="url(#b2)"/>
+<!-- iptables POSTROUTING -->
+<rect x="25" y="155" width="680" height="55" rx="8" fill="rgba(234,88,12,.05)" stroke="#ea580c" stroke-width="2"/>
+<text x="42" y="175" fill="#ea580c" font-size="10" font-family="JetBrains Mono" font-weight="600">❸ Kernel: iptables POSTROUTING → MASQUERADE (SNAT)</text>
+<text x="42" y="193" fill="#ea580c" font-size="9" font-family="JetBrains Mono">Rewrites src: 10.244.1.5 → 192.168.1.10 (Node's IP)</text>
+<text x="42" y="205" fill="#ca8a04" font-size="7" font-family="JetBrains Mono">conntrack saves: {original src=10.244.1.5:44320, rewritten src=192.168.1.10:44320, dst=142.250.80.46:443}</text>
+<line x1="365" y1="210" x2="365" y2="227" stroke="#ea580c" stroke-width="2.5" marker-end="url(#b3)"/>
+<!-- Routing -->
+<rect x="25" y="230" width="680" height="32" rx="6" fill="rgba(8,145,178,.04)" stroke="#0891b2"/>
+<text x="42" y="250" fill="#0891b2" font-size="9" font-family="JetBrains Mono" font-weight="600">❹ Kernel routing: dst 142.250.80.46 is NOT local → forward to default gateway</text>
+<line x1="365" y1="262" x2="365" y2="278" stroke="#0891b2" stroke-width="2.5" marker-end="url(#b4)"/>
+<!-- Physical NIC -->
+<rect x="25" y="280" width="680" height="18" rx="4" fill="rgba(8,145,178,.04)" stroke="#0891b2"/>
+<text x="42" y="293" fill="#0891b2" font-size="8" font-family="JetBrains Mono">❺ Physical NIC (eth0) sends packet out to the network → default gateway (router)</text>
+
+<!-- Outside cluster -->
+<line x1="365" y1="305" x2="365" y2="330" stroke="#16a34a" stroke-width="2.5" marker-end="url(#b5)"/>
+<text x="270" y="322" fill="#16a34a" font-size="8" font-family="JetBrains Mono" font-weight="600">leaves the cluster</text>
+<rect x="100" y="333" width="540" height="32" rx="8" fill="rgba(147,51,234,.04)" stroke="#5f7090"/>
+<text x="120" y="353" fill="#5f7090" font-size="9" font-family="JetBrains Mono">❻ Router/gateway → ISP → internet → destination server</text>
+<rect x="200" y="375" width="340" height="38" rx="10" fill="rgba(147,51,234,.06)" stroke="#9333ea" stroke-width="2"/>
+<text x="220" y="393" fill="#9333ea" font-size="10" font-family="JetBrains Mono" font-weight="600">❼ api.stripe.com receives request</text>
+<text x="220" y="407" fill="#5f7090" font-size="8" font-family="JetBrains Mono">sees src=192.168.1.10 (or public NAT IP)</text>
+</svg></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Packet headers at each step</div>
+<pre><code><span class="cm"># ❶ App Pod creates packet:</span>
+<span class="s">src: 10.244.1.5:44320</span> → dst: 142.250.80.46:443  <span class="cm">← Pod's internal IP</span>
+
+<span class="cm"># ❷ DNS already resolved api.stripe.com → 142.250.80.46</span>
+
+<span class="cm"># ❸ iptables POSTROUTING MASQUERADE (SNAT):</span>
+<span class="v">src: 192.168.1.10:44320</span> → dst: 142.250.80.46:443  <span class="cm">← Node's IP now!</span>
+<span class="cm"># conntrack records: 10.244.1.5:44320 was rewritten to 192.168.1.10:44320</span>
+
+<span class="cm"># ❹ Routing table: 142.250.80.46 → default gateway 192.168.1.1</span>
+
+<span class="cm"># ❺ eth0 sends to gateway</span>
+
+<span class="cm"># ❻ Gateway/router may do ANOTHER NAT (private node IP → public IP):</span>
+<span class="nm">src: 73.45.12.99:44320</span> → dst: 142.250.80.46:443  <span class="cm">← ISP public IP</span>
+
+<span class="cm"># ❼ api.stripe.com receives:</span>
+<span class="cm"># src: 73.45.12.99 (your cluster's public IP)</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S03: FULL RESPONSE ═══════ -->
+<section id="s03"><h2><span class="n">03</span> Full Response Path: External → Pod ▶</h2>
+<div class="W" id="w03"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">Packet at each step</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 740 380" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="c1" markerWidth="8" markerHeight="6" refX="4" refY="0" orient="auto"><path d="M0,6 L4,0 L8,6" fill="#16a34a"/></marker>
+<marker id="c2" markerWidth="8" markerHeight="6" refX="4" refY="0" orient="auto"><path d="M0,6 L4,0 L8,6" fill="#0891b2"/></marker>
+<marker id="c3" markerWidth="8" markerHeight="6" refX="4" refY="0" orient="auto"><path d="M0,6 L4,0 L8,6" fill="#ca8a04"/></marker>
+<marker id="c4" markerWidth="8" markerHeight="6" refX="4" refY="0" orient="auto"><path d="M0,6 L4,0 L8,6" fill="#0ea472"/></marker>
+</defs>
+<!-- External server -->
+<rect x="200" y="340" width="340" height="35" rx="10" fill="rgba(147,51,234,.06)" stroke="#9333ea" stroke-width="2"/>
+<text x="220" y="362" fill="#9333ea" font-size="10" font-family="JetBrains Mono" font-weight="600">❶ api.stripe.com creates response</text>
+<text x="100" y="332" fill="#5f7090" font-size="8" font-family="JetBrains Mono">src: 142.250.80.46:443 dst: 73.45.12.99:44320</text>
+<line x1="365" y1="340" x2="365" y2="318" stroke="#16a34a" stroke-width="2.5" marker-end="url(#c1)"/>
+<!-- ISP / gateway -->
+<rect x="100" y="290" width="540" height="25" rx="6" fill="rgba(147,51,234,.03)" stroke="#5f7090"/>
+<text x="120" y="307" fill="#5f7090" font-size="8" font-family="JetBrains Mono">❷ Internet → ISP → Router reverse NAT → arrives at Node's IP 192.168.1.10</text>
+<line x1="365" y1="290" x2="365" y2="272" stroke="#16a34a" stroke-width="2.5" marker-end="url(#c1)"/>
+<text x="280" y="280" fill="#16a34a" font-size="8" font-family="JetBrains Mono" font-weight="600">enters cluster</text>
+
+<!-- Node box -->
+<rect x="5" y="5" width="730" height="260" rx="14" fill="#10151e" stroke="#0891b2"/>
+<text x="20" y="24" fill="#0891b2" font-size="10" font-family="JetBrains Mono" font-weight="600">Worker Node (192.168.1.10) — RESPONSE arrives here</text>
+<!-- NIC receives -->
+<rect x="25" y="230" width="680" height="25" rx="5" fill="rgba(8,145,178,.04)" stroke="#0891b2"/>
+<text x="42" y="246" fill="#0891b2" font-size="8" font-family="JetBrains Mono">❸ eth0 receives: src=142.250.80.46:443 dst=192.168.1.10:44320</text>
+<line x1="365" y1="230" x2="365" y2="212" stroke="#0891b2" stroke-width="2.5" marker-end="url(#c2)"/>
+<!-- conntrack reverse -->
+<rect x="25" y="165" width="680" height="45" rx="8" fill="rgba(202,138,4,.06)" stroke="#ca8a04" stroke-width="2"/>
+<text x="42" y="185" fill="#ca8a04" font-size="10" font-family="JetBrains Mono" font-weight="600">❹ Kernel: conntrack reverse SNAT (automatic!)</text>
+<text x="42" y="202" fill="#ea580c" font-size="9" font-family="JetBrains Mono">Rewrites dst: 192.168.1.10:44320 → 10.244.1.5:44320 (original Pod IP restored!)</text>
+<line x1="365" y1="165" x2="365" y2="147" stroke="#ca8a04" stroke-width="2.5" marker-end="url(#c3)"/>
+<!-- Routing -->
+<rect x="25" y="112" width="680" height="32" rx="6" fill="rgba(37,99,235,.04)" stroke="#2563eb"/>
+<text x="42" y="132" fill="#2563eb" font-size="9" font-family="JetBrains Mono" font-weight="600">❺ Kernel routing: 10.244.1.5 is local Pod subnet → deliver via veth pair</text>
+<line x1="365" y1="112" x2="365" y2="92" stroke="#0ea472" stroke-width="2.5" marker-end="url(#c4)"/>
+<!-- App Pod receives -->
+<rect x="25" y="40" width="680" height="50" rx="8" fill="#0b1018" stroke="#0ea472" stroke-width="2"/>
+<text x="42" y="60" fill="#0ea472" font-size="10" font-family="JetBrains Mono" font-weight="600">❻ App Pod receives the response!</text>
+<text x="42" y="78" fill="#5f7090" font-size="9" font-family="JetBrains Mono">src: 142.250.80.46:443 → dst: 10.244.1.5:44320 → HTTP 200 OK with JSON body</text>
+<text x="42" y="88" fill="#16a34a" font-size="7" font-family="JetBrains Mono">App has NO IDEA that SNAT happened. It sees the response from Stripe's IP addressed to its Pod IP. Transparent.</text>
+</svg></div></div>
+
+<div class="pnl" data-i="1"><pre><code><span class="cm"># ❶ api.stripe.com sends response:</span>
+src: 142.250.80.46:443 → dst: 73.45.12.99:44320  <span class="cm">← to public IP</span>
+
+<span class="cm"># ❷ ISP/router reverse NAT:</span>
+src: 142.250.80.46:443 → dst: <span class="v">192.168.1.10:44320</span>  <span class="cm">← to Node's IP</span>
+
+<span class="cm"># ❸ Node NIC receives on eth0</span>
+
+<span class="cm"># ❹ conntrack reverse SNAT (PREROUTING):</span>
+<span class="cm"># Lookup: "192.168.1.10:44320 was originally 10.244.1.5:44320"</span>
+src: 142.250.80.46:443 → dst: <span class="s">10.244.1.5:44320</span>  <span class="cm">← Pod IP restored!</span>
+
+<span class="cm"># ❺ Kernel routes to local Pod subnet → veth pair</span>
+
+<span class="cm"># ❻ App Pod receives:</span>
+src: 142.250.80.46:443 → dst: <span class="s">10.244.1.5:44320</span>
+<span class="cm"># App sees the response from Stripe, addressed to its own Pod IP</span>
+<span class="cm"># The SNAT was completely transparent — App never knew it happened</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S04: GOOGLE.COM ═══════ -->
+<section id="s04"><h2><span class="n">04</span> Example: Pod calls google.com ▶</h2>
+<div class="W" id="w04"><div class="bar"><div class="tab on" data-i="0">Full trace</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<pre><code><span class="cm"># From inside any Pod:</span>
+curl http://google.com
+
+<span class="cm"># ══ REQUEST PATH ══</span>
+<span class="cm"># 1. CoreDNS resolves google.com → 142.250.80.46</span>
+<span class="cm"># 2. Pod sends: src=10.244.1.5:55210 dst=142.250.80.46:80</span>
+<span class="cm"># 3. iptables MASQUERADE: src rewritten → 192.168.1.10:55210</span>
+<span class="cm"># 4. Routing: 142.250.80.46 → default gateway → internet</span>
+<span class="cm"># 5. Google receives from 192.168.1.10 (or public NAT IP)</span>
+
+<span class="cm"># ══ RESPONSE PATH ══</span>
+<span class="cm"># 6. Google responds: src=142.250.80.46 dst=192.168.1.10:55210</span>
+<span class="cm"># 7. Packet arrives at Node NIC</span>
+<span class="cm"># 8. conntrack reverses: dst → 10.244.1.5:55210</span>
+<span class="cm"># 9. Pod receives Google's HTML response ✓</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 1</span><button class="btn" data-dir="next" disabled>Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S05: EXTERNAL API ═══════ -->
+<section id="s05"><h2><span class="n">05</span> Example: Pod calls External API ▶</h2>
+<div class="W" id="w05"><div class="bar"><div class="tab on" data-i="0">Stripe API call</div><div class="tab" data-i="1">What external sees</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<pre><code><span class="cm"># App Pod makes Stripe API call:</span>
+curl -X POST https://api.stripe.com/v1/charges \
+  -H "Authorization: Bearer sk_test_xxx" \
+  -d "amount=2000&currency=usd"
+
+<span class="cm"># Packet flow: same as google.com</span>
+<span class="cm"># Pod(10.244.1.5) → SNAT(192.168.1.10) → internet → Stripe</span>
+<span class="cm"># Stripe responds → Node → conntrack reverses → Pod</span></code></pre></div>
+<div class="pnl" data-i="1"><div class="tl">What the external API sees as the client IP</div>
+<table>
+<tr><th>Cluster type</th><th>External server sees</th><th>Why</th></tr>
+<tr><td>On-premise / bare-metal</td><td>Node's IP (192.168.1.10)</td><td>SNAT to Node IP → router may NAT again to public IP</td></tr>
+<tr><td>Cloud (AWS/GCP/Azure)</td><td>NAT Gateway IP (if configured) or Node's public IP</td><td>Cloud NAT gateway provides stable outbound IP</td></tr>
+<tr><td>Minikube / local</td><td>Host machine's IP</td><td>Minikube node IS your machine</td></tr>
+</table>
+<div class="c o"><div class="l">IP whitelisting</div><p style="margin:0">If the external API requires IP whitelisting (e.g., Stripe, payment providers), you need a <strong>stable egress IP</strong>. Use a Cloud NAT Gateway (AWS NAT GW, GCP Cloud NAT) so all cluster traffic exits through one predictable IP.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S06: EXTERNAL DB ═══════ -->
+<section id="s06"><h2><span class="n">06</span> Example: Pod connects to External Database ▶</h2>
+<div class="W" id="w06"><div class="bar"><div class="tab on" data-i="0">Diagram</div><div class="tab" data-i="1">ExternalName Service</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<div class="dia"><svg viewBox="0 0 740 160" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="d1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2563eb"/></marker>
+<marker id="d2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#ea580c"/></marker>
+<marker id="d3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#16a34a"/></marker>
+<marker id="d4" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto"><path d="M8,0 L0,3 L8,6" fill="#16a34a"/></marker>
+</defs>
+<rect x="10" y="10" width="160" height="55" rx="8" fill="#0b1018" stroke="#0ea472" stroke-width="2"/>
+<text x="25" y="30" fill="#0ea472" font-size="9" font-family="JetBrains Mono" font-weight="600">App Pod</text>
+<text x="25" y="48" fill="#2563eb" font-size="7" font-family="JetBrains Mono">psql -h db.example.com</text>
+<text x="25" y="58" fill="#5f7090" font-size="7" font-family="JetBrains Mono">src: 10.244.1.5</text>
+<line x1="170" y1="37" x2="225" y2="37" stroke="#2563eb" stroke-width="2" marker-end="url(#d1)"/>
+<text x="175" y="28" fill="#2563eb" font-size="7" font-family="JetBrains Mono">❶ DNS+TCP</text>
+<rect x="225" y="10" width="145" height="55" rx="8" fill="rgba(234,88,12,.05)" stroke="#ea580c" stroke-width="2"/>
+<text x="240" y="28" fill="#ea580c" font-size="8" font-family="JetBrains Mono" font-weight="600">iptables SNAT</text>
+<text x="240" y="44" fill="#5f7090" font-size="7" font-family="JetBrains Mono">❷ src → Node IP</text>
+<text x="240" y="58" fill="#5f7090" font-size="7" font-family="JetBrains Mono">192.168.1.10</text>
+<line x1="370" y1="37" x2="425" y2="37" stroke="#ea580c" stroke-width="2" marker-end="url(#d2)"/>
+<rect x="425" y="10" width="100" height="55" rx="7" fill="rgba(8,145,178,.06)" stroke="#0891b2"/>
+<text x="440" y="28" fill="#0891b2" font-size="8" font-family="JetBrains Mono" font-weight="600">eth0 → GW</text>
+<text x="440" y="44" fill="#5f7090" font-size="7" font-family="JetBrains Mono">❸ internet</text>
+<line x1="525" y1="37" x2="580" y2="37" stroke="#16a34a" stroke-width="2" marker-end="url(#d3)"/>
+<rect x="580" y="5" width="150" height="65" rx="10" fill="rgba(220,38,38,.04)" stroke="#dc2626" stroke-width="2"/>
+<text x="595" y="24" fill="#dc2626" font-size="9" font-family="JetBrains Mono" font-weight="600">External DB</text>
+<text x="595" y="40" fill="#5f7090" font-size="8" font-family="JetBrains Mono">db.example.com</text>
+<text x="595" y="54" fill="#5f7090" font-size="7" font-family="JetBrains Mono">❹ receives query</text>
+<text x="595" y="64" fill="#5f7090" font-size="7" font-family="JetBrains Mono">port 5432</text>
+<!-- Response -->
+<line x1="580" y1="55" x2="170" y2="55" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#d4)"/>
+<text x="250" y="85" fill="#16a34a" font-size="8" font-family="JetBrains Mono">❺ Response: DB → internet → Node → conntrack reverse → Pod receives query results ✓</text>
+<text x="10" y="120" fill="#5f7090" font-size="10" font-family="DM Sans">Same flow as any external call: SNAT on the way out, conntrack reverse on the way back.</text>
+<text x="10" y="140" fill="#5f7090" font-size="10" font-family="DM Sans">The external database sees the Node's IP (or NAT gateway IP), not the Pod's IP.</text>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="tl">Use ExternalName Service for clean DNS alias</div>
+<pre><code><span class="cm"># Instead of hardcoding db.example.com in your app:</span>
+<span class="k">apiVersion:</span> <span class="v">v1</span>
+<span class="k">kind:</span> <span class="v">Service</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">external-db</span>
+<span class="k">spec:</span>
+  <span class="k">type:</span> <span class="v">ExternalName</span>
+  <span class="k">externalName:</span> <span class="s">db.example.com</span>
+
+<span class="cm"># Now your app can use:</span>
+<span class="cm"># psql -h external-db -U postgres</span>
+<span class="cm"># CoreDNS resolves "external-db" → CNAME → db.example.com → real IP</span>
+<span class="cm"># If DB moves to a new host, just update the ExternalName Service</span>
+<span class="cm"># No app code changes needed!</span></code></pre></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S07: NETWORK POLICY ═══════ -->
+<section id="s07"><h2><span class="n">07</span> Controlling Egress with NetworkPolicy ▶</h2>
+<div class="W" id="w07"><div class="bar"><div class="tab on" data-i="0">Default: allow all</div><div class="tab" data-i="1">Block all egress</div><div class="tab" data-i="2">Allow only DNS + HTTPS</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="def"><b>Default</b>Without any NetworkPolicy, ALL Pods can reach ANY external address on ANY port. Your Pod can call google.com, Stripe API, or any random website. No restrictions.</div></div>
+<div class="pnl" data-i="1"><div class="tl">Block ALL outgoing traffic</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">deny-all-egress</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">restricted</span>
+  <span class="k">policyTypes:</span>
+  - <span class="v">Egress</span>
+  <span class="cm"># No egress rules = deny ALL outgoing traffic</span>
+  <span class="cm"># Pod can't even do DNS lookups!</span></code></pre></div>
+<div class="pnl" data-i="2"><div class="tl">Allow DNS (port 53) + HTTPS (port 443) only</div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="v">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">allow-dns-https</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">api-client</span>
+  <span class="k">policyTypes:</span>
+  - <span class="v">Egress</span>
+  <span class="k">egress:</span>
+  <span class="cm"># Allow DNS</span>
+  - <span class="k">ports:</span>
+    - { <span class="k">port:</span> <span class="nm">53</span>, <span class="k">protocol:</span> <span class="v">UDP</span> }
+    - { <span class="k">port:</span> <span class="nm">53</span>, <span class="k">protocol:</span> <span class="v">TCP</span> }
+  <span class="cm"># Allow HTTPS to any external IP</span>
+  - <span class="k">ports:</span>
+    - { <span class="k">port:</span> <span class="nm">443</span>, <span class="k">protocol:</span> <span class="v">TCP</span> }</code></pre>
+<div class="c o"><div class="l">Always allow DNS!</div><p style="margin:0">If you block egress, you MUST explicitly allow port 53 (DNS). Without DNS, the Pod can't resolve any hostname — not even internal Service names. This is the #1 egress policy mistake.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S08: NAT GATEWAY ═══════ -->
+<section id="s08"><h2><span class="n">08</span> Cloud NAT Gateway — Stable Egress IP ▶</h2>
+<div class="def"><b>Problem</b>Each node does SNAT using its own IP. Different Pods exit through different node IPs. If the external API requires IP whitelisting, you can't predict which IP the traffic comes from.</div>
+<div class="W" id="w08"><div class="bar"><div class="tab on" data-i="0">Without NAT GW</div><div class="tab" data-i="1">With NAT GW</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="dia"><svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="e1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#dc2626"/></marker></defs>
+<rect x="10" y="10" width="100" height="30" rx="5" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="29" fill="#0ea472" font-size="8" font-family="JetBrains Mono">Pod on Node 1</text>
+<line x1="110" y1="25" x2="300" y2="25" stroke="#dc2626" stroke-width="1.5" marker-end="url(#e1)"/>
+<text x="140" y="18" fill="#dc2626" font-size="7" font-family="JetBrains Mono">exits as 192.168.1.10</text>
+<rect x="10" y="55" width="100" height="30" rx="5" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="74" fill="#0ea472" font-size="8" font-family="JetBrains Mono">Pod on Node 2</text>
+<line x1="110" y1="70" x2="300" y2="70" stroke="#dc2626" stroke-width="1.5" marker-end="url(#e1)"/>
+<text x="140" y="63" fill="#dc2626" font-size="7" font-family="JetBrains Mono">exits as 192.168.1.11</text>
+<rect x="10" y="100" width="100" height="30" rx="5" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="119" fill="#0ea472" font-size="8" font-family="JetBrains Mono">Pod on Node 3</text>
+<line x1="110" y1="115" x2="300" y2="115" stroke="#dc2626" stroke-width="1.5" marker-end="url(#e1)"/>
+<text x="140" y="108" fill="#dc2626" font-size="7" font-family="JetBrains Mono">exits as 192.168.1.12</text>
+<rect x="310" y="30" width="320" height="80" rx="8" fill="rgba(220,38,38,.04)" stroke="#dc2626"/>
+<text x="325" y="52" fill="#dc2626" font-size="9" font-family="DM Sans" font-weight="700">External API sees 3 different IPs!</text>
+<text x="325" y="72" fill="#5f7090" font-size="9" font-family="DM Sans">Can't whitelist all node IPs (they change</text>
+<text x="325" y="88" fill="#5f7090" font-size="9" font-family="DM Sans">when nodes are added/removed/replaced)</text>
+<text x="325" y="104" fill="#dc2626" font-size="9" font-family="DM Sans" font-weight="600">Unpredictable. Not suitable for IP whitelisting.</text>
+</svg></div></div>
+<div class="pnl" data-i="1"><div class="dia"><svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="e2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#16a34a"/></marker>
+</defs>
+<rect x="10" y="10" width="100" height="30" rx="5" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="29" fill="#0ea472" font-size="8" font-family="JetBrains Mono">Pod on Node 1</text>
+<rect x="10" y="55" width="100" height="30" rx="5" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="74" fill="#0ea472" font-size="8" font-family="JetBrains Mono">Pod on Node 2</text>
+<rect x="10" y="100" width="100" height="30" rx="5" fill="#0b1018" stroke="#0ea472"/>
+<text x="22" y="119" fill="#0ea472" font-size="8" font-family="JetBrains Mono">Pod on Node 3</text>
+<line x1="110" y1="25" x2="200" y2="60" stroke="#ea580c" stroke-width="1"/>
+<line x1="110" y1="70" x2="200" y2="70" stroke="#ea580c" stroke-width="1"/>
+<line x1="110" y1="115" x2="200" y2="80" stroke="#ea580c" stroke-width="1"/>
+<rect x="200" y="40" width="165" height="55" rx="8" fill="rgba(234,88,12,.06)" stroke="#ea580c" stroke-width="2"/>
+<text x="215" y="58" fill="#ea580c" font-size="9" font-family="JetBrains Mono" font-weight="600">☁ NAT Gateway</text>
+<text x="215" y="74" fill="#5f7090" font-size="8" font-family="JetBrains Mono">Static IP: 35.200.0.50</text>
+<text x="215" y="88" fill="#5f7090" font-size="7" font-family="JetBrains Mono">ALL traffic exits here</text>
+<line x1="365" y1="68" x2="430" y2="68" stroke="#16a34a" stroke-width="2" marker-end="url(#e2)"/>
+<rect x="430" y="35" width="200" height="65" rx="8" fill="rgba(22,163,74,.04)" stroke="#16a34a" stroke-width="2"/>
+<text x="445" y="55" fill="#16a34a" font-size="9" font-family="DM Sans" font-weight="700">External API sees 1 IP!</text>
+<text x="445" y="72" fill="#5f7090" font-size="9" font-family="DM Sans">35.200.0.50 — always the same</text>
+<text x="445" y="88" fill="#16a34a" font-size="9" font-family="DM Sans" font-weight="600">Easy to whitelist. Stable. Predictable.</text>
+</svg></div>
+<div class="c g"><div class="l">Cloud NAT services</div><p style="margin:0"><strong>AWS:</strong> NAT Gateway in VPC. <strong>GCP:</strong> Cloud NAT. <strong>Azure:</strong> NAT Gateway. All provide a static outbound IP for all cluster egress traffic. Configure via cloud networking, not Kubernetes.</p></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 2</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═══════ S09: SUMMARY ═══════ -->
+<section id="s09"><h2><span class="n">09</span> Summary — Pod to External Full Picture</h2>
+<table>
+<tr><th>Step</th><th>What happens</th><th>Where</th></tr>
+<tr><td><strong>1. DNS</strong></td><td>CoreDNS resolves external hostname to public IP</td><td>CoreDNS Pod</td></tr>
+<tr><td><strong>2. Packet created</strong></td><td>Pod sends TCP/UDP packet with src=Pod IP, dst=external IP</td><td>Pod</td></tr>
+<tr><td><strong>3. SNAT</strong></td><td>iptables MASQUERADE rewrites src from Pod IP to Node IP</td><td>Node kernel</td></tr>
+<tr><td><strong>4. Routing</strong></td><td>Kernel routes to default gateway (not a Pod subnet)</td><td>Node kernel</td></tr>
+<tr><td><strong>5. Physical NIC</strong></td><td>Packet leaves the node over the wire</td><td>Node eth0</td></tr>
+<tr><td><strong>6. Gateway/NAT</strong></td><td>Router or Cloud NAT may do another NAT (node IP → public IP)</td><td>Network infra</td></tr>
+<tr><td><strong>7. Internet</strong></td><td>Packet reaches the external server</td><td>Internet</td></tr>
+<tr><td><strong>8. Response</strong></td><td>External server responds to the public/node IP</td><td>External</td></tr>
+<tr><td><strong>9. Reverse NAT</strong></td><td>Router/Cloud NAT reverses → arrives at Node</td><td>Network infra</td></tr>
+<tr><td><strong>10. conntrack</strong></td><td>Kernel reverses SNAT: dst rewritten from Node IP back to Pod IP</td><td>Node kernel</td></tr>
+<tr><td><strong>11. Delivery</strong></td><td>Packet delivered to Pod via veth pair</td><td>Node kernel</td></tr>
+<tr><td><strong>12. App receives</strong></td><td>Pod gets the response. Completely transparent — no awareness of NAT.</td><td>Pod</td></tr>
+</table>
+
+<div class="sre"><div class="tag">Key Takeaways</div><p style="margin:0"><strong>1.</strong> Pods CAN reach the internet by default — no special config needed.<br>
+<strong>2.</strong> The kernel does SNAT (MASQUERADE) to replace Pod IP with Node IP before the packet leaves.<br>
+<strong>3.</strong> conntrack automatically reverses the NAT on the response path.<br>
+<strong>4.</strong> The external server sees the Node's IP (or NAT gateway IP), NOT the Pod's IP.<br>
+<strong>5.</strong> For IP whitelisting, use a Cloud NAT Gateway for a stable egress IP.<br>
+<strong>6.</strong> Use NetworkPolicy (Egress rules) to restrict which external addresses Pods can reach.<br>
+<strong>7.</strong> If you block egress, ALWAYS allow port 53 (DNS) or nothing works.<br>
+<strong>8.</strong> Use ExternalName Service to alias external hostnames without hardcoding them in your app.</p></div>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+</body>
+</html>
