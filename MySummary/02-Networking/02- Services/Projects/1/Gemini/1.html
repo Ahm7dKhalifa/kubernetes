@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Services & Architecture Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            scroll-behavior: smooth;
+        }
+
+        .code-block {
+            font-family: 'Fira Code', monospace;
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .node-box {
+            transition: all 0.3s ease;
+        }
+
+        .replica-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 2px;
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-200 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <span class="font-bold text-xl text-blue-600">K8sVisualizer</span>
+            <div class="space-x-6 text-sm font-medium">
+                <a href="#concepts" class="hover:text-blue-600">Concepts</a>
+                <a href="#interactive" class="hover:text-blue-600">Interactive Diagram</a>
+                <a href="#yaml" class="hover:text-blue-600">YAML Manifests</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="bg-gradient-to-br from-blue-700 to-indigo-900 text-white py-16 px-4">
+        <div class="max-w-5xl mx-auto text-center">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-6 text-white">Understanding Kubernetes Services</h1>
+            <p class="text-lg text-blue-100 mb-8 max-w-3xl mx-auto">
+                Kubernetes Services provide a stable network abstraction for a set of Pods. In this guide, we explore a full-stack architecture distributed across 3 nodes.
+            </p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <div class="bg-white/10 px-4 py-2 rounded-full border border-white/20">Frontend: 2 Replicas</div>
+                <div class="bg-white/10 px-4 py-2 rounded-full border border-white/20">Backend: 5 Replicas</div>
+                <div class="bg-white/10 px-4 py-2 rounded-full border border-white/20">PostgreSQL: 3 Replicas</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-12">
+        
+        <!-- Interactive Control Panel -->
+        <section id="interactive" class="mb-20">
+            <h2 class="text-3xl font-bold mb-8 flex items-center">
+                <span class="bg-blue-600 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-3 text-base">1</span>
+                Interactive Workflow Visualizer
+            </h2>
+            
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Controls -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-fit">
+                    <h3 class="text-lg font-semibold mb-6">Cluster Controls</h3>
+                    
+                    <div class="mb-8">
+                        <label class="block text-sm font-medium mb-2">Frontend Replicas (NodePort)</label>
+                        <input type="range" min="1" max="6" value="2" id="fe-slider" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                        <div class="flex justify-between text-xs mt-1 text-slate-500">
+                            <span>1</span><span id="fe-val" class="font-bold text-blue-600">2</span><span>6</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <label class="block text-sm font-medium mb-2">Backend Replicas (ClusterIP)</label>
+                        <input type="range" min="1" max="10" value="5" id="be-slider" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-green-600">
+                        <div class="flex justify-between text-xs mt-1 text-slate-500">
+                            <span>1</span><span id="be-val" class="font-bold text-green-600">5</span><span>10</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-amber-50 rounded-lg border border-amber-200 text-sm">
+                        <p class="font-semibold text-amber-800 mb-1">Database Layer (PostgreSQL)</p>
+                        <p class="text-amber-700">3 Replicas: 1 Primary (Write), 2 Secondaries (Read-only). Handled via StatefulSet.</p>
+                    </div>
+                </div>
+
+                <!-- Visualization Area -->
+                <div class="lg:col-span-2 bg-slate-900 rounded-xl p-6 relative min-h-[500px] flex flex-col items-center justify-around overflow-hidden">
+                    <!-- Workflow Diagram SVG -->
+                    <svg viewBox="0 0 800 450" class="w-full h-auto">
+                        <!-- External User -->
+                        <g transform="translate(40, 200)">
+                            <circle cx="0" cy="0" r="25" fill="#3b82f6" opacity="0.2" />
+                            <path d="M-10,-5 L10,-5 M-10,5 L10,5" stroke="white" stroke-width="2"/>
+                            <text x="0" y="45" fill="white" font-size="12" text-anchor="middle">Internet User</text>
+                            <path d="M30,0 L100,0" stroke="#3b82f6" stroke-width="2" stroke-dasharray="5,5" class="animate-pulse-slow"/>
+                        </g>
+
+                        <!-- NodePort Service -->
+                        <rect x="120" y="150" width="100" height="100" rx="10" fill="#2563eb" />
+                        <text x="170" y="195" fill="white" font-size="12" text-anchor="middle" font-weight="bold">Frontend SVC</text>
+                        <text x="170" y="215" fill="white" font-size="10" text-anchor="middle">NodePort: 30001</text>
+
+                        <!-- ClusterIP Service -->
+                        <rect x="350" y="150" width="100" height="100" rx="10" fill="#059669" />
+                        <text x="400" y="195" fill="white" font-size="12" text-anchor="middle" font-weight="bold">Backend SVC</text>
+                        <text x="400" y="215" fill="white" font-size="10" text-anchor="middle">ClusterIP: 8080</text>
+
+                        <!-- DB Service -->
+                        <rect x="580" y="150" width="100" height="100" rx="10" fill="#d97706" />
+                        <text x="630" y="195" fill="white" font-size="12" text-anchor="middle" font-weight="bold">DB Headless</text>
+                        <text x="630" y="215" fill="white" font-size="10" text-anchor="middle">Port: 5432</text>
+
+                        <!-- Traffic Lines -->
+                        <path d="M220,200 L350,200" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+                        <path d="M450,200 L580,200" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+                        <!-- Pod Clusters (Dynamically rendered via JS) -->
+                        <g id="pod-container"></g>
+                        
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
+                            </marker>
+                        </defs>
+                    </svg>
+
+                    <!-- Node Representation -->
+                    <div class="w-full mt-8 grid grid-cols-3 gap-4">
+                        <div class="border border-slate-700 p-3 rounded text-center">
+                            <span class="text-xs text-slate-400 block mb-2">Worker Node 1</span>
+                            <div id="node-1-pods" class="flex flex-wrap justify-center min-h-[40px]"></div>
+                        </div>
+                        <div class="border border-slate-700 p-3 rounded text-center">
+                            <span class="text-xs text-slate-400 block mb-2">Worker Node 2</span>
+                            <div id="node-2-pods" class="flex flex-wrap justify-center min-h-[40px]"></div>
+                        </div>
+                        <div class="border border-slate-700 p-3 rounded text-center">
+                            <span class="text-xs text-slate-400 block mb-2">Worker Node 3</span>
+                            <div id="node-3-pods" class="flex flex-wrap justify-center min-h-[40px]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technical Deep Dive -->
+        <section id="concepts" class="mb-20">
+             <h2 class="text-3xl font-bold mb-8 flex items-center">
+                <span class="bg-blue-600 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-3 text-base">2</span>
+                The Architecture Explained
+            </h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Frontend Service (NodePort)</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        Exposes the service on each Node's IP at a static port (30000-32767). Allows external traffic to reach the frontend pods.
+                    </p>
+                    <ul class="mt-4 text-xs space-y-2 text-slate-500">
+                        <li class="flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span> 2 Replicas for availability</li>
+                        <li class="flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span> Port mapped: 30001</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Backend Service (ClusterIP)</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        The default type. Exposes the service on a cluster-internal IP. Accessible only from within the cluster.
+                    </p>
+                    <ul class="mt-4 text-xs space-y-2 text-slate-500">
+                        <li class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> 5 Replicas for scale</li>
+                        <li class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> Load balanced by kube-proxy</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Database (StatefulSet)</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        Maintains a sticky identity for pods. PostgreSQL setup includes 1 primary for writes and 2 secondaries for horizontal read scaling.
+                    </p>
+                    <ul class="mt-4 text-xs space-y-2 text-slate-500">
+                        <li class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-2"></span> Persistent Volume Claims</li>
+                        <li class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-2"></span> Predictable DNS: pg-0, pg-1...</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- YAML Manifests -->
+        <section id="yaml" class="mb-20">
+            <h2 class="text-3xl font-bold mb-8 flex items-center">
+                <span class="bg-blue-600 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-3 text-base">3</span>
+                Full Project Manifests
+            </h2>
+
+            <div class="flex border-b border-slate-200 mb-6">
+                <button onclick="showTab('tab-fe')" class="tab-btn px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600">Frontend</button>
+                <button onclick="showTab('tab-be')" class="tab-btn px-6 py-3 font-semibold text-slate-500 hover:text-blue-600 transition">Backend</button>
+                <button onclick="showTab('tab-db')" class="tab-btn px-6 py-3 font-semibold text-slate-500 hover:text-blue-600 transition">Database</button>
+            </div>
+
+            <!-- Frontend YAML -->
+            <div id="tab-fe" class="tab-content active space-y-4">
+                <div class="code-block">
+<pre># frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: web
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+---
+# frontend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-svc
+spec:
+  type: NodePort
+  selector:
+    app: frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30001</pre>
+                </div>
+            </div>
+
+            <!-- Backend YAML -->
+            <div id="tab-be" class="tab-content space-y-4">
+                <div class="code-block">
+<pre># backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: api
+        image: my-backend-api:v1
+        env:
+        - name: DB_URL
+          value: "postgres-svc:5432"
+        ports:
+        - containerPort: 8080
+---
+# backend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+  - port: 8080
+    targetPort: 8080</pre>
+                </div>
+            </div>
+
+            <!-- Database YAML -->
+            <div id="tab-db" class="tab-content space-y-4">
+                <div class="code-block">
+<pre># postgres-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: "postgres-svc"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: pgdata
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: pgdata
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+# postgres-headless-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc
+spec:
+  clusterIP: None # Headless
+  selector:
+    app: postgres
+  ports:
+  - port: 5432</pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-12 px-4 text-center">
+        <p class="mb-2">Kubernetes Service Topology Visualizer</p>
+        <p class="text-xs">Generated for Educational Purposes • Built with Tailwind & SVG</p>
+    </footer>
+
+    <script>
+        // State Management
+        const state = {
+            feReplicas: 2,
+            beReplicas: 5,
+            dbReplicas: 3,
+            nodes: 3
+        };
+
+        // DOM Elements
+        const feSlider = document.getElementById('fe-slider');
+        const beSlider = document.getElementById('be-slider');
+        const feVal = document.getElementById('fe-val');
+        const beVal = document.getElementById('be-val');
+
+        const nodeContainers = [
+            document.getElementById('node-1-pods'),
+            document.getElementById('node-2-pods'),
+            document.getElementById('node-3-pods')
+        ];
+
+        // Functions
+        function updateVisuals() {
+            feVal.textContent = state.feReplicas;
+            beVal.textContent = state.beReplicas;
+
+            // Clear nodes
+            nodeContainers.forEach(container => container.innerHTML = '');
+
+            // Distribute Frontend Pods
+            for (let i = 0; i < state.feReplicas; i++) {
+                const nodeIdx = i % state.nodes;
+                addPodIcon(nodeIdx, 'bg-blue-500', 'FE');
+            }
+
+            // Distribute Backend Pods
+            for (let i = 0; i < state.beReplicas; i++) {
+                const nodeIdx = (i + state.feReplicas) % state.nodes;
+                addPodIcon(nodeIdx, 'bg-green-500', 'BE');
+            }
+
+            // Distribute DB Pods
+            for (let i = 0; i < state.dbReplicas; i++) {
+                const nodeIdx = (i + state.feReplicas + state.beReplicas) % state.nodes;
+                const label = i === 0 ? 'DB-P' : 'DB-S';
+                addPodIcon(nodeIdx, 'bg-amber-500', label);
+            }
+        }
+
+        function addPodIcon(nodeIdx, colorClass, label) {
+            const pod = document.createElement('div');
+            pod.className = `${colorClass} text-[8px] font-bold text-white p-1 rounded-sm m-1 w-8 h-8 flex items-center justify-center animate-pulse-slow shadow-lg`;
+            pod.textContent = label;
+            nodeContainers[nodeIdx].appendChild(pod);
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'border-blue-600');
+                btn.classList.add('text-slate-500');
+            });
+
+            document.getElementById(tabId).classList.add('active');
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
+            activeBtn.classList.add('text-blue-600', 'border-blue-600');
+            activeBtn.classList.remove('text-slate-500');
+        }
+
+        // Event Listeners
+        feSlider.addEventListener('input', (e) => {
+            state.feReplicas = parseInt(e.target.value);
+            updateVisuals();
+        });
+
+        beSlider.addEventListener('input', (e) => {
+            state.beReplicas = parseInt(e.target.value);
+            updateVisuals();
+        });
+
+        // Initial Load
+        window.onload = updateVisuals;
+    </script>
+</body>
+</html>

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Architecture & Port Mapping</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .flow-line {
+            stroke: #cbd5e1;
+            stroke-width: 3;
+            fill: none;
+            transition: opacity 0.3s ease;
+            opacity: 0; /* Hidden by default */
+        }
+
+        .active-flow {
+            stroke: #6366f1;
+            stroke-width: 4;
+            stroke-dasharray: 10;
+            animation: flow 1s linear infinite;
+            opacity: 1 !important; /* Show when active */
+        }
+
+        .step-marker {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .step-marker.visible {
+            opacity: 1;
+        }
+
+        @keyframes flow {
+            to { stroke-dashoffset: -20; }
+        }
+
+        .traffic-packet {
+            fill: #f43f5e;
+            filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.8));
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .component-box {
+            transition: all 0.3s ease;
+        }
+
+        .cluster-boundary {
+            fill: #fff;
+            stroke: #cbd5e1;
+            stroke-width: 4;
+            stroke-dasharray: 8;
+        }
+
+        .control-plane-bg {
+            fill: #f8fafc;
+            stroke: #94a3b8;
+            stroke-width: 2.5;
+            stroke-dasharray: 6;
+        }
+
+        .node-bg {
+            fill: #ffffff;
+            stroke: #cbd5e1;
+            stroke-width: 2.5;
+        }
+
+        .label-text { font-size: 14px; font-weight: 700; }
+        .sub-text { font-size: 11px; fill: #64748b; font-weight: 500; }
+        .ip-text { font-size: 12px; font-family: 'Fira Code', monospace; fill: #334155; font-weight: 600; }
+        
+        .log-entry {
+            border-left: 4px solid #6366f1;
+            padding-left: 12px;
+            margin-bottom: 20px;
+            background: rgba(30, 41, 59, 0.7);
+            padding-top: 10px;
+            padding-bottom: 10px;
+            border-radius: 4px 8px 8px 4px;
+        }
+        .log-header { color: #818cf8; font-size: 12px; text-transform: uppercase; font-weight: 900; letter-spacing: 0.1em; }
+        .log-body { color: #f8fafc; font-size: 13.5px; margin-top: 6px; line-height: 1.5; }
+        .log-meta { color: #34d399; font-size: 11px; font-family: 'Fira Code', monospace; margin-top: 4px; opacity: 0.9; }
+        .log-mechanics { color: #fbbf24; font-size: 11px; margin-top: 6px; font-style: italic; border-top: 1px solid #475569; padding-top: 4px; }
+
+        .container-box {
+            fill: rgba(255,255,255,0.7);
+            stroke: #94a3b8;
+            stroke-width: 1;
+            stroke-dasharray: 2;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="max-w-[1500px] mx-auto mb-8">
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight">K8s Cluster Request Visualizer</h1>
+        <p class="text-slate-600 mt-2 text-lg">Step-by-step networking walkthrough with explicit cluster boundaries.</p>
+    </header>
+
+    <main class="max-w-[1500px] mx-auto space-y-8">
+
+        <section class="bg-white rounded-3xl p-8 shadow-2xl border border-slate-200">
+            <!-- Controls -->
+            <div class="flex flex-wrap items-center justify-between mb-8 gap-6 border-b border-slate-100 pb-6">
+                <div class="flex gap-4">
+                    <button onclick="initScenario('local')" class="px-6 py-3 bg-indigo-600 text-white rounded-xl text-lg font-bold shadow-lg hover:bg-indigo-700 active:scale-95 transition-all">
+                        Scenario: Local Node Routing
+                    </button>
+                    <button onclick="initScenario('cross')" class="px-6 py-3 bg-slate-800 text-white rounded-xl text-lg font-bold shadow-lg hover:bg-slate-900 active:scale-95 transition-all">
+                        Scenario: Cross-Node Routing
+                    </button>
+                </div>
+                
+                <div id="step-controls" class="flex items-center gap-4 invisible">
+                    <button onclick="prevStep()" class="px-5 py-2 bg-slate-100 border border-slate-300 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors">
+                        &larr; Prev
+                    </button>
+                    <span id="step-indicator" class="text-sm font-mono font-black bg-amber-100 text-amber-800 px-5 py-2 rounded-full border border-amber-200 shadow-sm">STEP 0 / 6</span>
+                    <button id="next-btn" onclick="nextStep()" class="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 shadow-md transition-colors">
+                        Next Step &rarr;
+                    </button>
+                    <button onclick="resetAll()" class="px-5 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-sm font-bold hover:bg-rose-100 transition-colors">
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-8">
+                <!-- SVG Architecture Map -->
+                <div class="col-span-12 lg:col-span-8 bg-slate-100 rounded-2xl border border-slate-200 relative overflow-hidden shadow-inner">
+                    <svg viewBox="0 0 1000 850" class="w-full h-auto" id="cluster-svg">
+                        
+                        <!-- OUTSIDE CLUSTER -->
+                        <text x="20" y="40" class="label-text fill-slate-400 uppercase tracking-widest">Public Internet (Outside Cluster)</text>
+                        <g id="browser-box">
+                            <rect x="420" y="50" width="160" height="75" rx="15" fill="#fff" stroke="#475569" stroke-width="3"/>
+                            <text x="500" y="80" text-anchor="middle" class="label-text fill-slate-800">Browser User</text>
+                            <text x="500" y="100" text-anchor="middle" class="ip-text">192.168.1.5</text>
+                        </g>
+
+                        <!-- CLUSTER BOUNDARY -->
+                        <rect x="10" y="160" width="980" height="680" rx="20" class="cluster-boundary" />
+                        <text x="30" y="190" class="label-text fill-indigo-600 uppercase tracking-[0.2em] font-black">Kubernetes Cluster Boundary</text>
+
+                        <!-- Control Plane Boundary -->
+                        <rect x="30" y="210" width="940" height="110" rx="15" class="control-plane-bg" />
+                        <text x="45" y="230" class="label-text fill-slate-400 uppercase tracking-widest text-[10px]">Control Plane</text>
+                        
+                        <!-- CoreDNS -->
+                        <g id="dns-box" class="component-box opacity-30">
+                            <rect x="400" y="225" width="200" height="75" rx="12" fill="#6366f1" stroke="#4338ca" stroke-width="2"/>
+                            <text x="500" y="255" text-anchor="middle" class="fill-white font-bold text-[14px]">CoreDNS</text>
+                            <text x="500" y="275" text-anchor="middle" class="fill-indigo-100 text-[11px]">10.96.0.10 (UDP/53)</text>
+                        </g>
+
+                        <!-- Worker Nodes -->
+                        <!-- NODE 1 -->
+                        <g id="node-1" class="component-box opacity-30">
+                            <rect x="30" y="340" width="300" height="480" rx="15" class="node-bg" />
+                            <text x="45" y="365" class="label-text fill-slate-600">NODE 1</text>
+                            <text x="45" y="380" class="ip-text">IP: 10.0.0.10</text>
+                            
+                            <rect id="kp-1" x="42" y="395" width="275" height="40" rx="8" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+                            <text x="180" y="420" text-anchor="middle" class="fill-rose-900 text-[12px] font-black">kube-proxy</text>
+                            
+                            <g transform="translate(42, 455)">
+                                <rect id="pod-fe-1" x="0" y="0" width="130" height="150" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+                                <text x="65" y="25" text-anchor="middle" class="label-text fill-blue-700">Pod: Frontend</text>
+                                <text x="65" y="45" text-anchor="middle" class="ip-text">10.244.1.10</text>
+                                <rect x="10" y="65" width="110" height="75" rx="5" class="container-box" />
+                                <text x="65" y="95" text-anchor="middle" class="sub-text font-bold">nginx</text>
+                                
+                                <rect id="pod-be-1" x="145" y="0" width="130" height="150" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+                                <text x="210" y="25" text-anchor="middle" class="label-text fill-emerald-700">Pod: Backend</text>
+                                <text x="210" y="45" text-anchor="middle" class="ip-text">10.244.1.20</text>
+                                <rect x="155" y="65" width="110" height="75" rx="5" class="container-box" />
+                                
+                                <rect id="pod-db-1" x="0" y="200" width="275" height="150" rx="10" fill="#faf5ff" stroke="#a855f7" stroke-width="2"/>
+                                <text x="137" y="225" text-anchor="middle" class="label-text fill-purple-700">PostgreSQL</text>
+                                <rect x="15" y="250" width="245" height="85" rx="5" class="container-box" />
+                            </g>
+                        </g>
+
+                        <!-- NODE 2 -->
+                        <g id="node-2" class="component-box opacity-30">
+                            <rect x="350" y="340" width="300" height="480" rx="15" class="node-bg" />
+                            <text x="365" y="365" class="label-text fill-slate-600">NODE 2</text>
+                            <text x="365" y="380" class="ip-text">IP: 10.0.0.11</text>
+                            <rect id="kp-2" x="362" y="395" width="275" height="40" rx="8" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+                            
+                            <g transform="translate(362, 455)">
+                                <rect id="pod-be-2" x="145" y="0" width="130" height="150" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+                                <text x="210" y="25" text-anchor="middle" class="label-text fill-emerald-700">Pod: Backend-2</text>
+                                <text x="210" y="45" text-anchor="middle" class="ip-text">10.244.2.15</text>
+                                <rect x="155" y="65" width="110" height="75" rx="5" class="container-box" />
+                            </g>
+                        </g>
+
+                        <!-- Routing Paths -->
+                        <g id="paths">
+                            <!-- Step 1: Internet to Node 1 -->
+                            <path id="path-1" d="M420 85 H200 V340" class="flow-line" />
+                            <g id="step-marker-1" class="step-marker">
+                                <circle cx="200" cy="210" r="15" fill="#6366f1" />
+                                <text x="200" y="215" text-anchor="middle" fill="white" font-weight="bold">1</text>
+                            </g>
+
+                            <!-- Step 2: Node 1 to Pod FE-1 -->
+                            <path id="path-2" d="M200 340 V500 H107 V500" class="flow-line" />
+                            <g id="step-marker-2" class="step-marker">
+                                <circle cx="150" cy="500" r="15" fill="#6366f1" />
+                                <text x="150" y="505" text-anchor="middle" fill="white" font-weight="bold">2</text>
+                            </g>
+
+                            <!-- Step 3: DNS Lookup -->
+                            <path id="path-3" d="M107 500 V325 H500 V300" class="flow-line" />
+                            <g id="step-marker-3" class="step-marker">
+                                <circle cx="300" cy="325" r="15" fill="#6366f1" />
+                                <text x="300" y="330" text-anchor="middle" fill="white" font-weight="bold">3</text>
+                            </g>
+
+                            <!-- Step 4: Logic at kube-proxy -->
+                            <path id="path-4" d="M107 500 V435 H180" class="flow-line" />
+                            <g id="step-marker-4" class="step-marker">
+                                <circle cx="107" cy="460" r="15" fill="#6366f1" />
+                                <text x="107" y="465" text-anchor="middle" fill="white" font-weight="bold">4</text>
+                            </g>
+
+                            <!-- Step 5 (Local): Node 1 to BE-1 -->
+                            <path id="path-5-local" d="M180 435 H252 V455" class="flow-line" />
+                            <g id="step-marker-5-local" class="step-marker">
+                                <circle cx="252" cy="445" r="15" fill="#6366f1" />
+                                <text x="252" y="450" text-anchor="middle" fill="white" font-weight="bold">5</text>
+                            </g>
+
+                            <!-- Step 5 (Cross): Node 1 to Node 2 (BE-2) -->
+                            <path id="path-5-cross" d="M180 435 H572 V455" class="flow-line" />
+                            <g id="step-marker-5-cross" class="step-marker">
+                                <circle cx="375" cy="435" r="15" fill="#6366f1" />
+                                <text x="375" y="440" text-anchor="middle" fill="white" font-weight="bold">5</text>
+                            </g>
+                        </g>
+
+                        <circle id="packet" r="10" cx="500" cy="85" class="traffic-packet opacity-0" />
+                    </svg>
+                </div>
+
+                <!-- Detailed Sidebar Log -->
+                <div class="col-span-12 lg:col-span-4 space-y-6">
+                    <div class="bg-slate-900 rounded-2xl p-6 text-white font-sans h-[650px] overflow-y-auto shadow-2xl border border-slate-700">
+                        <div class="text-indigo-400 uppercase font-black text-sm mb-4 border-b border-slate-700 pb-3 flex justify-between items-center">
+                            <span>Deep Packet Trace</span>
+                            <span class="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                        </div>
+                        <div id="sim-log" class="space-y-4">
+                            <div class="text-slate-500 italic text-sm">Select a scenario to start the capture...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const log = document.getElementById('sim-log');
+        const packet = document.getElementById('packet');
+        const stepIndicator = document.getElementById('step-indicator');
+        const stepControls = document.getElementById('step-controls');
+        const nextBtn = document.getElementById('next-btn');
+
+        let currentStep = 0;
+        let scenarioType = 'local';
+        const totalSteps = 6;
+
+        const steps = {
+            local: [
+                { 
+                    x: 200, y: 340, title: "1. Cluster Ingress", 
+                    meta: "SRC: 192.168.1.5 | DST: 10.0.0.10:30001", 
+                    log: "The request arrives at Node 1's physical IP on a NodePort. The cluster boundary is crossed.",
+                    mechanics: "Mechanics: Linux kernel handles the packet at the NIC. No K8s logic yet, just raw IP routing to the host.",
+                    path: "path-1", marker: "step-marker-1", active: ["node-1"] 
+                },
+                { 
+                    x: 107, y: 500, title: "2. Ingress DNAT", 
+                    meta: "RULE: NodePort -> PodIP", 
+                    log: "Iptables rules on Node 1 rewrite the destination from the Node IP to a specific Frontend Pod IP.",
+                    mechanics: "Mechanics: Destination Network Address Translation (DNAT) swaps the Node IP for 10.244.1.10.",
+                    path: "path-2", marker: "step-marker-2", active: ["pod-fe-1"] 
+                },
+                { 
+                    x: 500, y: 300, title: "3. DNS Name Resolution", 
+                    meta: "QUERY: backend-svc.default.svc.cluster.local", 
+                    log: "The Frontend Pod needs to find 'backend-svc'. It queries the CoreDNS service.",
+                    mechanics: "Mechanics: CoreDNS looks up the Service name in its internal database and returns the ClusterIP (10.96.0.45).",
+                    path: "path-3", marker: "step-marker-3", active: ["dns-box"] 
+                },
+                { 
+                    x: 180, y: 435, title: "4. Kube-Proxy Decision", 
+                    meta: "TARGET: ClusterIP 10.96.0.45", 
+                    log: "Traffic leaves the FE Pod toward the Service VIP. kube-proxy must decide which backend Pod gets it.",
+                    mechanics: "Mechanics: kube-proxy (iptables mode) uses a 'probability' rule to balance traffic across available Endpoints.",
+                    path: "path-4", marker: "step-marker-4", active: ["kp-1"] 
+                },
+                { 
+                    x: 252, y: 455, title: "5. Local Pod Routing", 
+                    meta: "LB SELECT: Pod-BE-1 (Local)", 
+                    log: "kube-proxy selects a Pod sitting on the same node. The packet stays within the Node's virtual bridge.",
+                    mechanics: "Mechanics: Traffic moves through the 'cbr0' or 'docker0' bridge to the veth pair of Backend Pod 1.",
+                    path: "path-5-local", marker: "step-marker-5-local", active: ["pod-be-1"] 
+                },
+                { 
+                    x: 252, y: 455, title: "6. Request Fulfilled", 
+                    meta: "HTTP/1.1 200 OK", 
+                    log: "The Backend Pod processes the API call. The connection is established.",
+                    mechanics: "Mechanics: A full TCP socket is now open between FE and BE pods.",
+                    path: null, marker: null, active: [] 
+                }
+            ],
+            cross: [
+                { 
+                    x: 200, y: 340, title: "1. Cluster Entry", 
+                    meta: "External Request -> Node 1", 
+                    log: "Request enters the cluster via Node 1's entry point.",
+                    mechanics: "Mechanics: Standard North-South traffic flow.",
+                    path: "path-1", marker: "step-marker-1", active: ["node-1"] 
+                },
+                { 
+                    x: 107, y: 500, title: "2. Pod Delivery", 
+                    meta: "DST: Frontend Pod", 
+                    log: "The packet reaches the Nginx container in the Frontend Pod.",
+                    mechanics: "Mechanics: Local node routing brings the packet to the Pod's network namespace.",
+                    path: "path-2", marker: "step-marker-2", active: ["pod-fe-1"] 
+                },
+                { 
+                    x: 500, y: 300, title: "3. DNS Resolution", 
+                    meta: "Lookup: backend-svc", 
+                    log: "FE Pod asks CoreDNS: 'What is the IP for the backend service?'",
+                    mechanics: "Mechanics: CoreDNS returns a stable Virtual IP (VIP) that represents the Backend Service cluster-wide.",
+                    path: "path-3", marker: "step-marker-3", active: ["dns-box"] 
+                },
+                { 
+                    x: 180, y: 435, title: "4. Load Balancing Logic", 
+                    meta: "LB Selection: Pod-BE-2 (Remote)", 
+                    log: "kube-proxy determines the target is on Node 2. It rewrites the packet for remote delivery.",
+                    mechanics: "Mechanics: kube-proxy tracks 'Endpoints' objects. It sees Pod-2 is healthy and on IP 10.244.2.15.",
+                    path: "path-4", marker: "step-marker-4", active: ["kp-1"] 
+                },
+                { 
+                    x: 572, y: 455, title: "5. Overlay Encapsulation", 
+                    meta: "Node 1 -> Node 2 (VXLAN)", 
+                    log: "Because the destination is on another node, the CNI (Calico/Flannel) wraps the packet.",
+                    mechanics: "Mechanics: The original Pod-to-Pod packet is encapsulated in a UDP packet (Overlay) to travel over the physical network.",
+                    path: "path-5-cross", marker: "step-marker-5-cross", active: ["node-2", "pod-be-2"] 
+                },
+                { 
+                    x: 572, y: 455, title: "6. Cross-Node Response", 
+                    meta: "HTTP 200 OK (Remote)", 
+                    log: "The Backend Pod on Node 2 responds. The response is decapsulated at Node 1 and sent to FE Pod.",
+                    mechanics: "Mechanics: Seamless East-West communication via the Cluster Network Interface.",
+                    path: null, marker: null, active: [] 
+                }
+            ]
+        };
+
+        function addDetailedLog(stepData) {
+            const entry = document.createElement('div');
+            entry.className = "log-entry";
+            entry.innerHTML = `
+                <div class="log-header">${stepData.title}</div>
+                <div class="log-meta">${stepData.meta}</div>
+                <div class="log-body">${stepData.log}</div>
+                <div class="log-mechanics">${stepData.mechanics}</div>
+            `;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function resetAll() {
+            currentStep = 0;
+            log.innerHTML = '';
+            packet.classList.add('opacity-0');
+            packet.setAttribute('cx', 500);
+            packet.setAttribute('cy', 85);
+            document.querySelectorAll('.flow-line').forEach(p => p.classList.remove('active-flow'));
+            document.querySelectorAll('.step-marker').forEach(m => m.classList.remove('visible'));
+            document.querySelectorAll('.component-box').forEach(b => b.classList.add('opacity-30'));
+            stepControls.classList.add('invisible');
+            nextBtn.disabled = false;
+            nextBtn.innerText = "Next Step →";
+        }
+
+        function initScenario(type) {
+            resetAll();
+            scenarioType = type;
+            stepControls.classList.remove('invisible');
+            updateIndicator();
+            const startDiv = document.createElement('div');
+            startDiv.className = "text-emerald-400 font-black text-sm mb-6 flex items-center gap-2";
+            startDiv.innerHTML = `<span class="bg-emerald-900 px-2 py-1 rounded">TRACING_START</span> ${type.toUpperCase()}_NET_FLOW`;
+            log.appendChild(startDiv);
+        }
+
+        function updateIndicator() {
+            stepIndicator.innerText = `STEP ${currentStep} / ${totalSteps}`;
+        }
+
+        function nextStep() {
+            if (currentStep >= totalSteps) return;
+            const stepData = steps[scenarioType][currentStep];
+            if (!stepData) return;
+
+            addDetailedLog(stepData);
+            packet.classList.remove('opacity-0');
+            packet.setAttribute('cx', stepData.x);
+            packet.setAttribute('cy', stepData.y);
+
+            if (stepData.path) {
+                document.getElementById(stepData.path).classList.add('active-flow');
+            }
+            if (stepData.marker) {
+                document.getElementById(stepData.marker).classList.add('visible');
+            }
+
+            if (stepData.active) {
+                stepData.active.forEach(id => {
+                    document.getElementById(id).classList.remove('opacity-30');
+                });
+            }
+
+            currentStep++;
+            updateIndicator();
+            if (currentStep === totalSteps) {
+                nextBtn.disabled = true;
+                nextBtn.innerText = "Trace Complete";
+            }
+        }
+
+        function prevStep() {
+            if (currentStep <= 1) {
+                resetAll();
+                return;
+            }
+            const targetStep = currentStep - 1;
+            resetAll();
+            stepControls.classList.remove('invisible');
+            for(let i = 0; i < targetStep; i++) {
+                nextStep();
+            }
+        }
+    </script>
+</body>
+</html>

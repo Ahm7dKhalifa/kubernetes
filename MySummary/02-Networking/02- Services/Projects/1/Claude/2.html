@@ -1,0 +1,1960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes — Deep Architecture & Port Mapping</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:       #0b0c10;
+  --ink2:      #13151c;
+  --ink3:      #1c1f2b;
+  --ink4:      #252837;
+  --border:    #2a2d3e;
+  --border2:   #363a52;
+  --muted:     #5a5f7a;
+  --dim:       #8890aa;
+  --body:      #c8cedf;
+  --bright:    #eef0f7;
+  /* accent palette */
+  --teal:      #2dd4bf;
+  --teal-dim:  rgba(45,212,191,.12);
+  --teal-glow: 0 0 24px rgba(45,212,191,.25);
+  --blue:      #60a5fa;
+  --blue-dim:  rgba(96,165,250,.1);
+  --amber:     #fbbf24;
+  --amber-dim: rgba(251,191,36,.1);
+  --rose:      #fb7185;
+  --rose-dim:  rgba(251,113,133,.1);
+  --violet:    #a78bfa;
+  --violet-dim:rgba(167,139,250,.1);
+  --green:     #4ade80;
+  --green-dim: rgba(74,222,128,.1);
+  --orange:    #fb923c;
+  --ff-head:   'Fraunces', Georgia, serif;
+  --ff-body:   'Cabinet Grotesk', sans-serif;
+  --ff-mono:   'DM Mono', 'Fira Code', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ink);
+  color: var(--body);
+  font-family: var(--ff-body);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--ink); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 200;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 0 32px;
+  background: rgba(11,12,16,.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  height: 52px;
+}
+.nav-logo {
+  font-family: var(--ff-head);
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--teal);
+  letter-spacing: -.5px;
+  margin-right: 16px;
+}
+nav a {
+  font-family: var(--ff-mono);
+  font-size: .72rem;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  transition: all .2s;
+  letter-spacing: .3px;
+}
+nav a:hover { color: var(--teal); background: var(--teal-dim); }
+
+/* ── HERO ── */
+.hero {
+  min-height: 92vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 80px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 30%, rgba(45,212,191,.06) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 80% 70%, rgba(96,165,250,.04) 0%, transparent 60%);
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: .25;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+}
+.hero-content { position: relative; z-index: 1; max-width: 900px; }
+.hero-eyebrow {
+  font-family: var(--ff-mono);
+  font-size: .72rem;
+  color: var(--teal);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.hero-eyebrow::before, .hero-eyebrow::after {
+  content: ''; display: block; height: 1px; width: 40px; background: var(--teal); opacity: .4;
+}
+.hero h1 {
+  font-family: var(--ff-head);
+  font-size: clamp(2.8rem, 6vw, 5.5rem);
+  font-weight: 900;
+  color: var(--bright);
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin-bottom: 8px;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--teal);
+}
+.hero-sub {
+  font-size: 1.05rem;
+  color: var(--dim);
+  max-width: 580px;
+  margin: 20px auto 40px;
+  line-height: 1.75;
+}
+.pill-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.pill {
+  font-family: var(--ff-mono);
+  font-size: .7rem;
+  padding: 5px 14px;
+  border-radius: 100px;
+  border: 1px solid;
+  letter-spacing: .5px;
+}
+.pill.t { color: var(--teal); border-color: rgba(45,212,191,.3); background: var(--teal-dim); }
+.pill.b { color: var(--blue); border-color: rgba(96,165,250,.3); background: var(--blue-dim); }
+.pill.a { color: var(--amber); border-color: rgba(251,191,36,.3); background: var(--amber-dim); }
+.pill.v { color: var(--violet); border-color: rgba(167,139,250,.3); background: var(--violet-dim); }
+.pill.g { color: var(--green); border-color: rgba(74,222,128,.3); background: var(--green-dim); }
+.pill.r { color: var(--rose); border-color: rgba(251,113,133,.3); background: var(--rose-dim); }
+
+/* ── SECTION ── */
+.section { padding: 90px 32px; max-width: 1440px; margin: 0 auto; }
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+.sec-label {
+  font-family: var(--ff-mono);
+  font-size: .68rem;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.sec-title {
+  font-family: var(--ff-head);
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 900;
+  color: var(--bright);
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+.sec-title em { font-style: italic; color: var(--teal); }
+.sec-desc {
+  color: var(--dim);
+  font-size: .95rem;
+  max-width: 680px;
+  line-height: 1.75;
+  margin-bottom: 50px;
+}
+
+/* ── CARDS ── */
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 40px; }
+.info-card {
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  transition: border-color .25s, box-shadow .25s;
+}
+.info-card:hover { border-color: var(--border2); }
+.info-card.teal:hover { border-color: rgba(45,212,191,.4); box-shadow: var(--teal-glow); }
+.info-card.blue:hover { border-color: rgba(96,165,250,.4); }
+.info-card.violet:hover { border-color: rgba(167,139,250,.4); }
+.card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.card-icon { font-size: 1.4rem; }
+.card-title { font-family: var(--ff-head); font-size: 1.05rem; font-weight: 700; color: var(--bright); }
+.card-body { font-size: .85rem; color: var(--dim); line-height: 1.7; }
+.mono-tag {
+  font-family: var(--ff-mono);
+  font-size: .7rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 10px;
+}
+
+/* ── CLUSTER DIAGRAM CONTAINER ── */
+.diagram-wrap {
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 30px 0;
+}
+.diagram-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--ink3);
+}
+.diagram-title {
+  font-family: var(--ff-mono);
+  font-size: .75rem;
+  color: var(--teal);
+  letter-spacing: 1px;
+}
+.diagram-legend { display: flex; gap: 16px; }
+.leg { display: flex; align-items: center; gap: 6px; font-family: var(--ff-mono); font-size: .65rem; color: var(--muted); }
+.leg-sq { width: 10px; height: 10px; border-radius: 2px; }
+.diagram-body { padding: 24px; overflow-x: auto; }
+
+/* ── NODE CARDS ── */
+.nodes-flex { display: flex; gap: 16px; flex-wrap: wrap; }
+.node-card {
+  flex: 1; min-width: 280px;
+  background: var(--ink3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.node-card.control { border-color: rgba(251,191,36,.35); }
+.node-card.worker1 { border-color: rgba(45,212,191,.25); }
+.node-card.worker2 { border-color: rgba(96,165,250,.25); }
+.node-card.worker3 { border-color: rgba(167,139,250,.25); }
+.node-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+.node-name { font-family: var(--ff-head); font-size: .95rem; font-weight: 700; color: var(--bright); }
+.node-meta { font-family: var(--ff-mono); font-size: .68rem; color: var(--muted); margin-top: 2px; }
+.node-badge {
+  font-family: var(--ff-mono);
+  font-size: .62rem;
+  padding: 2px 8px;
+  border-radius: 100px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.node-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ── POD CARDS ── */
+.pod-card {
+  background: var(--ink4);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pod-header {
+  padding: 8px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.pod-name {
+  font-family: var(--ff-mono);
+  font-size: .72rem;
+  font-weight: 500;
+}
+.pod-ip {
+  font-family: var(--ff-mono);
+  font-size: .62rem;
+  padding: 1px 7px;
+  border-radius: 3px;
+  background: var(--ink3);
+  color: var(--dim);
+  border: 1px solid var(--border);
+}
+.pod-body { padding: 8px 12px; display: flex; flex-direction: column; gap: 5px; }
+/* Container row */
+.ctr-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 9px;
+  border-radius: 5px;
+  border: 1px solid;
+  font-size: .72rem;
+}
+.ctr-left { display: flex; align-items: center; gap: 7px; }
+.ctr-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.ctr-name { font-family: var(--ff-mono); font-weight: 500; }
+.ctr-image { font-family: var(--ff-mono); font-size: .6rem; color: var(--muted); margin-top: 1px; }
+.ctr-ports { display: flex; gap: 4px; flex-wrap: wrap; }
+.port-chip {
+  font-family: var(--ff-mono);
+  font-size: .62rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+/* sys process */
+.sys-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 9px;
+  border-radius: 4px;
+  background: rgba(251,191,36,.04);
+  border: 1px solid rgba(251,191,36,.12);
+  font-family: var(--ff-mono);
+  font-size: .63rem;
+  color: var(--amber);
+}
+
+/* ── PORT MAPPING TABLE ── */
+.port-table-wrap {
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 24px 0;
+}
+.port-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.port-table thead tr {
+  background: var(--ink3);
+  border-bottom: 2px solid var(--border);
+}
+.port-table th {
+  font-family: var(--ff-mono);
+  font-size: .65rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 12px 16px;
+  text-align: left;
+  white-space: nowrap;
+}
+.port-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem;
+  vertical-align: middle;
+}
+.port-table tr:last-child td { border-bottom: none; }
+.port-table tr:hover td { background: var(--ink3); }
+.port-table .mono { font-family: var(--ff-mono); font-size: .72rem; }
+.port-table .dim { color: var(--dim); font-size: .78rem; }
+.flow-arrow {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--ff-mono); font-size: .7rem;
+}
+.flow-arrow .arr { color: var(--muted); }
+
+/* ── YAML PANEL ── */
+.yaml-panel {
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+.yaml-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 18px;
+  background: var(--ink3);
+  border-bottom: 1px solid var(--border);
+}
+.yaml-filename { font-family: var(--ff-mono); font-size: .73rem; color: var(--teal); }
+.copy-btn {
+  font-family: var(--ff-mono);
+  font-size: .65rem;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  background: var(--ink4);
+  color: var(--dim);
+  cursor: pointer;
+  transition: all .18s;
+}
+.copy-btn:hover { background: var(--teal-dim); color: var(--teal); border-color: rgba(45,212,191,.4); }
+pre.yaml {
+  padding: 20px 18px;
+  overflow-x: auto;
+  font-family: var(--ff-mono);
+  font-size: .73rem;
+  line-height: 1.85;
+  color: var(--body);
+}
+/* yaml colors */
+.yk { color: var(--teal); }
+.yv { color: #93c5fd; }
+.ys { color: var(--green); }
+.yn { color: var(--amber); }
+.yc { color: var(--muted); font-style: italic; }
+.yd { color: var(--violet); }
+.yr { color: var(--rose); }
+
+/* ── TABS ── */
+.tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 0; flex-wrap: wrap; }
+.tab-btn {
+  font-family: var(--ff-mono);
+  font-size: .7rem;
+  padding: 10px 18px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all .2s;
+  letter-spacing: .5px;
+}
+.tab-btn:hover { color: var(--bright); }
+.tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── REQUEST CYCLE ── */
+.cycle-steps { display: flex; flex-direction: column; gap: 0; }
+.cycle-step {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0;
+  position: relative;
+}
+.cycle-step-left {
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 20px;
+}
+.step-num {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ff-mono);
+  font-size: .8rem;
+  font-weight: 500;
+  border: 2px solid var(--border2);
+  background: var(--ink3);
+  color: var(--dim);
+  transition: all .3s;
+  flex-shrink: 0;
+  z-index: 1;
+}
+.cycle-step.active .step-num {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #000;
+  box-shadow: 0 0 16px rgba(45,212,191,.4);
+}
+.step-line {
+  width: 2px;
+  flex: 1;
+  background: var(--border);
+  min-height: 30px;
+}
+.cycle-step:last-child .step-line { display: none; }
+.cycle-step-right {
+  padding: 18px 0 18px 20px;
+  border-left: none;
+}
+.step-title {
+  font-family: var(--ff-head);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--bright);
+  margin-bottom: 6px;
+}
+.step-body { color: var(--dim); font-size: .85rem; line-height: 1.7; }
+.step-detail {
+  margin-top: 12px;
+  background: var(--ink3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: var(--ff-mono);
+  font-size: .72rem;
+  line-height: 1.9;
+}
+.step-detail .arrow { color: var(--teal); }
+.step-detail .highlight { color: var(--amber); }
+.step-detail .ip { color: var(--violet); }
+.step-detail .port { color: var(--rose); }
+.step-detail .svc { color: var(--blue); }
+.step-detail .pod { color: var(--green); }
+.step-detail .dim { color: var(--muted); }
+
+/* ── HIGHLIGHT BOX ── */
+.hl-box {
+  background: linear-gradient(135deg, rgba(45,212,191,.06), rgba(96,165,250,.04));
+  border: 1px solid rgba(45,212,191,.2);
+  border-left: 3px solid var(--teal);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 20px 0;
+  font-size: .86rem;
+  color: var(--dim);
+  line-height: 1.75;
+}
+.hl-box strong { color: var(--bright); font-family: var(--ff-mono); font-size: .8rem; }
+
+/* ── SVG DIAGRAM ── */
+.svg-scroll { overflow-x: auto; padding: 4px; }
+
+/* ── CANVAS ── */
+#reqCanvas {
+  width: 100%;
+  height: 400px;
+  border-radius: 10px;
+  display: block;
+  background: var(--ink3);
+}
+.canvas-controls {
+  display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center;
+}
+.ctrl {
+  font-family: var(--ff-mono);
+  font-size: .7rem;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--ink3);
+  color: var(--dim);
+  cursor: pointer;
+  transition: all .2s;
+  letter-spacing: .3px;
+}
+.ctrl:hover, .ctrl.on { border-color: var(--teal); color: var(--teal); background: var(--teal-dim); }
+.speed-wrap { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.speed-wrap label { font-family: var(--ff-mono); font-size: .68rem; color: var(--muted); }
+input[type=range] { accent-color: var(--teal); width: 120px; }
+.speed-val { font-family: var(--ff-mono); font-size: .7rem; color: var(--teal); min-width: 40px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .section { padding: 60px 16px; }
+  nav { padding: 0 16px; }
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from { opacity:0; transform:translateY(18px) } to { opacity:1; transform:none } }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.fade-in { animation: fadeUp .7s cubic-bezier(.22,.68,0,1.2) both; }
+.fade-in-2 { animation: fadeUp .7s .15s cubic-bezier(.22,.68,0,1.2) both; }
+.fade-in-3 { animation: fadeUp .7s .3s cubic-bezier(.22,.68,0,1.2) both; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="nav-logo">⎈ k8s</span>
+  <a href="#cluster">Cluster</a>
+  <a href="#ports">Port Mapping</a>
+  <a href="#yaml">YAML</a>
+  <a href="#cycle">Request Cycle</a>
+  <a href="#live">Live View</a>
+</nav>
+
+<!-- ═══════════════════════ HERO ═══════════════════════ -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow fade-in">Deep Architecture Guide</div>
+    <h1 class="fade-in-2">Kubernetes <em>Nodes, Pods</em><br>Containers & Ports</h1>
+    <p class="hero-sub fade-in-3">Real pod names · real IPs · real container images · exact port mappings · full request cycle from browser to PostgreSQL and back</p>
+    <div class="pill-row fade-in-3">
+      <span class="pill t">3-Node Cluster</span>
+      <span class="pill g">2 Frontend Replicas</span>
+      <span class="pill b">5 Backend Replicas</span>
+      <span class="pill v">3 PostgreSQL Pods</span>
+      <span class="pill a">NodePort :30080</span>
+      <span class="pill r">ClusterIP :8080</span>
+    </div>
+  </div>
+</div>
+<hr class="section-divider">
+
+<!-- ═══════════════════════ CLUSTER SECTION ═══════════════════════ -->
+<div class="section" id="cluster">
+  <div class="sec-label">Section 01</div>
+  <div class="sec-title">Full Cluster <em>Architecture</em></div>
+  <div class="sec-desc">Every node, every pod, every container — with real names, real IPs, real image tags, and all ports shown explicitly.</div>
+
+  <!-- SVG overview diagram -->
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <span class="diagram-title">// cluster topology — 3 nodes · 10 pods · 3 services</span>
+      <div class="diagram-legend">
+        <div class="leg"><div class="leg-sq" style="background:#4ade80"></div>frontend</div>
+        <div class="leg"><div class="leg-sq" style="background:#60a5fa"></div>backend</div>
+        <div class="leg"><div class="leg-sq" style="background:#a78bfa"></div>postgres</div>
+        <div class="leg"><div class="leg-sq" style="background:#fbbf24"></div>system</div>
+      </div>
+    </div>
+    <div class="diagram-body">
+      <div class="svg-scroll">
+        <svg viewBox="0 0 1300 600" xmlns="http://www.w3.org/2000/svg" style="min-width:1000px;width:100%;font-family:'DM Mono',monospace;">
+          <defs>
+            <marker id="ma" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2dd4bf"/></marker>
+            <marker id="mg" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4ade80"/></marker>
+            <marker id="mb" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#60a5fa"/></marker>
+            <marker id="mv" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#a78bfa"/></marker>
+            <filter id="glow2"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+
+          <!-- BG -->
+          <rect width="1300" height="600" fill="#13151c" rx="0"/>
+
+          <!-- INTERNET -->
+          <rect x="20" y="240" width="110" height="80" rx="8" fill="rgba(251,191,36,.07)" stroke="#fbbf24" stroke-width="1.5"/>
+          <text x="75" y="272" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">🌍 Internet</text>
+          <text x="75" y="288" text-anchor="middle" fill="#8890aa" font-size="9">Browser</text>
+          <text x="75" y="302" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="700">:30080</text>
+
+          <!-- CLUSTER BORDER -->
+          <rect x="150" y="20" width="1130" height="560" rx="12" fill="none" stroke="#2a2d3e" stroke-width="2" stroke-dasharray="8,4"/>
+          <text x="172" y="42" fill="#2a2d3e" font-size="10" letter-spacing="3">KUBERNETES CLUSTER — 10.96.0.0/16 (service CIDR) · 10.244.0.0/16 (pod CIDR)</text>
+
+          <!-- === CONTROL PLANE === -->
+          <rect x="165" y="55" width="230" height="340" rx="10" fill="#1a1a0d" stroke="rgba(251,191,36,.4)" stroke-width="1.5"/>
+          <rect x="165" y="55" width="230" height="34" rx="10" fill="rgba(251,191,36,.1)"/>
+          <text x="280" y="74" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="700" letter-spacing="1">CONTROL PLANE</text>
+          <text x="280" y="86" text-anchor="middle" fill="#8890aa" font-size="8">192.168.1.10 · 4vCPU · 8GB</text>
+
+          <rect x="180" y="100" width="200" height="26" rx="4" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.15)" stroke-width="1"/>
+          <text x="190" y="117" fill="#fbbf24" font-size="9">kube-apiserver  :6443</text>
+          <rect x="180" y="132" width="200" height="26" rx="4" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.15)" stroke-width="1"/>
+          <text x="190" y="149" fill="#fbbf24" font-size="9">kube-scheduler  :10259</text>
+          <rect x="180" y="164" width="200" height="26" rx="4" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.15)" stroke-width="1"/>
+          <text x="190" y="181" fill="#fbbf24" font-size="9">kube-controller  :10257</text>
+          <rect x="180" y="196" width="200" height="26" rx="4" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.15)" stroke-width="1"/>
+          <text x="190" y="213" fill="#fbbf24" font-size="9">etcd  :2379-2380</text>
+          <rect x="180" y="228" width="200" height="26" rx="4" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.15)" stroke-width="1"/>
+          <text x="190" y="245" fill="#fbbf24" font-size="9">coredns  :53 UDP/TCP</text>
+          <rect x="180" y="260" width="200" height="26" rx="4" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.15)" stroke-width="1"/>
+          <text x="190" y="277" fill="#fbbf24" font-size="9">kubelet  :10250</text>
+          <rect x="180" y="292" width="200" height="26" rx="4" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.15)" stroke-width="1"/>
+          <text x="190" y="309" fill="#fbbf24" font-size="9">kube-proxy  iptables</text>
+          <rect x="180" y="324" width="200" height="26" rx="4" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.15)" stroke-width="1"/>
+          <text x="190" y="341" fill="#fbbf24" font-size="9">calico / flannel CNI</text>
+
+          <!-- === WORKER NODE 1 === -->
+          <rect x="415" y="55" width="270" height="510" rx="10" fill="#111820" stroke="rgba(45,212,191,.25)" stroke-width="1.5"/>
+          <rect x="415" y="55" width="270" height="34" rx="10" fill="rgba(45,212,191,.07)"/>
+          <text x="550" y="74" text-anchor="middle" fill="#2dd4bf" font-size="10" font-weight="700">WORKER NODE 1</text>
+          <text x="550" y="86" text-anchor="middle" fill="#8890aa" font-size="8">192.168.1.11 · 8vCPU · 16GB</text>
+
+          <!-- frontend pod 1 -->
+          <rect x="428" y="100" width="244" height="110" rx="7" fill="#0e1a14" stroke="rgba(74,222,128,.3)" stroke-width="1"/>
+          <text x="438" y="118" fill="#4ade80" font-size="8.5" font-weight="700">POD: frontend-dep-7d9f-xk2p</text>
+          <text x="438" y="130" fill="#a78bfa" font-size="7.5">IP: 10.244.1.5 / ns: app</text>
+          <rect x="438" y="138" width="224" height="28" rx="4" fill="rgba(74,222,128,.06)" stroke="rgba(74,222,128,.2)" stroke-width="1"/>
+          <text x="448" y="150" fill="#4ade80" font-size="8">nginx:1.25-alpine</text>
+          <text x="448" y="162" fill="#8890aa" font-size="7.5">containerPort: 80 (HTTP) · nodePort exposed via SVC</text>
+          <rect x="438" y="172" width="224" height="28" rx="4" fill="rgba(45,212,191,.04)" stroke="rgba(45,212,191,.15)" stroke-width="1"/>
+          <text x="448" y="184" fill="#2dd4bf" font-size="8">envoy-sidecar:1.28</text>
+          <text x="448" y="196" fill="#8890aa" font-size="7.5">containerPort: 15001 (proxy)</text>
+
+          <!-- backend pod 1 -->
+          <rect x="428" y="222" width="244" height="90" rx="7" fill="#0e151e" stroke="rgba(96,165,250,.3)" stroke-width="1"/>
+          <text x="438" y="240" fill="#60a5fa" font-size="8.5" font-weight="700">POD: backend-dep-5c7b-mn4q</text>
+          <text x="438" y="252" fill="#a78bfa" font-size="7.5">IP: 10.244.1.8 / ns: app</text>
+          <rect x="438" y="260" width="224" height="28" rx="4" fill="rgba(96,165,250,.06)" stroke="rgba(96,165,250,.2)" stroke-width="1"/>
+          <text x="448" y="272" fill="#60a5fa" font-size="8">node:20-alpine (app.js)</text>
+          <text x="448" y="284" fill="#8890aa" font-size="7.5">containerPort: 8080 (REST API)</text>
+          <rect x="438" y="294" width="224" height="14" rx="3" fill="rgba(96,165,250,.04)"/>
+          <text x="448" y="305" fill="#8890aa" font-size="7">livenessProbe httpGet /health :8080</text>
+
+          <!-- backend pod 2 -->
+          <rect x="428" y="325" width="244" height="75" rx="7" fill="#0e151e" stroke="rgba(96,165,250,.3)" stroke-width="1"/>
+          <text x="438" y="343" fill="#60a5fa" font-size="8.5" font-weight="700">POD: backend-dep-5c7b-pw6r</text>
+          <text x="438" y="355" fill="#a78bfa" font-size="7.5">IP: 10.244.1.12 / ns: app</text>
+          <rect x="438" y="363" width="224" height="28" rx="4" fill="rgba(96,165,250,.06)" stroke="rgba(96,165,250,.2)" stroke-width="1"/>
+          <text x="448" y="375" fill="#60a5fa" font-size="8">node:20-alpine (app.js)</text>
+          <text x="448" y="387" fill="#8890aa" font-size="7.5">containerPort: 8080 (REST API)</text>
+
+          <!-- postgres-0 -->
+          <rect x="428" y="412" width="244" height="100" rx="7" fill="#120e1e" stroke="rgba(167,139,250,.3)" stroke-width="1"/>
+          <text x="438" y="430" fill="#a78bfa" font-size="8.5" font-weight="700">POD: postgres-0  ★ PRIMARY</text>
+          <text x="438" y="442" fill="#a78bfa" font-size="7.5">IP: 10.244.1.20 / ns: app</text>
+          <rect x="438" y="450" width="224" height="28" rx="4" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.25)" stroke-width="1"/>
+          <text x="448" y="462" fill="#a78bfa" font-size="8">postgres:15.4-alpine</text>
+          <text x="448" y="474" fill="#8890aa" font-size="7.5">containerPort: 5432 (PostgreSQL)</text>
+          <rect x="438" y="484" width="224" height="20" rx="3" fill="rgba(167,139,250,.04)"/>
+          <text x="448" y="497" fill="#8890aa" font-size="7">PVC: postgres-data-postgres-0 · 10Gi SSD</text>
+
+          <!-- kube-proxy -->
+          <rect x="428" y="522" width="244" height="24" rx="4" fill="rgba(251,191,36,.04)" stroke="rgba(251,191,36,.12)" stroke-width="1"/>
+          <text x="550" y="538" text-anchor="middle" fill="#fbbf24" font-size="8">kubelet :10250 · kube-proxy iptables · containerd</text>
+
+          <!-- === WORKER NODE 2 === -->
+          <rect x="705" y="55" width="270" height="510" rx="10" fill="#111820" stroke="rgba(96,165,250,.25)" stroke-width="1.5"/>
+          <rect x="705" y="55" width="270" height="34" rx="10" fill="rgba(96,165,250,.07)"/>
+          <text x="840" y="74" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="700">WORKER NODE 2</text>
+          <text x="840" y="86" text-anchor="middle" fill="#8890aa" font-size="8">192.168.1.12 · 8vCPU · 16GB</text>
+
+          <!-- frontend pod 2 -->
+          <rect x="718" y="100" width="244" height="110" rx="7" fill="#0e1a14" stroke="rgba(74,222,128,.3)" stroke-width="1"/>
+          <text x="728" y="118" fill="#4ade80" font-size="8.5" font-weight="700">POD: frontend-dep-7d9f-wz7t</text>
+          <text x="728" y="130" fill="#a78bfa" font-size="7.5">IP: 10.244.2.3 / ns: app</text>
+          <rect x="728" y="138" width="224" height="28" rx="4" fill="rgba(74,222,128,.06)" stroke="rgba(74,222,128,.2)" stroke-width="1"/>
+          <text x="738" y="150" fill="#4ade80" font-size="8">nginx:1.25-alpine</text>
+          <text x="738" y="162" fill="#8890aa" font-size="7.5">containerPort: 80 (HTTP)</text>
+          <rect x="728" y="172" width="224" height="28" rx="4" fill="rgba(45,212,191,.04)" stroke="rgba(45,212,191,.15)" stroke-width="1"/>
+          <text x="738" y="184" fill="#2dd4bf" font-size="8">envoy-sidecar:1.28</text>
+          <text x="738" y="196" fill="#8890aa" font-size="7.5">containerPort: 15001 (proxy)</text>
+
+          <!-- backend pod 3 -->
+          <rect x="718" y="222" width="244" height="75" rx="7" fill="#0e151e" stroke="rgba(96,165,250,.3)" stroke-width="1"/>
+          <text x="728" y="240" fill="#60a5fa" font-size="8.5" font-weight="700">POD: backend-dep-5c7b-hj5s</text>
+          <text x="728" y="252" fill="#a78bfa" font-size="7.5">IP: 10.244.2.7 / ns: app</text>
+          <rect x="728" y="260" width="224" height="28" rx="4" fill="rgba(96,165,250,.06)" stroke="rgba(96,165,250,.2)" stroke-width="1"/>
+          <text x="738" y="272" fill="#60a5fa" font-size="8">node:20-alpine (app.js)</text>
+          <text x="738" y="284" fill="#8890aa" font-size="7.5">containerPort: 8080</text>
+
+          <!-- backend pod 4 -->
+          <rect x="718" y="308" width="244" height="75" rx="7" fill="#0e151e" stroke="rgba(96,165,250,.3)" stroke-width="1"/>
+          <text x="728" y="326" fill="#60a5fa" font-size="8.5" font-weight="700">POD: backend-dep-5c7b-qt1v</text>
+          <text x="728" y="338" fill="#a78bfa" font-size="7.5">IP: 10.244.2.11 / ns: app</text>
+          <rect x="728" y="346" width="224" height="28" rx="4" fill="rgba(96,165,250,.06)" stroke="rgba(96,165,250,.2)" stroke-width="1"/>
+          <text x="738" y="358" fill="#60a5fa" font-size="8">node:20-alpine (app.js)</text>
+          <text x="738" y="370" fill="#8890aa" font-size="7.5">containerPort: 8080</text>
+
+          <!-- postgres-1 -->
+          <rect x="718" y="396" width="244" height="100" rx="7" fill="#120e1e" stroke="rgba(167,139,250,.25)" stroke-width="1"/>
+          <text x="728" y="414" fill="#a78bfa" font-size="8.5" font-weight="700">POD: postgres-1  REPLICA</text>
+          <text x="728" y="426" fill="#a78bfa" font-size="7.5">IP: 10.244.2.18 / ns: app</text>
+          <rect x="728" y="434" width="224" height="28" rx="4" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.2)" stroke-width="1"/>
+          <text x="738" y="446" fill="#a78bfa" font-size="8">postgres:15.4-alpine</text>
+          <text x="738" y="458" fill="#8890aa" font-size="7.5">containerPort: 5432 (read-only)</text>
+          <rect x="728" y="468" width="224" height="20" rx="3" fill="rgba(167,139,250,.04)"/>
+          <text x="738" y="481" fill="#8890aa" font-size="7">PVC: postgres-data-postgres-1 · 10Gi SSD</text>
+
+          <rect x="718" y="506" width="244" height="24" rx="4" fill="rgba(251,191,36,.04)" stroke="rgba(251,191,36,.12)" stroke-width="1"/>
+          <text x="840" y="522" text-anchor="middle" fill="#fbbf24" font-size="8">kubelet :10250 · kube-proxy iptables · containerd</text>
+
+          <!-- === WORKER NODE 3 === -->
+          <rect x="995" y="55" width="270" height="510" rx="10" fill="#111820" stroke="rgba(167,139,250,.25)" stroke-width="1.5"/>
+          <rect x="995" y="55" width="270" height="34" rx="10" fill="rgba(167,139,250,.07)"/>
+          <text x="1130" y="74" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700">WORKER NODE 3</text>
+          <text x="1130" y="86" text-anchor="middle" fill="#8890aa" font-size="8">192.168.1.13 · 8vCPU · 16GB</text>
+
+          <!-- backend pod 5 -->
+          <rect x="1008" y="100" width="244" height="75" rx="7" fill="#0e151e" stroke="rgba(96,165,250,.3)" stroke-width="1"/>
+          <text x="1018" y="118" fill="#60a5fa" font-size="8.5" font-weight="700">POD: backend-dep-5c7b-lm8a</text>
+          <text x="1018" y="130" fill="#a78bfa" font-size="7.5">IP: 10.244.3.4 / ns: app</text>
+          <rect x="1018" y="138" width="224" height="28" rx="4" fill="rgba(96,165,250,.06)" stroke="rgba(96,165,250,.2)" stroke-width="1"/>
+          <text x="1028" y="150" fill="#60a5fa" font-size="8">node:20-alpine (app.js)</text>
+          <text x="1028" y="162" fill="#8890aa" font-size="7.5">containerPort: 8080</text>
+
+          <!-- postgres-2 -->
+          <rect x="1008" y="190" width="244" height="100" rx="7" fill="#120e1e" stroke="rgba(167,139,250,.25)" stroke-width="1"/>
+          <text x="1018" y="208" fill="#a78bfa" font-size="8.5" font-weight="700">POD: postgres-2  REPLICA</text>
+          <text x="1018" y="220" fill="#a78bfa" font-size="7.5">IP: 10.244.3.15 / ns: app</text>
+          <rect x="1018" y="228" width="224" height="28" rx="4" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.2)" stroke-width="1"/>
+          <text x="1028" y="240" fill="#a78bfa" font-size="8">postgres:15.4-alpine</text>
+          <text x="1028" y="252" fill="#8890aa" font-size="7.5">containerPort: 5432 (read-only)</text>
+          <rect x="1018" y="262" width="224" height="20" rx="3" fill="rgba(167,139,250,.04)"/>
+          <text x="1028" y="275" fill="#8890aa" font-size="7">PVC: postgres-data-postgres-2 · 10Gi SSD</text>
+
+          <!-- Services floating -->
+          <!-- NodePort SVC -->
+          <rect x="1008" y="310" width="244" height="68" rx="7" fill="rgba(74,222,128,.07)" stroke="#4ade80" stroke-width="1.5" filter="url(#glow2)"/>
+          <text x="1018" y="328" fill="#4ade80" font-size="9" font-weight="700">SERVICE: frontend-svc</text>
+          <text x="1018" y="341" fill="#8890aa" font-size="7.5">type: NodePort</text>
+          <text x="1018" y="354" fill="#4ade80" font-size="8">port:80 → targetPort:80 → nodePort:30080</text>
+          <text x="1018" y="366" fill="#8890aa" font-size="7.5">selector: app=frontend  ClusterIP: 10.96.10.5</text>
+
+          <!-- ClusterIP SVC -->
+          <rect x="1008" y="390" width="244" height="68" rx="7" fill="rgba(96,165,250,.07)" stroke="#60a5fa" stroke-width="1.5" filter="url(#glow2)"/>
+          <text x="1018" y="408" fill="#60a5fa" font-size="9" font-weight="700">SERVICE: backend-svc</text>
+          <text x="1018" y="421" fill="#8890aa" font-size="7.5">type: ClusterIP</text>
+          <text x="1018" y="434" fill="#60a5fa" font-size="8">port:8080 → targetPort:8080</text>
+          <text x="1018" y="446" fill="#8890aa" font-size="7.5">selector: app=backend  ClusterIP: 10.96.20.14</text>
+
+          <!-- Headless SVC -->
+          <rect x="1008" y="470" width="244" height="68" rx="7" fill="rgba(167,139,250,.07)" stroke="#a78bfa" stroke-width="1.5" filter="url(#glow2)"/>
+          <text x="1018" y="488" fill="#a78bfa" font-size="9" font-weight="700">SERVICE: postgres-svc</text>
+          <text x="1018" y="501" fill="#8890aa" font-size="7.5">type: ClusterIP: None (Headless)</text>
+          <text x="1018" y="514" fill="#a78bfa" font-size="8">port:5432 → targetPort:5432</text>
+          <text x="1018" y="526" fill="#8890aa" font-size="7.5">selector: app=postgres  DNS direct</text>
+
+          <rect x="1008" y="544" width="244" height="14" rx="3" fill="rgba(251,191,36,.04)" stroke="rgba(251,191,36,.12)" stroke-width="1"/>
+          <text x="1130" y="555" text-anchor="middle" fill="#fbbf24" font-size="7.5">kubelet :10250 · kube-proxy iptables · containerd</text>
+
+          <!-- TRAFFIC ARROWS -->
+          <!-- User → NodePort on node1 -->
+          <line x1="130" y1="280" x2="412" y2="200" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ma)"/>
+          <text x="260" y="228" fill="#fbbf24" font-size="8" transform="rotate(-22,260,228)">:30080</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed node cards -->
+  <div class="nodes-flex" style="margin-top:30px;">
+
+    <!-- Control Plane -->
+    <div class="node-card control">
+      <div class="node-head">
+        <div>
+          <div class="node-name">control-plane-01</div>
+          <div class="node-meta">192.168.1.10 · 4vCPU · 8GB RAM · Ubuntu 22.04</div>
+        </div>
+        <span class="node-badge" style="color:var(--amber);border-color:rgba(251,191,36,.3);background:var(--amber-dim)">CONTROL</span>
+      </div>
+      <div class="node-body">
+        <div class="sys-row">⚙ kube-apiserver · :6443 (HTTPS REST)</div>
+        <div class="sys-row">⚙ kube-scheduler · :10259</div>
+        <div class="sys-row">⚙ kube-controller-manager · :10257</div>
+        <div class="sys-row">⚙ etcd · :2379 (client) · :2380 (peer)</div>
+        <div class="sys-row">⚙ coredns · :53 UDP/TCP · :9153 metrics</div>
+        <div class="sys-row">⚙ kubelet · :10250 · kube-proxy iptables</div>
+      </div>
+    </div>
+
+    <!-- Worker 1 -->
+    <div class="node-card worker1">
+      <div class="node-head">
+        <div>
+          <div class="node-name">worker-node-01</div>
+          <div class="node-meta">192.168.1.11 · 8vCPU · 16GB RAM · Ubuntu 22.04</div>
+        </div>
+        <span class="node-badge" style="color:var(--teal);border-color:rgba(45,212,191,.3);background:var(--teal-dim)">WORKER</span>
+      </div>
+      <div class="node-body">
+        <!-- frontend pod -->
+        <div class="pod-card">
+          <div class="pod-header">
+            <span class="pod-name" style="color:var(--green)">frontend-dep-7d9f-xk2p</span>
+            <span class="pod-ip">10.244.1.5</span>
+          </div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(74,222,128,.05);border-color:rgba(74,222,128,.2)">
+              <div class="ctr-left">
+                <div class="ctr-dot" style="background:var(--green)"></div>
+                <div>
+                  <div class="ctr-name" style="color:var(--green)">nginx</div>
+                  <div class="ctr-image">nginx:1.25-alpine</div>
+                </div>
+              </div>
+              <div class="ctr-ports">
+                <span class="port-chip" style="color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.06)">:80/TCP</span>
+              </div>
+            </div>
+            <div class="ctr-row" style="background:rgba(45,212,191,.04);border-color:rgba(45,212,191,.15)">
+              <div class="ctr-left">
+                <div class="ctr-dot" style="background:var(--teal)"></div>
+                <div>
+                  <div class="ctr-name" style="color:var(--teal)">envoy-sidecar</div>
+                  <div class="ctr-image">envoyproxy/envoy:v1.28</div>
+                </div>
+              </div>
+              <div class="ctr-ports">
+                <span class="port-chip" style="color:var(--teal);border-color:rgba(45,212,191,.3);background:rgba(45,212,191,.05)">:15001</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- backend pod 1 -->
+        <div class="pod-card">
+          <div class="pod-header">
+            <span class="pod-name" style="color:var(--blue)">backend-dep-5c7b-mn4q</span>
+            <span class="pod-ip">10.244.1.8</span>
+          </div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.2)">
+              <div class="ctr-left">
+                <div class="ctr-dot" style="background:var(--blue)"></div>
+                <div>
+                  <div class="ctr-name" style="color:var(--blue)">backend-api</div>
+                  <div class="ctr-image">myrepo/backend-api:2.1.0</div>
+                </div>
+              </div>
+              <div class="ctr-ports">
+                <span class="port-chip" style="color:var(--blue);border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.06)">:8080/TCP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- backend pod 2 -->
+        <div class="pod-card">
+          <div class="pod-header">
+            <span class="pod-name" style="color:var(--blue)">backend-dep-5c7b-pw6r</span>
+            <span class="pod-ip">10.244.1.12</span>
+          </div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.2)">
+              <div class="ctr-left">
+                <div class="ctr-dot" style="background:var(--blue)"></div>
+                <div>
+                  <div class="ctr-name" style="color:var(--blue)">backend-api</div>
+                  <div class="ctr-image">myrepo/backend-api:2.1.0</div>
+                </div>
+              </div>
+              <div class="ctr-ports">
+                <span class="port-chip" style="color:var(--blue);border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.06)">:8080/TCP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- postgres-0 -->
+        <div class="pod-card">
+          <div class="pod-header">
+            <span class="pod-name" style="color:var(--violet)">postgres-0 ★ PRIMARY</span>
+            <span class="pod-ip">10.244.1.20</span>
+          </div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.25)">
+              <div class="ctr-left">
+                <div class="ctr-dot" style="background:var(--violet)"></div>
+                <div>
+                  <div class="ctr-name" style="color:var(--violet)">postgres</div>
+                  <div class="ctr-image">postgres:15.4-alpine</div>
+                </div>
+              </div>
+              <div class="ctr-ports">
+                <span class="port-chip" style="color:var(--violet);border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07)">:5432/TCP</span>
+              </div>
+            </div>
+            <div style="font-family:var(--ff-mono);font-size:.65rem;color:var(--muted);padding:4px 6px;">💾 PVC: postgres-data-postgres-0 (10Gi, ReadWriteOnce)</div>
+          </div>
+        </div>
+        <div class="sys-row">kubelet :10250 · kube-proxy iptables · containerd :1.6</div>
+      </div>
+    </div>
+
+    <!-- Worker 2 -->
+    <div class="node-card worker2">
+      <div class="node-head">
+        <div>
+          <div class="node-name">worker-node-02</div>
+          <div class="node-meta">192.168.1.12 · 8vCPU · 16GB RAM · Ubuntu 22.04</div>
+        </div>
+        <span class="node-badge" style="color:var(--blue);border-color:rgba(96,165,250,.3);background:var(--blue-dim)">WORKER</span>
+      </div>
+      <div class="node-body">
+        <div class="pod-card">
+          <div class="pod-header">
+            <span class="pod-name" style="color:var(--green)">frontend-dep-7d9f-wz7t</span>
+            <span class="pod-ip">10.244.2.3</span>
+          </div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(74,222,128,.05);border-color:rgba(74,222,128,.2)">
+              <div class="ctr-left"><div class="ctr-dot" style="background:var(--green)"></div><div><div class="ctr-name" style="color:var(--green)">nginx</div><div class="ctr-image">nginx:1.25-alpine</div></div></div>
+              <div class="ctr-ports"><span class="port-chip" style="color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.06)">:80/TCP</span></div>
+            </div>
+            <div class="ctr-row" style="background:rgba(45,212,191,.04);border-color:rgba(45,212,191,.15)">
+              <div class="ctr-left"><div class="ctr-dot" style="background:var(--teal)"></div><div><div class="ctr-name" style="color:var(--teal)">envoy-sidecar</div><div class="ctr-image">envoyproxy/envoy:v1.28</div></div></div>
+              <div class="ctr-ports"><span class="port-chip" style="color:var(--teal);border-color:rgba(45,212,191,.3);background:rgba(45,212,191,.05)">:15001</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pod-card">
+          <div class="pod-header"><span class="pod-name" style="color:var(--blue)">backend-dep-5c7b-hj5s</span><span class="pod-ip">10.244.2.7</span></div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.2)">
+              <div class="ctr-left"><div class="ctr-dot" style="background:var(--blue)"></div><div><div class="ctr-name" style="color:var(--blue)">backend-api</div><div class="ctr-image">myrepo/backend-api:2.1.0</div></div></div>
+              <div class="ctr-ports"><span class="port-chip" style="color:var(--blue);border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.06)">:8080/TCP</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pod-card">
+          <div class="pod-header"><span class="pod-name" style="color:var(--blue)">backend-dep-5c7b-qt1v</span><span class="pod-ip">10.244.2.11</span></div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.2)">
+              <div class="ctr-left"><div class="ctr-dot" style="background:var(--blue)"></div><div><div class="ctr-name" style="color:var(--blue)">backend-api</div><div class="ctr-image">myrepo/backend-api:2.1.0</div></div></div>
+              <div class="ctr-ports"><span class="port-chip" style="color:var(--blue);border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.06)">:8080/TCP</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pod-card">
+          <div class="pod-header"><span class="pod-name" style="color:var(--violet)">postgres-1 REPLICA</span><span class="pod-ip">10.244.2.18</span></div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(167,139,250,.06);border-color:rgba(167,139,250,.2)">
+              <div class="ctr-left"><div class="ctr-dot" style="background:var(--violet)"></div><div><div class="ctr-name" style="color:var(--violet)">postgres</div><div class="ctr-image">postgres:15.4-alpine</div></div></div>
+              <div class="ctr-ports"><span class="port-chip" style="color:var(--violet);border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07)">:5432/TCP</span></div>
+            </div>
+            <div style="font-family:var(--ff-mono);font-size:.65rem;color:var(--muted);padding:4px 6px;">💾 PVC: postgres-data-postgres-1 (10Gi)</div>
+          </div>
+        </div>
+        <div class="sys-row">kubelet :10250 · kube-proxy iptables · containerd :1.6</div>
+      </div>
+    </div>
+
+    <!-- Worker 3 -->
+    <div class="node-card worker3">
+      <div class="node-head">
+        <div>
+          <div class="node-name">worker-node-03</div>
+          <div class="node-meta">192.168.1.13 · 8vCPU · 16GB RAM · Ubuntu 22.04</div>
+        </div>
+        <span class="node-badge" style="color:var(--violet);border-color:rgba(167,139,250,.3);background:var(--violet-dim)">WORKER</span>
+      </div>
+      <div class="node-body">
+        <div class="pod-card">
+          <div class="pod-header"><span class="pod-name" style="color:var(--blue)">backend-dep-5c7b-lm8a</span><span class="pod-ip">10.244.3.4</span></div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.2)">
+              <div class="ctr-left"><div class="ctr-dot" style="background:var(--blue)"></div><div><div class="ctr-name" style="color:var(--blue)">backend-api</div><div class="ctr-image">myrepo/backend-api:2.1.0</div></div></div>
+              <div class="ctr-ports"><span class="port-chip" style="color:var(--blue);border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.06)">:8080/TCP</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pod-card">
+          <div class="pod-header"><span class="pod-name" style="color:var(--violet)">postgres-2 REPLICA</span><span class="pod-ip">10.244.3.15</span></div>
+          <div class="pod-body">
+            <div class="ctr-row" style="background:rgba(167,139,250,.06);border-color:rgba(167,139,250,.2)">
+              <div class="ctr-left"><div class="ctr-dot" style="background:var(--violet)"></div><div><div class="ctr-name" style="color:var(--violet)">postgres</div><div class="ctr-image">postgres:15.4-alpine</div></div></div>
+              <div class="ctr-ports"><span class="port-chip" style="color:var(--violet);border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07)">:5432/TCP</span></div>
+            </div>
+            <div style="font-family:var(--ff-mono);font-size:.65rem;color:var(--muted);padding:4px 6px;">💾 PVC: postgres-data-postgres-2 (10Gi)</div>
+          </div>
+        </div>
+        <div style="height:16px"></div>
+        <div class="info-card" style="background:rgba(74,222,128,.04);border-color:rgba(74,222,128,.2);padding:14px;">
+          <div style="font-family:var(--ff-mono);font-size:.7rem;color:var(--green);margin-bottom:6px;font-weight:500;">SERVICE: frontend-svc (NodePort)</div>
+          <div style="font-family:var(--ff-mono);font-size:.67rem;color:var(--muted);line-height:1.8;">ClusterIP: 10.96.10.5<br>port: 80 → targetPort: 80<br>nodePort: 30080 (all nodes)</div>
+        </div>
+        <div class="info-card" style="background:rgba(96,165,250,.04);border-color:rgba(96,165,250,.2);padding:14px;">
+          <div style="font-family:var(--ff-mono);font-size:.7rem;color:var(--blue);margin-bottom:6px;font-weight:500;">SERVICE: backend-svc (ClusterIP)</div>
+          <div style="font-family:var(--ff-mono);font-size:.67rem;color:var(--muted);line-height:1.8;">ClusterIP: 10.96.20.14<br>port: 8080 → targetPort: 8080<br>selector: app=backend (5 endpoints)</div>
+        </div>
+        <div class="info-card" style="background:rgba(167,139,250,.04);border-color:rgba(167,139,250,.2);padding:14px;">
+          <div style="font-family:var(--ff-mono);font-size:.7rem;color:var(--violet);margin-bottom:6px;font-weight:500;">SERVICE: postgres-svc (Headless)</div>
+          <div style="font-family:var(--ff-mono);font-size:.67rem;color:var(--muted);line-height:1.8;">clusterIP: None<br>port: 5432 → targetPort: 5432<br>DNS: postgres-N.postgres-svc.app.svc.cluster.local</div>
+        </div>
+        <div class="sys-row">kubelet :10250 · kube-proxy iptables · containerd :1.6</div>
+      </div>
+    </div>
+  </div>
+</div>
+<hr class="section-divider">
+
+<!-- ═══════════════════════ PORT MAPPING ═══════════════════════ -->
+<div class="section" id="ports">
+  <div class="sec-label">Section 02</div>
+  <div class="sec-title">Port <em>Mapping</em> Tables</div>
+  <div class="sec-desc">Every port — from the external NodePort down through the Service to the container — mapped explicitly and connected to the YAML that defines it.</div>
+
+  <!-- Full flow SVG -->
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <span class="diagram-title">// port flow — external → nodePort → servicePort → targetPort → containerPort</span>
+    </div>
+    <div class="diagram-body">
+      <div class="svg-scroll">
+        <svg viewBox="0 0 1100 180" xmlns="http://www.w3.org/2000/svg" style="min-width:900px;width:100%;font-family:'DM Mono',monospace;">
+          <defs>
+            <marker id="pa" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#2dd4bf"/></marker>
+          </defs>
+          <rect width="1100" height="180" fill="#1c1f2b" rx="10"/>
+
+          <!-- Frontend path -->
+          <text x="20" y="25" fill="#8890aa" font-size="10" font-weight="700" letter-spacing="1">FRONTEND PATH</text>
+          <rect x="20" y="35" width="120" height="50" rx="6" fill="rgba(251,191,36,.07)" stroke="#fbbf24" stroke-width="1.2"/>
+          <text x="80" y="57" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="700">Browser</text>
+          <text x="80" y="72" text-anchor="middle" fill="#fbbf24" font-size="9">:30080</text>
+          <line x1="140" y1="60" x2="175" y2="60" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#pa)"/>
+
+          <rect x="178" y="35" width="140" height="50" rx="6" fill="rgba(74,222,128,.07)" stroke="#4ade80" stroke-width="1.5"/>
+          <text x="248" y="54" text-anchor="middle" fill="#4ade80" font-size="9" font-weight="700">frontend-svc</text>
+          <text x="248" y="66" text-anchor="middle" fill="#4ade80" font-size="9">nodePort: 30080</text>
+          <text x="248" y="78" text-anchor="middle" fill="#8890aa" font-size="8">port: 80</text>
+          <line x1="318" y1="60" x2="353" y2="60" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#pa)"/>
+          <text x="330" y="52" fill="#8890aa" font-size="8">iptables DNAT</text>
+
+          <rect x="356" y="35" width="150" height="50" rx="6" fill="rgba(74,222,128,.06)" stroke="rgba(74,222,128,.25)" stroke-width="1"/>
+          <text x="431" y="54" text-anchor="middle" fill="#4ade80" font-size="9" font-weight="700">frontend pod</text>
+          <text x="431" y="66" text-anchor="middle" fill="#4ade80" font-size="9">targetPort: 80</text>
+          <text x="431" y="78" text-anchor="middle" fill="#8890aa" font-size="8">10.244.1.5 or .2.3</text>
+          <line x1="506" y1="60" x2="541" y2="60" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#pa)"/>
+
+          <rect x="544" y="35" width="150" height="50" rx="6" fill="rgba(74,222,128,.05)" stroke="rgba(74,222,128,.2)" stroke-width="1"/>
+          <text x="619" y="54" text-anchor="middle" fill="#4ade80" font-size="9">nginx container</text>
+          <text x="619" y="66" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="700">:80/TCP</text>
+          <text x="619" y="78" text-anchor="middle" fill="#8890aa" font-size="8">nginx:1.25-alpine</text>
+
+          <!-- Backend path -->
+          <text x="20" y="115" fill="#8890aa" font-size="10" font-weight="700" letter-spacing="1">BACKEND PATH</text>
+          <rect x="20" y="125" width="120" height="45" rx="6" fill="rgba(74,222,128,.06)" stroke="rgba(74,222,128,.2)" stroke-width="1"/>
+          <text x="80" y="143" text-anchor="middle" fill="#4ade80" font-size="9">frontend pod</text>
+          <text x="80" y="158" text-anchor="middle" fill="#4ade80" font-size="9">DNS lookup</text>
+          <line x1="140" y1="148" x2="175" y2="148" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#pa)"/>
+
+          <rect x="178" y="125" width="160" height="45" rx="6" fill="rgba(96,165,250,.07)" stroke="#60a5fa" stroke-width="1.5"/>
+          <text x="258" y="143" text-anchor="middle" fill="#60a5fa" font-size="9" font-weight="700">backend-svc</text>
+          <text x="258" y="155" text-anchor="middle" fill="#60a5fa" font-size="9">ClusterIP: 10.96.20.14</text>
+          <text x="258" y="165" text-anchor="middle" fill="#8890aa" font-size="7.5">port: 8080</text>
+          <line x1="338" y1="148" x2="373" y2="148" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#pa)"/>
+          <text x="348" y="140" fill="#8890aa" font-size="8">RR LB</text>
+
+          <rect x="376" y="125" width="160" height="45" rx="6" fill="rgba(96,165,250,.05)" stroke="rgba(96,165,250,.25)" stroke-width="1"/>
+          <text x="456" y="143" text-anchor="middle" fill="#60a5fa" font-size="9">backend pod (any 1/5)</text>
+          <text x="456" y="155" text-anchor="middle" fill="#60a5fa" font-size="9">targetPort: 8080</text>
+          <text x="456" y="165" text-anchor="middle" fill="#8890aa" font-size="7.5">10.244.x.y</text>
+          <line x1="536" y1="148" x2="571" y2="148" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#pa)"/>
+
+          <rect x="574" y="125" width="160" height="45" rx="6" fill="rgba(96,165,250,.05)" stroke="rgba(96,165,250,.2)" stroke-width="1"/>
+          <text x="654" y="143" text-anchor="middle" fill="#60a5fa" font-size="9">backend-api container</text>
+          <text x="654" y="155" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="700">:8080/TCP</text>
+          <text x="654" y="165" text-anchor="middle" fill="#8890aa" font-size="7.5">node:20-alpine</text>
+          <line x1="734" y1="148" x2="769" y2="148" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#pa)"/>
+
+          <rect x="772" y="125" width="160" height="45" rx="6" fill="rgba(167,139,250,.06)" stroke="#a78bfa" stroke-width="1.2"/>
+          <text x="852" y="143" text-anchor="middle" fill="#a78bfa" font-size="9">postgres-svc (headless)</text>
+          <text x="852" y="155" text-anchor="middle" fill="#a78bfa" font-size="9">DNS → pod IP direct</text>
+          <text x="852" y="165" text-anchor="middle" fill="#8890aa" font-size="7.5">port: 5432</text>
+          <line x1="932" y1="148" x2="967" y2="148" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#pa)"/>
+
+          <rect x="970" y="125" width="115" height="45" rx="6" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.2)" stroke-width="1"/>
+          <text x="1027" y="143" text-anchor="middle" fill="#a78bfa" font-size="9">postgres container</text>
+          <text x="1027" y="155" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">:5432/TCP</text>
+          <text x="1027" y="165" text-anchor="middle" fill="#8890aa" font-size="7.5">postgres:15.4</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Port table -->
+  <div class="port-table-wrap">
+    <table class="port-table">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Type</th>
+          <th>External Port</th>
+          <th>Service Port</th>
+          <th>Target Port</th>
+          <th>Container Port</th>
+          <th>Pod IPs</th>
+          <th>Protocol</th>
+          <th>Accessible From</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono" style="color:var(--green)">frontend-svc</span></td>
+          <td><span class="pill g" style="padding:2px 8px;font-size:.65rem;">NodePort</span></td>
+          <td><span class="mono" style="color:var(--amber)">30080</span><br><span class="dim">nodeIP:30080</span></td>
+          <td><span class="mono" style="color:var(--green)">80</span></td>
+          <td><span class="mono" style="color:var(--green)">80</span></td>
+          <td><span class="mono" style="color:var(--green)">80/TCP</span><br><span class="dim">nginx container</span></td>
+          <td><span class="mono dim" style="font-size:.68rem;">10.244.1.5<br>10.244.2.3</span></td>
+          <td>TCP</td>
+          <td><span class="dim">Any external client via NodeIP</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono" style="color:var(--blue)">backend-svc</span></td>
+          <td><span class="pill b" style="padding:2px 8px;font-size:.65rem;">ClusterIP</span></td>
+          <td><span class="dim">N/A — internal only</span></td>
+          <td><span class="mono" style="color:var(--blue)">8080</span></td>
+          <td><span class="mono" style="color:var(--blue)">8080</span></td>
+          <td><span class="mono" style="color:var(--blue)">8080/TCP</span><br><span class="dim">node:20 container</span></td>
+          <td><span class="mono dim" style="font-size:.68rem;">10.244.1.8<br>10.244.1.12<br>10.244.2.7<br>10.244.2.11<br>10.244.3.4</span></td>
+          <td>TCP</td>
+          <td><span class="dim">Pods within cluster only</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono" style="color:var(--violet)">postgres-svc</span></td>
+          <td><span class="pill v" style="padding:2px 8px;font-size:.65rem;">Headless</span></td>
+          <td><span class="dim">N/A — internal only</span></td>
+          <td><span class="mono" style="color:var(--violet)">5432</span></td>
+          <td><span class="mono" style="color:var(--violet)">5432</span></td>
+          <td><span class="mono" style="color:var(--violet)">5432/TCP</span><br><span class="dim">postgres container</span></td>
+          <td><span class="mono dim" style="font-size:.68rem;">10.244.1.20<br>10.244.2.18<br>10.244.3.15</span></td>
+          <td>TCP</td>
+          <td><span class="dim">Backend pods via stable DNS</span></td>
+        </tr>
+        <tr style="background:rgba(251,191,36,.02)">
+          <td><span class="mono" style="color:var(--amber)">kube-apiserver</span></td>
+          <td><span class="pill a" style="padding:2px 8px;font-size:.65rem;">System</span></td>
+          <td><span class="mono" style="color:var(--amber)">6443</span></td>
+          <td><span class="mono" style="color:var(--amber)">6443</span></td>
+          <td>—</td>
+          <td><span class="mono" style="color:var(--amber)">6443/TCP</span></td>
+          <td><span class="mono dim">192.168.1.10</span></td>
+          <td>HTTPS</td>
+          <td><span class="dim">kubectl, worker nodes</span></td>
+        </tr>
+        <tr style="background:rgba(251,191,36,.02)">
+          <td><span class="mono" style="color:var(--amber)">kubelet</span></td>
+          <td><span class="pill a" style="padding:2px 8px;font-size:.65rem;">System</span></td>
+          <td><span class="mono" style="color:var(--amber)">10250</span></td>
+          <td>—</td>
+          <td>—</td>
+          <td><span class="mono" style="color:var(--amber)">10250/TCP</span></td>
+          <td><span class="mono dim">all nodes</span></td>
+          <td>HTTPS</td>
+          <td><span class="dim">API server → node communication</span></td>
+        </tr>
+        <tr style="background:rgba(251,191,36,.02)">
+          <td><span class="mono" style="color:var(--amber)">coredns</span></td>
+          <td><span class="pill a" style="padding:2px 8px;font-size:.65rem;">System</span></td>
+          <td><span class="mono" style="color:var(--amber)">53</span></td>
+          <td>—</td>
+          <td>—</td>
+          <td><span class="mono" style="color:var(--amber)">53/UDP+TCP</span></td>
+          <td><span class="mono dim">10.96.0.10</span></td>
+          <td>UDP/TCP</td>
+          <td><span class="dim">All pods — DNS resolution</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="hl-box">
+    <strong>How port mapping works:</strong> A Service's <strong>port</strong> is what clients connect to. The <strong>targetPort</strong> is what the container actually listens on (can differ). The <strong>nodePort</strong> (NodePort only) is the port opened on every node's network interface. kube-proxy programs iptables rules to DNAT traffic from <strong>nodeIP:nodePort → clusterIP:port → podIP:targetPort</strong>.
+  </div>
+</div>
+<hr class="section-divider">
+
+<!-- ═══════════════════════ YAML ═══════════════════════ -->
+<div class="section" id="yaml">
+  <div class="sec-label">Section 03</div>
+  <div class="sec-title">YAML with <em>Port Annotations</em></div>
+  <div class="sec-desc">Every port field annotated, showing exactly how it connects to the container, the pod, and the service discovery layer.</div>
+
+  <div class="tab-bar" id="yamlTabBar">
+    <button class="tab-btn active" onclick="switchTab('yaml','t-frontend')">frontend-svc</button>
+    <button class="tab-btn" onclick="switchTab('yaml','t-backend-svc')">backend-svc</button>
+    <button class="tab-btn" onclick="switchTab('yaml','t-frontend-dep')">frontend-deploy</button>
+    <button class="tab-btn" onclick="switchTab('yaml','t-backend-dep')">backend-deploy</button>
+    <button class="tab-btn" onclick="switchTab('yaml','t-postgres')">postgres-statefulset</button>
+    <button class="tab-btn" onclick="switchTab('yaml','t-postgres-svc')">postgres-svc</button>
+  </div>
+
+  <div id="t-frontend" class="tab-content active">
+    <div class="yaml-panel">
+      <div class="yaml-panel-header"><span class="yaml-filename">frontend-service.yaml</span><button class="copy-btn" onclick="cpYaml(this)">Copy</button></div>
+      <pre class="yaml"><span class="yc"># NodePort Service — opens port 30080 on EVERY node's NIC</span>
+<span class="yk">apiVersion</span>: <span class="yv">v1</span>
+<span class="yk">kind</span>: <span class="ys">Service</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">frontend-svc</span>
+  <span class="yk">namespace</span>: <span class="ys">app</span>
+<span class="yk">spec</span>:
+  <span class="yk">type</span>: <span class="ys">NodePort</span>               <span class="yc"># Opens nodePort on 192.168.1.11, .12, .13</span>
+  <span class="yk">selector</span>:
+    <span class="yk">app</span>: <span class="ys">frontend</span>               <span class="yc"># Matches pods with label app=frontend</span>
+                                  <span class="yc"># → 10.244.1.5 and 10.244.2.3 (Endpoints)</span>
+  <span class="yk">ports</span>:
+    - <span class="yk">name</span>: <span class="ys">http</span>
+      <span class="yk">protocol</span>: <span class="ys">TCP</span>
+      <span class="yk">port</span>: <span class="yn">80</span>                   <span class="yc"># ← Service port (ClusterIP:80)</span>
+      <span class="yk">targetPort</span>: <span class="yn">80</span>            <span class="yc"># ← Container's containerPort (nginx :80)</span>
+      <span class="yk">nodePort</span>: <span class="yn">30080</span>           <span class="yc"># ← External: nodeIP:30080 (any of the 3 nodes)</span>
+                                  <span class="yc"># Range must be 30000-32767</span>
+  <span class="yk">sessionAffinity</span>: <span class="ys">None</span>       <span class="yc"># Round-robin across both frontend pods</span>
+
+<span class="yc"># Port flow:
+# Browser → 192.168.1.11:30080
+#          kube-proxy iptables DNAT
+#          → 10.96.10.5:80  (ClusterIP)
+#          → 10.244.1.5:80  (frontend-dep-7d9f-xk2p, nginx container)
+#          OR 10.244.2.3:80  (frontend-dep-7d9f-wz7t, nginx container)</span></pre>
+    </div>
+  </div>
+
+  <div id="t-backend-svc" class="tab-content">
+    <div class="yaml-panel">
+      <div class="yaml-panel-header"><span class="yaml-filename">backend-service.yaml</span><button class="copy-btn" onclick="cpYaml(this)">Copy</button></div>
+      <pre class="yaml"><span class="yc"># ClusterIP — no external exposure, only reachable inside cluster</span>
+<span class="yk">apiVersion</span>: <span class="yv">v1</span>
+<span class="yk">kind</span>: <span class="ys">Service</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">backend-svc</span>
+  <span class="yk">namespace</span>: <span class="ys">app</span>
+<span class="yk">spec</span>:
+  <span class="yk">type</span>: <span class="ys">ClusterIP</span>              <span class="yc"># Default — gets VIP 10.96.20.14</span>
+  <span class="yk">selector</span>:
+    <span class="yk">app</span>: <span class="ys">backend</span>               <span class="yc"># Matches all 5 backend pods:</span>
+                                 <span class="yc"># 10.244.1.8  backend-dep-5c7b-mn4q</span>
+                                 <span class="yc"># 10.244.1.12 backend-dep-5c7b-pw6r</span>
+                                 <span class="yc"># 10.244.2.7  backend-dep-5c7b-hj5s</span>
+                                 <span class="yc"># 10.244.2.11 backend-dep-5c7b-qt1v</span>
+                                 <span class="yc"># 10.244.3.4  backend-dep-5c7b-lm8a</span>
+  <span class="yk">ports</span>:
+    - <span class="yk">name</span>: <span class="ys">api</span>
+      <span class="yk">protocol</span>: <span class="ys">TCP</span>
+      <span class="yk">port</span>: <span class="yn">8080</span>                <span class="yc"># ← Service port: backend-svc:8080</span>
+      <span class="yk">targetPort</span>: <span class="yn">8080</span>         <span class="yc"># ← Pod containerPort (node.js listens :8080)</span>
+
+<span class="yc"># DNS inside cluster: backend-svc.app.svc.cluster.local
+# Frontend calls: http://backend-svc:8080/api/users
+#   → CoreDNS resolves → 10.96.20.14
+#   → kube-proxy iptables → random backend pod :8080
+#
+# To verify endpoints:
+#   kubectl get endpoints backend-svc -n app</span></pre>
+    </div>
+  </div>
+
+  <div id="t-frontend-dep" class="tab-content">
+    <div class="yaml-panel">
+      <div class="yaml-panel-header"><span class="yaml-filename">frontend-deployment.yaml</span><button class="copy-btn" onclick="cpYaml(this)">Copy</button></div>
+      <pre class="yaml"><span class="yk">apiVersion</span>: <span class="yv">apps/v1</span>
+<span class="yk">kind</span>: <span class="ys">Deployment</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">frontend-dep</span>
+  <span class="yk">namespace</span>: <span class="ys">app</span>
+<span class="yk">spec</span>:
+  <span class="yk">replicas</span>: <span class="yn">2</span>                   <span class="yc"># → 2 pods: xk2p (node1) + wz7t (node2)</span>
+  <span class="yk">selector</span>:
+    <span class="yk">matchLabels</span>:
+      <span class="yk">app</span>: <span class="ys">frontend</span>             <span class="yc"># Must match Service selector</span>
+  <span class="yk">template</span>:
+    <span class="yk">metadata</span>:
+      <span class="yk">labels</span>:
+        <span class="yk">app</span>: <span class="ys">frontend</span>           <span class="yc"># Picked up by frontend-svc selector</span>
+    <span class="yk">spec</span>:
+      <span class="yk">topologySpreadConstraints</span>:  <span class="yc"># Spread across nodes for HA</span>
+        - <span class="yk">maxSkew</span>: <span class="yn">1</span>
+          <span class="yk">topologyKey</span>: <span class="ys">kubernetes.io/hostname</span>
+          <span class="yk">whenUnsatisfiable</span>: <span class="ys">DoNotSchedule</span>
+          <span class="yk">labelSelector</span>:
+            <span class="yk">matchLabels</span>:
+              <span class="yk">app</span>: <span class="ys">frontend</span>
+      <span class="yk">containers</span>:
+        - <span class="yk">name</span>: <span class="ys">nginx</span>
+          <span class="yk">image</span>: <span class="yr">nginx:1.25-alpine</span>    <span class="yc"># Actual container image</span>
+          <span class="yk">ports</span>:
+            - <span class="yk">name</span>: <span class="ys">http</span>
+              <span class="yk">containerPort</span>: <span class="yn">80</span>      <span class="yc"># ← THIS is what targetPort:80 maps to</span>
+              <span class="yk">protocol</span>: <span class="ys">TCP</span>
+          <span class="yk">env</span>:
+            - <span class="yk">name</span>: <span class="ys">BACKEND_URL</span>
+              <span class="yk">value</span>: <span class="ys">"http://backend-svc:8080"</span>  <span class="yc"># DNS name of backend ClusterIP</span>
+          <span class="yk">resources</span>:
+            <span class="yk">requests</span>:
+              <span class="yk">cpu</span>: <span class="ys">"100m"</span>
+              <span class="yk">memory</span>: <span class="ys">"64Mi"</span>
+            <span class="yk">limits</span>:
+              <span class="yk">cpu</span>: <span class="ys">"200m"</span>
+              <span class="yk">memory</span>: <span class="ys">"128Mi"</span>
+          <span class="yk">livenessProbe</span>:
+            <span class="yk">httpGet</span>:
+              <span class="yk">path</span>: <span class="ys">/healthz</span>
+              <span class="yk">port</span>: <span class="yn">80</span>             <span class="yc"># kubelet probes :80 directly on pod IP</span>
+
+        - <span class="yk">name</span>: <span class="ys">envoy-sidecar</span>     <span class="yc"># Service mesh sidecar</span>
+          <span class="yk">image</span>: <span class="yr">envoyproxy/envoy:v1.28</span>
+          <span class="yk">ports</span>:
+            - <span class="yk">containerPort</span>: <span class="yn">15001</span>  <span class="yc"># ← Envoy proxy port (not exposed via Service)</span>
+              <span class="yk">protocol</span>: <span class="ys">TCP</span></pre>
+    </div>
+  </div>
+
+  <div id="t-backend-dep" class="tab-content">
+    <div class="yaml-panel">
+      <div class="yaml-panel-header"><span class="yaml-filename">backend-deployment.yaml</span><button class="copy-btn" onclick="cpYaml(this)">Copy</button></div>
+      <pre class="yaml"><span class="yk">apiVersion</span>: <span class="yv">apps/v1</span>
+<span class="yk">kind</span>: <span class="ys">Deployment</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">backend-dep</span>
+  <span class="yk">namespace</span>: <span class="ys">app</span>
+<span class="yk">spec</span>:
+  <span class="yk">replicas</span>: <span class="yn">5</span>                   <span class="yc"># → mn4q pw6r hj5s qt1v lm8a</span>
+  <span class="yk">selector</span>:
+    <span class="yk">matchLabels</span>:
+      <span class="yk">app</span>: <span class="ys">backend</span>
+  <span class="yk">template</span>:
+    <span class="yk">metadata</span>:
+      <span class="yk">labels</span>:
+        <span class="yk">app</span>: <span class="ys">backend</span>             <span class="yc"># Picked up by backend-svc selector</span>
+    <span class="yk">spec</span>:
+      <span class="yk">affinity</span>:
+        <span class="yk">podAntiAffinity</span>:         <span class="yc"># Prefer different nodes</span>
+          <span class="yk">preferredDuringSchedulingIgnoredDuringExecution</span>:
+            - <span class="yk">weight</span>: <span class="yn">100</span>
+              <span class="yk">podAffinityTerm</span>:
+                <span class="yk">labelSelector</span>:
+                  <span class="yk">matchLabels</span>:
+                    <span class="yk">app</span>: <span class="ys">backend</span>
+                <span class="yk">topologyKey</span>: <span class="ys">kubernetes.io/hostname</span>
+      <span class="yk">containers</span>:
+        - <span class="yk">name</span>: <span class="ys">backend-api</span>
+          <span class="yk">image</span>: <span class="yr">myrepo/backend-api:2.1.0</span>   <span class="yc"># Real image tag</span>
+          <span class="yk">ports</span>:
+            - <span class="yk">name</span>: <span class="ys">api</span>
+              <span class="yk">containerPort</span>: <span class="yn">8080</span>           <span class="yc"># ← THIS is what targetPort:8080 maps to</span>
+              <span class="yk">protocol</span>: <span class="ys">TCP</span>
+          <span class="yk">env</span>:
+            - <span class="yk">name</span>: <span class="ys">DB_HOST</span>
+              <span class="yk">value</span>: <span class="ys">"postgres-0.postgres-svc.app.svc.cluster.local"</span>  <span class="yc"># Stable DNS</span>
+            - <span class="yk">name</span>: <span class="ys">DB_HOST_READ</span>
+              <span class="yk">value</span>: <span class="ys">"postgres-svc.app.svc.cluster.local"</span>           <span class="yc"># Round-robin replicas</span>
+            - <span class="yk">name</span>: <span class="ys">DB_PORT</span>
+              <span class="yk">value</span>: <span class="ys">"5432"</span>                 <span class="yc"># Container port of postgres</span>
+            - <span class="yk">name</span>: <span class="ys">DB_NAME</span>
+              <span class="yk">value</span>: <span class="ys">"appdb"</span>
+            - <span class="yk">name</span>: <span class="ys">DB_PASSWORD</span>
+              <span class="yk">valueFrom</span>:
+                <span class="yk">secretKeyRef</span>:
+                  <span class="yk">name</span>: <span class="ys">db-secret</span>
+                  <span class="yk">key</span>: <span class="ys">password</span>
+          <span class="yk">livenessProbe</span>:
+            <span class="yk">httpGet</span>:
+              <span class="yk">path</span>: <span class="ys">/health</span>
+              <span class="yk">port</span>: <span class="yn">8080</span>               <span class="yc"># kubelet probes pod IP :8080 directly</span>
+            <span class="yk">initialDelaySeconds</span>: <span class="yn">15</span>
+            <span class="yk">periodSeconds</span>: <span class="yn">20</span>
+          <span class="yk">readinessProbe</span>:
+            <span class="yk">httpGet</span>:
+              <span class="yk">path</span>: <span class="ys">/ready</span>
+              <span class="yk">port</span>: <span class="yn">8080</span>               <span class="yc"># Pod removed from Endpoints if not ready</span>
+            <span class="yk">initialDelaySeconds</span>: <span class="yn">8</span>
+          <span class="yk">resources</span>:
+            <span class="yk">requests</span>: { <span class="yk">cpu</span>: <span class="ys">"250m"</span>, <span class="yk">memory</span>: <span class="ys">"128Mi"</span> }
+            <span class="yk">limits</span>:   { <span class="yk">cpu</span>: <span class="ys">"500m"</span>, <span class="yk">memory</span>: <span class="ys">"256Mi"</span> }</pre>
+    </div>
+  </div>
+
+  <div id="t-postgres" class="tab-content">
+    <div class="yaml-panel">
+      <div class="yaml-panel-header"><span class="yaml-filename">postgres-statefulset.yaml</span><button class="copy-btn" onclick="cpYaml(this)">Copy</button></div>
+      <pre class="yaml"><span class="yk">apiVersion</span>: <span class="yv">apps/v1</span>
+<span class="yk">kind</span>: <span class="ys">StatefulSet</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">postgres</span>                 <span class="yc"># → pods: postgres-0, postgres-1, postgres-2</span>
+  <span class="yk">namespace</span>: <span class="ys">app</span>
+<span class="yk">spec</span>:
+  <span class="yk">serviceName</span>: <span class="ys">"postgres-svc"</span>   <span class="yc"># Headless service for stable DNS</span>
+  <span class="yk">replicas</span>: <span class="yn">3</span>                   <span class="yc"># postgres-0=PRIMARY  postgres-1,2=REPLICA</span>
+  <span class="yk">podManagementPolicy</span>: <span class="ys">OrderedReady</span> <span class="yc"># Start 0→1→2, stop 2→1→0</span>
+  <span class="yk">selector</span>:
+    <span class="yk">matchLabels</span>:
+      <span class="yk">app</span>: <span class="ys">postgres</span>
+  <span class="yk">template</span>:
+    <span class="yk">metadata</span>:
+      <span class="yk">labels</span>:
+        <span class="yk">app</span>: <span class="ys">postgres</span>           <span class="yc"># Matched by postgres-svc selector</span>
+    <span class="yk">spec</span>:
+      <span class="yk">containers</span>:
+        - <span class="yk">name</span>: <span class="ys">postgres</span>
+          <span class="yk">image</span>: <span class="yr">postgres:15.4-alpine</span>   <span class="yc"># Exact version pinned</span>
+          <span class="yk">ports</span>:
+            - <span class="yk">name</span>: <span class="ys">postgres</span>
+              <span class="yk">containerPort</span>: <span class="yn">5432</span>       <span class="yc"># ← THIS is what targetPort:5432 maps to</span>
+              <span class="yk">protocol</span>: <span class="ys">TCP</span>              <span class="yc">#   postgres-svc targets this via selector</span>
+          <span class="yk">env</span>:
+            - <span class="yk">name</span>: <span class="ys">POSTGRES_DB</span>
+              <span class="yk">value</span>: <span class="ys">"appdb"</span>
+            - <span class="yk">name</span>: <span class="ys">POSTGRES_USER</span>
+              <span class="yk">valueFrom</span>:
+                <span class="yk">secretKeyRef</span>: { <span class="yk">name</span>: <span class="ys">db-secret</span>, <span class="yk">key</span>: <span class="ys">username</span> }
+            - <span class="yk">name</span>: <span class="ys">POSTGRES_PASSWORD</span>
+              <span class="yk">valueFrom</span>:
+                <span class="yk">secretKeyRef</span>: { <span class="yk">name</span>: <span class="ys">db-secret</span>, <span class="yk">key</span>: <span class="ys">password</span> }
+            - <span class="yk">name</span>: <span class="ys">PGDATA</span>
+              <span class="yk">value</span>: <span class="ys">/var/lib/postgresql/data/pgdata</span>
+          <span class="yk">volumeMounts</span>:
+            - <span class="yk">name</span>: <span class="ys">postgres-data</span>
+              <span class="yk">mountPath</span>: <span class="ys">/var/lib/postgresql/data</span>
+          <span class="yk">readinessProbe</span>:
+            <span class="yk">exec</span>:
+              <span class="yk">command</span>: [<span class="ys">"pg_isready"</span>, <span class="ys">"-U"</span>, <span class="ys">"$(POSTGRES_USER)"</span>, <span class="ys">"-p"</span>, <span class="ys">"5432"</span>]
+              <span class="yc">                               # Checks :5432 is accepting connections</span>
+            <span class="yk">initialDelaySeconds</span>: <span class="yn">20</span>
+            <span class="yk">periodSeconds</span>: <span class="yn">10</span>
+          <span class="yk">resources</span>:
+            <span class="yk">requests</span>: { <span class="yk">cpu</span>: <span class="ys">"500m"</span>, <span class="yk">memory</span>: <span class="ys">"512Mi"</span> }
+            <span class="yk">limits</span>:   { <span class="yk">cpu</span>: <span class="ys">"1"</span>,     <span class="yk">memory</span>: <span class="ys">"1Gi"</span>   }
+  <span class="yk">volumeClaimTemplates</span>:          <span class="yc"># Creates 1 PVC per pod, binds to that pod only</span>
+    - <span class="yk">metadata</span>:
+        <span class="yk">name</span>: <span class="ys">postgres-data</span>       <span class="yc"># → postgres-data-postgres-0</span>
+      <span class="yk">spec</span>:                       <span class="yc">#   postgres-data-postgres-1</span>
+        <span class="yk">accessModes</span>: [<span class="ys">"ReadWriteOnce"</span>]  <span class="yc"># postgres-data-postgres-2</span>
+        <span class="yk">storageClassName</span>: <span class="ys">fast-ssd</span>
+        <span class="yk">resources</span>:
+          <span class="yk">requests</span>:
+            <span class="yk">storage</span>: <span class="ys">10Gi</span></pre>
+    </div>
+  </div>
+
+  <div id="t-postgres-svc" class="tab-content">
+    <div class="yaml-panel">
+      <div class="yaml-panel-header"><span class="yaml-filename">postgres-service.yaml</span><button class="copy-btn" onclick="cpYaml(this)">Copy</button></div>
+      <pre class="yaml"><span class="yc"># Headless Service — clusterIP: None means NO virtual IP assigned
+# CoreDNS returns individual pod A records instead of a single VIP</span>
+<span class="yk">apiVersion</span>: <span class="yv">v1</span>
+<span class="yk">kind</span>: <span class="ys">Service</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">postgres-svc</span>
+  <span class="yk">namespace</span>: <span class="ys">app</span>
+<span class="yk">spec</span>:
+  <span class="yk">clusterIP</span>: <span class="ys">None</span>               <span class="yc"># ← HEADLESS: no VIP, DNS returns pod IPs</span>
+  <span class="yk">selector</span>:
+    <span class="yk">app</span>: <span class="ys">postgres</span>               <span class="yc"># Matches postgres-0, postgres-1, postgres-2</span>
+  <span class="yk">ports</span>:
+    - <span class="yk">name</span>: <span class="ys">postgres</span>
+      <span class="yk">protocol</span>: <span class="ys">TCP</span>
+      <span class="yk">port</span>: <span class="yn">5432</span>                 <span class="yc"># ← Service port (same as container port here)</span>
+      <span class="yk">targetPort</span>: <span class="yn">5432</span>           <span class="yc"># ← Container's containerPort: 5432</span>
+  <span class="yk">publishNotReadyAddresses</span>: <span class="ys">true</span> <span class="yc"># Include unready pods in DNS (for init)</span>
+
+<span class="yc"># DNS names created for each StatefulSet pod:
+#
+#  postgres-0.postgres-svc.app.svc.cluster.local → 10.244.1.20 (PRIMARY RW)
+#  postgres-1.postgres-svc.app.svc.cluster.local → 10.244.2.18 (REPLICA RO)
+#  postgres-2.postgres-svc.app.svc.cluster.local → 10.244.3.15 (REPLICA RO)
+#
+# Backend uses postgres-0.postgres-svc for WRITES
+# Backend uses postgres-svc (round-robin) for READS
+#
+# Verify: kubectl exec -it backend-dep-5c7b-mn4q -n app -- \
+#         nslookup postgres-0.postgres-svc.app.svc.cluster.local</span></pre>
+    </div>
+  </div>
+</div>
+<hr class="section-divider">
+
+<!-- ═══════════════════════ REQUEST CYCLE ═══════════════════════ -->
+<div class="section" id="cycle">
+  <div class="sec-label">Section 04</div>
+  <div class="sec-title">Full <em>Request Cycle</em></div>
+  <div class="sec-desc">Trace a single HTTP POST request from browser to database and back — every hop, every port, every IP, every component.</div>
+
+  <div class="cycle-steps">
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">01</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">Browser sends HTTP request</div>
+        <div class="step-body">The user types <code style="font-family:var(--ff-mono);color:var(--amber)">http://192.168.1.11:30080/app</code> in their browser. TCP SYN is sent to worker-node-01's external IP on port 30080.</div>
+        <div class="step-detail">
+          <span class="highlight">TCP SYN</span> → <span class="ip">192.168.1.11</span>:<span class="port">30080</span><br>
+          <span class="dim">Source: client-machine:54312</span><br>
+          <span class="dim">Protocol: HTTP/1.1 GET / HTTP/2</span><br>
+          <span class="dim">nodePort 30080 is open on ALL 3 nodes — any node IP works</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">02</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">kube-proxy intercepts — iptables DNAT</div>
+        <div class="step-body">kube-proxy on worker-node-01 has programmed iptables rules. Traffic hitting port 30080 on any interface is intercepted and DNAT'd to the Service's ClusterIP, then to a random pod endpoint.</div>
+        <div class="step-detail">
+          <span class="dim">iptables -t nat -A KUBE-NODEPORTS -p tcp --dport</span> <span class="port">30080</span> <span class="dim">-j KUBE-SVC-frontend</span><br>
+          <span class="dim">iptables DNAT:</span> <span class="ip">192.168.1.11</span>:<span class="port">30080</span> <span class="arrow">→</span> <span class="svc">10.96.10.5</span>:<span class="port">80</span> <span class="dim">(ClusterIP)</span><br>
+          <span class="dim">iptables DNAT:</span> <span class="svc">10.96.10.5</span>:<span class="port">80</span> <span class="arrow">→</span> <span class="pod">10.244.1.5</span>:<span class="port">80</span> <span class="dim">(50% probability)</span><br>
+          <span class="dim">          OR:</span> <span class="svc">10.96.10.5</span>:<span class="port">80</span> <span class="arrow">→</span> <span class="pod">10.244.2.3</span>:<span class="port">80</span> <span class="dim">(50% probability)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">03</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">Frontend Pod receives request at :80</div>
+        <div class="step-body">The packet arrives at frontend pod <code style="font-family:var(--ff-mono);color:var(--green)">frontend-dep-7d9f-xk2p</code> (IP 10.244.1.5) on worker-node-01. The nginx container is listening on containerPort 80 and serves the React app.</div>
+        <div class="step-detail">
+          <span class="pod">10.244.1.5</span>:<span class="port">80</span> <span class="dim">→ nginx:1.25-alpine container</span><br>
+          <span class="dim">Pod: </span><span class="highlight">frontend-dep-7d9f-xk2p</span><br>
+          <span class="dim">Node: worker-node-01 (192.168.1.11)</span><br>
+          <span class="dim">nginx serves /index.html, loads React bundle</span><br>
+          <span class="dim">React app boots, makes API call to backend...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">04</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">Frontend calls API — DNS resolution</div>
+        <div class="step-body">React app makes <code style="font-family:var(--ff-mono);color:var(--blue)">fetch('http://backend-svc:8080/api/users')</code>. The pod's resolv.conf points to CoreDNS at 10.96.0.10. CoreDNS resolves the name to the ClusterIP.</div>
+        <div class="step-detail">
+          <span class="dim">resolv.conf: nameserver</span> <span class="ip">10.96.0.10</span> <span class="dim">(CoreDNS ClusterIP)</span><br>
+          <span class="dim">DNS query: </span><span class="svc">backend-svc.app.svc.cluster.local</span><br>
+          <span class="dim">CoreDNS responds: A record →</span> <span class="ip">10.96.20.14</span> <span class="dim">(ClusterIP)</span><br>
+          <span class="dim">TCP connect: </span><span class="pod">10.244.1.5</span>:<span class="port">random</span> <span class="arrow">→</span> <span class="ip">10.96.20.14</span>:<span class="port">8080</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">05</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">ClusterIP routes to a Backend Pod</div>
+        <div class="step-body">kube-proxy's iptables rules DNAT the ClusterIP to one of the 5 backend pod endpoints (20% probability each). The packet is forwarded to the selected backend pod's real IP.</div>
+        <div class="step-detail">
+          <span class="dim">DNAT: </span><span class="ip">10.96.20.14</span>:<span class="port">8080</span> <span class="arrow">→</span> <span class="pod">10.244.2.7</span>:<span class="port">8080</span> <span class="dim">(20% — backend-dep-5c7b-hj5s)</span><br>
+          <span class="dim">Other endpoints:</span><br>
+          <span class="dim">  10.244.1.8  backend-dep-5c7b-mn4q</span><br>
+          <span class="dim">  10.244.1.12 backend-dep-5c7b-pw6r</span><br>
+          <span class="dim">  10.244.2.11 backend-dep-5c7b-qt1v</span><br>
+          <span class="dim">  10.244.3.4  backend-dep-5c7b-lm8a</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">06</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">Backend Pod processes request at :8080</div>
+        <div class="step-body">The Node.js container on pod <code style="font-family:var(--ff-mono);color:var(--blue)">backend-dep-5c7b-hj5s</code> (IP 10.244.2.7, worker-node-02) handles the API request. It validates, authenticates, and needs to query the database.</div>
+        <div class="step-detail">
+          <span class="pod">10.244.2.7</span>:<span class="port">8080</span> <span class="dim">→ node:20-alpine container (app.js)</span><br>
+          <span class="dim">Pod: </span><span class="highlight">backend-dep-5c7b-hj5s</span><br>
+          <span class="dim">Node: worker-node-02 (192.168.1.12)</span><br>
+          <span class="dim">Connects to DB via env.DB_HOST:</span><br>
+          <span class="svc">postgres-0.postgres-svc.app.svc.cluster.local</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">07</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">Headless DNS — resolve postgres-0 directly</div>
+        <div class="step-body">Unlike ClusterIP, the headless service returns actual pod IPs. CoreDNS gives back the IP of <code style="font-family:var(--ff-mono);color:var(--violet)">postgres-0</code> directly — no VIP, no iptables DNAT. The backend connects straight to the primary pod.</div>
+        <div class="step-detail">
+          <span class="dim">DNS query: </span><span class="svc">postgres-0.postgres-svc.app.svc.cluster.local</span><br>
+          <span class="dim">CoreDNS returns: A record →</span> <span class="ip">10.244.1.20</span> <span class="dim">(direct pod IP!)</span><br>
+          <span class="dim">No iptables involved — packet goes directly to pod</span><br>
+          <span class="dim">TCP connect: </span><span class="pod">10.244.2.7</span>:<span class="port">random</span> <span class="arrow">→</span> <span class="ip">10.244.1.20</span>:<span class="port">5432</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">08</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">PostgreSQL primary executes the query</div>
+        <div class="step-body">The postgres container on pod <code style="font-family:var(--ff-mono);color:var(--violet)">postgres-0</code> receives the SQL query, executes it, streams WAL changes to replicas, and returns results.</div>
+        <div class="step-detail">
+          <span class="ip">10.244.1.20</span>:<span class="port">5432</span> <span class="dim">→ postgres:15.4-alpine container</span><br>
+          <span class="dim">Pod: </span><span class="highlight">postgres-0</span> <span class="dim">(PRIMARY, ReadWrite)</span><br>
+          <span class="dim">Node: worker-node-01 (192.168.1.11)</span><br>
+          <span class="dim">PVC: postgres-data-postgres-0 (10Gi /var/lib/postgresql/data)</span><br>
+          <span class="dim">WAL streamed →</span> <span class="pod">10.244.2.18</span>:<span class="port">5432</span> <span class="dim">(postgres-1)</span><br>
+          <span class="dim">WAL streamed →</span> <span class="pod">10.244.3.15</span>:<span class="port">5432</span> <span class="dim">(postgres-2)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cycle-step active">
+      <div class="cycle-step-left">
+        <div class="step-num">09</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="cycle-step-right">
+        <div class="step-title">Response travels back — same path reversed</div>
+        <div class="step-body">The SQL result travels back through the network. The backend serialises it as JSON and returns the HTTP 200 response. kube-proxy translates IPs back (un-DNAT) so the frontend sees a clean response.</div>
+        <div class="step-detail">
+          <span class="ip">10.244.1.20</span>:<span class="port">5432</span> <span class="arrow">→ SQL rows →</span> <span class="pod">10.244.2.7</span>:<span class="port">8080</span> <span class="dim">(backend)</span><br>
+          <span class="pod">10.244.2.7</span>:<span class="port">8080</span> <span class="arrow">→ JSON response →</span> <span class="pod">10.244.1.5</span>:<span class="port">80</span> <span class="dim">(frontend)</span><br>
+          <span class="pod">10.244.1.5</span>:<span class="port">80</span> <span class="arrow">→ HTML/JSON →</span> <span class="ip">192.168.1.11</span>:<span class="port">30080</span> <span class="dim">(node)</span><br>
+          <span class="ip">192.168.1.11</span>:<span class="port">30080</span> <span class="arrow">→</span> <span class="highlight">Browser</span> <span class="dim">200 OK ✓</span><br>
+          <span class="dim">Total RTT (local cluster): ~3–8ms</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<hr class="section-divider">
+
+<!-- ═══════════════════════ LIVE CANVAS ═══════════════════════ -->
+<div class="section" id="live">
+  <div class="sec-label">Section 05</div>
+  <div class="sec-title">Live <em>Packet Tracer</em></div>
+  <div class="sec-desc">Watch real packet paths with actual pod names and IPs. Click any node to see what's running on it.</div>
+
+  <canvas id="reqCanvas"></canvas>
+  <div class="canvas-controls">
+    <button class="ctrl on" id="btnPlay" onclick="togglePlay()">⏸ Pause</button>
+    <button class="ctrl" onclick="burstTraffic()">💥 Traffic Burst</button>
+    <button class="ctrl" onclick="failPod()">☠ Kill Pod</button>
+    <button class="ctrl" onclick="restoreAll()">🔄 Restore</button>
+    <button class="ctrl" onclick="toggleWriteRead()">⇄ Toggle Writes/Reads</button>
+    <div class="speed-wrap">
+      <label>SPEED</label>
+      <input type="range" min="0.5" max="4" step="0.5" value="1.5" id="speedSlider" oninput="setSpeed(this.value)">
+      <span class="speed-val" id="speedVal">1.5×</span>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="text-align:center;padding:50px 20px;border-top:1px solid var(--border);">
+  <div style="font-family:var(--ff-mono);font-size:.68rem;color:var(--muted);letter-spacing:2px;">
+    ⎈ KUBERNETES DEEP ARCHITECTURE · NODES · PODS · CONTAINERS · PORTS · REQUEST CYCLE
+  </div>
+</div>
+
+<script>
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(group, id) {
+  const parent = event.target.closest('.section') || document;
+  parent.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  parent.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── COPY YAML ─────────────────────────────────────────────
+function cpYaml(btn) {
+  const pre = btn.closest('.yaml-panel').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// ── CANVAS PACKET TRACER ──────────────────────────────────
+const C = document.getElementById('reqCanvas');
+const ctx = C.getContext('2d');
+let playing = true, speedMult = 1.5, showWrites = true;
+let killedPodIdx = -1;
+const packets = [];
+
+function resize() {
+  C.width = C.offsetWidth;
+  C.height = 400;
+}
+resize();
+window.addEventListener('resize', () => { resize(); });
+
+// Layout constants
+function L() {
+  const W = C.width, H = C.height;
+  return {
+    W, H,
+    browser:  { x: 40,       y: H/2,   label: '🌍 Browser', sub: ':30080', color: '#fbbf24' },
+    nodeport: { x: W*.13,    y: H/2,   label: 'NodePort',  sub: ':30080', color: '#4ade80' },
+    fe1:      { x: W*.27,    y: H*.28, label: 'frontend\nxk2p', sub: '10.244.1.5:80',  color: '#4ade80' },
+    fe2:      { x: W*.27,    y: H*.72, label: 'frontend\nwz7t', sub: '10.244.2.3:80',  color: '#4ade80' },
+    clusterip:{ x: W*.44,    y: H/2,   label: 'ClusterIP', sub: '10.96.20.14:8080', color: '#60a5fa' },
+    be1:      { x: W*.59,    y: H*.15, label: 'backend\nmn4q', sub: '10.244.1.8:8080',  color: '#60a5fa' },
+    be2:      { x: W*.59,    y: H*.33, label: 'backend\npw6r', sub: '10.244.1.12:8080', color: '#60a5fa' },
+    be3:      { x: W*.59,    y: H*.50, label: 'backend\nhj5s', sub: '10.244.2.7:8080',  color: '#60a5fa' },
+    be4:      { x: W*.59,    y: H*.67, label: 'backend\nqt1v', sub: '10.244.2.11:8080', color: '#60a5fa' },
+    be5:      { x: W*.59,    y: H*.84, label: 'backend\nlm8a', sub: '10.244.3.4:8080',  color: '#60a5fa' },
+    pg0:      { x: W*.80,    y: H*.28, label: 'postgres-0\nPRIMARY', sub: '10.244.1.20:5432', color: '#a78bfa' },
+    pg1:      { x: W*.80,    y: H*.55, label: 'postgres-1\nreplica',  sub: '10.244.2.18:5432', color: '#7c6bb0' },
+    pg2:      { x: W*.80,    y: H*.82, label: 'postgres-2\nreplica',  sub: '10.244.3.15:5432', color: '#7c6bb0' },
+  };
+}
+
+const NODE_R = 30;
+
+class Pkt {
+  constructor(path, color) {
+    this.path = path; this.color = color;
+    this.seg = 0; this.t = 0;
+    this.done = false; this.returning = false;
+    this.alpha = 1;
+    this.trail = [];
+  }
+  get cur() {
+    const p = this.path[this.seg];
+    const n = this.path[this.seg+1];
+    if (!n) return p;
+    return { x: p.x + (n.x-p.x)*this.t, y: p.y + (n.y-p.y)*this.t };
+  }
+  advance(spd) {
+    this.trail.push({...this.cur});
+    if (this.trail.length > 12) this.trail.shift();
+    this.t += spd * speedMult * 0.018;
+    if (this.t >= 1) {
+      this.t = 0;
+      this.seg++;
+      if (this.seg >= this.path.length - 1) this.done = true;
+    }
+  }
+  draw(ctx) {
+    if (this.done) return;
+    const p = this.cur;
+    // Trail
+    this.trail.forEach((tp, i) => {
+      ctx.beginPath();
+      ctx.arc(tp.x, tp.y, 3 * (i/this.trail.length), 0, Math.PI*2);
+      ctx.fillStyle = this.color;
+      ctx.globalAlpha = (i/this.trail.length) * 0.35;
+      ctx.fill();
+    });
+    ctx.globalAlpha = this.alpha;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
+    ctx.fillStyle = this.color;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = this.color;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawNodes(l) {
+  const nodes = [
+    l.browser, l.nodeport, l.fe1, l.fe2,
+    l.clusterip,
+    l.be1, l.be2, l.be3, l.be4, l.be5,
+    l.pg0, l.pg1, l.pg2
+  ];
+  const beNodes = [l.be1, l.be2, l.be3, l.be4, l.be5];
+  const beKeys = ['be1','be2','be3','be4','be5'];
+
+  // Background lines
+  ctx.save();
+  ctx.strokeStyle = '#2a2d3e';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]);
+  const pairs = [
+    [l.browser,l.nodeport],[l.nodeport,l.fe1],[l.nodeport,l.fe2],
+    [l.fe1,l.clusterip],[l.fe2,l.clusterip],
+    [l.clusterip,l.be1],[l.clusterip,l.be2],[l.clusterip,l.be3],[l.clusterip,l.be4],[l.clusterip,l.be5],
+    [l.be1,l.pg0],[l.be2,l.pg0],[l.be3,l.pg0],[l.be4,l.pg0],[l.be5,l.pg0],
+    [l.pg0,l.pg1],[l.pg0,l.pg2],
+  ];
+  pairs.forEach(([a,b]) => { ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); });
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Nodes
+  nodes.forEach((n, i) => {
+    const killed = beKeys[killedPodIdx] && l[beKeys[killedPodIdx]] === n;
+    ctx.save();
+    if (killed) ctx.globalAlpha = 0.25;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, NODE_R, 0, Math.PI*2);
+    ctx.fillStyle = n.color + '18';
+    ctx.strokeStyle = n.color;
+    ctx.lineWidth = killed ? 1 : 1.5;
+    ctx.fill(); ctx.stroke();
+    if (killed) {
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 14px DM Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('☠', n.x, n.y+5);
+    }
+    ctx.globalAlpha = 1;
+    const lines = n.label.split('\n');
+    ctx.fillStyle = n.color;
+    ctx.font = `bold 8px DM Mono`;
+    ctx.textAlign = 'center';
+    lines.forEach((l2, li) => ctx.fillText(l2, n.x, n.y - 4 + li*10));
+    ctx.fillStyle = '#5a5f7a';
+    ctx.font = '7px DM Mono';
+    ctx.fillText(n.sub, n.x, n.y + 22);
+    ctx.restore();
+  });
+
+  // WAL labels
+  ctx.fillStyle = '#a78bfa55';
+  ctx.font = '7px DM Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText('WAL stream', (l.pg0.x+l.pg1.x)/2 + 18, (l.pg0.y+l.pg1.y)/2);
+  ctx.fillText('WAL stream', (l.pg0.x+l.pg2.x)/2 + 18, (l.pg0.y+l.pg2.y)/2);
+}
+
+let lastSpawn = 0;
+let spawnInterval = 900;
+
+function spawnPacket(l) {
+  const beArr = [l.be1, l.be2, l.be3, l.be4, l.be5];
+  const validBe = beArr.filter((_, i) => i !== killedPodIdx);
+  if (!validBe.length) return;
+  const fe = Math.random() > .5 ? l.fe1 : l.fe2;
+  const be = validBe[Math.floor(Math.random() * validBe.length)];
+  const pg = showWrites ? l.pg0 : (Math.random() > .5 ? l.pg1 : l.pg2);
+  const path = [l.browser, l.nodeport, fe, l.clusterip, be, pg, be, l.clusterip, fe, l.nodeport, l.browser];
+  packets.push(new Pkt(path, '#2dd4bf'));
+}
+
+function loop(ts) {
+  ctx.clearRect(0, 0, C.width, C.height);
+  ctx.fillStyle = '#1c1f2b';
+  ctx.fillRect(0, 0, C.width, C.height);
+  const l = L();
+  drawNodes(l);
+  if (playing) {
+    packets.forEach(p => p.advance(1));
+    if (ts - lastSpawn > spawnInterval) {
+      spawnPacket(l);
+      lastSpawn = ts;
+    }
+  }
+  packets.forEach(p => p.draw(ctx));
+  for (let i = packets.length-1; i >= 0; i--) { if (packets[i].done) packets.splice(i,1); }
+  // Stats
+  ctx.fillStyle = '#5a5f7a';
+  ctx.font = '9px DM Mono';
+  ctx.textAlign = 'left';
+  ctx.fillText(`packets: ${packets.length}  |  killed: ${killedPodIdx >= 0 ? ['mn4q','pw6r','hj5s','qt1v','lm8a'][killedPodIdx] : 'none'}  |  mode: ${showWrites?'writes→pg0':'reads→replicas'}`, 12, 18);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function togglePlay() {
+  playing = !playing;
+  const b = document.getElementById('btnPlay');
+  b.textContent = playing ? '⏸ Pause' : '▶ Resume';
+  b.classList.toggle('on', playing);
+}
+function burstTraffic() {
+  const l = L();
+  for (let i = 0; i < 15; i++) setTimeout(() => spawnPacket(l), i * 60);
+}
+function failPod() {
+  killedPodIdx = Math.floor(Math.random() * 5);
+}
+function restoreAll() { killedPodIdx = -1; packets.length = 0; }
+function toggleWriteRead() { showWrites = !showWrites; }
+function setSpeed(v) { speedMult = parseFloat(v); document.getElementById('speedVal').textContent = v+'×'; }
+</script>
+</body>
+</html>

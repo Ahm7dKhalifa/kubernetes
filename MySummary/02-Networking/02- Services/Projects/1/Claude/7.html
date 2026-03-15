@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Cluster Tracer — Correct Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:#f0f2f7;color:#1c1e2b;font-family:'IBM Plex Sans',sans-serif;font-size:13px;display:flex;flex-direction:column;}
+
+:root{
+  --mono:'IBM Plex Mono',monospace;
+  --w:#fff;
+  --bg:#f0f2f7;
+  --bdr:#e2e6ef;
+  --blue:#3b5bdb;   --blue-l:#eef2ff;  --blue-b:#c5d0fb;
+  --green:#2f9e44;  --green-l:#ebfbee; --green-b:#b2f2bb;
+  --violet:#6741d9; --violet-l:#f3f0ff;--violet-b:#d0bfff;
+  --orange:#e8590c; --orange-l:#fff4e6;--orange-b:#ffd8a8;
+  --teal:#0ca678;   --teal-l:#e6fcf5;  --teal-b:#63e6be;
+  --pink:#d63384;
+  --red:#dc3545;
+  --muted:#8890aa;
+  --n1:#3b5bdb; --n2:#2f9e44; --n3:#6741d9;
+}
+
+/* ══ TOP BAR ══ */
+.topbar{flex-shrink:0;height:50px;background:var(--w);border-bottom:2px solid var(--bdr);display:flex;align-items:center;gap:10px;padding:0 18px;box-shadow:0 1px 3px rgba(0,0,0,.05);z-index:200;}
+.tb-logo{width:28px;height:28px;border-radius:6px;background:var(--blue);color:#fff;font-weight:800;font-size:.88rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.tb-title{font-size:.95rem;font-weight:800;letter-spacing:-.2px;}
+.tc{font-family:var(--mono);font-size:.59rem;font-weight:600;padding:2px 8px;border-radius:20px;border:1.5px solid;white-space:nowrap;}
+.tc-bl{color:var(--blue);border-color:var(--blue-b);background:var(--blue-l);}
+.tc-gn{color:var(--green);border-color:var(--green-b);background:var(--green-l);}
+.tc-or{color:var(--orange);border-color:var(--orange-b);background:var(--orange-l);}
+.tc-tl{color:var(--teal);border-color:var(--teal-b);background:var(--teal-l);}
+.tc-gy{color:#6c757d;border-color:#d0d5e8;background:#f8f9fa;}
+.tc-vi{color:var(--violet);border-color:var(--violet-b);background:var(--violet-l);}
+.tb-r{margin-left:auto;display:flex;gap:6px;align-items:center;}
+
+/* ══ SCENARIO TABS ══ */
+.scen-bar{flex-shrink:0;display:flex;background:var(--w);border-bottom:2px solid var(--bdr);padding:0 18px;overflow-x:auto;}
+.scen-bar::-webkit-scrollbar{height:0}
+.stab{font-family:var(--mono);font-size:.64rem;font-weight:500;padding:10px 13px;border:none;background:none;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s;}
+.stab:hover{color:#1c1e2b;}
+.stab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600;}
+
+/* ══ BODY ══ */
+.body-wrap{flex:1;display:grid;grid-template-columns:1fr 375px;min-height:0;overflow:hidden;}
+
+/* ══ DIAGRAM ══ */
+.DA{position:relative;overflow-y:auto;overflow-x:hidden;padding:12px 14px 20px;background:var(--bg);}
+.DA::-webkit-scrollbar{width:5px}
+.DA::-webkit-scrollbar-thumb{background:#d0d5e8;border-radius:3px}
+#CV{position:absolute;top:0;left:0;pointer-events:none;z-index:40;}
+
+/* ══ CHIP — clean name+ip+ports ══ */
+.chip{
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+  border:2px solid;border-radius:9px;padding:5px 9px 6px;
+  background:var(--w);cursor:default;
+  transition:all .28s cubic-bezier(.34,1.5,.64,1);
+  position:relative;z-index:10;min-width:96px;text-align:center;
+}
+.chip.active{transform:translateY(-3px);}
+.chip.killed{opacity:.28;filter:grayscale(1);pointer-events:none;}
+.chip.killed::after{content:'☠';position:absolute;font-size:1.1rem;}
+.cn{font-family:var(--mono);font-size:.66rem;font-weight:700;white-space:nowrap;line-height:1.2;}
+.ci{font-family:var(--mono);font-size:.58rem;color:var(--muted);margin-top:2px;white-space:nowrap;}
+.cp{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap;justify-content:center;}
+.pt{font-family:var(--mono);font-size:.54rem;font-weight:700;padding:1px 6px;border-radius:20px;border:1.5px solid;white-space:nowrap;}
+
+/* chip colour helpers */
+.chip-blue  {border-color:var(--blue-b);background:var(--blue-l);}   .chip-blue .cn{color:var(--blue);}
+.chip-blue.active{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,219,.14),0 5px 18px rgba(59,91,219,.12);}
+.chip-green {border-color:var(--green-b);background:var(--green-l);} .chip-green .cn{color:var(--green);}
+.chip-green.active{border-color:var(--green);box-shadow:0 0 0 3px rgba(47,158,68,.14),0 5px 18px rgba(47,158,68,.12);}
+.chip-violet{border-color:var(--violet-b);background:var(--violet-l);}.chip-violet .cn{color:var(--violet);}
+.chip-violet.active{border-color:var(--violet);box-shadow:0 0 0 3px rgba(103,65,217,.14),0 5px 18px rgba(103,65,217,.12);}
+.chip-orange{border-color:var(--orange-b);background:var(--orange-l);}.chip-orange .cn{color:var(--orange);}
+.chip-orange.active{border-color:var(--orange);box-shadow:0 0 0 3px rgba(232,89,12,.14),0 5px 18px rgba(232,89,12,.12);}
+.chip-teal  {border-color:var(--teal-b);background:var(--teal-l);}   .chip-teal .cn{color:var(--teal);}
+.chip-teal.active{border-color:var(--teal);box-shadow:0 0 0 3px rgba(12,166,120,.14),0 5px 18px rgba(12,166,120,.12);}
+.chip-gray  {border-color:var(--bdr);background:var(--w);}            .chip-gray .cn{color:#1c1e2b;}
+.chip-gray.active{border-color:#aab0c4;box-shadow:0 0 0 3px rgba(100,110,130,.1);}
+
+/* port tag colours */
+.pt-bl{color:var(--blue);border-color:var(--blue-b);background:var(--blue-l);}
+.pt-gn{color:var(--green);border-color:var(--green-b);background:var(--green-l);}
+.pt-vi{color:var(--violet);border-color:var(--violet-b);background:var(--violet-l);}
+.pt-or{color:var(--orange);border-color:var(--orange-b);background:var(--orange-l);}
+.pt-tl{color:var(--teal);border-color:var(--teal-b);background:var(--teal-l);}
+.pt-gy{color:#6c757d;border-color:#d0d5e8;background:#f8f9fa;}
+
+/* ══ SECTION BOXES ══ */
+.sec-box{border-radius:13px;padding:10px 12px 12px;margin-bottom:12px;}
+.sec-lbl{font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:1px;margin-bottom:8px;}
+
+/* control plane — only the real 4 components */
+.sec-cp{background:var(--w);border:2px solid var(--orange-b);}
+.sec-cp .sec-lbl{color:var(--orange);}
+
+/* kube-system namespace — services + coredns */
+.sec-ks{background:var(--w);border:2px solid var(--teal-b);}
+.sec-ks .sec-lbl{color:var(--teal);}
+
+/* nodeport mapping box */
+.sec-np{background:var(--blue-l);border:2px solid var(--blue-b);}
+.sec-np .sec-lbl{color:var(--blue);}
+
+/* nodes */
+.nodes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.node-box{background:var(--w);border:2px solid var(--bdr);border-radius:13px;padding:10px 10px 12px;position:relative;}
+.node-box.nb-n1{border-top:4px solid var(--n1);}
+.node-box.nb-n2{border-top:4px solid var(--n2);}
+.node-box.nb-n3{border-top:4px solid var(--n3);}
+.node-hd{margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;}
+.node-name{font-family:var(--mono);font-size:.63rem;font-weight:700;}
+.node-ip{font-family:var(--mono);font-size:.58rem;color:var(--muted);}
+.node-chips{display:flex;flex-direction:column;gap:7px;margin-top:8px;}
+
+/* sub-section inside node — kube-system pods */
+.node-sys{
+  background:#fafbfe;border:1.5px dashed var(--bdr);
+  border-radius:8px;padding:6px 8px;margin-bottom:7px;
+}
+.node-sys-lbl{font-family:var(--mono);font-size:.56rem;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:5px;}
+.node-sys-chips{display:flex;flex-direction:column;gap:5px;}
+
+/* kernel badge inside kube-proxy chip */
+.kernel-badge{
+  font-family:var(--mono);font-size:.52rem;font-weight:700;
+  padding:1px 6px;border-radius:3px;
+  background:#1c1e2b;color:#fff;
+  margin-top:3px;letter-spacing:.5px;
+}
+
+/* NodePort mapping visual */
+.np-map{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin-top:4px;}
+.np-step{display:flex;align-items:center;}
+.np-box{
+  font-family:var(--mono);font-size:.6rem;font-weight:700;
+  padding:4px 10px;border-radius:6px;border:1.5px solid;
+  white-space:nowrap;background:var(--w);
+}
+.np-arr{font-size:.75rem;color:var(--muted);padding:0 5px;font-weight:700;}
+.np-label{font-family:var(--mono);font-size:.56rem;color:var(--muted);margin-top:2px;display:block;}
+
+/* browser row */
+.browser-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+
+/* legend */
+.legend{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  padding:6px 12px;background:var(--w);border:1px solid var(--bdr);
+  border-radius:8px;margin-bottom:12px;
+}
+.leg{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:.58rem;color:var(--muted);}
+.leg-dot{width:9px;height:9px;border-radius:2px;}
+
+/* ══ RIGHT PANEL ══ */
+.right-panel{background:var(--w);border-left:2px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;}
+
+/* stepper */
+.step-nav{flex-shrink:0;background:#f8f9fc;border-bottom:1px solid var(--bdr);padding:9px 12px;overflow-y:auto;max-height:210px;}
+.step-nav::-webkit-scrollbar{width:3px}
+.step-nav::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+.sn-title{font-family:var(--mono);font-size:.56rem;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:7px;}
+.step-list{display:flex;flex-direction:column;gap:2px;}
+.si{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:7px;cursor:pointer;border:1px solid transparent;transition:all .15s;}
+.si:hover{background:var(--bg);border-color:var(--bdr);}
+.si.si-cur{background:var(--w);border-color:var(--blue);box-shadow:0 1px 5px rgba(59,91,219,.1);}
+.si.si-done .si-n{background:var(--green-l);color:var(--green);border-color:var(--green-b);}
+.si.si-done .si-t{color:var(--green);}
+.si.si-cur  .si-n{background:var(--blue);color:#fff;border-color:var(--blue);}
+.si.si-cur  .si-t{color:#1c1e2b;font-weight:700;}
+.si-n{width:18px;height:18px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.56rem;font-weight:700;border:1.5px solid var(--bdr);color:var(--muted);background:var(--w);transition:all .2s;}
+.si-t{font-size:.66rem;font-weight:500;color:#6c757d;transition:all .2s;line-height:1.3;}
+
+/* detail panel */
+.detail-wrap{flex:1;overflow-y:auto;}
+.detail-wrap::-webkit-scrollbar{width:4px}
+.detail-wrap::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+.detail-empty{padding:28px 16px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:.68rem;line-height:1.9;}
+.detail-empty .ei{font-size:1.8rem;display:block;margin-bottom:8px;}
+
+.detail-card{display:none;flex-direction:column;}
+.detail-card.vis{display:flex;}
+
+.dc-hd{padding:11px 13px 9px;border-bottom:1px solid var(--bdr);background:#fafbff;flex-shrink:0;}
+.dc-nr{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+.dc-num{width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;font-family:var(--mono);font-size:.62rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dc-ttl{font-size:.8rem;font-weight:700;color:#1c1e2b;line-height:1.3;}
+.dc-sub{font-family:var(--mono);font-size:.61rem;color:var(--muted);line-height:1.6;}
+
+/* 4 detail sections */
+.dc-secs{display:flex;flex-direction:column;}
+.dc-sec{border-bottom:1px solid var(--bdr);}
+.dc-sec:last-child{border-bottom:none;}
+.dc-sh{display:flex;align-items:center;gap:6px;padding:8px 13px;cursor:pointer;user-select:none;transition:background .12s;}
+.dc-sh:hover{background:#f8f9fc;}
+.dc-si{font-size:.85rem;flex-shrink:0;}
+.dc-sl{font-family:var(--mono);font-size:.66rem;font-weight:700;color:#1c1e2b;}
+.dc-st{font-family:var(--mono);font-size:.56rem;font-weight:600;padding:1px 7px;border-radius:20px;border:1px solid;margin-left:auto;}
+.dc-chev{font-size:.6rem;color:var(--muted);margin-left:3px;transition:transform .18s;display:inline-block;}
+.dc-sec.open .dc-chev{transform:rotate(90deg);}
+.dc-sb{display:none;padding:0 13px 10px;}
+.dc-sec.open .dc-sb{display:block;}
+.dc-blk{
+  background:#f8f9fc;border:1px solid var(--bdr);border-radius:7px;
+  padding:9px 11px;margin-top:5px;
+  font-family:var(--mono);font-size:.61rem;line-height:1.85;
+  color:#3a4055;border-left:3px solid;
+}
+.dc-blk.bq{border-left-color:var(--blue);  background:var(--blue-l);}
+.dc-blk.br{border-left-color:var(--orange);background:var(--orange-l);}
+.dc-blk.bs{border-left-color:var(--green); background:var(--green-l);}
+.dc-blk.bw{border-left-color:var(--violet);background:var(--violet-l);}
+
+/* inline highlights */
+.hi{color:var(--violet);font-weight:700;}   /* IP */
+.hp{color:var(--blue);font-weight:700;}     /* port */
+.hc{color:var(--orange);font-weight:600;}   /* command */
+.ho{color:var(--green);font-weight:700;}    /* ok */
+.hk{color:var(--teal);font-weight:600;}     /* keyword */
+
+/* ══ CONTROLS ══ */
+.cbar{flex-shrink:0;background:var(--w);border-top:2px solid var(--bdr);height:47px;padding:0 15px;display:flex;align-items:center;gap:7px;box-shadow:0 -1px 4px rgba(0,0,0,.04);z-index:100;}
+.cb{font-family:var(--mono);font-size:.65rem;font-weight:700;padding:5px 13px;border-radius:7px;border:2px solid;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.cb:disabled{opacity:.38;cursor:default;}
+.cb.pr{background:var(--blue);color:#fff;border-color:var(--blue);}     .cb.pr:hover:not(:disabled){background:#2f4ac0;}
+.cb.sc{background:var(--green-l);color:var(--green);border-color:var(--green-b);}
+.cb.wa{background:var(--orange-l);color:var(--orange);border-color:var(--orange-b);}
+.cb.da{background:#fff5f5;color:var(--red);border-color:#ffc9c9;}
+.cb.gl{background:var(--bg);color:#5c6070;border-color:var(--bdr);}     .cb.gl:hover:not(:disabled){border-color:#aab0c4;}
+.sg{margin-left:auto;display:flex;align-items:center;gap:6px;}
+.sg label{font-family:var(--mono);font-size:.57rem;color:var(--muted);font-weight:700;}
+input[type=range]{accent-color:var(--blue);width:85px;cursor:pointer;}
+.sv{font-family:var(--mono);font-size:.63rem;color:var(--blue);min-width:24px;font-weight:700;}
+
+/* progress */
+.prog{flex-shrink:0;height:3px;background:var(--bdr);}
+.pf{height:100%;background:linear-gradient(90deg,var(--blue),var(--violet));transition:width .4s ease;border-radius:0 2px 2px 0;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tb-logo">⎈</div>
+  <span class="tb-title">K8s Cluster Tracer — Correct Architecture</span>
+  <span class="tc tc-or">Control Plane: 4 components only</span>
+  <span class="tc tc-tl">CoreDNS: worker pods</span>
+  <span class="tc tc-or">iptables: kernel on every node</span>
+  <div class="tb-r">
+    <span class="tc tc-bl" id="tbStatus">● READY</span>
+    <span class="tc tc-gy" id="tbStep">— / —</span>
+  </div>
+</div>
+<div class="prog"><div class="pf" id="pf" style="width:0%"></div></div>
+
+<!-- SCENARIO TABS -->
+<div class="scen-bar">
+  <button class="stab active" onclick="setScen(0,this)">📋 Full Request Cycle</button>
+  <button class="stab" onclick="setScen(1,this)">⚡ Same-Node</button>
+  <button class="stab" onclick="setScen(2,this)">🌐 Cross-Node</button>
+  <button class="stab" onclick="setScen(3,this)">🔍 DNS Deep Dive</button>
+  <button class="stab" onclick="setScen(4,this)">💾 WAL Replication</button>
+</div>
+
+<div class="body-wrap">
+
+<!-- ════════ DIAGRAM ════════ -->
+<div class="DA" id="DA">
+<canvas id="CV"></canvas>
+
+<!-- BROWSER -->
+<div class="browser-row">
+  <div class="chip chip-orange" id="el-browser">
+    <span class="cn">🌍 Browser / Client</span>
+    <span class="ci">http://192.168.1.11:30080</span>
+    <div class="cp"><span class="pt pt-or">src::54312</span><span class="pt pt-or">dst::30080</span></div>
+  </div>
+  <div style="font-family:var(--mono);font-size:.62rem;color:var(--muted);padding:0 6px;">→ any node IP works</div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:var(--orange)"></div>Control Plane only</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--teal)"></div>kube-system (worker pods)</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--orange);opacity:.5"></div>iptables = Linux kernel (every node)</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>Frontend pods</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Backend pods</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--violet)"></div>Postgres pods</div>
+</div>
+
+<!-- ── CONTROL PLANE ── only apiserver, etcd, scheduler, controller-mgr ── -->
+<div class="sec-box sec-cp">
+  <div class="sec-lbl">▲ CONTROL PLANE — 192.168.1.10 &nbsp;(NO CoreDNS here · NO iptables here)</div>
+  <div style="display:flex;gap:9px;flex-wrap:wrap;">
+    <div class="chip chip-orange" id="el-api">
+      <span class="cn">⚙ kube-apiserver</span>
+      <span class="ci">192.168.1.10</span>
+      <div class="cp"><span class="pt pt-or">:6443 HTTPS</span></div>
+    </div>
+    <div class="chip chip-orange" id="el-etcd">
+      <span class="cn">🗄 etcd</span>
+      <span class="ci">192.168.1.10</span>
+      <div class="cp"><span class="pt pt-or">:2379</span><span class="pt pt-or">:2380</span></div>
+    </div>
+    <div class="chip chip-orange" id="el-sched">
+      <span class="cn">📅 kube-scheduler</span>
+      <span class="ci">192.168.1.10</span>
+      <div class="cp"><span class="pt pt-or">:10259</span></div>
+    </div>
+    <div class="chip chip-orange" id="el-ctrl">
+      <span class="cn">🔄 controller-mgr</span>
+      <span class="ci">192.168.1.10</span>
+      <div class="cp"><span class="pt pt-or">:10257</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── kube-system SERVICES + CoreDNS Service ── -->
+<div class="sec-box sec-ks">
+  <div class="sec-lbl">📦 kube-system NAMESPACE — Services &amp; cluster-wide resources</div>
+  <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:flex-start;">
+
+    <!-- kube-dns service (ClusterIP for CoreDNS pods) -->
+    <div class="chip chip-teal" id="el-dns-svc">
+      <span class="cn">🔍 kube-dns Service</span>
+      <span class="ci">ClusterIP: 10.96.0.10</span>
+      <div class="cp"><span class="pt pt-tl">:53 UDP</span><span class="pt pt-tl">:53 TCP</span><span class="pt pt-gy">→ CoreDNS pods</span></div>
+    </div>
+
+    <!-- frontend-svc -->
+    <div class="chip chip-blue" id="el-svc-np">
+      <span class="cn">frontend-svc</span>
+      <span class="ci">ClusterIP: 10.96.10.5</span>
+      <div class="cp"><span class="pt pt-bl">NodePort</span><span class="pt pt-bl">:30080</span><span class="pt pt-gy">→:80</span></div>
+    </div>
+
+    <!-- backend-svc -->
+    <div class="chip chip-green" id="el-svc-cip">
+      <span class="cn">backend-svc</span>
+      <span class="ci">ClusterIP: 10.96.20.14</span>
+      <div class="cp"><span class="pt pt-gn">ClusterIP</span><span class="pt pt-gn">:8080</span><span class="pt pt-gy">5 pods</span></div>
+    </div>
+
+    <!-- postgres-svc -->
+    <div class="chip chip-violet" id="el-svc-hl">
+      <span class="cn">postgres-svc</span>
+      <span class="ci">clusterIP: None</span>
+      <div class="cp"><span class="pt pt-vi">Headless</span><span class="pt pt-vi">:5432</span></div>
+    </div>
+  </div>
+
+  <!-- NodePort Mapping Visual -->
+  <div style="margin-top:10px;background:var(--blue-l);border:1.5px solid var(--blue-b);border-radius:8px;padding:8px 12px;" id="el-np-map">
+    <div style="font-family:var(--mono);font-size:.6rem;font-weight:700;color:var(--blue);margin-bottom:6px;">🔌 NodePort Mapping — how :30080 reaches a pod</div>
+    <div class="np-map">
+      <div class="np-step">
+        <div>
+          <span class="np-box" style="color:var(--orange);border-color:var(--orange-b);background:var(--orange-l);">nodeIP:30080</span>
+          <span class="np-label">any node IP</span>
+        </div>
+      </div>
+      <div class="np-arr">→</div>
+      <div class="np-step">
+        <div>
+          <span class="np-box" style="color:var(--orange);border-color:var(--orange-b);background:var(--orange-l);">iptables<br>KUBE-NODEPORTS</span>
+          <span class="np-label">kernel, this node</span>
+        </div>
+      </div>
+      <div class="np-arr">→</div>
+      <div class="np-step">
+        <div>
+          <span class="np-box" style="color:var(--blue);border-color:var(--blue-b);background:var(--blue-l);">frontend-svc<br>ClusterIP:80</span>
+          <span class="np-label">Service object</span>
+        </div>
+      </div>
+      <div class="np-arr">→</div>
+      <div class="np-step">
+        <div>
+          <span class="np-box" style="color:var(--orange);border-color:var(--orange-b);background:var(--orange-l);">iptables<br>KUBE-SEP</span>
+          <span class="np-label">DNAT rule</span>
+        </div>
+      </div>
+      <div class="np-arr">→</div>
+      <div class="np-step">
+        <div>
+          <span class="np-box" style="color:var(--blue);border-color:var(--blue-b);background:var(--blue-l);">fe-pod:80<br>10.244.x.x</span>
+          <span class="np-label">actual pod</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WORKER NODES ══ -->
+<div class="nodes-grid">
+
+<!-- NODE 1 -->
+<div class="node-box nb-n1" id="el-node1">
+  <div class="node-hd">
+    <span class="node-name" style="color:var(--n1)">NODE-WORKER-1</span>
+    <span class="node-ip">192.168.1.11</span>
+  </div>
+
+  <!-- kube-system pods ON THIS NODE -->
+  <div class="node-sys">
+    <div class="node-sys-lbl">KUBE-SYSTEM PODS (live here)</div>
+    <div class="node-sys-chips">
+      <!-- CoreDNS pod — lives on worker nodes, NOT control plane -->
+      <div class="chip chip-teal" id="el-dns" style="width:100%;">
+        <span class="cn">🔍 coredns-7d4f9-ax2</span>
+        <span class="ci">10.244.1.2 · pod in kube-system</span>
+        <div class="cp"><span class="pt pt-tl">:53 UDP</span><span class="pt pt-tl">:53 TCP</span><span class="pt pt-tl">:9153 metrics</span></div>
+      </div>
+      <!-- kube-proxy — DaemonSet, one per node, WRITES iptables -->
+      <div class="chip chip-orange" id="el-kp1" style="width:100%;">
+        <span class="cn">⚙ kube-proxy (DaemonSet)</span>
+        <span class="ci">192.168.1.11 · writes iptables rules</span>
+        <div class="cp"><span class="pt pt-or">:10250 kubelet</span><span class="pt pt-or">watches API</span></div>
+        <span class="kernel-badge">▼ programs Linux kernel iptables</span>
+      </div>
+      <!-- iptables — kernel, NOT a pod -->
+      <div class="chip chip-orange" id="el-ipt1" style="width:100%;opacity:.85;">
+        <span class="cn">🔒 iptables (Linux kernel)</span>
+        <span class="ci">NOT a pod · part of OS kernel</span>
+        <div class="cp"><span class="pt pt-or">KUBE-SVC chains</span><span class="pt pt-or">DNAT</span><span class="pt pt-or">conntrack</span></div>
+        <span class="kernel-badge">kernel netfilter — intercepts all packets</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- App pods -->
+  <div class="node-chips">
+    <div class="chip chip-blue" id="el-fe1" style="width:100%;">
+      <span class="cn">frontend-7d4f9-ax2</span>
+      <span class="ci">10.244.1.5</span>
+      <div class="cp"><span class="pt pt-bl">nginx:1.25</span><span class="pt pt-bl">:80</span></div>
+    </div>
+    <div class="chip chip-green" id="el-be1" style="width:100%;">
+      <span class="cn">backend-8c11a-q8z</span>
+      <span class="ci">10.244.1.8</span>
+      <div class="cp"><span class="pt pt-gn">node:20</span><span class="pt pt-gn">:8080</span></div>
+    </div>
+    <div class="chip chip-green" id="el-be2" style="width:100%;">
+      <span class="cn">backend-8c11a-m4p</span>
+      <span class="ci">10.244.1.12</span>
+      <div class="cp"><span class="pt pt-gn">node:20</span><span class="pt pt-gn">:8080</span></div>
+    </div>
+    <div class="chip chip-violet" id="el-pg0" style="width:100%;">
+      <span class="cn">postgres-0 ★ PRIMARY</span>
+      <span class="ci">10.244.1.20</span>
+      <div class="cp"><span class="pt pt-vi">pg:15.4</span><span class="pt pt-vi">:5432</span><span class="pt pt-gy">PVC 10Gi</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- NODE 2 -->
+<div class="node-box nb-n2" id="el-node2">
+  <div class="node-hd">
+    <span class="node-name" style="color:var(--n2)">NODE-WORKER-2</span>
+    <span class="node-ip">192.168.1.12</span>
+  </div>
+  <div class="node-sys">
+    <div class="node-sys-lbl">KUBE-SYSTEM PODS (live here)</div>
+    <div class="node-sys-chips">
+      <div class="chip chip-teal" id="el-dns2" style="width:100%;">
+        <span class="cn">🔍 coredns-7d4f9-1y5</span>
+        <span class="ci">10.244.2.2 · pod in kube-system</span>
+        <div class="cp"><span class="pt pt-tl">:53 UDP</span><span class="pt pt-tl">:53 TCP</span></div>
+      </div>
+      <div class="chip chip-orange" id="el-kp2" style="width:100%;">
+        <span class="cn">⚙ kube-proxy (DaemonSet)</span>
+        <span class="ci">192.168.1.12 · writes iptables rules</span>
+        <div class="cp"><span class="pt pt-or">:10250 kubelet</span><span class="pt pt-or">watches API</span></div>
+        <span class="kernel-badge">▼ programs Linux kernel iptables</span>
+      </div>
+      <div class="chip chip-orange" id="el-ipt2" style="width:100%;opacity:.85;">
+        <span class="cn">🔒 iptables (Linux kernel)</span>
+        <span class="ci">NOT a pod · OS kernel</span>
+        <div class="cp"><span class="pt pt-or">KUBE-SVC chains</span><span class="pt pt-or">DNAT</span></div>
+        <span class="kernel-badge">kernel netfilter — intercepts all packets</span>
+      </div>
+    </div>
+  </div>
+  <div class="node-chips">
+    <div class="chip chip-blue" id="el-fe2" style="width:100%;">
+      <span class="cn">frontend-7d4f9-1y5</span>
+      <span class="ci">10.244.2.3</span>
+      <div class="cp"><span class="pt pt-bl">nginx:1.25</span><span class="pt pt-bl">:80</span></div>
+    </div>
+    <div class="chip chip-green" id="el-be3" style="width:100%;">
+      <span class="cn">backend-8c11a-m0p</span>
+      <span class="ci">10.244.2.7</span>
+      <div class="cp"><span class="pt pt-gn">node:20</span><span class="pt pt-gn">:8080</span></div>
+    </div>
+    <div class="chip chip-green" id="el-be4" style="width:100%;">
+      <span class="cn">backend-8c11a-x9k</span>
+      <span class="ci">10.244.2.11</span>
+      <div class="cp"><span class="pt pt-gn">node:20</span><span class="pt pt-gn">:8080</span></div>
+    </div>
+    <div class="chip chip-violet" id="el-pg1" style="width:100%;">
+      <span class="cn">postgres-1 replica</span>
+      <span class="ci">10.244.2.18</span>
+      <div class="cp"><span class="pt pt-vi">pg:15.4</span><span class="pt pt-vi">:5432</span><span class="pt pt-gy">PVC 10Gi</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- NODE 3 -->
+<div class="node-box nb-n3" id="el-node3">
+  <div class="node-hd">
+    <span class="node-name" style="color:var(--n3)">NODE-WORKER-3</span>
+    <span class="node-ip">192.168.1.13</span>
+  </div>
+  <div class="node-sys">
+    <div class="node-sys-lbl">KUBE-SYSTEM PODS (live here)</div>
+    <div class="node-sys-chips">
+      <!-- Node 3 has no CoreDNS replica (only 2 replicas by default) -->
+      <div class="chip chip-gray" style="width:100%;opacity:.5;">
+        <span class="cn">coredns</span>
+        <span class="ci">no replica on this node</span>
+        <div class="cp"><span class="pt pt-gy">2 replicas total</span></div>
+      </div>
+      <div class="chip chip-orange" id="el-kp3" style="width:100%;">
+        <span class="cn">⚙ kube-proxy (DaemonSet)</span>
+        <span class="ci">192.168.1.13 · writes iptables rules</span>
+        <div class="cp"><span class="pt pt-or">:10250 kubelet</span><span class="pt pt-or">watches API</span></div>
+        <span class="kernel-badge">▼ programs Linux kernel iptables</span>
+      </div>
+      <div class="chip chip-orange" id="el-ipt3" style="width:100%;opacity:.85;">
+        <span class="cn">🔒 iptables (Linux kernel)</span>
+        <span class="ci">NOT a pod · OS kernel</span>
+        <div class="cp"><span class="pt pt-or">KUBE-SVC chains</span><span class="pt pt-or">DNAT</span></div>
+        <span class="kernel-badge">kernel netfilter — intercepts all packets</span>
+      </div>
+    </div>
+  </div>
+  <div class="node-chips">
+    <div class="chip chip-green" id="el-be5" style="width:100%;">
+      <span class="cn">backend-8c11a-ff2</span>
+      <span class="ci">10.244.3.4</span>
+      <div class="cp"><span class="pt pt-gn">node:20</span><span class="pt pt-gn">:8080</span></div>
+    </div>
+    <div class="chip chip-violet" id="el-pg2" style="width:100%;">
+      <span class="cn">postgres-2 replica</span>
+      <span class="ci">10.244.3.15</span>
+      <div class="cp"><span class="pt pt-vi">pg:15.4</span><span class="pt pt-vi">:5432</span><span class="pt pt-gy">PVC 10Gi</span></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /nodes-grid -->
+</div><!-- /DA -->
+
+<!-- ════════ RIGHT PANEL ════════ -->
+<div class="right-panel">
+  <div class="step-nav">
+    <div class="sn-title">Steps</div>
+    <div class="step-list" id="stepList"></div>
+  </div>
+  <div class="detail-wrap" id="detailWrap">
+    <div class="detail-empty" id="detailEmpty">
+      <span class="ei">📋</span>
+      Press <b>Next ▶</b> or pick a step.<br>Each step shows:<br>
+      🔎 Query &nbsp; 📤 Request &nbsp; 📥 Response &nbsp; 💡 Explain
+    </div>
+    <div class="detail-card" id="detailCard"></div>
+  </div>
+</div>
+
+</div><!-- /body-wrap -->
+
+<!-- CONTROLS -->
+<div class="cbar">
+  <button class="cb pr" id="btnAuto" onclick="toggleAuto()">▶ Auto Play</button>
+  <button class="cb sc" id="btnNext" onclick="nextStep()">Next ▶</button>
+  <button class="cb gl" id="btnPrev" onclick="prevStep()">◀ Prev</button>
+  <button class="cb wa" id="btnReset" onclick="doReset()">↺ Reset</button>
+  <button class="cb da" onclick="doKill()">☠ Kill Pod</button>
+  <div class="sg">
+    <label>SPEED</label>
+    <input type="range" min="0.5" max="4" step="0.5" value="1.5" id="spdR" oninput="setSpd(this.value)">
+    <span class="sv" id="spdV">1.5×</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     JS
+════════════════════════════════════════ -->
+<script>
+'use strict';
+const CV=document.getElementById('CV'), CX=CV.getContext('2d'), DA=document.getElementById('DA');
+function resizeCV(){CV.width=DA.scrollWidth||DA.offsetWidth;CV.height=DA.scrollHeight||DA.offsetHeight;}
+resizeCV(); window.addEventListener('resize',resizeCV); new ResizeObserver(resizeCV).observe(DA);
+function elCtr(id){const el=document.getElementById(id);if(!el)return null;const er=el.getBoundingClientRect(),dr=DA.getBoundingClientRect();return{x:er.left-dr.left+DA.scrollLeft+er.width/2,y:er.top-dr.top+DA.scrollTop+er.height/2};}
+
+let scenIdx=0,stepIdx=-1,isAuto=false,autoTmr=null,spd=1.5;
+let killed=new Set(),packets=[],arrows=[],lastTs=0;
+
+/* ── PACKET ── */
+class Pkt{
+  constructor(fx,fy,tx,ty,col){Object.assign(this,{fx,fy,tx,ty,col,t:0,done:false,trail:[]});}
+  upd(dt){this.t+=dt*spd*1.1;if(this.t>1){this.t=1;this.done=true;}const cx=this.fx+(this.tx-this.fx)*this.t,cy=this.fy+(this.ty-this.fy)*this.t;this.trail.push({x:cx,y:cy});if(this.trail.length>22)this.trail.shift();}
+  draw(c){this.trail.forEach((p,i)=>{c.beginPath();c.arc(p.x,p.y,6*(i/this.trail.length),0,Math.PI*2);c.fillStyle=this.col;c.globalAlpha=(i/this.trail.length)*0.38;c.fill();});c.globalAlpha=1;const cx=this.fx+(this.tx-this.fx)*this.t,cy=this.fy+(this.ty-this.fy)*this.t;c.beginPath();c.arc(cx,cy,7,0,Math.PI*2);c.fillStyle=this.col;c.shadowBlur=16;c.shadowColor=this.col;c.fill();c.shadowBlur=0;}
+}
+
+/* ── ARROW ── */
+function drawArr(c,x1,y1,x2,y2,col,lbl){
+  const mx=(x1+x2)/2-(y2-y1)*0.18,my=(y1+y2)/2+(x2-x1)*0.18;
+  c.save();c.strokeStyle=col;c.lineWidth=2.5;c.shadowBlur=8;c.shadowColor=col+'88';c.setLineDash([]);
+  c.beginPath();c.moveTo(x1,y1);c.quadraticCurveTo(mx,my,x2,y2);c.stroke();
+  c.shadowBlur=0;const ang=Math.atan2(y2-my,x2-mx),hs=11;c.fillStyle=col;
+  c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-hs*Math.cos(ang-0.42),y2-hs*Math.sin(ang-0.42));c.lineTo(x2-hs*Math.cos(ang+0.42),y2-hs*Math.sin(ang+0.42));c.closePath();c.fill();
+  if(lbl){c.font='bold 9px IBM Plex Mono,monospace';const tw=c.measureText(lbl).width,pw=tw+14,ph=17,lx=mx,ly=my-8;c.fillStyle=col+'ee';c.beginPath();c.roundRect(lx-pw/2,ly-ph/2,pw,ph,8);c.fill();c.fillStyle='#fff';c.textAlign='center';c.textBaseline='middle';c.fillText(lbl,lx,ly);}
+  c.restore();
+}
+function loop(ts){const dt=Math.min((ts-lastTs)/1000,0.05);lastTs=ts;resizeCV();CX.clearRect(0,0,CV.width,CV.height);arrows.forEach(a=>{const f=elCtr(a.f),t=elCtr(a.t);if(f&&t)drawArr(CX,f.x,f.y,t.x,t.y,a.c,a.l);});packets.forEach(p=>{p.upd(dt);p.draw(CX);});packets=packets.filter(p=>!p.done);requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+function fire(fid,tid,col){const f=elCtr(fid),t=elCtr(tid);if(!f||!t)return;for(let i=0;i<4;i++)setTimeout(()=>packets.push(new Pkt(f.x,f.y,t.x,t.y,col)),i*140/spd);}
+
+/* ═══════════════════════════════════════════
+   SCENARIOS — architecturally correct
+   CoreDNS = el-dns (worker node 1 pod)
+   iptables = el-ipt1/2/3 (kernel on each node)
+   kube-proxy = el-kp1/2/3 (DaemonSet pods)
+═══════════════════════════════════════════ */
+const S=[
+/* ─── 0: Full Request Cycle ─── */
+{name:'Full Request Cycle',steps:[
+{
+  title:'① Browser → NodePort :30080',
+  tip:'NodePort open on ALL nodes via iptables KUBE-NODEPORTS',
+  on:['el-browser','el-ipt1','el-svc-np','el-np-map'],
+  arr:{f:'el-browser',t:'el-ipt1',c:'#e8590c',l:':30080'},
+  detail:{
+    q:`<span class="hc">TCP SYN</span> → <span class="hi">192.168.1.11</span>:<span class="hp">30080</span>
+Protocol: HTTP/1.1 GET /
+<span class="hk">NodePort :30080</span> is open on ALL 3 nodes
+kube-proxy programmed iptables on every node`,
+    r:`iptables <span class="hk">KUBE-NODEPORTS</span> chain fires (Linux kernel):
+<span class="hc">-A KUBE-NODEPORTS -p tcp --dport 30080
+   -j KUBE-SVC-frontend</span>
+
+<b>NOT a pod — this is the Linux kernel</b>
+kube-proxy (DaemonSet pod) wrote this rule
+iptables (kernel) executes it on every packet`,
+    s:`iptables <span class="ho">intercepts packet ✓</span>
+DNAT: <span class="hi">nodeIP</span>:<span class="hp">30080</span> → ClusterIP <span class="hi">10.96.10.5</span>:<span class="hp">80</span>
+Then selects frontend pod endpoint…`,
+    w:`<b>iptables lives in the Linux kernel (netfilter) — on every node.</b>
+kube-proxy is a DaemonSet pod that WRITES iptables rules.
+iptables is the ENFORCER — it intercepts all network packets passing through the node.
+NodePort = kube-proxy wrote a KUBE-NODEPORTS rule that opens :30080 on every node's eth0.`
+  }
+},
+{
+  title:'② iptables DNAT → frontend pod',
+  tip:'Kernel rewrites destination from ClusterIP to actual pod IP',
+  on:['el-kp1','el-ipt1','el-svc-np','el-fe1'],
+  arr:{f:'el-ipt1',t:'el-fe1',c:'#3b5bdb',l:'DNAT :80'},
+  detail:{
+    q:`iptables <span class="hk">KUBE-SVC-frontend</span> chain (kernel):
+Input dst: <span class="hi">10.96.10.5</span>:<span class="hp">80</span>
+2 frontend endpoints: fe1, fe2`,
+    r:`<span class="hc">-A KUBE-SVC-frontend -m statistic --prob 0.5
+   -j KUBE-SEP-fe1
+-A KUBE-SEP-fe1 -j DNAT
+   --to-destination <span class="hi">10.244.1.5</span>:<span class="hp">80</span></span>
+
+conntrack entry: src=client:<span class="hp">54312</span> → <span class="hi">10.244.1.5</span>:<span class="hp">80</span>`,
+    s:`Pod <b>frontend-7d4f9-ax2</b> receives:
+IP: <span class="hi">10.244.1.5</span>  Port: <span class="hp">80</span>
+nginx → <span class="ho">200 OK</span> → React app loads`,
+    w:`<b>kube-proxy (pod) writes rules. iptables (kernel) executes them.</b>
+When you create a Service, kube-apiserver notifies kube-proxy.
+kube-proxy writes KUBE-SVC + KUBE-SEP iptables rules.
+iptables kernel then redirects ALL matching packets automatically.`
+  }
+},
+{
+  title:'③ nginx → CoreDNS (pod on Node1)',
+  tip:'CoreDNS runs as a pod on worker nodes — NOT control plane',
+  on:['el-fe1','el-dns','el-dns-svc'],
+  arr:{f:'el-fe1',t:'el-dns',c:'#0ca678',l:'DNS UDP :53'},
+  detail:{
+    q:`DNS A-record query from <span class="hi">10.244.1.5</span>:
+<span class="hc">backend-svc.app.svc.cluster.local</span>
+UDP → <span class="hi">10.96.0.10</span>:<span class="hp">53</span> (kube-dns Service ClusterIP)
+
+<b>kube-dns Service</b> routes to CoreDNS pods`,
+    r:`/etc/resolv.conf (injected by kubelet):
+<span class="hc">nameserver <span class="hi">10.96.0.10</span>   ← kube-dns Service IP
+search app.svc.cluster.local</span>
+
+Pod sends UDP to ClusterIP <span class="hi">10.96.0.10</span>:<span class="hp">53</span>
+iptables DNAT → CoreDNS pod <span class="hi">10.244.1.2</span>:<span class="hp">53</span>
+CoreDNS pod is on <b>Node1</b> (worker node!)`,
+    s:`CoreDNS pod <b>coredns-7d4f9-ax2</b> receives query:
+<span class="hc">QUERY backend-svc.app.svc.cluster.local A</span>
+Looking up in zone cache…`,
+    w:`<b>CoreDNS is NOT in the control plane.</b>
+It runs as a <b>Deployment</b> with 2 pods on worker nodes.
+It's exposed via the <b>kube-dns</b> Service (ClusterIP 10.96.0.10).
+Pods query that ClusterIP → iptables routes to a CoreDNS pod.
+You can see it: kubectl get pods -n kube-system | grep coredns`
+  }
+},
+{
+  title:'④ CoreDNS returns ClusterIP',
+  tip:'CoreDNS pod responds with virtual IP for the service',
+  on:['el-dns','el-svc-cip'],
+  arr:{f:'el-dns',t:'el-svc-cip',c:'#0ca678',l:'A: 10.96.20.14'},
+  detail:{
+    q:`CoreDNS zone lookup:
+<span class="hc">backend-svc.app.svc.cluster.local</span>
+Service type: ClusterIP`,
+    r:`DNS response (UDP from CoreDNS pod):
+<span class="hc">backend-svc.app.svc.cluster.local.
+  30 IN A <span class="hi">10.96.20.14</span></span>
+
+Single VIP — <b>not pod IPs</b>
+TTL: 30s  Cached by pod DNS`,
+    s:`Pod receives VIP: <span class="hi">10.96.20.14</span>
+TCP SYN → <span class="hi">10.96.20.14</span>:<span class="hp">8080</span>
+→ iptables KUBE-SVC-backend intercepts`,
+    w:`For ClusterIP services, CoreDNS returns <b>one virtual IP</b>.
+The pod connects to this VIP; iptables silently NATs it to an actual pod IP.
+This decouples DNS (service discovery) from load balancing (iptables).`
+  }
+},
+{
+  title:'⑤ iptables DNAT → backend pod',
+  tip:'iptables kernel picks one of 5 backend pods (20% each)',
+  on:['el-svc-cip','el-ipt1','el-kp1','el-be1'],
+  arr:{f:'el-ipt1',t:'el-be1',c:'#2f9e44',l:'DNAT → be1'},
+  detail:{
+    q:`iptables KUBE-SVC-backend chain (kernel):
+TCP SYN to <span class="hi">10.96.20.14</span>:<span class="hp">8080</span>
+5 SEP rules, 20% probability each`,
+    r:`<span class="hc">-A KUBE-SVC-backend -m statistic --prob 0.20
+   -j KUBE-SEP-be1
+-A KUBE-SEP-be1 -j DNAT
+   --to-destination <span class="hi">10.244.1.8</span>:<span class="hp">8080</span></span>
+
+SELECTED: backend-8c11a-q8z
+conntrack: <span class="hi">10.244.1.5</span> → <span class="hi">10.244.1.8</span>:<span class="hp">8080</span>`,
+    s:`be1 (<span class="hi">10.244.1.8</span>:<span class="hp">8080</span>) receives:
+node.js → GET /api/users
+JWT <span class="ho">valid ✓</span> → querying postgres-0`,
+    w:`iptables is doing the load balancing here — NOT CoreDNS, NOT kube-proxy at runtime.
+kube-proxy wrote the rules once. iptables kernel applies them to every single packet.
+If a pod fails its readiness probe → kube-proxy deletes its KUBE-SEP rule → no more traffic.`
+  }
+},
+{
+  title:'⑥ Backend → Headless DNS',
+  tip:'CoreDNS returns real pod IP for headless service',
+  on:['el-be1','el-dns','el-svc-hl'],
+  arr:{f:'el-be1',t:'el-dns',c:'#6741d9',l:'headless DNS'},
+  detail:{
+    q:`Backend queries CoreDNS pod:
+<span class="hc">postgres-0.postgres-svc.app.svc.cluster.local</span>
+Headless service → CoreDNS returns pod IP`,
+    r:`CoreDNS detects <span class="hk">clusterIP: None</span>:
+<span class="hc">postgres-0.postgres-svc.app.svc.cluster.local.
+  30 IN A <span class="hi">10.244.1.20</span>  ← actual pod IP!</span>
+
+<b>No VIP — pod IP returned directly</b>`,
+    s:`Backend receives pod IP <span class="hi">10.244.1.20</span>
+TCP → <span class="hi">10.244.1.20</span>:<span class="hp">5432</span> directly
+<b>No iptables DNAT on this path</b>`,
+    w:`Headless (clusterIP:None) bypasses iptables DNAT entirely.
+CoreDNS returns the real pod IP. The caller connects directly.
+Essential for StatefulSets: postgres-0 always has a stable DNS name pointing to its current IP.`
+  }
+},
+{
+  title:'⑦ Direct TCP → postgres-0',
+  tip:'No DNAT — direct pod connection via headless DNS',
+  on:['el-be1','el-pg0'],
+  arr:{f:'el-be1',t:'el-pg0',c:'#6741d9',l:'TCP :5432 direct'},
+  detail:{
+    q:`TCP SYN <span class="hi">10.244.1.8</span> → <span class="hi">10.244.1.20</span>:<span class="hp">5432</span>
+No iptables DNAT (headless service)
+Both on Node1 → local veth bridge`,
+    r:`PostgreSQL wire protocol:
+<span class="hc">StartupMessage { user:"appuser", db:"appdb" }
+Auth: md5 → <span class="ho">OK</span>
+INSERT INTO events VALUES (…)</span>`,
+    s:`postgres-0 <span class="ho">commits write ✓</span>
+WAL LSN: <span class="hk">0/1A00000</span>
+WAL stream → pg1, pg2`,
+    w:`Direct pod-to-pod: no VIP, no iptables DNAT involved.
+Both be1 and pg0 are on Node1 → packet goes through Linux bridge cbr0 only (~0.1ms).
+The headless DNS + StatefulSet pattern gives reliable PRIMARY targeting.`
+  }
+},
+{
+  title:'⑧ WAL stream → replicas',
+  tip:'postgres-0 streams WAL to pg1 (Node2) and pg2 (Node3)',
+  on:['el-pg0','el-pg1','el-pg2'],
+  arr:{f:'el-pg0',t:'el-pg1',c:'#6741d9',l:'WAL stream'},
+  detail:{
+    q:`Streaming replication from pg0 PRIMARY:
+<span class="hc">XLogSend LSN <span class="hk">0/1A00000</span> → pg1 (<span class="hi">10.244.2.18</span>)
+XLogSend LSN <span class="hk">0/1A00000</span> → pg2 (<span class="hi">10.244.3.15</span>)</span>`,
+    r:`PostgreSQL streaming replication:
+pg1 connects to pg0, requests WAL from LSN
+pg0 streams XLogData frames continuously
+
+Cross-node: VXLAN UDP:<span class="hp">4789</span> N1→N2, N1→N3`,
+    s:`pg1 <span class="ho">ACK 0/1A00000 ✓</span>  Lag: &lt;1ms
+pg2 <span class="ho">ACK 0/1A00000 ✓</span>  Lag: &lt;1ms
+All 3 nodes consistent`,
+    w:`WAL is written BEFORE data pages — durability guarantee.
+Streaming replication keeps replicas continuously up to date.
+Hot standby: replicas serve read queries while staying in sync.
+If pg0 dies: promote pg1 or pg2, update DNS, backends reconnect.`
+  }
+},
+{
+  title:'⑨ HTTP 200 → browser',
+  tip:'Response reverses through conntrack NAT',
+  on:['el-browser','el-fe1','el-ipt1'],
+  arr:{f:'el-fe1',t:'el-browser',c:'#d63384',l:'200 OK'},
+  detail:{
+    q:`Return path via conntrack reverse-NAT:
+pg0 → be1 → iptables rev-NAT → fe1 → NodePort → browser`,
+    r:`conntrack table reverse-NAT each hop:
+<span class="hc">be1 (<span class="hi">10.244.1.8</span>) → rev-NAT → ClusterIP (<span class="hi">10.96.20.14</span>)
+fe1 (<span class="hi">10.244.1.5</span>) → rev-NAT → nodeIP:<span class="hp">30080</span>
+NodePort → rev-NAT → browser</span>`,
+    s:`Browser: HTTP <span class="ho">200 OK</span>
+{"users":[{"id":1,"name":"Alice"},…]}
+Total RTT: ~4ms`,
+    w:`conntrack (part of Linux kernel netfilter) automatically reverse-NATs each packet.
+The browser sees a clean response from the IP:port it connected to, unaware of all the DNAT hops.
+iptables + conntrack is a kernel-level transparent proxy system.`
+  }
+},
+]},
+
+/* ─── 1: Same-Node ─── */
+{name:'Same-Node (N1→N1)',steps:[
+{
+  title:'① NodePort → fe1 (Node1)',
+  tip:'iptables on Node1 DNAT\'s NodePort to fe1',
+  on:['el-browser','el-ipt1','el-kp1','el-svc-np','el-fe1'],
+  arr:{f:'el-browser',t:'el-fe1',c:'#3b5bdb',l:':30080→fe1'},
+  detail:{
+    q:`TCP SYN → <span class="hi">192.168.1.11</span>:<span class="hp">30080</span>
+iptables KUBE-NODEPORTS on Node1 fires`,
+    r:`<span class="hc">iptables DNAT → <span class="hi">10.244.1.5</span>:<span class="hp">80</span> (fe1)</span>
+fe1 nginx serves React → calls backend-svc:<span class="hp">8080</span>`,
+    s:`fe1 (<span class="hi">10.244.1.5</span>) receives → DNS lookup
+CoreDNS pod on Node1 resolves backend-svc`,
+    w:`Standard NodePort entry via iptables on Node1. fe1 is also on Node1. The interesting part comes next when iptables picks the backend pod.`
+  }
+},
+{
+  title:'② ⚡ Same-node iptables DNAT',
+  tip:'iptables picks be1 — ALSO on Node1 → no overlay needed!',
+  on:['el-ipt1','el-kp1','el-svc-cip','el-fe1','el-be1'],
+  arr:{f:'el-fe1',t:'el-be1',c:'#2f9e44',l:'⚡ local veth'},
+  detail:{
+    q:`iptables KUBE-SVC-backend on Node1:
+Random selection → be1 (<span class="hi">10.244.1.8</span>)
+<b>be1 is on the SAME NODE as fe1!</b>`,
+    r:`<span class="hc">DNAT: <span class="hi">10.96.20.14</span> → <span class="hi">10.244.1.8</span>:<span class="hp">8080</span>
+Path: veth-fe1 → cbr0 (Linux bridge) → veth-be1</span>
+
+<b>⚡ No VXLAN · No CNI overlay · No network card</b>
+Kernel routes between virtual eth interfaces`,
+    s:`be1 receives via local bridge:
+~<span class="ho">0.1ms</span> latency
+vs ~3ms cross-node (VXLAN)`,
+    w:`When both pods are on the same node, iptables DNAT stays local.
+The packet travels: pod veth → Linux bridge (cbr0) → pod veth.
+No physical network involved. No VXLAN encapsulation. 10-20× faster.`
+  }
+},
+{
+  title:'③ Return — fully local to Node1',
+  tip:'Response path never leaves Node1',
+  on:['el-be1','el-ipt1','el-fe1','el-browser'],
+  arr:{f:'el-be1',t:'el-browser',c:'#d63384',l:'200 local'},
+  detail:{
+    q:`be1 → cbr0 → fe1
+conntrack reverse-NAT → NodePort → browser`,
+    r:`All hops on Node1 only:
+<span class="hc">be1 veth → cbr0 → fe1 veth → NodePort rev-NAT → browser</span>`,
+    s:`Browser <span class="ho">200 OK</span>  RTT: <span class="ho">~0.2ms</span>
+(vs ~4ms full cross-node cycle)`,
+    w:`Both forward and return paths are entirely within Node1's Linux kernel.
+No physical NIC involved. No inter-node latency.
+This is why topology-aware routing (prefer-same-zone) matters in large clusters.`
+  }
+},
+]},
+
+/* ─── 2: Cross-Node ─── */
+{name:'Cross-Node (N1→N3)',steps:[
+{
+  title:'① fe1 (Node1) → NodePort',
+  tip:'Standard entry, fe1 selected on Node1',
+  on:['el-browser','el-ipt1','el-fe1'],
+  arr:{f:'el-browser',t:'el-fe1',c:'#3b5bdb',l:':30080→fe1'},
+  detail:{
+    q:`TCP SYN → <span class="hi">192.168.1.11</span>:<span class="hp">30080</span>
+iptables Node1 DNAT → fe1 (<span class="hi">10.244.1.5</span>)`,
+    r:`NodePort DNAT → fe1
+nginx serves React
+DNS: backend-svc → <span class="hi">10.96.20.14</span>`,
+    s:`fe1 connects to ClusterIP <span class="hi">10.96.20.14</span>:<span class="hp">8080</span>
+iptables Node1 picks endpoint…`,
+    w:`Identical entry to same-node scenario. The difference happens when iptables selects the backend pod.`
+  }
+},
+{
+  title:'② iptables picks be5 on Node3!',
+  tip:'Random 20% selection forces VXLAN tunnel',
+  on:['el-ipt1','el-kp1','el-ipt3','el-kp3'],
+  arr:{f:'el-ipt1',t:'el-ipt3',c:'#e8590c',l:'VXLAN UDP:4789'},
+  detail:{
+    q:`iptables KUBE-SVC-backend on Node1:
+Random → be5 (<span class="hi">10.244.3.4</span>) on <b>Node3</b>!
+DNAT rewrites dst → <span class="hi">10.244.3.4</span>:<span class="hp">8080</span>`,
+    r:`CNI sees: dst <span class="hi">10.244.3.4</span> is on <span class="hi">192.168.1.13</span> (Node3)
+<span class="hc">VXLAN encap on Node1:
+outer: UDP <span class="hi">192.168.1.11</span>→<span class="hi">192.168.1.13</span>:<span class="hp">4789</span>
+inner: <span class="hi">10.244.1.5</span>→<span class="hi">10.244.3.4</span>:<span class="hp">8080</span></span>`,
+    s:`Node3 iptables (kp3 wrote rules here too) decaps VXLAN
+Delivers to be5 via local veth on Node3
+Extra latency: ~2ms for VXLAN tunnel`,
+    w:`Cross-node routing: every node has the same KUBE-SVC iptables rules (kube-proxy DaemonSet writes to all nodes).
+Node1 DNAT rewrites dst to a pod IP on Node3. CNI detects this is a different node and encapsulates in VXLAN UDP:4789.
+Node3 decapsulates and delivers to be5 locally.`
+  }
+},
+{
+  title:'③ be5 receives on Node3',
+  tip:'After VXLAN decap, local veth delivery',
+  on:['el-ipt3','el-kp3','el-be5'],
+  arr:{f:'el-ipt3',t:'el-be5',c:'#2f9e44',l:'decap→be5'},
+  detail:{
+    q:`Node3 kube-proxy (el-kp3) decaps VXLAN
+Inner dst: <span class="hi">10.244.3.4</span>:<span class="hp">8080</span>`,
+    r:`<span class="hc">VXLAN decap → veth-be5 → be5 container</span>
+be5 sees src=<span class="hi">10.244.1.5</span> dst=<span class="hi">10.244.3.4</span>:<span class="hp">8080</span>`,
+    s:`be5 <span class="ho">200 OK</span>  Latency: <span class="ho">~2ms</span>
+Return: VXLAN N3→N1 → conntrack rev-NAT`,
+    w:`Node3's iptables also has all the KUBE-SVC rules — kube-proxy DaemonSet ensures consistency.
+Response travels back via VXLAN, conntrack on Node1 reverse-NATs to restore original src/dst.`
+  }
+},
+{
+  title:'④ Return via overlay',
+  tip:'VXLAN return path, conntrack reverse-NAT',
+  on:['el-be5','el-ipt3','el-ipt1','el-browser'],
+  arr:{f:'el-be5',t:'el-browser',c:'#d63384',l:'200 cross-node'},
+  detail:{
+    q:`Return: be5 → VXLAN → Node1 → rev-NAT → fe1 → browser`,
+    r:`<span class="hc">be5 → VXLAN encap → <span class="hi">192.168.1.11</span>
+Node1 decap → conntrack rev-NAT
+fe1 → NodePort rev-NAT → browser</span>`,
+    s:`Browser <span class="ho">200 OK</span>  RTT: <span class="ho">~3ms</span>
+vs same-node: ~0.2ms`,
+    w:`<b>Summary — Same-Node vs Cross-Node:</b>
+Same-node: kernel bridge (cbr0) only → ~0.2ms
+Cross-node: VXLAN UDP:4789 tunnel → ~3ms
+kube-proxy DaemonSet ensures iptables rules exist on ALL nodes so any node can route to any pod.`
+  }
+},
+]},
+
+/* ─── 3: DNS Deep Dive ─── */
+{name:'DNS Deep Dive',steps:[
+{
+  title:'① Where CoreDNS actually lives',
+  tip:'CoreDNS = Deployment pods on worker nodes, NOT control plane',
+  on:['el-dns','el-dns2','el-dns-svc','el-api'],
+  arr:{f:'el-dns-svc',t:'el-dns',c:'#0ca678',l:'routes to pod'},
+  detail:{
+    q:`<span class="hc">kubectl get pods -n kube-system -o wide | grep coredns</span>
+→ coredns-7d4f9-ax2  Running  Node1 <span class="hi">10.244.1.2</span>
+→ coredns-7d4f9-1y5  Running  Node2 <span class="hi">10.244.2.2</span>`,
+    r:`CoreDNS is a <b>Deployment</b> (2 replicas by default)
+Exposed via Service: <span class="hk">kube-dns</span>
+Service ClusterIP: <span class="hi">10.96.0.10</span>
+Pods scheduled on <b>worker nodes</b> by kube-scheduler`,
+    s:`Control plane has: apiserver, etcd, scheduler, controller-mgr
+<b>CoreDNS is NOT there.</b>
+Pods query kube-dns ClusterIP → iptables routes to CoreDNS pod`,
+    w:`<b>Common misconception fixed:</b>
+CoreDNS does NOT live in the control plane.
+It's a regular Deployment in kube-system namespace.
+The control plane only runs: kube-apiserver, etcd, kube-scheduler, kube-controller-manager.
+On some clusters, CoreDNS may land on a worker node that also runs control plane components — but it's still a separate workload.`
+  }
+},
+{
+  title:'② Pod resolv.conf → kube-dns Service',
+  tip:'kubelet injects CoreDNS ClusterIP into every pod',
+  on:['el-fe1','el-dns-svc','el-dns'],
+  arr:{f:'el-fe1',t:'el-dns',c:'#0ca678',l:'UDP :53'},
+  detail:{
+    q:`Pod <span class="hi">10.244.1.5</span> sends DNS query:
+UDP → <span class="hi">10.96.0.10</span>:<span class="hp">53</span> (kube-dns Service ClusterIP)
+iptables DNAT → CoreDNS pod <span class="hi">10.244.1.2</span>:<span class="hp">53</span>`,
+    r:`kubelet injects /etc/resolv.conf into pod:
+<span class="hc">nameserver <span class="hi">10.96.0.10</span>   ← kube-dns Service
+search app.svc.cluster.local
+       svc.cluster.local cluster.local</span>`,
+    s:`CoreDNS pod receives UDP query
+Looks up zone: app.svc.cluster.local
+Prepares A record response`,
+    w:`The kube-dns Service ClusterIP (10.96.0.10) is stable and never changes.
+Pods always query this IP. iptables routes it to whichever CoreDNS pod is healthy.
+If a CoreDNS pod dies, iptables removes it from endpoints → traffic goes to the other replica.`
+  }
+},
+{
+  title:'③ ClusterIP → single VIP',
+  tip:'CoreDNS returns one virtual IP for ClusterIP services',
+  on:['el-dns','el-svc-cip'],
+  arr:{f:'el-dns',t:'el-svc-cip',c:'#0ca678',l:'A: 10.96.20.14'},
+  detail:{
+    q:`<span class="hc">QUERY backend-svc.app.svc.cluster.local A</span>
+Service type: ClusterIP`,
+    r:`CoreDNS response:
+<span class="hc">backend-svc.app.svc.cluster.local.
+  30 IN A <span class="hi">10.96.20.14</span></span>
+Single VIP · TTL 30s`,
+    s:`Pod connects to VIP <span class="hi">10.96.20.14</span>:<span class="hp">8080</span>
+iptables silently NATs to actual pod
+Pod never sees individual pod IPs`,
+    w:`CoreDNS returns ONE VIP. iptables does the load balancing.
+This separation lets you scale pods up/down without affecting DNS records.`
+  }
+},
+{
+  title:'④ Headless → pod IP direct',
+  tip:'clusterIP:None makes CoreDNS return actual pod IPs',
+  on:['el-dns','el-svc-hl','el-pg0'],
+  arr:{f:'el-dns',t:'el-pg0',c:'#6741d9',l:'A: 10.244.1.20'},
+  detail:{
+    q:`<span class="hc">QUERY postgres-0.postgres-svc.app.svc.cluster.local A</span>
+Service has clusterIP: None`,
+    r:`CoreDNS response (HEADLESS):
+<span class="hc">postgres-0.postgres-svc.app.svc.cluster.local.
+  30 IN A <span class="hi">10.244.1.20</span>  ← actual pod IP!</span>
+No VIP. No iptables DNAT path.`,
+    s:`Caller connects directly to <span class="hi">10.244.1.20</span>:<span class="hp">5432</span>
+No iptables involved in routing
+Stable identity via StatefulSet ordinal`,
+    w:`Headless bypasses iptables DNAT. CoreDNS returns real pod IPs.
+StatefulSet pods get stable DNS names: postgres-{0,1,2}.postgres-svc.
+postgres-0 ALWAYS resolves to the current IP of the pod named postgres-0.
+Essential for targeting the PRIMARY in a database cluster.`
+  }
+},
+]},
+
+/* ─── 4: WAL Replication ─── */
+{name:'WAL Replication',steps:[
+{
+  title:'① Backend → postgres-0 PRIMARY',
+  tip:'Headless DNS + direct TCP to PRIMARY pod',
+  on:['el-be1','el-dns','el-svc-hl','el-pg0'],
+  arr:{f:'el-be1',t:'el-pg0',c:'#6741d9',l:'TCP :5432'},
+  detail:{
+    q:`CoreDNS query: postgres-0.postgres-svc → <span class="hi">10.244.1.20</span>
+TCP SYN direct to pod IP (no DNAT)`,
+    r:`PostgreSQL connection:
+<span class="hc">StartupMessage { user:"appuser", db:"appdb" }
+Auth: md5 → <span class="ho">OK</span></span>`,
+    s:`postgres-0 ready for SQL
+PRIMARY: accepts reads and writes`,
+    w:`Always target PRIMARY for writes. Use headless DNS to ensure you reach postgres-0 specifically, not a load-balanced random replica.`
+  }
+},
+{
+  title:'② SQL WRITE → PVC',
+  tip:'INSERT committed, WAL segment created on PVC',
+  on:['el-pg0'],
+  arr:{f:'el-be1',t:'el-pg0',c:'#6741d9',l:'SQL INSERT'},
+  detail:{
+    q:`<span class="hc">INSERT INTO events(type,ts) VALUES ('login', NOW());</span>`,
+    r:`postgres-0 write path:
+<span class="hc">1. Write to WAL buffer
+2. WAL flush to PVC (postgres-data-postgres-0)
+3. Heap page updated
+4. WAL LSN: <span class="hk">0/1A00000</span>
+5. Replication slots notified</span>`,
+    s:`<span class="hc">CommandComplete { tag:"INSERT 0 1" }</span>
+WAL file on PVC: <span class="hk">000000010000000000000001A</span>
+2 replication slots ready`,
+    w:`WAL = Write-Ahead Log. Every change written to WAL BEFORE data pages.
+Stored on PVC (PersistentVolumeClaim) — survives pod restarts.
+Replication slots ensure replicas don't fall behind if they temporarily disconnect.`
+  }
+},
+{
+  title:'③ WAL stream → postgres-1 (Node2)',
+  tip:'Cross-node streaming replication via VXLAN',
+  on:['el-pg0','el-ipt1','el-ipt2','el-pg1'],
+  arr:{f:'el-pg0',t:'el-pg1',c:'#6741d9',l:'WAL N1→N2'},
+  detail:{
+    q:`pg0 PRIMARY → pg1 Replica:
+<span class="hc">XLogData { walEnd: <span class="hk">0/1A00000</span>, data:[…] }</span>
+Cross-node: VXLAN UDP:<span class="hp">4789</span> N1→N2`,
+    r:`Streaming replication protocol (TCP):
+<span class="hc">pg1 (<span class="hi">10.244.2.18</span>) connects to pg0 (<span class="hi">10.244.1.20</span>)
+pg0 streams XLogData continuously</span>`,
+    s:`pg1: <span class="hc">StandbyStatusUpdate { writeLSN: <span class="hk">0/1A00000</span> }</span>
+Applied ✓  Hot standby: active  Lag: <span class="ho">&lt;1ms</span>`,
+    w:`Streaming replication is a persistent TCP connection. pg1 connects to pg0 and receives WAL as it's written.
+Cross-node → VXLAN encapsulation (iptables + CNI handle this transparently).`
+  }
+},
+{
+  title:'④ WAL stream → postgres-2 (Node3)',
+  tip:'All 3 nodes reach full consistency',
+  on:['el-pg0','el-pg1','el-pg2'],
+  arr:{f:'el-pg0',t:'el-pg2',c:'#6741d9',l:'WAL N1→N3'},
+  detail:{
+    q:`pg0 → pg2: same WAL LSN <span class="hk">0/1A00000</span>
+Cross-node: VXLAN UDP:<span class="hp">4789</span> N1→N3`,
+    r:`Both replication slots streaming simultaneously:
+<span class="hc">Slot 1: pg1 (<span class="hi">10.244.2.18</span>) Node2
+Slot 2: pg2 (<span class="hi">10.244.3.15</span>) Node3</span>`,
+    s:`All 3 consistent ✓  Total lag: <span class="ho">&lt;2ms</span>
+If pg0 dies → promote pg1 or pg2 to PRIMARY`,
+    w:`3-node HA: tolerates 2 node failures.
+On pg0 failure: update postgres-0 DNS to point to promoted replica.
+Backends reconnect using the same stable DNS name.`
+  }
+},
+]},
+];
+
+/* ── APPLY STEP ── */
+function clearAll(){document.querySelectorAll('.chip').forEach(el=>el.classList.remove('active'));arrows=[];}
+function applyStep(idx){
+  const steps=S[scenIdx].steps;
+  if(idx<0||idx>=steps.length)return;
+  stepIdx=idx; clearAll();
+  const step=steps[idx];
+  step.on.forEach(id=>{const el=document.getElementById(id);if(el&&!el.classList.contains('killed'))el.classList.add('active');});
+  if(step.arr){arrows=[step.arr];fire(step.arr.f,step.arr.t,step.arr.c);}
+  renderDetail(idx,step);
+  buildStepper();updateProg();updateBtns();
+  document.getElementById('tbStep').textContent=`${idx+1} / ${steps.length}`;
+  document.getElementById('tbStatus').textContent='● RUNNING';
+  step.on.forEach(id=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});});
+}
+
+/* ── DETAIL PANEL ── */
+function renderDetail(idx,step){
+  document.getElementById('detailEmpty').style.display='none';
+  const card=document.getElementById('detailCard');
+  card.className='detail-card vis';
+  const d=step.detail;
+  const secs=[
+    {i:'🔎',l:'Query / Lookup',    t:'QUERY',   tc:'tc-bl',b:d.q,bc:'bq'},
+    {i:'📤',l:'Request / Packet',  t:'REQUEST', tc:'tc-or',b:d.r,bc:'br'},
+    {i:'📥',l:'Response',          t:'RESPONSE',tc:'tc-gn',b:d.s,bc:'bs'},
+    {i:'💡',l:'What Happened',     t:'EXPLAIN', tc:'tc-vi',b:d.w,bc:'bw'},
+  ];
+  card.innerHTML=`
+    <div class="dc-hd">
+      <div class="dc-nr"><div class="dc-num">${idx+1}</div><div class="dc-ttl">${step.title}</div></div>
+      <div class="dc-sub">${step.tip}</div>
+    </div>
+    <div class="dc-secs">
+      ${secs.map((s,si)=>`
+      <div class="dc-sec${si===0?' open':''}" id="dcs${si}">
+        <div class="dc-sh" onclick="toggleSec(${si})">
+          <span class="dc-si">${s.i}</span>
+          <span class="dc-sl">${s.l}</span>
+          <span class="dc-st tc ${s.tc}">${s.t}</span>
+          <span class="dc-chev">▶</span>
+        </div>
+        <div class="dc-sb"><div class="dc-blk ${s.bc}">${s.b}</div></div>
+      </div>`).join('')}
+    </div>`;
+}
+function toggleSec(si){const el=document.getElementById('dcs'+si);if(el)el.classList.toggle('open');}
+
+/* ── STEPPER ── */
+function buildStepper(){
+  const list=document.getElementById('stepList');list.innerHTML='';
+  S[scenIdx].steps.forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='si'+(i===stepIdx?' si-cur':i<stepIdx?' si-done':'');
+    d.onclick=()=>applyStep(i);
+    d.innerHTML=`<div class="si-n">${i<stepIdx?'✓':i+1}</div><span class="si-t">${s.title}</span>`;
+    list.appendChild(d);
+  });
+}
+function updateProg(){const t=S[scenIdx].steps.length;document.getElementById('pf').style.width=(t>0?((stepIdx+1)/t)*100:0)+'%';}
+function updateBtns(){const t=S[scenIdx].steps.length;document.getElementById('btnPrev').disabled=stepIdx<=0;document.getElementById('btnNext').disabled=stepIdx>=t-1;}
+
+/* ── AUTO PLAY ── */
+function nextStep(){applyStep(stepIdx+1);}
+function prevStep(){applyStep(stepIdx-1);}
+let autoId=null;
+function toggleAuto(){
+  isAuto=!isAuto;const btn=document.getElementById('btnAuto');
+  if(isAuto){
+    btn.textContent='⏸ Pause';btn.className='cb wa';
+    document.getElementById('tbStatus').textContent='● AUTO';
+    if(stepIdx>=S[scenIdx].steps.length-1)doReset();
+    if(stepIdx<0)applyStep(0);else nextStep();
+    autoId=setInterval(()=>{if(!isAuto){clearInterval(autoId);return;}if(stepIdx<S[scenIdx].steps.length-1)nextStep();else{stopAuto();document.getElementById('tbStatus').textContent='● DONE';}},2800/spd);
+  }else stopAuto();
+}
+function stopAuto(){isAuto=false;clearInterval(autoId);document.getElementById('btnAuto').textContent='▶ Auto Play';document.getElementById('btnAuto').className='cb pr';}
+function doReset(){
+  stopAuto();stepIdx=-1;clearAll();arrows=[];packets=[];
+  killed.clear();document.querySelectorAll('.chip.killed').forEach(el=>el.classList.remove('killed'));
+  buildStepper();updateProg();updateBtns();
+  document.getElementById('pf').style.width='0%';
+  document.getElementById('tbStep').textContent=`— / ${S[scenIdx].steps.length}`;
+  document.getElementById('tbStatus').textContent='● READY';
+  document.getElementById('detailEmpty').style.display='';
+  document.getElementById('detailCard').className='detail-card';
+}
+function doKill(){
+  const ids=['el-fe1','el-fe2','el-be1','el-be2','el-be3','el-be4','el-be5','el-pg1','el-pg2'];
+  const alive=ids.filter(id=>!killed.has(id));if(!alive.length)return;
+  const id=alive[Math.floor(Math.random()*alive.length)];
+  document.getElementById(id).classList.add('killed');killed.add(id);
+}
+function setSpd(v){spd=parseFloat(v);document.getElementById('spdV').textContent=v+'×';if(isAuto){stopAuto();toggleAuto();}}
+function setScen(idx,btn){scenIdx=idx;document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');doReset();}
+
+doReset();
+</script>
+</body>
+</html>

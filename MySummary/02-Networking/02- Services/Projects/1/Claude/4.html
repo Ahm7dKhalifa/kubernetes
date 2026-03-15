@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Interactive Cluster Tracer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════ BASE ═══════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:#f0f2f5;
+  color:#1a1d2e;
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:14px;
+  min-height:100vh;
+}
+
+/* ═══════════════════════ VARS ═══════════════════════ */
+:root{
+  --white:#ffffff;
+  --bg:#f0f2f5;
+  --card-border:#e2e6ef;
+  --card-shadow:0 2px 12px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --card-shadow-hover:0 8px 32px rgba(0,0,0,.12);
+
+  /* Container colours — matching screenshot */
+  --blue:#3b5bdb;        /* frontend / nginx */
+  --blue-dark:#2f4ac0;
+  --blue-light:#eef2ff;
+  --green:#2f9e44;       /* backend / python */
+  --green-dark:#237a33;
+  --green-light:#ebfbee;
+  --purple:#6741d9;      /* postgres */
+  --purple-dark:#5433b8;
+  --purple-light:#f3f0ff;
+  --orange:#e8590c;
+  --orange-light:#fff4e6;
+
+  /* Node border colours */
+  --node1-accent:#3b5bdb;
+  --node2-accent:#2f9e44;
+  --node3-accent:#6741d9;
+  --ctrl-accent:#e8590c;
+
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+
+  /* Step highlight */
+  --highlight-ring: 0 0 0 3px rgba(59,91,219,.4), 0 0 20px rgba(59,91,219,.2);
+}
+
+/* ═══════════════════════ PAGE HEADER ═══════════════════════ */
+.page-header{
+  background:var(--white);
+  border-bottom:1px solid var(--card-border);
+  padding:0 32px;
+  height:60px;
+  display:flex;align-items:center;gap:16px;
+  position:sticky;top:0;z-index:200;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.header-num{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--blue);
+  color:#fff;font-weight:800;font-size:1rem;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.header-title{
+  font-size:1.25rem;font-weight:800;color:#1a1d2e;letter-spacing:-.3px;
+}
+.header-badges{
+  margin-left:auto;display:flex;gap:8px;align-items:center;
+}
+.hbadge{
+  font-family:var(--mono);font-size:.7rem;
+  padding:4px 12px;border-radius:20px;
+  border:1.5px solid var(--card-border);
+  color:#5c6070;background:var(--white);
+}
+
+/* ═══════════════════════ SCENARIO BAR ═══════════════════════ */
+.scenario-bar{
+  background:var(--white);
+  border-bottom:2px solid var(--card-border);
+  padding:0 32px;
+  display:flex;gap:0;overflow-x:auto;
+}
+.scenario-bar::-webkit-scrollbar{height:3px}
+.scenario-bar::-webkit-scrollbar-thumb{background:#d0d5e8;border-radius:2px}
+.stab{
+  font-family:var(--mono);font-size:.72rem;font-weight:500;
+  padding:14px 18px;
+  border:none;background:none;
+  color:#8890aa;cursor:pointer;
+  border-bottom:3px solid transparent;
+  white-space:nowrap;transition:all .2s;
+}
+.stab:hover{color:#1a1d2e;}
+.stab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600;}
+
+/* ═══════════════════════ MAIN LAYOUT ═══════════════════════ */
+.layout{
+  display:grid;
+  grid-template-columns:1fr 360px;
+  min-height:calc(100vh - 120px);
+}
+
+/* ═══════════════════════ CLUSTER AREA ═══════════════════════ */
+.cluster-area{
+  padding:28px 24px;
+  overflow-y:auto;
+}
+
+/* ═══════════════════════ CONTROL PLANE ═══════════════════════ */
+.control-plane{
+  background:var(--white);
+  border:2px solid #ffd8a8;
+  border-radius:16px;
+  padding:16px 20px;
+  margin-bottom:20px;
+  box-shadow:var(--card-shadow);
+}
+.cp-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+.cp-title{
+  font-family:var(--mono);font-size:.85rem;font-weight:600;
+  color:var(--orange);letter-spacing:.5px;
+}
+.cp-ip{font-family:var(--mono);font-size:.75rem;color:#aab0c4;}
+.cp-components{
+  display:flex;gap:10px;flex-wrap:wrap;
+}
+.cp-comp{
+  background:#fff4e6;border:1.5px solid #ffd8a8;
+  border-radius:10px;padding:10px 14px;
+  flex:1;min-width:120px;transition:all .3s;
+}
+.cp-comp.active{
+  background:#fff;border-color:var(--orange);
+  box-shadow:0 0 0 3px rgba(232,89,12,.15);
+  transform:translateY(-2px);
+}
+.cp-comp-icon{font-size:1.1rem;margin-bottom:4px;}
+.cp-comp-name{
+  font-family:var(--mono);font-size:.72rem;font-weight:600;
+  color:#1a1d2e;
+}
+.cp-comp-detail{font-family:var(--mono);font-size:.62rem;color:#8890aa;margin-top:2px;}
+.cp-comp-response{
+  font-family:var(--mono);font-size:.62rem;
+  color:var(--orange);margin-top:6px;
+  padding:4px 6px;background:#fff4e6;border-radius:4px;
+  display:none;border-left:2px solid var(--orange);
+}
+.cp-comp.active .cp-comp-response{display:block;}
+
+/* ═══════════════════════ NODES GRID ═══════════════════════ */
+.nodes-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+}
+@media(max-width:1100px){.nodes-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:750px){.nodes-grid{grid-template-columns:1fr};.layout{grid-template-columns:1fr}}
+
+/* ═══════════════════════ NODE CARD ═══════════════════════ */
+.node-card{
+  background:var(--white);
+  border:1.5px solid var(--card-border);
+  border-radius:16px;
+  padding:18px 16px;
+  box-shadow:var(--card-shadow);
+  position:relative;
+  transition:box-shadow .3s,border-color .3s;
+}
+.node-card.highlight{
+  border-color:var(--blue);
+  box-shadow:var(--card-shadow-hover);
+}
+.node-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:4px;
+  border-radius:16px 16px 0 0;
+}
+.node-card.n1::before{background:var(--node1-accent);}
+.node-card.n2::before{background:var(--node2-accent);}
+.node-card.n3::before{background:var(--node3-accent);}
+
+.node-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:16px;margin-top:6px;
+}
+.node-name{
+  font-family:var(--mono);font-size:.9rem;font-weight:700;
+  color:#1a1d2e;letter-spacing:.3px;
+}
+.node-ip{font-family:var(--mono);font-size:.75rem;color:#aab0c4;}
+
+/* kube-proxy strip */
+.kube-proxy{
+  background:#fff9f0;border:1.5px dashed #ffd8a8;
+  border-radius:8px;padding:7px 12px;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+  transition:all .3s;
+}
+.kube-proxy.active{
+  background:#fff4e6;border-color:var(--orange);border-style:solid;
+  box-shadow:0 0 0 2px rgba(232,89,12,.12);
+}
+.kp-label{font-family:var(--mono);font-size:.65rem;font-weight:600;color:var(--orange);}
+.kp-ports{display:flex;gap:5px;margin-left:auto;}
+.kp-port{
+  font-family:var(--mono);font-size:.6rem;
+  padding:2px 7px;border-radius:4px;
+  border:1px solid;
+}
+.kp-port.p80  {color:#3b5bdb;border-color:#3b5bdb33;background:#eef2ff;}
+.kp-port.p8080{color:#2f9e44;border-color:#2f9e4433;background:#ebfbee;}
+.kp-port.p5432{color:#6741d9;border-color:#6741d933;background:#f3f0ff;}
+.kp-response{
+  font-family:var(--mono);font-size:.6rem;color:var(--orange);
+  margin-top:5px;padding:3px 8px;background:#fff4e6;
+  border-radius:4px;display:none;
+  border-left:2px solid var(--orange);
+}
+.kube-proxy.active .kp-response{display:block;}
+
+/* ═══════════════════════ POD CARD ═══════════════════════ */
+.pod-card{
+  background:#f8f9fc;
+  border:1.5px dashed #d0d5e8;
+  border-radius:10px;
+  padding:10px 12px;
+  margin-bottom:10px;
+  transition:all .35s cubic-bezier(.34,1.56,.64,1);
+  position:relative;
+}
+.pod-card.active{
+  background:var(--white);
+  border-style:solid;
+  transform:translateY(-2px);
+  box-shadow:0 4px 20px rgba(0,0,0,.1);
+}
+.pod-card.killed{
+  opacity:.35;
+  filter:grayscale(1);
+  pointer-events:none;
+}
+.pod-card.active.fe { border-color:var(--blue);   box-shadow:0 0 0 2px rgba(59,91,219,.15),0 4px 20px rgba(59,91,219,.1); }
+.pod-card.active.be { border-color:var(--green);  box-shadow:0 0 0 2px rgba(47,158,68,.15),0 4px 20px rgba(47,158,68,.1); }
+.pod-card.active.pg { border-color:var(--purple); box-shadow:0 0 0 2px rgba(103,65,217,.15),0 4px 20px rgba(103,65,217,.1); }
+
+.pod-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.pod-name{font-family:var(--mono);font-size:.72rem;font-weight:600;color:#1a1d2e;}
+.pod-ip{font-family:var(--mono);font-size:.65rem;color:#aab0c4;}
+.pod-ip span{color:#6c757d;}
+
+/* Container block — the coloured box from the screenshot */
+.container-block{
+  border-radius:8px;
+  padding:10px 14px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.container-block::before{
+  content:'CONTAINER';
+  display:block;font-family:var(--mono);font-size:.58rem;
+  font-weight:600;letter-spacing:1.5px;
+  opacity:.75;margin-bottom:4px;
+}
+.container-block.fe{background:var(--blue);color:#fff;}
+.container-block.be{background:var(--green);color:#fff;}
+.container-block.pg{background:var(--purple);color:#fff;}
+
+.container-image{
+  font-family:var(--mono);font-size:.82rem;font-weight:600;
+  letter-spacing:.2px;
+}
+.container-ports{
+  margin-top:6px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;
+}
+.port-badge{
+  font-family:var(--mono);font-size:.65rem;font-weight:600;
+  padding:3px 10px;border-radius:20px;
+  background:rgba(255,255,255,.2);
+  color:#fff;border:1px solid rgba(255,255,255,.3);
+  transition:all .3s;
+}
+.pod-card.active .port-badge{
+  background:rgba(255,255,255,.35);
+  box-shadow:0 0 8px rgba(255,255,255,.4);
+  transform:scale(1.05);
+}
+
+/* Pod response bubble */
+.pod-response{
+  margin-top:8px;
+  font-family:var(--mono);font-size:.65rem;
+  padding:6px 10px;border-radius:6px;
+  border-left:3px solid;
+  display:none;
+  line-height:1.6;
+}
+.pod-card.active .pod-response{display:block;}
+.pod-response.fe{background:var(--blue-light);border-color:var(--blue);color:var(--blue-dark);}
+.pod-response.be{background:var(--green-light);border-color:var(--green);color:var(--green-dark);}
+.pod-response.pg{background:var(--purple-light);border-color:var(--purple);color:var(--purple-dark);}
+
+/* ═══════════════════════ SERVICES ROW ═══════════════════════ */
+.services-row{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  margin-bottom:20px;
+}
+.svc-card{
+  background:var(--white);
+  border:1.5px solid var(--card-border);
+  border-radius:12px;
+  padding:12px 16px;
+  box-shadow:var(--card-shadow);
+  transition:all .3s;
+}
+.svc-card.active{
+  transform:translateY(-2px);
+  box-shadow:var(--card-shadow-hover);
+}
+.svc-card.svc-np.active  {border-color:var(--blue);  }
+.svc-card.svc-cip.active {border-color:var(--green); }
+.svc-card.svc-hl.active  {border-color:var(--purple);}
+.svc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.svc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.svc-name{font-family:var(--mono);font-size:.78rem;font-weight:700;color:#1a1d2e;}
+.svc-type-badge{
+  margin-left:auto;font-family:var(--mono);font-size:.6rem;font-weight:600;
+  padding:2px 8px;border-radius:20px;border:1px solid;
+}
+.svc-detail{font-family:var(--mono);font-size:.65rem;color:#8890aa;line-height:1.7;}
+.svc-response{
+  margin-top:8px;font-family:var(--mono);font-size:.65rem;
+  padding:5px 8px;border-radius:5px;border-left:2px solid;
+  display:none;line-height:1.6;
+}
+.svc-card.active .svc-response{display:block;}
+.svc-card.svc-np.active  .svc-response{background:#eef2ff;border-color:var(--blue); color:var(--blue-dark);}
+.svc-card.svc-cip.active .svc-response{background:#ebfbee;border-color:var(--green);color:var(--green-dark);}
+.svc-card.svc-hl.active  .svc-response{background:#f3f0ff;border-color:var(--purple);color:var(--purple-dark);}
+
+/* ═══════════════════════ RIGHT PANEL ═══════════════════════ */
+.right-panel{
+  background:var(--white);
+  border-left:1px solid var(--card-border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  position:sticky;top:60px;height:calc(100vh - 120px);
+}
+
+/* Stepper nav */
+.step-nav{
+  background:#f8f9fc;
+  border-bottom:1px solid var(--card-border);
+  padding:14px 16px;
+}
+.step-nav-title{
+  font-size:.7rem;font-weight:700;letter-spacing:1.5px;
+  color:#8890aa;text-transform:uppercase;margin-bottom:10px;
+}
+.steps-list{display:flex;flex-direction:column;gap:4px;}
+.step-item{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 10px;border-radius:8px;
+  cursor:pointer;transition:all .2s;
+  border:1px solid transparent;
+}
+.step-item:hover{background:var(--white);border-color:var(--card-border);}
+.step-item.current{
+  background:var(--white);border-color:var(--blue);
+  box-shadow:0 2px 8px rgba(59,91,219,.1);
+}
+.step-item.done .step-num-badge{background:#d3f9d8;color:#2f9e44;border-color:#b2f2bb;}
+.step-item.current .step-num-badge{background:var(--blue);color:#fff;border-color:var(--blue);}
+.step-num-badge{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:.65rem;font-weight:700;
+  border:1.5px solid #d0d5e8;color:#8890aa;background:var(--white);
+  transition:all .3s;
+}
+.step-item-label{font-size:.75rem;font-weight:600;color:#5c6070;}
+.step-item.current .step-item-label{color:#1a1d2e;}
+.step-item.done .step-item-label{color:#2f9e44;}
+
+/* Trace log */
+.trace-header{
+  padding:12px 16px;
+  border-bottom:1px solid var(--card-border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--white);
+}
+.trace-title{font-size:.75rem;font-weight:700;color:#1a1d2e;letter-spacing:.3px;}
+.trace-clear{
+  font-family:var(--mono);font-size:.62rem;
+  padding:3px 10px;border-radius:4px;
+  border:1px solid var(--card-border);background:none;
+  color:#8890aa;cursor:pointer;transition:all .2s;
+}
+.trace-clear:hover{color:#dc3545;border-color:#dc3545;}
+.trace-log{
+  flex:1;overflow-y:auto;
+  padding:10px 12px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.trace-log::-webkit-scrollbar{width:4px}
+.trace-log::-webkit-scrollbar-thumb{background:#e2e6ef;border-radius:2px}
+
+.trace-entry{
+  background:#f8f9fc;
+  border:1px solid var(--card-border);
+  border-radius:8px;
+  padding:8px 10px;
+  border-left:3px solid #d0d5e8;
+  animation:slideUp .25s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.trace-entry.te-browser {border-left-color:#e8590c;}
+.trace-entry.te-nodeport{border-left-color:#3b5bdb;}
+.trace-entry.te-iptables{border-left-color:#e8590c;}
+.trace-entry.te-dns     {border-left-color:#20c997;}
+.trace-entry.te-svc     {border-left-color:#3b5bdb;}
+.trace-entry.te-pod     {border-left-color:#2f9e44;}
+.trace-entry.te-db      {border-left-color:#6741d9;}
+.trace-entry.te-return  {border-left-color:#d63384;}
+.trace-entry.te-wal     {border-left-color:#6741d9;}
+
+.te-top{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+.te-step-num{
+  font-family:var(--mono);font-size:.6rem;font-weight:700;
+  padding:1px 6px;border-radius:3px;background:#e9ecef;color:#5c6070;
+}
+.te-comp{font-family:var(--mono);font-size:.7rem;font-weight:700;color:#1a1d2e;}
+.te-ts  {font-family:var(--mono);font-size:.6rem;color:#aab0c4;margin-left:auto;}
+.te-msg {font-family:var(--mono);font-size:.65rem;color:#5c6070;line-height:1.65;}
+.te-detail{
+  margin-top:5px;font-family:var(--mono);font-size:.62rem;
+  color:#8890aa;background:#f1f3f9;
+  padding:4px 8px;border-radius:4px;line-height:1.7;
+}
+
+/* ═══════════════════════ CONTROLS BAR ═══════════════════════ */
+.controls-bar{
+  background:var(--white);
+  border-top:2px solid var(--card-border);
+  padding:10px 24px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  box-shadow:0 -2px 8px rgba(0,0,0,.05);
+}
+.cbtn{
+  font-family:var(--mono);font-size:.72rem;font-weight:600;
+  padding:8px 18px;border-radius:8px;
+  border:1.5px solid;cursor:pointer;
+  transition:all .2s;letter-spacing:.2px;
+}
+.cbtn-primary {background:var(--blue);  color:#fff;border-color:var(--blue);}
+.cbtn-primary:hover{background:#2f4ac0;}
+.cbtn-success {background:var(--green); color:#fff;border-color:var(--green);}
+.cbtn-success:hover{background:#237a33;}
+.cbtn-warning {background:#fff4e6;color:var(--orange);border-color:#ffd8a8;}
+.cbtn-warning:hover{background:#ffe8cc;}
+.cbtn-danger  {background:#fff5f5;color:#dc3545;border-color:#ffc9c9;}
+.cbtn-danger:hover{background:#ffe3e3;}
+.cbtn-outline {background:var(--white); color:#5c6070;border-color:var(--card-border);}
+.cbtn-outline:hover{border-color:#aab0c4;color:#1a1d2e;}
+.cbtn:disabled{opacity:.45;cursor:not-allowed;}
+
+.speed-group{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.speed-group label{font-family:var(--mono);font-size:.65rem;color:#8890aa;font-weight:600;}
+input[type=range]{accent-color:var(--blue);width:100px;cursor:pointer;}
+.speed-val{font-family:var(--mono);font-size:.7rem;color:var(--blue);min-width:28px;font-weight:600;}
+
+/* ═══════════════════════ SVG OVERLAY ═══════════════════════ */
+#svgOverlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:150;overflow:visible;
+}
+
+/* ═══════════════════════ PROGRESS BAR ═══════════════════════ */
+.progress-wrap{
+  height:3px;background:#e9ecef;
+  position:sticky;top:60px;z-index:100;
+}
+.progress-fill{
+  height:100%;background:var(--blue);
+  transition:width .4s ease;border-radius:0 2px 2px 0;
+}
+
+/* ═══════════════════════ PACKET ANIMATION ═══════════════════════ */
+@keyframes packetPulse{
+  0%,100%{r:6px;opacity:1}
+  50%{r:9px;opacity:.7}
+}
+.packet-dot{animation:packetPulse .6s ease infinite}
+
+/* ═══════════════════════ TOOLTIP ═══════════════════════ */
+.step-tooltip{
+  position:fixed;z-index:300;
+  background:var(--white);border:1.5px solid var(--blue);
+  border-radius:10px;padding:10px 14px;
+  box-shadow:0 8px 32px rgba(59,91,219,.2);
+  font-family:var(--mono);font-size:.68rem;
+  color:#1a1d2e;max-width:260px;line-height:1.7;
+  pointer-events:none;
+  transition:opacity .2s;
+}
+.step-tooltip strong{color:var(--blue);display:block;margin-bottom:4px;font-size:.72rem;}
+</style>
+</head>
+<body>
+
+<!-- SVG overlay for animated arrows & packets -->
+<svg id="svgOverlay" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr-blue"   markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3b5bdb"/></marker>
+    <marker id="arr-green"  markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2f9e44"/></marker>
+    <marker id="arr-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#e8590c"/></marker>
+    <marker id="arr-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#6741d9"/></marker>
+    <marker id="arr-teal"   markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#20c997"/></marker>
+    <marker id="arr-pink"   markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#d63384"/></marker>
+    <filter id="glow-blue"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <g id="arrowLayer"></g>
+  <g id="packetLayer"></g>
+</svg>
+
+<!-- Tooltip -->
+<div class="step-tooltip" id="stepTooltip" style="display:none"></div>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div class="header-num">⎈</div>
+  <span class="header-title">K8s Interactive Cluster Tracer</span>
+  <div class="header-badges">
+    <span class="hbadge" id="hbRunning">● RUNNING</span>
+    <span class="hbadge">3 Nodes</span>
+    <span class="hbadge">10 Pods</span>
+    <span class="hbadge">3 Services</span>
+    <span class="hbadge" id="hbStep">Step 0 / 0</span>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-wrap"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SCENARIO TABS -->
+<div class="scenario-bar">
+  <button class="stab active" onclick="setScenario(0,this)">🌐 Full Request Cycle</button>
+  <button class="stab" onclick="setScenario(1,this)">⚡ Same-Node (Node 1→1)</button>
+  <button class="stab" onclick="setScenario(2,this)">🔀 Cross-Node (Node 1→3)</button>
+  <button class="stab" onclick="setScenario(3,this)">🔍 DNS Resolution</button>
+  <button class="stab" onclick="setScenario(4,this)">💾 DB Write + WAL</button>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="layout">
+
+  <!-- CLUSTER AREA -->
+  <div class="cluster-area" id="clusterArea">
+
+    <!-- Control Plane -->
+    <div class="control-plane" id="cp-block">
+      <div class="cp-header">
+        <span class="cp-title">▲ CONTROL PLANE</span>
+        <span class="cp-ip">192.168.1.10 · etcd · kube-apiserver</span>
+      </div>
+      <div class="cp-components">
+        <div class="cp-comp" id="comp-dns">
+          <div class="cp-comp-icon">🔍</div>
+          <div class="cp-comp-name">CoreDNS</div>
+          <div class="cp-comp-detail">10.96.0.10 · :53 UDP/TCP</div>
+          <div class="cp-comp-response" id="dns-response">Waiting for query…</div>
+        </div>
+        <div class="cp-comp" id="comp-ipt">
+          <div class="cp-comp-icon">🔒</div>
+          <div class="cp-comp-name">iptables / NAT</div>
+          <div class="cp-comp-detail">KUBE-SVC chains · DNAT rules</div>
+          <div class="cp-comp-response" id="ipt-response">Waiting for traffic…</div>
+        </div>
+        <div class="cp-comp" id="comp-api">
+          <div class="cp-comp-icon">⚙</div>
+          <div class="cp-comp-name">kube-apiserver</div>
+          <div class="cp-comp-detail">:6443 HTTPS · watches Services</div>
+          <div class="cp-comp-response" id="api-response">Watching endpoints…</div>
+        </div>
+        <div class="cp-comp" id="comp-etcd">
+          <div class="cp-comp-icon">🗄</div>
+          <div class="cp-comp-name">etcd</div>
+          <div class="cp-comp-detail">:2379 · cluster state store</div>
+          <div class="cp-comp-response" id="etcd-response">Cluster state stored.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services Row -->
+    <div class="services-row">
+      <div class="svc-card svc-np" id="svc-np">
+        <div class="svc-top">
+          <div class="svc-dot" style="background:#3b5bdb"></div>
+          <span class="svc-name">frontend-svc</span>
+          <span class="svc-type-badge" style="color:#3b5bdb;border-color:#3b5bdb33;background:#eef2ff;">NodePort</span>
+        </div>
+        <div class="svc-detail">
+          ClusterIP: 10.96.10.5<br>
+          port: <b>80</b> → targetPort: <b>80</b> → nodePort: <b>30080</b><br>
+          selector: app=frontend
+        </div>
+        <div class="svc-response" id="svcnp-response">Awaiting request…</div>
+      </div>
+      <div class="svc-card svc-cip" id="svc-cip">
+        <div class="svc-top">
+          <div class="svc-dot" style="background:#2f9e44"></div>
+          <span class="svc-name">backend-svc</span>
+          <span class="svc-type-badge" style="color:#2f9e44;border-color:#2f9e4433;background:#ebfbee;">ClusterIP</span>
+        </div>
+        <div class="svc-detail">
+          ClusterIP: 10.96.20.14<br>
+          port: <b>8080</b> → targetPort: <b>8080</b><br>
+          selector: app=backend (5 endpoints)
+        </div>
+        <div class="svc-response" id="svccip-response">Awaiting request…</div>
+      </div>
+      <div class="svc-card svc-hl" id="svc-hl">
+        <div class="svc-top">
+          <div class="svc-dot" style="background:#6741d9"></div>
+          <span class="svc-name">postgres-svc</span>
+          <span class="svc-type-badge" style="color:#6741d9;border-color:#6741d933;background:#f3f0ff;">Headless</span>
+        </div>
+        <div class="svc-detail">
+          clusterIP: None<br>
+          port: <b>5432</b> → targetPort: <b>5432</b><br>
+          DNS: postgres-N.postgres-svc.app…
+        </div>
+        <div class="svc-response" id="svchl-response">Awaiting request…</div>
+      </div>
+    </div>
+
+    <!-- Worker Nodes -->
+    <div class="nodes-grid">
+
+      <!-- NODE 1 -->
+      <div class="node-card n1" id="node-1">
+        <div class="node-header">
+          <span class="node-name">NODE-WORKER-1</span>
+          <span class="node-ip">192.168.1.11</span>
+        </div>
+        <div class="kube-proxy" id="kp-1">
+          <span class="kp-label">⚙ kube-proxy</span>
+          <div class="kp-ports">
+            <span class="kp-port p80">:80→30080</span>
+            <span class="kp-port p8080">:8080</span>
+            <span class="kp-port p5432">:5432</span>
+          </div>
+          <div class="kp-response" id="kp1-response">iptables DNAT pending…</div>
+        </div>
+        <!-- fe1 -->
+        <div class="pod-card fe" id="pod-fe1">
+          <div class="pod-header">
+            <span class="pod-name">frontend-7d4f9-ax2</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.1.5</span>
+          </div>
+          <div class="container-block fe">
+            <div class="container-image">nginx:1.25-alpine</div>
+            <div class="container-ports">
+              <span class="port-badge">Port: 80</span>
+              <span class="port-badge">:15001 sidecar</span>
+            </div>
+          </div>
+          <div class="pod-response fe" id="resp-fe1">Serving HTTP response…</div>
+        </div>
+        <!-- be1 -->
+        <div class="pod-card be" id="pod-be1">
+          <div class="pod-header">
+            <span class="pod-name">backend-8c11a-q8z</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.1.8</span>
+          </div>
+          <div class="container-block be">
+            <div class="container-image">node:20-alpine</div>
+            <div class="container-ports"><span class="port-badge">Port: 8080</span></div>
+          </div>
+          <div class="pod-response be" id="resp-be1">Processing API request…</div>
+        </div>
+        <!-- be2 -->
+        <div class="pod-card be" id="pod-be2">
+          <div class="pod-header">
+            <span class="pod-name">backend-8c11a-m4p</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.1.12</span>
+          </div>
+          <div class="container-block be">
+            <div class="container-image">node:20-alpine</div>
+            <div class="container-ports"><span class="port-badge">Port: 8080</span></div>
+          </div>
+          <div class="pod-response be" id="resp-be2">Processing API request…</div>
+        </div>
+        <!-- pg0 -->
+        <div class="pod-card pg" id="pod-pg0">
+          <div class="pod-header">
+            <span class="pod-name">postgres-0 ★ PRIMARY</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.1.20</span>
+          </div>
+          <div class="container-block pg">
+            <div class="container-image">postgres:15.4-alpine</div>
+            <div class="container-ports">
+              <span class="port-badge">Port: 5432</span>
+              <span class="port-badge">PVC 10Gi</span>
+            </div>
+          </div>
+          <div class="pod-response pg" id="resp-pg0">WRITE committed to PVC.</div>
+        </div>
+      </div>
+
+      <!-- NODE 2 -->
+      <div class="node-card n2" id="node-2">
+        <div class="node-header">
+          <span class="node-name">NODE-WORKER-2</span>
+          <span class="node-ip">192.168.1.12</span>
+        </div>
+        <div class="kube-proxy" id="kp-2">
+          <span class="kp-label">⚙ kube-proxy</span>
+          <div class="kp-ports">
+            <span class="kp-port p80">:80→30080</span>
+            <span class="kp-port p8080">:8080</span>
+            <span class="kp-port p5432">:5432</span>
+          </div>
+          <div class="kp-response" id="kp2-response">iptables DNAT pending…</div>
+        </div>
+        <div class="pod-card fe" id="pod-fe2">
+          <div class="pod-header">
+            <span class="pod-name">frontend-7d4f9-1y5</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.2.3</span>
+          </div>
+          <div class="container-block fe">
+            <div class="container-image">nginx:1.25-alpine</div>
+            <div class="container-ports"><span class="port-badge">Port: 80</span></div>
+          </div>
+          <div class="pod-response fe" id="resp-fe2">Serving HTTP response…</div>
+        </div>
+        <div class="pod-card be" id="pod-be3">
+          <div class="pod-header">
+            <span class="pod-name">backend-8c11a-m0p</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.2.7</span>
+          </div>
+          <div class="container-block be">
+            <div class="container-image">node:20-alpine</div>
+            <div class="container-ports"><span class="port-badge">Port: 8080</span></div>
+          </div>
+          <div class="pod-response be" id="resp-be3">Processing API request…</div>
+        </div>
+        <div class="pod-card be" id="pod-be4">
+          <div class="pod-header">
+            <span class="pod-name">backend-8c11a-x9k</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.2.11</span>
+          </div>
+          <div class="container-block be">
+            <div class="container-image">node:20-alpine</div>
+            <div class="container-ports"><span class="port-badge">Port: 8080</span></div>
+          </div>
+          <div class="pod-response be" id="resp-be4">Processing API request…</div>
+        </div>
+        <div class="pod-card pg" id="pod-pg1">
+          <div class="pod-header">
+            <span class="pod-name">postgres-1 replica</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.2.18</span>
+          </div>
+          <div class="container-block pg">
+            <div class="container-image">postgres:15.4-alpine</div>
+            <div class="container-ports">
+              <span class="port-badge">Port: 5432</span>
+              <span class="port-badge">PVC 10Gi</span>
+            </div>
+          </div>
+          <div class="pod-response pg" id="resp-pg1">WAL segment applied ✓</div>
+        </div>
+      </div>
+
+      <!-- NODE 3 -->
+      <div class="node-card n3" id="node-3">
+        <div class="node-header">
+          <span class="node-name">NODE-WORKER-3</span>
+          <span class="node-ip">192.168.1.13</span>
+        </div>
+        <div class="kube-proxy" id="kp-3">
+          <span class="kp-label">⚙ kube-proxy</span>
+          <div class="kp-ports">
+            <span class="kp-port p80">:80→30080</span>
+            <span class="kp-port p8080">:8080</span>
+            <span class="kp-port p5432">:5432</span>
+          </div>
+          <div class="kp-response" id="kp3-response">iptables DNAT pending…</div>
+        </div>
+        <div class="pod-card be" id="pod-be5">
+          <div class="pod-header">
+            <span class="pod-name">backend-8c11a-ff2</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.3.4</span>
+          </div>
+          <div class="container-block be">
+            <div class="container-image">node:20-alpine</div>
+            <div class="container-ports"><span class="port-badge">Port: 8080</span></div>
+          </div>
+          <div class="pod-response be" id="resp-be5">Processing API request…</div>
+        </div>
+        <div class="pod-card pg" id="pod-pg2">
+          <div class="pod-header">
+            <span class="pod-name">postgres-2 replica</span>
+            <span class="pod-ip"><span>IP:</span> 10.244.3.15</span>
+          </div>
+          <div class="container-block pg">
+            <div class="container-image">postgres:15.4-alpine</div>
+            <div class="container-ports">
+              <span class="port-badge">Port: 5432</span>
+              <span class="port-badge">PVC 10Gi</span>
+            </div>
+          </div>
+          <div class="pod-response pg" id="resp-pg2">WAL segment applied ✓</div>
+        </div>
+      </div>
+
+    </div><!-- /nodes-grid -->
+  </div><!-- /cluster-area -->
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="step-nav">
+      <div class="step-nav-title">Request Steps</div>
+      <div class="steps-list" id="stepsList"></div>
+    </div>
+    <div class="trace-header">
+      <span class="trace-title">📡 Packet Trace Log</span>
+      <button class="trace-clear" onclick="clearTrace()">Clear</button>
+    </div>
+    <div class="trace-log" id="traceLog"></div>
+  </div>
+
+</div><!-- /layout -->
+
+<!-- CONTROLS -->
+<div class="controls-bar">
+  <button class="cbtn cbtn-primary" id="btnPlay" onclick="togglePlay()">⏸ Pause</button>
+  <button class="cbtn cbtn-success" id="btnNext" onclick="nextStep()">▶ Next Step</button>
+  <button class="cbtn cbtn-outline" id="btnPrev" onclick="prevStep()">◀ Prev</button>
+  <button class="cbtn cbtn-warning" onclick="resetScenario()">↺ Reset</button>
+  <button class="cbtn cbtn-danger"  onclick="killPod()">☠ Kill Pod</button>
+  <button class="cbtn cbtn-outline" onclick="autoPlay()">⚡ Auto Play</button>
+  <div class="speed-group">
+    <label>SPEED</label>
+    <input type="range" min="0.3" max="3" step="0.1" value="1" id="spdRange" oninput="setSpeed(this.value)">
+    <span class="speed-val" id="spdVal">1×</span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+let currentScenario = 0;
+let currentStep = -1;
+let autoTimer = null;
+let animSpeed = 1;
+let killedPods = new Set();
+
+// ── Scenario definitions ──
+const SCENARIOS = [
+  {
+    name:'Full Request Cycle',
+    description:'Browser → NodePort → kube-proxy → frontend pod → CoreDNS → ClusterIP → backend pod → HeadlessDNS → postgres-0 → WAL → replicas → response',
+    steps:[
+      {
+        id:'s0-browser',
+        title:'Browser sends request',
+        component:'browser',
+        activate:[],
+        log:{cls:'te-browser', comp:'🌍 Browser', msg:'GET http://192.168.1.11:30080/app HTTP/1.1',
+          detail:'TCP SYN → 192.168.1.11:30080\nSource: client:54312\nAny node IP works — NodePort is universal'},
+        highlight:{svc:[], pod:[], kp:[], cp:[]},
+        responses:{},
+        arrow:{from:'browser', to:'kp-1', color:'#e8590c', marker:'arr-orange', label:':30080'},
+        tooltip:'User opens browser and hits any node IP on port 30080. The NodePort service is open on ALL 3 nodes.'
+      },
+      {
+        id:'s0-nodeport',
+        title:'NodePort intercepts',
+        component:'kube-proxy / NodePort',
+        activate:['kp-1','svc-np'],
+        log:{cls:'te-nodeport', comp:'NodePort :30080', msg:'Hit on 192.168.1.11 — kube-proxy intercepts',
+          detail:'iptables rule:\n-A KUBE-NODEPORTS -p tcp --dport 30080 -j KUBE-SVC-frontend\nDNAT: :30080 → ClusterIP 10.96.10.5:80'},
+        highlight:{svc:['svc-np'], pod:[], kp:['kp-1'], cp:[]},
+        responses:{
+          'kp1-response':'DNAT :30080 → 10.96.10.5:80\nSelecting endpoint…',
+          'svcnp-response':'NodePort 30080 active\nrouting to frontend pods'
+        },
+        arrow:{from:'kp-1', to:'pod-fe1', color:'#3b5bdb', marker:'arr-blue', label:'DNAT :80'},
+        tooltip:'kube-proxy has programmed iptables rules. Traffic on :30080 is DNAT\'d to the frontend ClusterIP, then to a pod endpoint.'
+      },
+      {
+        id:'s0-fe-pod',
+        title:'Frontend Pod receives',
+        component:'frontend-7d4f9-ax2',
+        activate:['pod-fe1'],
+        log:{cls:'te-pod', comp:'nginx :80', msg:'frontend-7d4f9-ax2 (10.244.1.5) handling request',
+          detail:'nginx:1.25-alpine containerPort: 80\nServing React app bundle\nMaking API call: fetch("http://backend-svc:8080/api")'},
+        highlight:{svc:['svc-np'], pod:['pod-fe1'], kp:['kp-1'], cp:[]},
+        responses:{
+          'resp-fe1':'nginx :80 ✓\nServing /index.html\nReact app initiating API call →'
+        },
+        arrow:{from:'pod-fe1', to:'comp-dns', color:'#20c997', marker:'arr-teal', label:'DNS query'},
+        tooltip:'nginx container on port 80 receives the request. React app loads and immediately calls the backend API using the service DNS name.'
+      },
+      {
+        id:'s0-dns',
+        title:'CoreDNS resolves',
+        component:'CoreDNS 10.96.0.10',
+        activate:['comp-dns'],
+        log:{cls:'te-dns', comp:'CoreDNS :53', msg:'A-record query: backend-svc.app.svc.cluster.local',
+          detail:'resolv.conf nameserver: 10.96.0.10\nQuery type: A\nResponse: 10.96.20.14 (ClusterIP)\nTTL: 30s'},
+        highlight:{svc:['svc-cip'], pod:['pod-fe1'], kp:[], cp:['comp-dns']},
+        responses:{
+          'dns-response':'Query: backend-svc.app.svc.cluster.local\nA record → 10.96.20.14\nTTL 30s ✓',
+          'svccip-response':'ClusterIP 10.96.20.14 queried'
+        },
+        arrow:{from:'comp-dns', to:'pod-fe1', color:'#20c997', marker:'arr-teal', label:'10.96.20.14'},
+        tooltip:'CoreDNS at 10.96.0.10:53 receives the DNS query and returns the ClusterIP. For headless services it returns pod IPs directly.'
+      },
+      {
+        id:'s0-clusterip',
+        title:'ClusterIP load balances',
+        component:'backend-svc ClusterIP',
+        activate:['svc-cip','kp-1'],
+        log:{cls:'te-svc', comp:'ClusterIP :8080', msg:'10.96.20.14:8080 → DNAT → random backend pod',
+          detail:'iptables KUBE-SVC-backend chain\n5 endpoints × 20% probability each\nSelected: 10.244.1.8 (backend-8c11a-q8z)\nConnection tracked in conntrack'},
+        highlight:{svc:['svc-cip'], pod:[], kp:['kp-1'], cp:['comp-ipt']},
+        responses:{
+          'kp1-response':'DNAT 10.96.20.14:8080\n→ 10.244.1.8:8080 (20%)',
+          'ipt-response':'KUBE-SVC-backend chain\nSEP selected: be1 (10.244.1.8)\nconntrack entry added',
+          'svccip-response':'Routing to 10.244.1.8:8080\nRound-robin LB active'
+        },
+        arrow:{from:'svc-cip', to:'pod-be1', color:'#2f9e44', marker:'arr-green', label:'DNAT →be1'},
+        tooltip:'kube-proxy iptables rules DNAT the ClusterIP to one of 5 backend pods. Each has 20% probability. Connection tracking ensures the response goes back correctly.'
+      },
+      {
+        id:'s0-backend',
+        title:'Backend Pod processes',
+        component:'backend-8c11a-q8z',
+        activate:['pod-be1'],
+        log:{cls:'te-pod', comp:'node.js :8080', msg:'backend-8c11a-q8z (10.244.1.8) processing GET /api/users',
+          detail:'node:20-alpine containerPort: 8080\nAuthentication: JWT valid\nDB query: SELECT * FROM users\nConnecting to postgres-0.postgres-svc:5432'},
+        highlight:{svc:['svc-cip'], pod:['pod-be1'], kp:[], cp:['comp-dns']},
+        responses:{
+          'resp-be1':'GET /api/users ✓\nJWT validated\nQuerying DB via headless DNS →'
+        },
+        arrow:{from:'pod-be1', to:'svc-hl', color:'#6741d9', marker:'arr-purple', label:'postgres-0 DNS'},
+        tooltip:'node.js API receives the request, validates auth, and needs to query the database. It uses the stable DNS name postgres-0.postgres-svc to reach the PRIMARY.'
+      },
+      {
+        id:'s0-headless',
+        title:'Headless DNS → Pod IP',
+        component:'postgres-svc (Headless)',
+        activate:['svc-hl','comp-dns'],
+        log:{cls:'te-dns', comp:'CoreDNS Headless', msg:'postgres-0.postgres-svc.app.svc.cluster.local',
+          detail:'Headless service: clusterIP: None\nDNS returns POD IP directly (no VIP!)\nA record: 10.244.1.20 (postgres-0)\nNo iptables DNAT — direct pod routing'},
+        highlight:{svc:['svc-hl'], pod:[], kp:[], cp:['comp-dns']},
+        responses:{
+          'dns-response':'HEADLESS query:\npostgres-0.postgres-svc\n→ 10.244.1.20 (direct!)\nNo VIP — no DNAT needed',
+          'svchl-response':'Headless: returning pod IP\n10.244.1.20 direct'
+        },
+        arrow:{from:'svc-hl', to:'pod-pg0', color:'#6741d9', marker:'arr-purple', label:'direct :5432'},
+        tooltip:'Headless service returns the actual pod IP — no ClusterIP, no iptables DNAT. The backend connects directly to 10.244.1.20:5432 (postgres-0).'
+      },
+      {
+        id:'s0-db',
+        title:'postgres-0 executes query',
+        component:'postgres-0 PRIMARY',
+        activate:['pod-pg0'],
+        log:{cls:'te-db', comp:'postgres :5432', msg:'postgres-0 (10.244.1.20) — WRITE committed',
+          detail:'postgres:15.4-alpine containerPort: 5432\nSQL: INSERT INTO users VALUES (…)\nPVC: postgres-data-postgres-0 (10Gi)\nWAL: write-ahead log segment created\nStreaming replication triggered'},
+        highlight:{svc:['svc-hl'], pod:['pod-pg0'], kp:[], cp:[]},
+        responses:{
+          'resp-pg0':'WRITE committed ✓\nPVC: postgres-data-pg0\nWAL segment: 0/1A00000\nNotifying replicas…'
+        },
+        arrow:{from:'pod-pg0', to:'pod-pg1', color:'#6741d9', marker:'arr-purple', label:'WAL stream'},
+        tooltip:'postgres-0 PRIMARY commits the write to its PVC and generates WAL segments. These are streamed to replica pods for high availability.'
+      },
+      {
+        id:'s0-wal',
+        title:'WAL replication',
+        component:'postgres-1 & postgres-2',
+        activate:['pod-pg1','pod-pg2'],
+        log:{cls:'te-wal', comp:'WAL Stream', msg:'Streaming replication → postgres-1, postgres-2',
+          detail:'postgres-1 (10.244.2.18): WAL applied ✓\npostgres-2 (10.244.3.15): WAL applied ✓\nStreaming lag: <1ms\nReplicas in sync'},
+        highlight:{svc:[], pod:['pod-pg1','pod-pg2'], kp:[], cp:[]},
+        responses:{
+          'resp-pg1':'WAL 0/1A00000 applied ✓\nReplica in sync',
+          'resp-pg2':'WAL 0/1A00000 applied ✓\nReplica in sync'
+        },
+        arrow:{from:'pod-pg1', to:'pod-pg2', color:'#6741d9', marker:'arr-purple', label:'replicated'},
+        tooltip:'WAL (Write-Ahead Log) segments stream from postgres-0 PRIMARY to both replicas. Replicas acknowledge receipt. Replication lag is typically <1ms on LAN.'
+      },
+      {
+        id:'s0-return',
+        title:'Response returns to browser',
+        component:'HTTP Response',
+        activate:[],
+        log:{cls:'te-return', comp:'HTTP 200 OK', msg:'Response travels back: DB → backend → frontend → browser',
+          detail:'postgres-0 → backend-8c11a-q8z :8080\nJSON serialised: {"users":[…]}\nbackend → ClusterIP → frontend-7d4f9-ax2 :80\nfrontend → NodePort 30080 → browser\nTotal RTT: ~4ms'},
+        highlight:{svc:[], pod:[], kp:[], cp:[]},
+        responses:{},
+        arrow:{from:'pod-fe1', to:'browser-marker', color:'#d63384', marker:'arr-pink', label:'200 OK'},
+        tooltip:'The full response path: postgres → backend → frontend → browser. kube-proxy reverse-NATs the reply. Total round-trip ~4ms on a local cluster.'
+      },
+    ]
+  },
+
+  // Scenario 1: Same Node
+  {
+    name:'Same-Node (Node 1 → 1)',
+    description:'frontend-7d4f9-ax2 (Node1) → backend-8c11a-q8z (Node1) — packet never leaves the node',
+    steps:[
+      {id:'sn-1',title:'Browser → NodePort',component:'NodePort :30080',activate:['kp-1','svc-np'],
+        log:{cls:'te-nodeport',comp:'NodePort',msg:'192.168.1.11:30080 intercepted',detail:'NodePort open on all 3 nodes\nPacket hits node-1 interface'},
+        highlight:{svc:['svc-np'],pod:[],kp:['kp-1'],cp:[]},
+        responses:{'kp1-response':'NodePort :30080 hit\nDNAT → 10.244.1.5:80','svcnp-response':'NodePort active → frontend'},
+        arrow:{from:'kp-1',to:'pod-fe1',color:'#3b5bdb',marker:'arr-blue',label:':30080→:80'},
+        tooltip:'NodePort opens :30080 on every node. Packet arrives on Node1.'},
+      {id:'sn-2',title:'Frontend pod (Node 1)',component:'frontend-7d4f9-ax2',activate:['pod-fe1'],
+        log:{cls:'te-pod',comp:'nginx :80',msg:'fe1 (10.244.1.5) serving — calls backend-svc:8080',detail:'Both pods on same node\nkube-proxy DNAT stays local'},
+        highlight:{svc:['svc-np'],pod:['pod-fe1'],kp:['kp-1'],cp:['comp-dns']},
+        responses:{'resp-fe1':'nginx :80 ✓\ncalling backend-svc:8080\n[same-node path]'},
+        arrow:{from:'pod-fe1',to:'svc-cip',color:'#20c997',marker:'arr-teal',label:'DNS lookup'},
+        tooltip:'Frontend pod is on Node 1. It resolves backend-svc via CoreDNS.'},
+      {id:'sn-3',title:'⚡ Same-Node DNAT',component:'kube-proxy (local)',activate:['kp-1','svc-cip'],
+        log:{cls:'te-iptable',comp:'iptables SAME-NODE',msg:'⚡ DNAT stays on Node 1 — no overlay needed!',detail:'DNAT: 10.96.20.14:8080 → 10.244.1.8:8080\nBoth pods on 192.168.1.11\nNo VXLAN, no CNI crossing\nLatency: ~0.1ms (loopback-like)'},
+        highlight:{svc:['svc-cip'],pod:[],kp:['kp-1'],cp:['comp-ipt']},
+        responses:{'kp1-response':'⚡ SAME-NODE DNAT\n10.96.20.14 → 10.244.1.8\nNo overlay hop!','ipt-response':'Local DNAT applied\nconntrack: 10.244.1.5→10.244.1.8'},
+        arrow:{from:'kp-1',to:'pod-be1',color:'#2f9e44',marker:'arr-green',label:'⚡ local'},
+        tooltip:'KEY INSIGHT: Both pods on Node 1, so kube-proxy DNAT resolves entirely locally. The packet never hits the network — like a loopback call. ~0.1ms latency.'},
+      {id:'sn-4',title:'Backend Pod (same node)',component:'backend-8c11a-q8z',activate:['pod-be1'],
+        log:{cls:'te-pod',comp:'node.js :8080',msg:'be1 (10.244.1.8) responding — same node as caller',detail:'No cross-node hop\nPacket delivered via veth pair\nResponse path is also local'},
+        highlight:{svc:[],pod:['pod-fe1','pod-be1'],kp:['kp-1'],cp:[]},
+        responses:{'resp-be1':'API :8080 ✓\n[same-node, 0.1ms]\nSending response →'},
+        arrow:{from:'pod-be1',to:'pod-fe1',color:'#d63384',marker:'arr-pink',label:'response'},
+        tooltip:'Both pods communicate via the local veth bridge. No VXLAN encapsulation needed. This is the fastest path in Kubernetes.'},
+    ]
+  },
+
+  // Scenario 2: Cross-Node
+  {
+    name:'Cross-Node (Node 1 → 3)',
+    description:'frontend-7d4f9-ax2 (Node1, 10.244.1.5) → backend-8c11a-ff2 (Node3, 10.244.3.4) via CNI overlay',
+    steps:[
+      {id:'cn-1',title:'Browser → Node 1 NodePort',component:'NodePort :30080',activate:['kp-1','svc-np'],
+        log:{cls:'te-nodeport',comp:'NodePort',msg:'192.168.1.11:30080 — fe1 (Node1) selected',detail:'kube-proxy DNAT on Node1\n→ fe1 (10.244.1.5:80)'},
+        highlight:{svc:['svc-np'],pod:['pod-fe1'],kp:['kp-1'],cp:[]},
+        responses:{'kp1-response':'DNAT :30080 → fe1','svcnp-response':'NodePort hit Node1'},
+        arrow:{from:'kp-1',to:'pod-fe1',color:'#3b5bdb',marker:'arr-blue',label:'→fe1'},
+        tooltip:'Request lands on Node1. Frontend pod fe1 receives it.'},
+      {id:'cn-2',title:'ClusterIP selects Node 3 pod',component:'iptables DNAT → Node3',activate:['svc-cip','kp-1'],
+        log:{cls:'te-iptable',comp:'iptables CROSS-NODE',msg:'DNAT: 10.96.20.14 → 10.244.3.4 (Node3!)',detail:'Random selection → be5 (10.244.3.4)\nThis pod is on Node3 (192.168.1.13)\nPacket must cross overlay network\nVXLAN / Calico encapsulation required'},
+        highlight:{svc:['svc-cip'],pod:[],kp:['kp-1','kp-3'],cp:['comp-ipt']},
+        responses:{'kp1-response':'CROSS-NODE DNAT\n10.96.20.14 → 10.244.3.4\nVXLAN encap needed!','ipt-response':'Selected be5 on Node3\nCNI overlay required'},
+        arrow:{from:'kp-1',to:'kp-3',color:'#e8590c',marker:'arr-orange',label:'CNI tunnel'},
+        tooltip:'iptables selected a backend pod on Node3. The packet must now cross the CNI overlay (VXLAN). Node1 encapsulates it, Node3 decapsulates it.'},
+      {id:'cn-3',title:'CNI decap on Node 3',component:'kube-proxy Node3',activate:['kp-3','pod-be5'],
+        log:{cls:'te-iptable',comp:'CNI Node3',msg:'VXLAN decap — packet delivered to be5 (10.244.3.4)',detail:'Node3 decapsulates VXLAN packet\nDelivers to be5 via veth pair\nLatency: ~1-3ms (LAN crossing)\nResponse path reverses through overlay'},
+        highlight:{svc:[],pod:['pod-be5'],kp:['kp-3'],cp:[]},
+        responses:{'kp3-response':'VXLAN decap done\nDelivering to be5\n10.244.3.4:8080','resp-be5':'API :8080 ✓\n[cross-node ~2ms]\nNode3 pod responding'},
+        arrow:{from:'kp-3',to:'pod-be5',color:'#2f9e44',marker:'arr-green',label:'decap →be5'},
+        tooltip:'Node3 kube-proxy receives the VXLAN-encapsulated packet, decapsulates it, and delivers to be5 via the local veth bridge.'},
+      {id:'cn-4',title:'Response crosses back',component:'Return Path',activate:[],
+        log:{cls:'te-return',comp:'Return',msg:'be5 (Node3) → overlay → Node1 → fe1 → browser',detail:'Response VXLAN encap on Node3\nVXLAN decap on Node1\nfe1 forwards to browser\nTotal RTT: ~3ms (cross-node)'},
+        highlight:{svc:[],pod:['pod-fe1'],kp:[],cp:[]},
+        responses:{'resp-fe1':'200 OK received ✓\nForwarding to browser'},
+        arrow:{from:'pod-be5',to:'pod-fe1',color:'#d63384',marker:'arr-pink',label:'return overlay'},
+        tooltip:'The response takes the reverse path: be5 → VXLAN → Node1 → fe1 → NodePort → browser. ~3ms total cross-node latency.'},
+    ]
+  },
+
+  // Scenario 3: DNS Deep Dive
+  {
+    name:'DNS Resolution Deep Dive',
+    description:'Full DNS flow: service name → CoreDNS → ClusterIP (standard) or Pod IP (headless)',
+    steps:[
+      {id:'dns-1',title:'Pod resolv.conf lookup',component:'resolv.conf',activate:['pod-fe1'],
+        log:{cls:'te-dns',comp:'resolv.conf',msg:'nameserver 10.96.0.10 (CoreDNS)',detail:'Every pod gets injected:\nnameserver 10.96.0.10\nsearch app.svc.cluster.local\nsvc.cluster.local cluster.local'},
+        highlight:{svc:[],pod:['pod-fe1'],kp:[],cp:['comp-dns']},
+        responses:{'resp-fe1':'resolv.conf:\nnameserver 10.96.0.10\nsearch app.svc.cluster.local'},
+        arrow:{from:'pod-fe1',to:'comp-dns',color:'#20c997',marker:'arr-teal',label:'UDP :53'},
+        tooltip:'Every pod has /etc/resolv.conf injected by kubelet pointing to CoreDNS at 10.96.0.10:53.'},
+      {id:'dns-2',title:'ClusterIP DNS query',component:'CoreDNS → ClusterIP',activate:['comp-dns','svc-cip'],
+        log:{cls:'te-dns',comp:'CoreDNS',msg:'backend-svc.app.svc.cluster.local → 10.96.20.14',detail:'Query: A backend-svc.app.svc.cluster.local\nType: ClusterIP service\nResponse: 10.96.20.14 (single VIP)\nTTL: 30 seconds\nClient caches result'},
+        highlight:{svc:['svc-cip'],pod:[],kp:[],cp:['comp-dns']},
+        responses:{'dns-response':'ClusterIP query:\nbackend-svc.app → 10.96.20.14\nSingle A record (VIP)\nTTL: 30s','svccip-response':'DNS lookup hit\n→ 10.96.20.14 returned'},
+        arrow:{from:'comp-dns',to:'svc-cip',color:'#20c997',marker:'arr-teal',label:'A: 10.96.20.14'},
+        tooltip:'For ClusterIP services, CoreDNS returns a single virtual IP. kube-proxy iptables then distributes traffic among backend pods.'},
+      {id:'dns-3',title:'Headless DNS query',component:'CoreDNS → Pod IP direct',activate:['comp-dns','svc-hl'],
+        log:{cls:'te-dns',comp:'CoreDNS HEADLESS',msg:'postgres-0.postgres-svc → 10.244.1.20 (pod IP!)',detail:'Query: A postgres-0.postgres-svc.app.svc.cluster.local\nType: Headless (clusterIP: None)\nResponse: 10.244.1.20 (pod IP directly)\nNO VIP — NO iptables DNAT\nDirect pod-to-pod routing'},
+        highlight:{svc:['svc-hl'],pod:['pod-pg0'],kp:[],cp:['comp-dns']},
+        responses:{'dns-response':'HEADLESS query:\npostgres-0.postgres-svc\n→ 10.244.1.20 (pod IP!)\nNO VIP returned','svchl-response':'Headless A record:\n→ 10.244.1.20 direct\nNo DNAT path'},
+        arrow:{from:'comp-dns',to:'pod-pg0',color:'#6741d9',marker:'arr-purple',label:'A: 10.244.1.20'},
+        tooltip:'HEADLESS DNS: CoreDNS returns the actual pod IP. No VIP, no iptables. The caller connects directly to the pod — critical for StatefulSet stable identity.'},
+      {id:'dns-4',title:'SRV records (StatefulSet)',component:'All postgres pod DNS',activate:['pod-pg0','pod-pg1','pod-pg2'],
+        log:{cls:'te-dns',comp:'StatefulSet DNS',msg:'All 3 postgres pods get stable DNS names',detail:'postgres-0.postgres-svc.app.svc.cluster.local → 10.244.1.20\npostgres-1.postgres-svc.app.svc.cluster.local → 10.244.2.18\npostgres-2.postgres-svc.app.svc.cluster.local → 10.244.3.15\nStable: survives pod restart!'},
+        highlight:{svc:['svc-hl'],pod:['pod-pg0','pod-pg1','pod-pg2'],kp:[],cp:['comp-dns']},
+        responses:{'dns-response':'SRV/A records:\npostgres-{0,1,2}.postgres-svc\nAll stable, survive restarts','resp-pg0':'postgres-0: stable DNS ✓','resp-pg1':'postgres-1: stable DNS ✓','resp-pg2':'postgres-2: stable DNS ✓'},
+        arrow:{from:'pod-pg0',to:'pod-pg1',color:'#6741d9',marker:'arr-purple',label:'stable names'},
+        tooltip:'StatefulSet pods get stable DNS names that persist even if the pod restarts. This is why postgres-0 is always the PRIMARY — its identity is guaranteed.'},
+    ]
+  },
+
+  // Scenario 4: WAL
+  {
+    name:'DB Write + WAL Replication',
+    description:'backend pod writes to postgres-0 PRIMARY → WAL segments streamed to postgres-1 and postgres-2 replicas',
+    steps:[
+      {id:'wal-1',title:'Backend connects to PRIMARY',component:'backend → postgres-0',activate:['pod-be1','svc-hl'],
+        log:{cls:'te-db',comp:'backend-api',msg:'Connecting to postgres-0.postgres-svc:5432',detail:'DB_HOST=postgres-0.postgres-svc.app.svc.cluster.local\nHeadless DNS → 10.244.1.20\nTCP connect to 10.244.1.20:5432\nAuthentication: md5 password'},
+        highlight:{svc:['svc-hl'],pod:['pod-be1'],kp:[],cp:['comp-dns']},
+        responses:{'resp-be1':'Connecting to PRIMARY\npostgres-0:5432 →','svchl-response':'Headless resolved\n→ 10.244.1.20:5432'},
+        arrow:{from:'pod-be1',to:'pod-pg0',color:'#6741d9',marker:'arr-purple',label:'TCP :5432'},
+        tooltip:'Backend uses the stable DNS name postgres-0.postgres-svc to always reach the PRIMARY. Headless DNS returns 10.244.1.20 directly.'},
+      {id:'wal-2',title:'SQL Write committed',component:'postgres-0 PRIMARY',activate:['pod-pg0'],
+        log:{cls:'te-db',comp:'pg PRIMARY',msg:'INSERT committed — WAL segment 0/1A00000 generated',detail:'postgres-0 (10.244.1.20) PRIMARY RW\nSQL: INSERT INTO events VALUES (…)\nPVC write: postgres-data-postgres-0\nWAL LSN: 0/1A00000\nReplication slots notified'},
+        highlight:{svc:[],pod:['pod-pg0'],kp:[],cp:[]},
+        responses:{'resp-pg0':'WRITE committed ✓\nWAL: 0/1A00000\nPVC: postgres-data-pg0\nNotifying 2 replicas…'},
+        arrow:{from:'pod-pg0',to:'pod-pg1',color:'#6741d9',marker:'arr-purple',label:'WAL→pg1'},
+        tooltip:'postgres-0 commits the write to its PVC and immediately starts streaming the WAL segment to all replica subscribers.'},
+      {id:'wal-3',title:'WAL → postgres-1 (Node 2)',component:'postgres-1 replica',activate:['pod-pg1'],
+        log:{cls:'te-wal',comp:'WAL Stream',msg:'postgres-0 → postgres-1 (10.244.2.18) streaming',detail:'Streaming replication protocol\nWAL LSN: 0/1A00000 → applied\npostgres-1 (Node2) in sync\nStreaming lag: <1ms\nHot standby: read queries available'},
+        highlight:{svc:[],pod:['pod-pg0','pod-pg1'],kp:[],cp:[]},
+        responses:{'resp-pg1':'WAL 0/1A00000 ✓\nApplied to replica\nHot standby ready\nLag: <1ms'},
+        arrow:{from:'pod-pg0',to:'pod-pg2',color:'#6741d9',marker:'arr-purple',label:'WAL→pg2'},
+        tooltip:'postgres-1 on Node2 receives and applies the WAL segment. It stays in hot standby — able to serve read queries while remaining in sync.'},
+      {id:'wal-4',title:'WAL → postgres-2 (Node 3)',component:'postgres-2 replica',activate:['pod-pg2'],
+        log:{cls:'te-wal',comp:'WAL Stream',msg:'postgres-0 → postgres-2 (10.244.3.15) streaming',detail:'Streaming replication protocol\nWAL LSN: 0/1A00000 → applied\npostgres-2 (Node3) in sync\nAll 3 nodes have consistent data\nSynchronous: optional per replica'},
+        highlight:{svc:[],pod:['pod-pg0','pod-pg1','pod-pg2'],kp:[],cp:[]},
+        responses:{'resp-pg2':'WAL 0/1A00000 ✓\nApplied to replica\nHot standby ready\nAll nodes in sync ✓'},
+        arrow:{from:'pod-pg1',to:'pod-pg2',color:'#6741d9',marker:'arr-purple',label:'in sync'},
+        tooltip:'postgres-2 on Node3 also receives the WAL. All 3 nodes now have consistent data. Total replication time <1ms on LAN.'},
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE MANAGEMENT
+// ═══════════════════════════════════════════════════════
+function getSteps(){ return SCENARIOS[currentScenario].steps; }
+
+function clearAllHighlights(){
+  document.querySelectorAll('.pod-card, .svc-card, .kube-proxy, .cp-comp').forEach(el=>{
+    el.classList.remove('active');
+  });
+  document.querySelectorAll('.node-card').forEach(el=>el.classList.remove('highlight'));
+  clearArrows();
+}
+
+function applyStep(idx){
+  if(idx < 0 || idx >= getSteps().length) return;
+  currentStep = idx;
+  const step = getSteps()[idx];
+
+  // Clear all
+  clearAllHighlights();
+  clearAllResponses();
+
+  // Activate components
+  step.activate.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.add('active');
+  });
+
+  // Apply highlight sets
+  const h = step.highlight;
+  h.svc.forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.add('active'); });
+  h.pod.forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.add('active'); });
+  h.kp .forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.add('active'); });
+  h.cp .forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.add('active'); });
+
+  // Responses
+  if(step.responses){
+    Object.entries(step.responses).forEach(([id,msg])=>{
+      const el=document.getElementById(id);
+      if(el){ el.textContent=msg; }
+    });
+  }
+
+  // Arrow + packet
+  if(step.arrow){ drawArrowAnimated(step.arrow); }
+
+  // Log entry
+  addTrace(step.log, idx+1);
+
+  // Update stepper
+  updateStepsList();
+  updateProgress();
+  updateButtons();
+
+  // Tooltip
+  showTooltip(step.tooltip);
+
+  // Scroll to first activated pod
+  if(step.highlight.pod.length){
+    const el = document.getElementById(step.highlight.pod[0]);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+
+  // Update HUD
+  document.getElementById('hbStep').textContent = `Step ${idx+1} / ${getSteps().length}`;
+}
+
+function clearAllResponses(){
+  document.querySelectorAll('.cp-comp-response,.kp-response,.pod-response,.svc-response').forEach(el=>{
+    el.style.display='';
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// ARROW & PACKET ANIMATION
+// ═══════════════════════════════════════════════════════
+let arrowTimeout = null;
+function clearArrows(){
+  document.getElementById('arrowLayer').innerHTML='';
+  document.getElementById('packetLayer').innerHTML='';
+}
+
+function getElCenter(id){
+  if(id==='browser-marker'){
+    return {x: window.innerWidth - 60, y: 200};
+  }
+  const el = document.getElementById(id);
+  if(!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
+}
+
+function drawArrowAnimated(cfg){
+  const from = getElCenter(cfg.from);
+  const to   = getElCenter(cfg.to);
+  if(!from||!to) return;
+
+  const svg = document.getElementById('svgOverlay');
+  const al  = document.getElementById('arrowLayer');
+  const pl  = document.getElementById('packetLayer');
+
+  // Curved path
+  const dx=to.x-from.x, dy=to.y-from.y;
+  const mx=(from.x+to.x)/2, my=(from.y+to.y)/2;
+  const cx=mx-dy*0.2, cy=my+dx*0.2;
+  const d=`M${from.x},${from.y} Q${cx},${cy} ${to.x},${to.y}`;
+
+  const pathEl=document.createElementNS('http://www.w3.org/2000/svg','path');
+  pathEl.setAttribute('d',d);
+  pathEl.setAttribute('fill','none');
+  pathEl.setAttribute('stroke',cfg.color);
+  pathEl.setAttribute('stroke-width','2.5');
+  pathEl.setAttribute('marker-end',`url(#${cfg.marker})`);
+  pathEl.setAttribute('stroke-dasharray','6 4');
+  pathEl.style.opacity='0.85';
+  pathEl.style.filter=`drop-shadow(0 0 4px ${cfg.color}88)`;
+
+  // Animate dash
+  pathEl.style.strokeDashoffset='200';
+  pathEl.style.animation='dashAnim .6s linear forwards';
+
+  al.appendChild(pathEl);
+
+  // Label
+  if(cfg.label){
+    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',cx);txt.setAttribute('y',cy-6);
+    txt.setAttribute('text-anchor','middle');txt.setAttribute('font-size','10');
+    txt.setAttribute('font-family','IBM Plex Mono, monospace');
+    txt.setAttribute('fill',cfg.color);txt.setAttribute('font-weight','600');
+    txt.textContent=cfg.label;
+    al.appendChild(txt);
+  }
+
+  // Animated packet dot
+  const len=Math.sqrt(dx*dx+dy*dy)+50;
+  const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  circle.setAttribute('r','7');
+  circle.setAttribute('fill',cfg.color);
+  circle.style.filter=`drop-shadow(0 0 6px ${cfg.color})`;
+  pl.appendChild(circle);
+
+  const motionEl=document.createElementNS('http://www.w3.org/2000/svg','animateMotion');
+  motionEl.setAttribute('dur',`${0.8/animSpeed}s`);
+  motionEl.setAttribute('repeatCount','2');
+  motionEl.setAttribute('calcMode','spline');
+  motionEl.setAttribute('keySplines','0.4 0 0.2 1');
+  const mpEl=document.createElementNS('http://www.w3.org/2000/svg','mpath');
+  const pid='anim-path-'+Date.now();
+  pathEl.setAttribute('id',pid);
+  mpEl.setAttribute('href','#'+pid);
+  mpEl.setAttribute('xlink:href','#'+pid);
+  motionEl.appendChild(mpEl);
+  circle.appendChild(motionEl);
+
+  // Clean up after animation
+  if(arrowTimeout) clearTimeout(arrowTimeout);
+  arrowTimeout = setTimeout(()=>{
+    circle.remove();
+  }, 2000/animSpeed);
+}
+
+// ═══════════════════════════════════════════════════════
+// STEPPER UI
+// ═══════════════════════════════════════════════════════
+function buildStepsList(){
+  const list = document.getElementById('stepsList');
+  list.innerHTML='';
+  getSteps().forEach((s,i)=>{
+    const div=document.createElement('div');
+    div.className='step-item'+(i===currentStep?' current':i<currentStep?' done':'');
+    div.onclick=()=>applyStep(i);
+    div.innerHTML=`<div class="step-num-badge">${i<currentStep?'✓':i+1}</div>
+      <span class="step-item-label">${s.title}</span>`;
+    list.appendChild(div);
+  });
+}
+
+function updateStepsList(){
+  const items=document.querySelectorAll('.step-item');
+  items.forEach((item,i)=>{
+    item.className='step-item'+(i===currentStep?' current':i<currentStep?' done':'');
+    item.querySelector('.step-num-badge').textContent=i<currentStep?'✓':i+1;
+    item.querySelector('.step-item-label').className='step-item-label';
+  });
+}
+
+function updateProgress(){
+  const total=getSteps().length;
+  const pct=total>0?((currentStep+1)/total)*100:0;
+  document.getElementById('progressFill').style.width=pct+'%';
+}
+
+function updateButtons(){
+  document.getElementById('btnPrev').disabled = currentStep<=0;
+  document.getElementById('btnNext').disabled = currentStep>=getSteps().length-1;
+}
+
+// ═══════════════════════════════════════════════════════
+// TRACE LOG
+// ═══════════════════════════════════════════════════════
+let traceTimer=0;
+function addTrace(log, stepNum){
+  const lb=document.getElementById('traceLog');
+  const now=new Date();
+  const ts=`${String(now.getSeconds()).padStart(2,'0')}.${String(now.getMilliseconds()).slice(0,2)}`;
+
+  const div=document.createElement('div');
+  div.className='trace-entry '+log.cls;
+  div.innerHTML=`
+    <div class="te-top">
+      <span class="te-step-num">STEP ${stepNum}</span>
+      <span class="te-comp">${log.comp}</span>
+      <span class="te-ts">${ts}</span>
+    </div>
+    <div class="te-msg">${log.msg}</div>
+    ${log.detail?`<div class="te-detail">${log.detail.replace(/\n/g,'<br>')}</div>`:''}
+  `;
+  lb.appendChild(div);
+  lb.scrollTop=lb.scrollHeight;
+  if(lb.children.length>80) lb.removeChild(lb.firstChild);
+}
+
+function clearTrace(){ document.getElementById('traceLog').innerHTML=''; }
+
+// ═══════════════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════════════
+let ttTimeout=null;
+function showTooltip(msg){
+  const tt=document.getElementById('stepTooltip');
+  const step=getSteps()[currentStep];
+  tt.innerHTML=`<strong>Step ${currentStep+1}: ${step.title}</strong>${msg.replace(/\n/g,'<br>')}`;
+  tt.style.display='block';
+  tt.style.bottom='80px';
+  tt.style.right='380px';
+  tt.style.opacity='1';
+  if(ttTimeout) clearTimeout(ttTimeout);
+  ttTimeout=setTimeout(()=>{
+    tt.style.opacity='0';
+    setTimeout(()=>tt.style.display='none',300);
+  }, 4000);
+}
+
+// ═══════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════
+let playing=true;
+
+function togglePlay(){
+  playing=!playing;
+  document.getElementById('btnPlay').textContent=playing?'⏸ Pause':'▶ Play';
+  document.getElementById('hbRunning').textContent=playing?'● RUNNING':'● PAUSED';
+  if(playing && currentStep >= getSteps().length-1){ resetScenario(); autoPlay(); }
+}
+
+function nextStep(){
+  if(currentStep < getSteps().length-1) applyStep(currentStep+1);
+}
+
+function prevStep(){
+  if(currentStep > 0) applyStep(currentStep-1);
+}
+
+function resetScenario(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+  currentStep=-1;
+  clearAllHighlights();
+  clearAllResponses();
+  clearArrows();
+  buildStepsList();
+  updateProgress();
+  updateButtons();
+  document.getElementById('progressFill').style.width='0%';
+  document.getElementById('hbStep').textContent='Step 0 / '+getSteps().length;
+  document.getElementById('hbRunning').textContent='● READY';
+  addTrace({cls:'te-pod',comp:'[RESET]',msg:`Scenario reset: ${SCENARIOS[currentScenario].name}`,detail:SCENARIOS[currentScenario].description}, 0);
+}
+
+function autoPlay(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+  playing=true;
+  document.getElementById('btnPlay').textContent='⏸ Pause';
+  document.getElementById('hbRunning').textContent='● RUNNING';
+  if(currentStep >= getSteps().length-1) applyStep(0);
+  else nextStep();
+  autoTimer=setInterval(()=>{
+    if(!playing){ clearInterval(autoTimer); autoTimer=null; return; }
+    if(currentStep < getSteps().length-1){ nextStep(); }
+    else{ clearInterval(autoTimer); autoTimer=null; document.getElementById('hbRunning').textContent='● DONE'; }
+  }, 2200/animSpeed);
+}
+
+function setScenario(idx,btn){
+  currentScenario=idx;
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  resetScenario();
+}
+
+function killPod(){
+  const podIds=['pod-fe1','pod-fe2','pod-be1','pod-be2','pod-be3','pod-be4','pod-be5','pod-pg1','pod-pg2'];
+  const alive=podIds.filter(id=>!killedPods.has(id)&&!document.getElementById(id).classList.contains('killed'));
+  if(!alive.length) return;
+  const id=alive[Math.floor(Math.random()*alive.length)];
+  const el=document.getElementById(id);
+  el.classList.add('killed');
+  killedPods.add(id);
+  const nameEl=el.querySelector('.pod-name');
+  const name=nameEl?nameEl.textContent:id;
+  addTrace({cls:'te-pod',comp:'[KILLED]',msg:`☠ ${name} terminated`,detail:'Pod removed from Endpoints\nkube-proxy updates iptables\nTraffic rerouted automatically'}, currentStep+1);
+}
+
+function setSpeed(v){
+  animSpeed=parseFloat(v);
+  document.getElementById('spdVal').textContent=v+'×';
+  if(autoTimer){
+    clearInterval(autoTimer);
+    autoTimer=setInterval(()=>{
+      if(!playing){ clearInterval(autoTimer); autoTimer=null; return; }
+      if(currentStep < getSteps().length-1){ nextStep(); }
+      else{ clearInterval(autoTimer); autoTimer=null; }
+    }, 2200/animSpeed);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// CSS KEYFRAME injection
+// ═══════════════════════════════════════════════════════
+const style=document.createElement('style');
+style.textContent=`
+@keyframes dashAnim{
+  from{stroke-dashoffset:200}
+  to{stroke-dashoffset:0}
+}`;
+document.head.appendChild(style);
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+resetScenario();
+addTrace({cls:'te-browser',comp:'[READY]',msg:'K8s Interactive Tracer loaded',detail:'Select a scenario tab above\nClick "Next Step" or "Auto Play"\n\n3 Worker Nodes · 10 Pods · 3 Services\nK8s v1.29 · PostgreSQL 15.4'}, 0);
+</script>
+</body>
+</html>

@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Services — Full Architecture Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #0f1624;
+    --surface2: #161e30;
+    --border: #1e2d45;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --accent5: #ef4444;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-mid: #94a3b8;
+    --node-color: #1e3a5f;
+    --pod-front: #0d3d2e;
+    --pod-back: #1e3a5f;
+    --pod-db: #3d1e5f;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,14,23,0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 40px;
+    display: flex; align-items: center; gap: 30px; flex-wrap: wrap;
+  }
+  nav .logo { font-size: 1.1rem; font-weight: 800; color: var(--accent); letter-spacing: 2px; }
+  nav a { color: var(--text-mid); text-decoration: none; font-size: .85rem; font-weight: 700; letter-spacing: 1px; transition: color .2s; }
+  nav a:hover { color: var(--accent); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 60px 20px;
+    background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(0,212,255,.07) 0%, transparent 70%);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2300d4ff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: .5;
+  }
+  .hero h1 { font-size: clamp(2.5rem,6vw,5rem); font-weight: 800; letter-spacing: -1px; line-height: 1.1; position: relative; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { margin-top: 20px; font-size: 1.1rem; color: var(--text-mid); max-width: 600px; line-height: 1.7; }
+  .badge-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
+  .badge { padding: 6px 16px; border-radius: 20px; font-size: .78rem; font-weight: 700; letter-spacing: 1px; border: 1px solid; }
+  .badge.blue { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,.08); }
+  .badge.purple { border-color: var(--accent2); color: var(--accent2); background: rgba(124,58,237,.08); }
+  .badge.green { border-color: var(--accent3); color: var(--accent3); background: rgba(16,185,129,.08); }
+  .badge.amber { border-color: var(--accent4); color: var(--accent4); background: rgba(245,158,11,.08); }
+  .badge.red { border-color: var(--accent5); color: var(--accent5); background: rgba(239,68,68,.08); }
+
+  /* ── SECTION ── */
+  section { padding: 80px 40px; max-width: 1400px; margin: 0 auto; }
+  .sec-title {
+    font-size: clamp(1.8rem,3vw,2.8rem); font-weight: 800; letter-spacing: -1px;
+    border-left: 4px solid var(--accent); padding-left: 20px; margin-bottom: 12px;
+  }
+  .sec-title span { color: var(--accent); }
+  .sec-sub { color: var(--text-mid); font-size: 1rem; margin-bottom: 50px; padding-left: 24px; }
+
+  /* ── CARDS ── */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 20px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px; transition: border-color .3s, box-shadow .3s;
+  }
+  .card:hover { border-color: var(--accent); box-shadow: var(--glow); }
+  .card-icon { font-size: 2rem; margin-bottom: 14px; }
+  .card h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 8px; }
+  .card p { font-size: .88rem; color: var(--text-mid); line-height: 1.7; }
+  .card .tag { display: inline-block; margin-top: 12px; padding: 3px 10px; border-radius: 4px; font-size: .75rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── CLUSTER DIAGRAM ── */
+  .cluster-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 40px; margin-top: 40px; overflow: hidden;
+  }
+  .cluster-label {
+    font-family: 'JetBrains Mono', monospace; font-size: .8rem;
+    color: var(--text-dim); margin-bottom: 20px; letter-spacing: 2px;
+  }
+  .cluster-title { font-size: 1.4rem; font-weight: 800; color: var(--accent); margin-bottom: 30px; }
+  .nodes-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .node-box {
+    flex: 1; min-width: 260px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; position: relative;
+  }
+  .node-box.master { border-color: var(--accent4); }
+  .node-box.worker { border-color: var(--border); }
+  .node-header {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 800; font-size: .9rem; margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .node-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-yellow { background: var(--accent4); box-shadow: 0 0 6px var(--accent4); }
+  .dot-blue { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .dot-green { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+  .dot-purple { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  .pod-list { display: flex; flex-direction: column; gap: 8px; }
+  .pod {
+    padding: 8px 12px; border-radius: 6px; font-size: .78rem;
+    font-family: 'JetBrains Mono', monospace; border: 1px solid;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .pod.front { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.3); color: var(--accent3); }
+  .pod.back { background: rgba(0,212,255,.08); border-color: rgba(0,212,255,.3); color: var(--accent); }
+  .pod.db { background: rgba(124,58,237,.1); border-color: rgba(124,58,237,.3); color: var(--accent2); }
+  .pod.sys { background: rgba(245,158,11,.06); border-color: rgba(245,158,11,.2); color: var(--accent4); font-size: .72rem; }
+  .pod-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* ── SERVICE DIAGRAM SVG ── */
+  .svg-wrap { width: 100%; overflow-x: auto; margin: 30px 0; }
+  svg.diag { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── WORKFLOW SLIDER ── */
+  .workflow-container {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 40px; margin-top: 40px;
+  }
+  .workflow-steps-row {
+    display: flex; gap: 0; margin-bottom: 40px; overflow-x: auto; padding-bottom: 10px;
+  }
+  .ws {
+    flex: 1; min-width: 120px; text-align: center; position: relative;
+    cursor: pointer; padding: 12px 8px;
+    border-bottom: 3px solid var(--border); transition: all .3s;
+  }
+  .ws.active { border-bottom-color: var(--accent); }
+  .ws-num {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: .85rem; margin: 0 auto 8px;
+    background: var(--surface2); border: 2px solid var(--border); transition: all .3s;
+  }
+  .ws.active .ws-num { background: var(--accent); border-color: var(--accent); color: #000; }
+  .ws-label { font-size: .72rem; color: var(--text-dim); font-weight: 700; letter-spacing: .5px; }
+  .ws.active .ws-label { color: var(--accent); }
+  .step-content { display: none; }
+  .step-content.active { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+  .step-desc h3 { font-size: 1.3rem; font-weight: 800; margin-bottom: 12px; }
+  .step-desc p { color: var(--text-mid); font-size: .9rem; line-height: 1.7; margin-bottom: 16px; }
+  .step-desc ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .step-desc li { font-size: .85rem; color: var(--text-mid); display: flex; gap: 10px; align-items: flex-start; }
+  .step-desc li::before { content: '→'; color: var(--accent); flex-shrink: 0; }
+  .step-svg-wrap { background: var(--surface2); border-radius: 10px; padding: 20px; }
+
+  /* ── YAML BLOCK ── */
+  .yaml-tabs { display: flex; gap: 0; margin-bottom: 0; flex-wrap: wrap; }
+  .ytab {
+    padding: 10px 20px; font-size: .8rem; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border);
+    border-bottom: none; color: var(--text-dim); transition: all .2s;
+    border-radius: 8px 8px 0 0; letter-spacing: .5px;
+  }
+  .ytab.active { background: var(--surface2); color: var(--accent); border-color: var(--accent); }
+  .yaml-block { display: none; }
+  .yaml-block.active {
+    display: block;
+    background: var(--surface2); border: 1px solid var(--border); border-top-color: var(--accent);
+    border-radius: 0 8px 8px 8px; padding: 0; overflow: hidden;
+  }
+  .yaml-header {
+    background: var(--surface); padding: 10px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .yaml-filename { font-size: .8rem; font-family: 'JetBrains Mono', monospace; color: var(--accent3); }
+  .copy-btn {
+    padding: 4px 12px; border-radius: 4px; font-size: .75rem; font-weight: 700;
+    background: var(--border); border: none; color: var(--text-mid); cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; transition: all .2s;
+  }
+  .copy-btn:hover { background: var(--accent); color: #000; }
+  pre {
+    padding: 24px 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+    font-size: .78rem; line-height: 1.8; color: var(--text);
+  }
+  /* Syntax highlight */
+  .k { color: var(--accent); }       /* key */
+  .v { color: #a5d6ff; }             /* value */
+  .c { color: #6a737d; }             /* comment */
+  .s { color: var(--accent3); }      /* string */
+  .n { color: var(--accent4); }      /* number */
+  .d { color: var(--accent2); }      /* directive */
+
+  /* ── LIVE TRAFFIC ANIMATION ── */
+  #traffic-canvas { width: 100%; height: 420px; border-radius: 12px; background: var(--surface2); }
+  .traffic-controls { display: flex; gap: 16px; margin-top: 20px; flex-wrap: wrap; }
+  .ctrl-btn {
+    padding: 8px 20px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-mid); cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; font-size: .8rem; font-weight: 700; transition: all .2s;
+  }
+  .ctrl-btn:hover, .ctrl-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,.08); }
+  .slider-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  .slider-group { display: flex; flex-direction: column; gap: 6px; }
+  .slider-group label { font-size: .78rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+  input[type=range] { accent-color: var(--accent); width: 160px; }
+  .val-display { font-size: .78rem; font-family: 'JetBrains Mono', monospace; color: var(--accent); }
+
+  /* ── SERVICE TYPE CARDS ── */
+  .svc-compare { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 20px; margin-top: 30px; }
+  .svc-card {
+    background: var(--surface); border: 2px solid var(--border); border-radius: 14px;
+    padding: 28px; transition: all .3s;
+  }
+  .svc-card:hover { transform: translateY(-4px); }
+  .svc-card.nodeport { border-color: var(--accent3); }
+  .svc-card.clusterip { border-color: var(--accent); }
+  .svc-card.lb { border-color: var(--accent4); }
+  .svc-card.headless { border-color: var(--accent2); }
+  .svc-card-type { font-size: .75rem; font-weight: 700; letter-spacing: 2px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+  .svc-card.nodeport .svc-card-type { color: var(--accent3); }
+  .svc-card.clusterip .svc-card-type { color: var(--accent); }
+  .svc-card.lb .svc-card-type { color: var(--accent4); }
+  .svc-card.headless .svc-card-type { color: var(--accent2); }
+  .svc-card h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 12px; }
+  .svc-card p { font-size: .85rem; color: var(--text-mid); line-height: 1.6; margin-bottom: 14px; }
+  .port-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: .78rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+  .leg-item { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--text-mid); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    section { padding: 50px 20px; }
+    nav { padding: 12px 20px; }
+    .step-content.active { grid-template-columns: 1fr; }
+  }
+
+  /* ── PULSE ANIMATION ── */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes flow { 0%{stroke-dashoffset:100} 100%{stroke-dashoffset:0} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .fade-in { animation: fadeUp .6s ease both; }
+
+  .infra-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+  .infra-table th, .infra-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: .85rem; }
+  .infra-table th { font-size: .75rem; letter-spacing: 1.5px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+  .infra-table tr:hover td { background: var(--surface2); }
+
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(0,212,255,.05), rgba(124,58,237,.05));
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 20px 24px; margin: 20px 0;
+    font-size: .9rem; color: var(--text-mid); line-height: 1.7;
+  }
+  .highlight-box strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="logo">⎈ K8S</span>
+  <a href="#overview">Overview</a>
+  <a href="#cluster">Cluster</a>
+  <a href="#services">Services</a>
+  <a href="#workflow">Workflow</a>
+  <a href="#traffic">Traffic</a>
+  <a href="#yaml">YAML</a>
+  <a href="#statefulset">StatefulSet</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <h1 class="fade-in">Kubernetes <span>Services</span><br>Complete Architecture</h1>
+  <p class="fade-in">A full visual guide to K8s networking — from NodePort to ClusterIP, StatefulSets to Deployments, with live diagrams, interactive workflows, and production-ready YAML.</p>
+  <div class="badge-row fade-in">
+    <span class="badge blue">3-Node Cluster</span>
+    <span class="badge green">Frontend NodePort</span>
+    <span class="badge blue">Backend ClusterIP</span>
+    <span class="badge purple">PostgreSQL StatefulSet</span>
+    <span class="badge amber">10 Total Replicas</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SECTION: OVERVIEW -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="overview">
+  <div class="sec-title">Architecture <span>Overview</span></div>
+  <div class="sec-sub">Our full-stack application running on Kubernetes with 3 worker nodes</div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-icon">🌐</div>
+      <h3>Frontend (React/Nginx)</h3>
+      <p>Public-facing web UI exposed via <strong>NodePort</strong> service. Traffic enters the cluster on any node's IP at a fixed port. Load balanced across 2 replicas.</p>
+      <span class="badge green" style="margin-top:12px;display:inline-block;">NodePort :30080</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚙️</div>
+      <h3>Backend (Node.js API)</h3>
+      <p>REST API layer exposed via <strong>ClusterIP</strong> — only reachable inside the cluster. 5 replicas for high throughput. Frontend calls it via DNS service name.</p>
+      <span class="badge blue" style="margin-top:12px;display:inline-block;">ClusterIP :8080</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">🗄️</div>
+      <h3>PostgreSQL (StatefulSet)</h3>
+      <p>Persistent database layer using a <strong>StatefulSet</strong> with a <strong>Headless</strong> service. 1 primary + 2 read replicas with ordered, stable pod identity.</p>
+      <span class="badge purple" style="margin-top:12px;display:inline-block;">Headless :5432</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">🏗️</div>
+      <h3>Kubernetes Cluster</h3>
+      <p>3-node cluster: 1 control plane + 2 worker nodes. Pods distributed by the scheduler. Each node runs kubelet, kube-proxy, and container runtime.</p>
+      <span class="badge amber" style="margin-top:12px;display:inline-block;">3 Nodes</span>
+    </div>
+  </div>
+
+  <!-- Full Architecture SVG -->
+  <div class="cluster-wrap" style="margin-top:40px;">
+    <div class="cluster-label">// FULL ARCHITECTURE DIAGRAM</div>
+    <div class="svg-wrap">
+      <svg viewBox="0 0 1100 520" xmlns="http://www.w3.org/2000/svg" class="diag" style="min-width:800px;width:100%;">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#00d4ff"/>
+          </marker>
+          <marker id="arr-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#10b981"/>
+          </marker>
+          <marker id="arr-p" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#7c3aed"/>
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#0f1624"/>
+            <stop offset="100%" stop-color="#0a0e17"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Background -->
+        <rect width="1100" height="520" fill="url(#bgGrad)" rx="12"/>
+
+        <!-- Internet / User -->
+        <rect x="20" y="200" width="100" height="60" rx="8" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="70" y="225" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">🌍 USER</text>
+        <text x="70" y="242" text-anchor="middle" fill="#64748b" font-size="9">External</text>
+        <text x="70" y="255" text-anchor="middle" fill="#64748b" font-size="9">Traffic</text>
+
+        <!-- Cluster Boundary -->
+        <rect x="140" y="20" width="940" height="480" rx="14" fill="none" stroke="#1e2d45" stroke-width="2" stroke-dasharray="6,3"/>
+        <text x="160" y="42" fill="#1e2d45" font-size="11" font-weight="700" letter-spacing="2">KUBERNETES CLUSTER</text>
+
+        <!-- Control Plane -->
+        <rect x="155" y="55" width="200" height="150" rx="10" fill="#1a1205" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="255" y="75" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="700" letter-spacing="1">CONTROL PLANE</text>
+        <rect x="170" y="85" width="170" height="22" rx="4" fill="rgba(245,158,11,.08)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="255" y="100" text-anchor="middle" fill="#f59e0b" font-size="9">kube-apiserver</text>
+        <rect x="170" y="113" width="170" height="22" rx="4" fill="rgba(245,158,11,.08)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="255" y="128" text-anchor="middle" fill="#f59e0b" font-size="9">kube-scheduler</text>
+        <rect x="170" y="141" width="170" height="22" rx="4" fill="rgba(245,158,11,.08)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="255" y="156" text-anchor="middle" fill="#f59e0b" font-size="9">kube-controller-manager</text>
+        <rect x="170" y="169" width="170" height="22" rx="4" fill="rgba(245,158,11,.08)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="255" y="184" text-anchor="middle" fill="#f59e0b" font-size="9">etcd</text>
+
+        <!-- NodePort Service Box -->
+        <rect x="380" y="40" width="160" height="50" rx="8" fill="rgba(16,185,129,.08)" stroke="#10b981" stroke-width="1.5" filter="url(#glow)"/>
+        <text x="460" y="60" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700">NodePort Service</text>
+        <text x="460" y="76" text-anchor="middle" fill="#10b981" font-size="9">frontend-svc :30080</text>
+
+        <!-- ClusterIP Service Box -->
+        <rect x="600" y="40" width="160" height="50" rx="8" fill="rgba(0,212,255,.07)" stroke="#00d4ff" stroke-width="1.5" filter="url(#glow)"/>
+        <text x="680" y="60" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="700">ClusterIP Service</text>
+        <text x="680" y="76" text-anchor="middle" fill="#00d4ff" font-size="9">backend-svc :8080</text>
+
+        <!-- Headless Service Box -->
+        <rect x="820" y="40" width="160" height="50" rx="8" fill="rgba(124,58,237,.08)" stroke="#7c3aed" stroke-width="1.5" filter="url(#glow)"/>
+        <text x="900" y="60" text-anchor="middle" fill="#7c3aed" font-size="10" font-weight="700">Headless Service</text>
+        <text x="900" y="76" text-anchor="middle" fill="#7c3aed" font-size="9">postgres-svc :5432</text>
+
+        <!-- Worker Node 1 -->
+        <rect x="380" y="120" width="220" height="360" rx="10" fill="#0d1820" stroke="#1e3a5f" stroke-width="1.5"/>
+        <text x="490" y="140" text-anchor="middle" fill="#64748b" font-size="10" font-weight="700" letter-spacing="1">WORKER NODE 1</text>
+        <!-- Frontend pods -->
+        <rect x="395" y="150" width="190" height="32" rx="5" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)" stroke-width="1"/>
+        <text x="490" y="163" text-anchor="middle" fill="#10b981" font-size="9">🟢 frontend-pod-1</text>
+        <text x="490" y="175" text-anchor="middle" fill="#64748b" font-size="8">port: 80</text>
+        <rect x="395" y="190" width="190" height="32" rx="5" fill="rgba(0,212,255,.07)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+        <text x="490" y="203" text-anchor="middle" fill="#00d4ff" font-size="9">🔵 backend-pod-1</text>
+        <text x="490" y="215" text-anchor="middle" fill="#64748b" font-size="8">port: 8080</text>
+        <rect x="395" y="230" width="190" height="32" rx="5" fill="rgba(0,212,255,.07)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+        <text x="490" y="243" text-anchor="middle" fill="#00d4ff" font-size="9">🔵 backend-pod-2</text>
+        <text x="490" y="255" text-anchor="middle" fill="#64748b" font-size="8">port: 8080</text>
+        <rect x="395" y="270" width="190" height="32" rx="5" fill="rgba(124,58,237,.1)" stroke="rgba(124,58,237,.3)" stroke-width="1"/>
+        <text x="490" y="283" text-anchor="middle" fill="#a78bfa" font-size="9">🟣 postgres-0 (primary)</text>
+        <text x="490" y="295" text-anchor="middle" fill="#64748b" font-size="8">port: 5432 | PVC: 10Gi</text>
+        <!-- kube-proxy -->
+        <rect x="395" y="430" width="190" height="24" rx="4" fill="rgba(245,158,11,.06)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="490" y="446" text-anchor="middle" fill="#f59e0b" font-size="8">kube-proxy + kubelet</text>
+
+        <!-- Worker Node 2 -->
+        <rect x="620" y="120" width="220" height="360" rx="10" fill="#0d1820" stroke="#1e3a5f" stroke-width="1.5"/>
+        <text x="730" y="140" text-anchor="middle" fill="#64748b" font-size="10" font-weight="700" letter-spacing="1">WORKER NODE 2</text>
+        <rect x="635" y="150" width="190" height="32" rx="5" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)" stroke-width="1"/>
+        <text x="730" y="163" text-anchor="middle" fill="#10b981" font-size="9">🟢 frontend-pod-2</text>
+        <text x="730" y="175" text-anchor="middle" fill="#64748b" font-size="8">port: 80</text>
+        <rect x="635" y="190" width="190" height="32" rx="5" fill="rgba(0,212,255,.07)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+        <text x="730" y="203" text-anchor="middle" fill="#00d4ff" font-size="9">🔵 backend-pod-3</text>
+        <text x="730" y="215" text-anchor="middle" fill="#64748b" font-size="8">port: 8080</text>
+        <rect x="635" y="230" width="190" height="32" rx="5" fill="rgba(0,212,255,.07)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+        <text x="730" y="243" text-anchor="middle" fill="#00d4ff" font-size="9">🔵 backend-pod-4</text>
+        <text x="730" y="255" text-anchor="middle" fill="#64748b" font-size="8">port: 8080</text>
+        <rect x="635" y="270" width="190" height="32" rx="5" fill="rgba(124,58,237,.1)" stroke="rgba(124,58,237,.3)" stroke-width="1"/>
+        <text x="730" y="283" text-anchor="middle" fill="#a78bfa" font-size="9">🟣 postgres-1 (replica)</text>
+        <text x="730" y="295" text-anchor="middle" fill="#64748b" font-size="8">port: 5432 | PVC: 10Gi</text>
+        <rect x="635" y="430" width="190" height="24" rx="4" fill="rgba(245,158,11,.06)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="730" y="446" text-anchor="middle" fill="#f59e0b" font-size="8">kube-proxy + kubelet</text>
+
+        <!-- Worker Node 3 -->
+        <rect x="860" y="120" width="200" height="360" rx="10" fill="#0d1820" stroke="#1e3a5f" stroke-width="1.5"/>
+        <text x="960" y="140" text-anchor="middle" fill="#64748b" font-size="10" font-weight="700" letter-spacing="1">WORKER NODE 3</text>
+        <rect x="875" y="150" width="170" height="32" rx="5" fill="rgba(0,212,255,.07)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+        <text x="960" y="163" text-anchor="middle" fill="#00d4ff" font-size="9">🔵 backend-pod-5</text>
+        <text x="960" y="175" text-anchor="middle" fill="#64748b" font-size="8">port: 8080</text>
+        <rect x="875" y="195" width="170" height="32" rx="5" fill="rgba(124,58,237,.1)" stroke="rgba(124,58,237,.3)" stroke-width="1"/>
+        <text x="960" y="208" text-anchor="middle" fill="#a78bfa" font-size="9">🟣 postgres-2 (replica)</text>
+        <text x="960" y="220" text-anchor="middle" fill="#64748b" font-size="8">port: 5432 | PVC: 10Gi</text>
+        <rect x="875" y="430" width="170" height="24" rx="4" fill="rgba(245,158,11,.06)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="960" y="446" text-anchor="middle" fill="#f59e0b" font-size="8">kube-proxy + kubelet</text>
+
+        <!-- Persistent Volumes -->
+        <rect x="875" y="245" width="170" height="24" rx="4" fill="rgba(124,58,237,.06)" stroke="rgba(124,58,237,.2)" stroke-width="1"/>
+        <text x="960" y="261" text-anchor="middle" fill="#7c3aed" font-size="8">💾 PersistentVolume</text>
+
+        <!-- Arrows: User → NodePort -->
+        <line x1="120" y1="230" x2="375" y2="65" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+        <text x="230" y="160" fill="#f59e0b" font-size="9" transform="rotate(-20,230,160)">:30080</text>
+
+        <!-- NodePort → Frontend pods -->
+        <line x1="460" y1="90" x2="460" y2="148" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-g)"/>
+        <line x1="490" y1="90" x2="730" y2="148" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-g)"/>
+
+        <!-- Frontend → ClusterIP -->
+        <line x1="585" y1="167" x2="598" y2="65" stroke="#00d4ff" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+        <line x1="680" y1="90" x2="530" y2="190" stroke="#00d4ff" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+        <line x1="680" y1="90" x2="730" y2="188" stroke="#00d4ff" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+        <line x1="680" y1="90" x2="960" y2="148" stroke="#00d4ff" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+        <!-- Backend → Postgres -->
+        <line x1="900" y1="90" x2="490" y2="268" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-p)"/>
+        <line x1="900" y1="90" x2="730" y2="268" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-p)"/>
+        <line x1="900" y1="90" x2="960" y2="193" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-p)"/>
+
+        <!-- Labels -->
+        <text x="400" y="510" fill="#1e2d45" font-size="9">NodePort routes to all nodes' IPs</text>
+        <text x="640" y="510" fill="#1e2d45" font-size="9">ClusterIP — internal only</text>
+        <text x="880" y="510" fill="#1e2d45" font-size="9">StatefulSet ordered pods</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SECTION: CLUSTER DETAILS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="cluster">
+  <div class="sec-title">Cluster <span>Nodes</span></div>
+  <div class="sec-sub">3-node Kubernetes cluster — pod distribution across nodes</div>
+
+  <div class="nodes-row">
+    <!-- Control Plane -->
+    <div class="node-box master">
+      <div class="node-header"><span class="node-dot dot-yellow"></span> control-plane-01</div>
+      <div style="font-size:.75rem;color:#64748b;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">192.168.1.10 | 4vCPU | 8GB</div>
+      <div class="pod-list">
+        <div class="pod sys"><span class="pod-dot"></span> kube-apiserver</div>
+        <div class="pod sys"><span class="pod-dot"></span> kube-scheduler</div>
+        <div class="pod sys"><span class="pod-dot"></span> kube-controller-manager</div>
+        <div class="pod sys"><span class="pod-dot"></span> etcd</div>
+        <div class="pod sys"><span class="pod-dot"></span> coredns</div>
+      </div>
+    </div>
+    <!-- Worker 1 -->
+    <div class="node-box worker">
+      <div class="node-header"><span class="node-dot dot-blue"></span> worker-node-01</div>
+      <div style="font-size:.75rem;color:#64748b;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">192.168.1.11 | 8vCPU | 16GB</div>
+      <div class="pod-list">
+        <div class="pod front"><span class="pod-dot"></span> frontend-6d4f-xk9p (replica 1)</div>
+        <div class="pod back"><span class="pod-dot"></span> backend-7c8b-mn2q (replica 1)</div>
+        <div class="pod back"><span class="pod-dot"></span> backend-7c8b-px4r (replica 2)</div>
+        <div class="pod db"><span class="pod-dot"></span> postgres-0 ← PRIMARY</div>
+        <div class="pod sys"><span class="pod-dot"></span> kube-proxy | kubelet</div>
+      </div>
+    </div>
+    <!-- Worker 2 -->
+    <div class="node-box worker">
+      <div class="node-header"><span class="node-dot dot-green"></span> worker-node-02</div>
+      <div style="font-size:.75rem;color:#64748b;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">192.168.1.12 | 8vCPU | 16GB</div>
+      <div class="pod-list">
+        <div class="pod front"><span class="pod-dot"></span> frontend-6d4f-wz7t (replica 2)</div>
+        <div class="pod back"><span class="pod-dot"></span> backend-7c8b-hj5s (replica 3)</div>
+        <div class="pod back"><span class="pod-dot"></span> backend-7c8b-qt1v (replica 4)</div>
+        <div class="pod db"><span class="pod-dot"></span> postgres-1 ← REPLICA</div>
+        <div class="pod sys"><span class="pod-dot"></span> kube-proxy | kubelet</div>
+      </div>
+    </div>
+    <!-- Worker 3 -->
+    <div class="node-box worker">
+      <div class="node-header"><span class="node-dot dot-purple"></span> worker-node-03</div>
+      <div style="font-size:.75rem;color:#64748b;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">192.168.1.13 | 8vCPU | 16GB</div>
+      <div class="pod-list">
+        <div class="pod back"><span class="pod-dot"></span> backend-7c8b-lm8a (replica 5)</div>
+        <div class="pod db"><span class="pod-dot"></span> postgres-2 ← REPLICA</div>
+        <div class="pod sys"><span class="pod-dot"></span> kube-proxy | kubelet</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="margin-top:30px;">
+    <strong>Pod Scheduling:</strong> The kube-scheduler distributes pods based on node affinity rules, resource requests, and anti-affinity rules. Frontend replicas are spread across nodes for HA. StatefulSet pods (postgres-0, postgres-1, postgres-2) get <strong>stable network identities</strong> — they keep the same DNS name even after restarts, which is critical for primary/replica election.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SECTION: SERVICE TYPES -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="services">
+  <div class="sec-title">Kubernetes <span>Service Types</span></div>
+  <div class="sec-sub">How each service type exposes pods — and when to use them</div>
+
+  <div class="svc-compare">
+    <div class="svc-card nodeport">
+      <div class="svc-card-type">TYPE: NODEPORT</div>
+      <h3>Frontend Service</h3>
+      <p>Exposes the service on each Node's IP at a static port (30000–32767). External traffic hits <em>any</em> node IP:NodePort and kube-proxy routes it to the right pod.</p>
+      <div class="legend" style="margin-top:10px;">
+        <div class="leg-item"><div class="leg-dot" style="background:#10b981"></div> Port 80 (container)</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#10b981;opacity:.5"></div> TargetPort 80</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#10b981;opacity:.3"></div> NodePort 30080</div>
+      </div>
+      <span class="port-badge" style="background:rgba(16,185,129,.1);color:#10b981;">Access: nodeIP:30080</span>
+    </div>
+    <div class="svc-card clusterip">
+      <div class="svc-card-type">TYPE: CLUSTERIP (DEFAULT)</div>
+      <h3>Backend Service</h3>
+      <p>Only reachable within the cluster. Gets a virtual IP from the service CIDR range. Frontend pods call <code style="color:#00d4ff">http://backend-svc:8080</code> via CoreDNS.</p>
+      <div class="legend" style="margin-top:10px;">
+        <div class="leg-item"><div class="leg-dot" style="background:#00d4ff"></div> Port 8080 (service)</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#00d4ff;opacity:.5"></div> TargetPort 8080</div>
+      </div>
+      <span class="port-badge" style="background:rgba(0,212,255,.08);color:#00d4ff;">Access: backend-svc:8080</span>
+    </div>
+    <div class="svc-card headless">
+      <div class="svc-card-type">TYPE: HEADLESS (CLUSTERIP: NONE)</div>
+      <h3>PostgreSQL Service</h3>
+      <p>No VIP assigned. DNS returns individual pod IPs. Pods communicate directly: <code style="color:#a78bfa">postgres-0.postgres-svc</code>, <code style="color:#a78bfa">postgres-1.postgres-svc</code>.</p>
+      <div class="legend" style="margin-top:10px;">
+        <div class="leg-item"><div class="leg-dot" style="background:#7c3aed"></div> Port 5432</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#7c3aed;opacity:.5"></div> Direct pod DNS</div>
+      </div>
+      <span class="port-badge" style="background:rgba(124,58,237,.1);color:#a78bfa;">postgres-0.postgres-svc:5432</span>
+    </div>
+    <div class="svc-card lb">
+      <div class="svc-card-type">TYPE: LOADBALANCER (INFO)</div>
+      <h3>Cloud Load Balancer</h3>
+      <p>Provisions a cloud provider's external LB. Superset of NodePort. Used in production on AWS/GCP/Azure. Not used in our local example but shown for completeness.</p>
+      <div class="legend" style="margin-top:10px;">
+        <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div> External IP</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#f59e0b;opacity:.5"></div> Cloud LB</div>
+      </div>
+      <span class="port-badge" style="background:rgba(245,158,11,.08);color:#f59e0b;">Access: EXTERNAL-IP:port</span>
+    </div>
+  </div>
+
+  <!-- Service Routing Diagram -->
+  <div class="cluster-wrap" style="margin-top:40px;">
+    <div class="cluster-label">// SERVICE → POD ROUTING DIAGRAM</div>
+    <div class="svg-wrap">
+      <svg viewBox="0 0 900 340" xmlns="http://www.w3.org/2000/svg" class="diag" style="min-width:700px;width:100%;">
+        <defs>
+          <marker id="a1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+            <polygon points="0 0, 7 2.5, 0 5" fill="#10b981"/>
+          </marker>
+          <marker id="a2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+            <polygon points="0 0, 7 2.5, 0 5" fill="#00d4ff"/>
+          </marker>
+          <marker id="a3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+            <polygon points="0 0, 7 2.5, 0 5" fill="#7c3aed"/>
+          </marker>
+        </defs>
+        <rect width="900" height="340" fill="#0a0e17" rx="10"/>
+
+        <!-- Clients -->
+        <rect x="20" y="130" width="90" height="40" rx="6" fill="rgba(245,158,11,.08)" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="65" y="154" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="700">Browser</text>
+
+        <rect x="20" y="200" width="90" height="40" rx="6" fill="rgba(0,212,255,.06)" stroke="#00d4ff" stroke-width="1.2"/>
+        <text x="65" y="224" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="700">Frontend Pod</text>
+
+        <rect x="20" y="270" width="90" height="40" rx="6" fill="rgba(0,212,255,.06)" stroke="#00d4ff" stroke-width="1.2"/>
+        <text x="65" y="294" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="700">Backend Pod</text>
+
+        <!-- Services -->
+        <rect x="200" y="120" width="140" height="50" rx="8" fill="rgba(16,185,129,.08)" stroke="#10b981" stroke-width="1.5"/>
+        <text x="270" y="141" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700">NodePort SVC</text>
+        <text x="270" y="157" text-anchor="middle" fill="#10b981" font-size="8.5">frontend-svc:30080</text>
+
+        <rect x="200" y="195" width="140" height="50" rx="8" fill="rgba(0,212,255,.06)" stroke="#00d4ff" stroke-width="1.5"/>
+        <text x="270" y="216" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="700">ClusterIP SVC</text>
+        <text x="270" y="232" text-anchor="middle" fill="#00d4ff" font-size="8.5">backend-svc:8080</text>
+
+        <rect x="200" y="265" width="140" height="50" rx="8" fill="rgba(124,58,237,.08)" stroke="#7c3aed" stroke-width="1.5"/>
+        <text x="270" y="286" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700">Headless SVC</text>
+        <text x="270" y="302" text-anchor="middle" fill="#a78bfa" font-size="8.5">postgres-svc:5432</text>
+
+        <!-- kube-proxy -->
+        <rect x="420" y="150" width="120" height="130" rx="8" fill="rgba(245,158,11,.05)" stroke="rgba(245,158,11,.3)" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="480" y="175" text-anchor="middle" fill="#f59e0b" font-size="9" font-weight="700">kube-proxy</text>
+        <text x="480" y="190" text-anchor="middle" fill="#64748b" font-size="8">iptables rules</text>
+        <rect x="432" y="200" width="96" height="20" rx="3" fill="rgba(245,158,11,.1)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="480" y="214" text-anchor="middle" fill="#f59e0b" font-size="8">DNAT → pod IP</text>
+        <rect x="432" y="228" width="96" height="20" rx="3" fill="rgba(245,158,11,.1)" stroke="rgba(245,158,11,.2)" stroke-width="1"/>
+        <text x="480" y="242" text-anchor="middle" fill="#f59e0b" font-size="8">Round Robin LB</text>
+        <rect x="432" y="256" width="96" height="14" rx="3" fill="rgba(245,158,11,.06)" stroke="rgba(245,158,11,.15)" stroke-width="1"/>
+        <text x="480" y="267" text-anchor="middle" fill="#f59e0b" font-size="7">Endpoints Watch</text>
+
+        <!-- Pods -->
+        <rect x="640" y="60" width="110" height="26" rx="4" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)" stroke-width="1"/>
+        <text x="695" y="77" text-anchor="middle" fill="#10b981" font-size="9">frontend-pod-1</text>
+        <rect x="640" y="95" width="110" height="26" rx="4" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)" stroke-width="1"/>
+        <text x="695" y="112" text-anchor="middle" fill="#10b981" font-size="9">frontend-pod-2</text>
+        <rect x="640" y="145" width="110" height="26" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+        <text x="695" y="162" text-anchor="middle" fill="#00d4ff" font-size="9">backend-pod-1</text>
+        <rect x="640" y="178" width="110" height="26" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+        <text x="695" y="195" text-anchor="middle" fill="#00d4ff" font-size="9">backend-pod-2</text>
+        <rect x="640" y="211" width="110" height="26" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+        <text x="695" y="228" text-anchor="middle" fill="#00d4ff" font-size="9">backend-pod-3..5</text>
+        <rect x="640" y="254" width="110" height="26" rx="4" fill="rgba(124,58,237,.1)" stroke="rgba(124,58,237,.3)" stroke-width="1"/>
+        <text x="695" y="271" text-anchor="middle" fill="#a78bfa" font-size="9">postgres-0 (RW)</text>
+        <rect x="640" y="287" width="110" height="26" rx="4" fill="rgba(124,58,237,.07)" stroke="rgba(124,58,237,.2)" stroke-width="1"/>
+        <text x="695" y="304" text-anchor="middle" fill="#a78bfa" font-size="9">postgres-1,2 (RO)</text>
+
+        <!-- Arrows -->
+        <line x1="110" y1="150" x2="198" y2="145" stroke="#10b981" stroke-width="1.5" marker-end="url(#a1)"/>
+        <line x1="110" y1="220" x2="198" y2="220" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#a2)"/>
+        <line x1="110" y1="290" x2="198" y2="290" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#a3)"/>
+        <line x1="340" y1="145" x2="418" y2="195" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#a1)"/>
+        <line x1="340" y1="220" x2="418" y2="215" stroke="#00d4ff" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#a2)"/>
+        <!-- No kube-proxy for headless -->
+        <line x1="340" y1="290" x2="638" y2="267" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#a3)"/>
+        <text x="450" y="285" fill="#a78bfa" font-size="8" transform="rotate(-15,450,285)">DNS direct</text>
+        <line x1="540" y1="175" x2="638" y2="85" stroke="#10b981" stroke-width="1.2" marker-end="url(#a1)"/>
+        <line x1="540" y1="200" x2="638" y2="160" stroke="#00d4ff" stroke-width="1.2" marker-end="url(#a2)"/>
+        <line x1="540" y1="215" x2="638" y2="195" stroke="#00d4ff" stroke-width="1.2" marker-end="url(#a2)"/>
+        <line x1="540" y1="230" x2="638" y2="224" stroke="#00d4ff" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- Labels -->
+        <text x="130" y="108" fill="#10b981" font-size="8">:30080</text>
+        <text x="130" y="210" fill="#00d4ff" font-size="8">DNS:8080</text>
+        <text x="130" y="280" fill="#a78bfa" font-size="8">DNS direct</text>
+
+        <text x="760" y="30" fill="#10b981" font-size="8" font-weight="700">FRONTEND PODS</text>
+        <text x="760" y="135" fill="#00d4ff" font-size="8" font-weight="700">BACKEND PODS</text>
+        <text x="760" y="244" fill="#a78bfa" font-size="8" font-weight="700">POSTGRES PODS</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SECTION: INTERACTIVE WORKFLOW -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="workflow">
+  <div class="sec-title">Request <span>Workflow</span></div>
+  <div class="sec-sub">Click through each step to see how a request travels through the cluster</div>
+
+  <div class="workflow-container">
+    <div class="workflow-steps-row" id="stepRow">
+      <div class="ws active" onclick="showStep(0)"><div class="ws-num">1</div><div class="ws-label">USER REQUEST</div></div>
+      <div class="ws" onclick="showStep(1)"><div class="ws-num">2</div><div class="ws-label">NODE PORT</div></div>
+      <div class="ws" onclick="showStep(2)"><div class="ws-num">3</div><div class="ws-label">KUBE-PROXY</div></div>
+      <div class="ws" onclick="showStep(3)"><div class="ws-num">4</div><div class="ws-label">FRONTEND POD</div></div>
+      <div class="ws" onclick="showStep(4)"><div class="ws-num">5</div><div class="ws-label">CLUSTERIP</div></div>
+      <div class="ws" onclick="showStep(5)"><div class="ws-num">6</div><div class="ws-label">BACKEND POD</div></div>
+      <div class="ws" onclick="showStep(6)"><div class="ws-num">7</div><div class="ws-label">POSTGRES DNS</div></div>
+      <div class="ws" onclick="showStep(7)"><div class="ws-num">8</div><div class="ws-label">DB WRITE</div></div>
+    </div>
+
+    <div id="step-0" class="step-content active">
+      <div class="step-desc">
+        <h3>🌍 User Sends HTTP Request</h3>
+        <p>A user opens a browser and navigates to <code style="color:#f59e0b">http://192.168.1.11:30080</code> — any worker node IP works because NodePort opens the same port on ALL nodes.</p>
+        <ul>
+          <li>TCP connection to Node IP on port 30080</li>
+          <li>kube-proxy intercepts via iptables rules</li>
+          <li>Load balanced to frontend pod on any node</li>
+          <li>Works even if frontend pod isn't on that node</li>
+        </ul>
+      </div>
+      <div class="step-svg-wrap">
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+          <rect width="400" height="200" fill="#0d1220" rx="8"/>
+          <rect x="20" y="75" width="80" height="50" rx="6" fill="rgba(245,158,11,.1)" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="60" y="97" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="700">BROWSER</text>
+          <text x="60" y="112" text-anchor="middle" fill="#f59e0b" font-size="8">user</text>
+          <rect x="160" y="60" width="100" height="80" rx="8" fill="rgba(16,185,129,.1)" stroke="#10b981" stroke-width="2"/>
+          <text x="210" y="87" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700">NODE</text>
+          <text x="210" y="102" text-anchor="middle" fill="#10b981" font-size="9">192.168.1.11</text>
+          <text x="210" y="117" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">:30080</text>
+          <text x="210" y="132" text-anchor="middle" fill="#64748b" font-size="8">NodePort Open</text>
+          <rect x="310" y="75" width="70" height="50" rx="6" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)" stroke-width="1"/>
+          <text x="345" y="97" text-anchor="middle" fill="#10b981" font-size="9">frontend</text>
+          <text x="345" y="112" text-anchor="middle" fill="#10b981" font-size="8">pod-1</text>
+          <line x1="100" y1="100" x2="158" y2="100" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr)"/>
+          <line x1="260" y1="100" x2="308" y2="100" stroke="#10b981" stroke-width="2" marker-end="url(#a1)"/>
+          <text x="120" y="92" fill="#f59e0b" font-size="8">HTTP</text>
+          <text x="270" y="92" fill="#10b981" font-size="8">DNAT</text>
+        </svg>
+      </div>
+    </div>
+
+    <div id="step-1" class="step-content">
+      <div class="step-desc">
+        <h3>🔌 NodePort Service</h3>
+        <p>The NodePort service <code style="color:#10b981">frontend-svc</code> is defined with <code>type: NodePort</code>. Kubernetes opens port 30080 on ALL node network interfaces automatically.</p>
+        <ul>
+          <li>NodePort range: 30000 – 32767</li>
+          <li>Service ClusterIP also assigned internally</li>
+          <li>spec.selector matches pods with label app=frontend</li>
+          <li>Endpoints object tracks pod IPs dynamically</li>
+        </ul>
+      </div>
+      <div class="step-svg-wrap">
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+          <rect width="400" height="200" fill="#0d1220" rx="8"/>
+          <rect x="20" y="40" width="160" height="120" rx="8" fill="rgba(16,185,129,.06)" stroke="#10b981" stroke-width="1.5"/>
+          <text x="100" y="62" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700">frontend-svc</text>
+          <text x="100" y="78" text-anchor="middle" fill="#64748b" font-size="8">type: NodePort</text>
+          <text x="100" y="98" text-anchor="middle" fill="#10b981" font-size="9">port: 80</text>
+          <text x="100" y="114" text-anchor="middle" fill="#10b981" font-size="9">targetPort: 80</text>
+          <text x="100" y="130" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700">nodePort: 30080</text>
+          <text x="100" y="148" text-anchor="middle" fill="#64748b" font-size="8">selector: app=frontend</text>
+          <rect x="240" y="50" width="140" height="40" rx="5" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.25)" stroke-width="1"/>
+          <text x="310" y="68" text-anchor="middle" fill="#10b981" font-size="9">frontend-pod-1</text>
+          <text x="310" y="82" text-anchor="middle" fill="#64748b" font-size="8">10.244.1.5:80</text>
+          <rect x="240" y="110" width="140" height="40" rx="5" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.25)" stroke-width="1"/>
+          <text x="310" y="128" text-anchor="middle" fill="#10b981" font-size="9">frontend-pod-2</text>
+          <text x="310" y="142" text-anchor="middle" fill="#64748b" font-size="8">10.244.2.3:80</text>
+          <line x1="180" y1="80" x2="238" y2="72" stroke="#10b981" stroke-width="1.2" marker-end="url(#a1)"/>
+          <line x1="180" y1="120" x2="238" y2="128" stroke="#10b981" stroke-width="1.2" marker-end="url(#a1)"/>
+        </svg>
+      </div>
+    </div>
+
+    <div id="step-2" class="step-content">
+      <div class="step-desc">
+        <h3>🔧 kube-proxy iptables Rules</h3>
+        <p>kube-proxy watches the API server for Service/Endpoints changes and programs iptables rules on every node. Traffic is DNAT'd from the NodePort to a random pod IP.</p>
+        <ul>
+          <li>KUBE-SVC chain matches traffic to service</li>
+          <li>KUBE-SEP chains map to individual pod endpoints</li>
+          <li>Probability-based random selection = round-robin</li>
+          <li>Connection tracking ensures session persistence</li>
+        </ul>
+      </div>
+      <div class="step-svg-wrap">
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+          <rect width="400" height="200" fill="#0d1220" rx="8"/>
+          <text x="200" y="20" text-anchor="middle" fill="#f59e0b" font-size="9" font-weight="700">iptables KUBE chains</text>
+          <rect x="20" y="30" width="360" height="30" rx="4" fill="rgba(245,158,11,.08)" stroke="rgba(245,158,11,.3)" stroke-width="1"/>
+          <text x="200" y="49" text-anchor="middle" fill="#f59e0b" font-size="8.5" font-family="JetBrains Mono">-A KUBE-SVC-xxx --dport 30080 → KUBE-SEP</text>
+          <rect x="20" y="70" width="170" height="30" rx="4" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.25)" stroke-width="1"/>
+          <text x="105" y="89" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono">KUBE-SEP-1 → 10.244.1.5</text>
+          <rect x="210" y="70" width="170" height="30" rx="4" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.25)" stroke-width="1"/>
+          <text x="295" y="89" text-anchor="middle" fill="#10b981" font-size="8" font-family="JetBrains Mono">KUBE-SEP-2 → 10.244.2.3</text>
+          <rect x="20" y="120" width="360" height="30" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.2)" stroke-width="1"/>
+          <text x="200" y="139" text-anchor="middle" fill="#00d4ff" font-size="8.5" font-family="JetBrains Mono">-A KUBE-SEP -j DNAT --to-destination pod:port</text>
+          <text x="200" y="175" text-anchor="middle" fill="#64748b" font-size="8">Probability 0.5 = 50/50 load balance across 2 replicas</text>
+        </svg>
+      </div>
+    </div>
+
+    <div id="step-3" class="step-content">
+      <div class="step-desc">
+        <h3>🖥️ Frontend Pod Receives Request</h3>
+        <p>The Nginx/React frontend pod handles the HTTP request, serves the static assets, and makes API calls to the backend using the internal DNS name <code style="color:#00d4ff">http://backend-svc:8080</code>.</p>
+        <ul>
+          <li>Container runs on port 80 (Nginx)</li>
+          <li>Environment variable BACKEND_URL injected via ConfigMap</li>
+          <li>Makes XHR/fetch calls to backend-svc via CoreDNS</li>
+          <li>CPU/Memory limits enforced by kubelet</li>
+        </ul>
+      </div>
+      <div class="step-svg-wrap">
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+          <rect width="400" height="200" fill="#0d1220" rx="8"/>
+          <rect x="30" y="30" width="160" height="140" rx="8" fill="rgba(16,185,129,.06)" stroke="#10b981" stroke-width="1.5"/>
+          <text x="110" y="52" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700">frontend-pod</text>
+          <rect x="45" y="62" width="130" height="22" rx="4" fill="rgba(16,185,129,.1)"/>
+          <text x="110" y="77" text-anchor="middle" fill="#10b981" font-size="8">nginx container :80</text>
+          <rect x="45" y="92" width="130" height="22" rx="4" fill="rgba(0,212,255,.06)"/>
+          <text x="110" y="107" text-anchor="middle" fill="#00d4ff" font-size="8">env: BACKEND_URL</text>
+          <rect x="45" y="122" width="130" height="22" rx="4" fill="rgba(245,158,11,.06)"/>
+          <text x="110" y="137" text-anchor="middle" fill="#f59e0b" font-size="8">ConfigMap mount</text>
+          <rect x="45" y="152" width="130" height="14" rx="3" fill="rgba(16,185,129,.04)"/>
+          <text x="110" y="163" text-anchor="middle" fill="#64748b" font-size="7.5">limits: cpu:200m mem:128Mi</text>
+          <rect x="250" y="60" width="120" height="40" rx="6" fill="rgba(0,212,255,.06)" stroke="#00d4ff" stroke-width="1.2"/>
+          <text x="310" y="78" text-anchor="middle" fill="#00d4ff" font-size="9">backend-svc</text>
+          <text x="310" y="93" text-anchor="middle" fill="#64748b" font-size="8">:8080 (ClusterIP)</text>
+          <line x1="190" y1="100" x2="248" y2="84" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="3,2" marker-end="url(#a2)"/>
+          <text x="208" y="88" fill="#00d4ff" font-size="7.5">API call</text>
+        </svg>
+      </div>
+    </div>
+
+    <div id="step-4" class="step-content">
+      <div class="step-desc">
+        <h3>🔀 ClusterIP Service Routes to Backend</h3>
+        <p>CoreDNS resolves <code style="color:#00d4ff">backend-svc.default.svc.cluster.local</code> to the ClusterIP virtual IP. kube-proxy then distributes the connection across all 5 backend pods.</p>
+        <ul>
+          <li>ClusterIP is a virtual IP — no real host has it</li>
+          <li>iptables maps VIP → random pod endpoint</li>
+          <li>5 pods = ~20% traffic each</li>
+          <li>Unhealthy pods auto-removed from Endpoints</li>
+        </ul>
+      </div>
+      <div class="step-svg-wrap">
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+          <rect width="400" height="200" fill="#0d1220" rx="8"/>
+          <rect x="20" y="70" width="120" height="50" rx="6" fill="rgba(0,212,255,.07)" stroke="#00d4ff" stroke-width="1.5"/>
+          <text x="80" y="92" text-anchor="middle" fill="#00d4ff" font-size="9.5" font-weight="700">ClusterIP SVC</text>
+          <text x="80" y="107" text-anchor="middle" fill="#00d4ff" font-size="8">10.96.100.50:8080</text>
+          <line x1="140" y1="88" x2="185" y2="48" stroke="#00d4ff" stroke-width="1.2" marker-end="url(#a2)"/>
+          <line x1="140" y1="92" x2="185" y2="78" stroke="#00d4ff" stroke-width="1.2" marker-end="url(#a2)"/>
+          <line x1="140" y1="96" x2="185" y2="110" stroke="#00d4ff" stroke-width="1.2" marker-end="url(#a2)"/>
+          <line x1="140" y1="100" x2="185" y2="140" stroke="#00d4ff" stroke-width="1.2" marker-end="url(#a2)"/>
+          <line x1="140" y1="104" x2="185" y2="168" stroke="#00d4ff" stroke-width="1.2" marker-end="url(#a2)"/>
+          <rect x="190" y="35" width="110" height="22" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.2)" stroke-width="1"/>
+          <text x="245" y="50" text-anchor="middle" fill="#00d4ff" font-size="8">backend-pod-1</text>
+          <rect x="190" y="66" width="110" height="22" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.2)" stroke-width="1"/>
+          <text x="245" y="81" text-anchor="middle" fill="#00d4ff" font-size="8">backend-pod-2</text>
+          <rect x="190" y="97" width="110" height="22" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.2)" stroke-width="1"/>
+          <text x="245" y="112" text-anchor="middle" fill="#00d4ff" font-size="8">backend-pod-3</text>
+          <rect x="190" y="128" width="110" height="22" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.2)" stroke-width="1"/>
+          <text x="245" y="143" text-anchor="middle" fill="#00d4ff" font-size="8">backend-pod-4</text>
+          <rect x="190" y="159" width="110" height="22" rx="4" fill="rgba(0,212,255,.06)" stroke="rgba(0,212,255,.2)" stroke-width="1"/>
+          <text x="245" y="174" text-anchor="middle" fill="#00d4ff" font-size="8">backend-pod-5</text>
+          <text x="330" y="110" fill="#64748b" font-size="7.5">~20% each</text>
+        </svg>
+      </div>
+    </div>
+
+    <div id="step-5" class="step-content">
+      <div class="step-desc">
+        <h3>⚙️ Backend Pod Processes Request</h3>
+        <p>The Node.js backend pod handles the business logic, validates the request, and queries the PostgreSQL database using the headless service DNS to reach the primary node directly.</p>
+        <ul>
+          <li>Connects to postgres-0.postgres-svc:5432 (primary)</li>
+          <li>Reads may go to postgres-1 or postgres-2 (replicas)</li>
+          <li>Secrets mounted for DB credentials</li>
+          <li>Horizontal Pod Autoscaler can scale to 10 replicas</li>
+        </ul>
+      </div>
+      <div class="step-svg-wrap">
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+          <rect width="400" height="200" fill="#0d1220" rx="8"/>
+          <rect x="30" y="30" width="160" height="140" rx="8" fill="rgba(0,212,255,.05)" stroke="#00d4ff" stroke-width="1.5"/>
+          <text x="110" y="52" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="700">backend-pod</text>
+          <rect x="45" y="62" width="130" height="22" rx="4" fill="rgba(0,212,255,.08)"/>
+          <text x="110" y="77" text-anchor="middle" fill="#00d4ff" font-size="8">node.js container :8080</text>
+          <rect x="45" y="92" width="130" height="22" rx="4" fill="rgba(239,68,68,.08)"/>
+          <text x="110" y="107" text-anchor="middle" fill="#ef4444" font-size="8">Secret: DB_PASSWORD</text>
+          <rect x="45" y="122" width="130" height="22" rx="4" fill="rgba(245,158,11,.06)"/>
+          <text x="110" y="137" text-anchor="middle" fill="#f59e0b" font-size="8">ConfigMap: DB_HOST</text>
+          <rect x="45" y="152" width="130" height="14" rx="3"/>
+          <text x="110" y="163" text-anchor="middle" fill="#64748b" font-size="7.5">limits: cpu:500m mem:256Mi</text>
+          <rect x="250" y="55" width="130" height="35" rx="6" fill="rgba(124,58,237,.1)" stroke="#7c3aed" stroke-width="1.2"/>
+          <text x="315" y="71" text-anchor="middle" fill="#a78bfa" font-size="9">postgres-0</text>
+          <text x="315" y="83" text-anchor="middle" fill="#64748b" font-size="8">PRIMARY (writes)</text>
+          <rect x="250" y="110" width="130" height="35" rx="6" fill="rgba(124,58,237,.07)" stroke="rgba(124,58,237,.3)" stroke-width="1.2"/>
+          <text x="315" y="126" text-anchor="middle" fill="#a78bfa" font-size="9">postgres-1,2</text>
+          <text x="315" y="138" text-anchor="middle" fill="#64748b" font-size="8">REPLICAS (reads)</text>
+          <line x1="190" y1="90" x2="248" y2="72" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#a3)"/>
+          <line x1="190" y1="115" x2="248" y2="128" stroke="#7c3aed" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#a3)"/>
+        </svg>
+      </div>
+    </div>
+
+    <div id="step-6" class="step-content">
+      <div class="step-desc">
+        <h3>🔍 Headless Service & CoreDNS</h3>
+        <p>The headless service (<code>clusterIP: None</code>) lets CoreDNS return individual pod IPs. StatefulSet pods get stable DNS names like <code style="color:#a78bfa">postgres-0.postgres-svc.default.svc.cluster.local</code>.</p>
+        <ul>
+          <li>postgres-0 = always the primary candidate</li>
+          <li>DNS A records: one per pod (not a VIP)</li>
+          <li>Ordered startup: 0 → 1 → 2</li>
+          <li>initContainers can detect primary/replica role</li>
+        </ul>
+      </div>
+      <div class="step-svg-wrap">
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+          <rect width="400" height="200" fill="#0d1220" rx="8"/>
+          <rect x="20" y="50" width="100" height="100" rx="6" fill="rgba(0,212,255,.04)" stroke="rgba(0,212,255,.2)" stroke-width="1" stroke-dasharray="4,2"/>
+          <text x="70" y="72" text-anchor="middle" fill="#00d4ff" font-size="9" font-weight="700">CoreDNS</text>
+          <text x="70" y="88" text-anchor="middle" fill="#64748b" font-size="7.5">postgres-0</text>
+          <text x="70" y="102" text-anchor="middle" fill="#64748b" font-size="7.5">→ 10.244.1.10</text>
+          <text x="70" y="116" text-anchor="middle" fill="#64748b" font-size="7.5">postgres-1</text>
+          <text x="70" y="130" text-anchor="middle" fill="#64748b" font-size="7.5">→ 10.244.2.8</text>
+          <line x1="120" y1="80" x2="168" y2="60" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a3)"/>
+          <line x1="120" y1="100" x2="168" y2="100" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a3)"/>
+          <line x1="120" y1="120" x2="168" y2="140" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a3)"/>
+          <rect x="172" y="40" width="110" height="30" rx="5" fill="rgba(124,58,237,.12)" stroke="#7c3aed" stroke-width="1.5"/>
+          <text x="227" y="55" text-anchor="middle" fill="#a78bfa" font-size="9" font-weight="700">postgres-0</text>
+          <text x="227" y="67" text-anchor="middle" fill="#64748b" font-size="7.5">PRIMARY · RW</text>
+          <rect x="172" y="85" width="110" height="30" rx="5" fill="rgba(124,58,237,.07)" stroke="rgba(124,58,237,.3)" stroke-width="1"/>
+          <text x="227" y="100" text-anchor="middle" fill="#a78bfa" font-size="9">postgres-1</text>
+          <text x="227" y="112" text-anchor="middle" fill="#64748b" font-size="7.5">REPLICA · RO</text>
+          <rect x="172" y="130" width="110" height="30" rx="5" fill="rgba(124,58,237,.07)" stroke="rgba(124,58,237,.3)" stroke-width="1"/>
+          <text x="227" y="145" text-anchor="middle" fill="#a78bfa" font-size="9">postgres-2</text>
+          <text x="227" y="157" text-anchor="middle" fill="#64748b" font-size="7.5">REPLICA · RO</text>
+          <!-- Replication arrows -->
+          <line x1="285" y1="58" x2="330" y2="75" stroke="#7c3aed" stroke-width="1" stroke-dasharray="2,2"/>
+          <line x1="285" y1="100" x2="330" y2="90" stroke="#7c3aed" stroke-width="1" stroke-dasharray="2,2"/>
+          <rect x="330" y="60" width="55" height="50" rx="4" fill="rgba(124,58,237,.05)" stroke="rgba(124,58,237,.2)" stroke-width="1"/>
+          <text x="357" y="80" text-anchor="middle" fill="#a78bfa" font-size="7.5">Streaming</text>
+          <text x="357" y="93" text-anchor="middle" fill="#a78bfa" font-size="7.5">Replication</text>
+          <text x="357" y="106" text-anchor="middle" fill="#64748b" font-size="7">WAL logs</text>
+        </svg>
+      </div>
+    </div>
+
+    <div id="step-7" class="step-content">
+      <div class="step-desc">
+        <h3>💾 Database Write & Response</h3>
+        <p>The backend writes to <code style="color:#a78bfa">postgres-0</code> (primary). PostgreSQL streams WAL logs to both replicas. The response travels back up the chain: DB → Backend → Frontend → User.</p>
+        <ul>
+          <li>PersistentVolumeClaim provides durable storage</li>
+          <li>WAL streaming replication to replicas</li>
+          <li>Response: DB → Backend pod → ClusterIP → Frontend → NodePort → User</li>
+          <li>Full round trip completes in &lt;100ms typically</li>
+        </ul>
+      </div>
+      <div class="step-svg-wrap">
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+          <rect width="400" height="200" fill="#0d1220" rx="8"/>
+          <rect x="20" y="75" width="70" height="50" rx="5" fill="rgba(245,158,11,.08)" stroke="#f59e0b" stroke-width="1.2"/>
+          <text x="55" y="98" text-anchor="middle" fill="#f59e0b" font-size="9" font-weight="700">USER</text>
+          <text x="55" y="112" text-anchor="middle" fill="#64748b" font-size="7.5">200 OK ✓</text>
+          <rect x="120" y="75" width="60" height="50" rx="5" fill="rgba(16,185,129,.07)" stroke="#10b981" stroke-width="1"/>
+          <text x="150" y="98" text-anchor="middle" fill="#10b981" font-size="8">frontend</text>
+          <text x="150" y="112" text-anchor="middle" fill="#10b981" font-size="7.5">pod</text>
+          <rect x="210" y="75" width="60" height="50" rx="5" fill="rgba(0,212,255,.06)" stroke="#00d4ff" stroke-width="1"/>
+          <text x="240" y="98" text-anchor="middle" fill="#00d4ff" font-size="8">backend</text>
+          <text x="240" y="112" text-anchor="middle" fill="#00d4ff" font-size="7.5">pod</text>
+          <rect x="300" y="60" width="80" height="32" rx="5" fill="rgba(124,58,237,.12)" stroke="#7c3aed" stroke-width="1.5"/>
+          <text x="340" y="78" text-anchor="middle" fill="#a78bfa" font-size="9" font-weight="700">postgres-0</text>
+          <text x="340" y="90" text-anchor="middle" fill="#64748b" font-size="7.5">WRITE OK</text>
+          <rect x="300" y="108" width="80" height="32" rx="5" fill="rgba(124,58,237,.07)" stroke="rgba(124,58,237,.3)" stroke-width="1"/>
+          <text x="340" y="126" text-anchor="middle" fill="#a78bfa" font-size="8">postgres-1,2</text>
+          <text x="340" y="138" text-anchor="middle" fill="#64748b" font-size="7.5">WAL replicated</text>
+          <line x1="298" y1="76" x2="272" y2="95" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <line x1="268" y1="100" x2="182" y2="100" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <line x1="178" y1="100" x2="92" y2="100" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <line x1="88" y1="100" x2="25" y2="100" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <text x="200" y="165" text-anchor="middle" fill="#64748b" font-size="8">← Response chain (DB → Backend → Frontend → User)</text>
+        </svg>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:24px;">
+      <button class="ctrl-btn" onclick="prevStep()">← Previous</button>
+      <button class="ctrl-btn" onclick="nextStep()">Next →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SECTION: LIVE TRAFFIC SIMULATION -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="traffic">
+  <div class="sec-title">Live Traffic <span>Simulation</span></div>
+  <div class="sec-sub">Watch requests flow through the cluster in real time — adjust replica count and traffic rate</div>
+
+  <canvas id="traffic-canvas"></canvas>
+
+  <div class="traffic-controls">
+    <button class="ctrl-btn active" id="btn-start" onclick="toggleTraffic()">⏸ Pause</button>
+    <button class="ctrl-btn" onclick="sendBurst()">💥 Send Burst</button>
+    <button class="ctrl-btn" onclick="killPod()">☠️ Kill Backend Pod</button>
+    <button class="ctrl-btn" onclick="resetPods()">🔄 Restore Pods</button>
+  </div>
+  <div class="slider-row">
+    <div class="slider-group">
+      <label>TRAFFIC RATE</label>
+      <input type="range" min="1" max="10" value="4" id="rateSlider" oninput="updateRate(this.value)">
+      <span class="val-display" id="rateVal">4 req/s</span>
+    </div>
+    <div class="slider-group">
+      <label>BACKEND REPLICAS</label>
+      <input type="range" min="1" max="7" value="5" id="replicaSlider" oninput="updateReplicas(this.value)">
+      <span class="val-display" id="replicaVal">5 replicas</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SECTION: YAML FILES -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="yaml">
+  <div class="sec-title">Production <span>YAML</span> Files</div>
+  <div class="sec-sub">Complete, ready-to-apply Kubernetes manifests for the entire stack</div>
+
+  <div class="yaml-tabs" id="yamlTabs">
+    <div class="ytab active" onclick="showYaml('ns')">namespace</div>
+    <div class="ytab" onclick="showYaml('frontend-deploy')">frontend-deploy</div>
+    <div class="ytab" onclick="showYaml('frontend-svc')">frontend-svc</div>
+    <div class="ytab" onclick="showYaml('backend-deploy')">backend-deploy</div>
+    <div class="ytab" onclick="showYaml('backend-svc')">backend-svc</div>
+    <div class="ytab" onclick="showYaml('postgres-ss')">postgres-statefulset</div>
+    <div class="ytab" onclick="showYaml('postgres-svc')">postgres-svc</div>
+    <div class="ytab" onclick="showYaml('configmap')">configmap</div>
+    <div class="ytab" onclick="showYaml('secret')">secret</div>
+    <div class="ytab" onclick="showYaml('pvc')">storageclass</div>
+  </div>
+
+  <div id="yaml-ns" class="yaml-block active">
+    <div class="yaml-header"><span class="yaml-filename">00-namespace.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-ns')">Copy</button></div>
+    <pre><span class="c"># Dedicated namespace to isolate all app resources</span>
+<span class="k">apiVersion</span>: <span class="v">v1</span>
+<span class="k">kind</span>: <span class="s">Namespace</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">fullstack-app</span>
+  <span class="k">labels</span>:
+    <span class="k">name</span>: <span class="s">fullstack-app</span>
+    <span class="k">environment</span>: <span class="s">production</span>
+    <span class="k">managed-by</span>: <span class="s">kubectl</span></pre>
+  </div>
+
+  <div id="yaml-frontend-deploy" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">01-frontend-deployment.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-frontend-deploy')">Copy</button></div>
+    <pre><span class="c"># Frontend Deployment — 2 replicas, Nginx serving React build</span>
+<span class="k">apiVersion</span>: <span class="v">apps/v1</span>
+<span class="k">kind</span>: <span class="s">Deployment</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">frontend</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+  <span class="k">labels</span>:
+    <span class="k">app</span>: <span class="s">frontend</span>
+    <span class="k">tier</span>: <span class="s">web</span>
+    <span class="k">version</span>: <span class="s">v1.0.0</span>
+<span class="k">spec</span>:
+  <span class="k">replicas</span>: <span class="n">2</span>
+  <span class="k">selector</span>:
+    <span class="k">matchLabels</span>:
+      <span class="k">app</span>: <span class="s">frontend</span>
+  <span class="k">strategy</span>:
+    <span class="k">type</span>: <span class="s">RollingUpdate</span>
+    <span class="k">rollingUpdate</span>:
+      <span class="k">maxUnavailable</span>: <span class="n">0</span>       <span class="c"># Zero downtime</span>
+      <span class="k">maxSurge</span>: <span class="n">1</span>
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app</span>: <span class="s">frontend</span>
+        <span class="k">tier</span>: <span class="s">web</span>
+    <span class="k">spec</span>:
+      <span class="c"># Spread pods across different nodes</span>
+      <span class="k">topologySpreadConstraints</span>:
+        - <span class="k">maxSkew</span>: <span class="n">1</span>
+          <span class="k">topologyKey</span>: <span class="s">kubernetes.io/hostname</span>
+          <span class="k">whenUnsatisfiable</span>: <span class="s">DoNotSchedule</span>
+          <span class="k">labelSelector</span>:
+            <span class="k">matchLabels</span>:
+              <span class="k">app</span>: <span class="s">frontend</span>
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: <span class="s">frontend</span>
+          <span class="k">image</span>: <span class="s">myregistry/frontend:1.0.0</span>
+          <span class="k">imagePullPolicy</span>: <span class="s">Always</span>
+          <span class="k">ports</span>:
+            - <span class="k">containerPort</span>: <span class="n">80</span>
+              <span class="k">name</span>: <span class="s">http</span>
+          <span class="k">envFrom</span>:
+            - <span class="k">configMapRef</span>:
+                <span class="k">name</span>: <span class="s">app-config</span>
+          <span class="k">resources</span>:
+            <span class="k">requests</span>:
+              <span class="k">cpu</span>: <span class="s">"100m"</span>
+              <span class="k">memory</span>: <span class="s">"64Mi"</span>
+            <span class="k">limits</span>:
+              <span class="k">cpu</span>: <span class="s">"200m"</span>
+              <span class="k">memory</span>: <span class="s">"128Mi"</span>
+          <span class="k">livenessProbe</span>:
+            <span class="k">httpGet</span>:
+              <span class="k">path</span>: <span class="s">/healthz</span>
+              <span class="k">port</span>: <span class="n">80</span>
+            <span class="k">initialDelaySeconds</span>: <span class="n">10</span>
+            <span class="k">periodSeconds</span>: <span class="n">15</span>
+          <span class="k">readinessProbe</span>:
+            <span class="k">httpGet</span>:
+              <span class="k">path</span>: <span class="s">/ready</span>
+              <span class="k">port</span>: <span class="n">80</span>
+            <span class="k">initialDelaySeconds</span>: <span class="n">5</span>
+            <span class="k">periodSeconds</span>: <span class="n">10</span></pre>
+  </div>
+
+  <div id="yaml-frontend-svc" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">02-frontend-service.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-frontend-svc')">Copy</button></div>
+    <pre><span class="c"># NodePort Service — exposes frontend to external traffic on :30080</span>
+<span class="k">apiVersion</span>: <span class="v">v1</span>
+<span class="k">kind</span>: <span class="s">Service</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">frontend-svc</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+  <span class="k">labels</span>:
+    <span class="k">app</span>: <span class="s">frontend</span>
+  <span class="k">annotations</span>:
+    <span class="k">description</span>: <span class="s">"NodePort service for external frontend access"</span>
+<span class="k">spec</span>:
+  <span class="k">type</span>: <span class="s">NodePort</span>           <span class="c"># ← Opens port on every node</span>
+  <span class="k">selector</span>:
+    <span class="k">app</span>: <span class="s">frontend</span>           <span class="c"># Targets pods with this label</span>
+  <span class="k">ports</span>:
+    - <span class="k">name</span>: <span class="s">http</span>
+      <span class="k">protocol</span>: <span class="s">TCP</span>
+      <span class="k">port</span>: <span class="n">80</span>              <span class="c"># Service port (internal)</span>
+      <span class="k">targetPort</span>: <span class="n">80</span>        <span class="c"># Pod container port</span>
+      <span class="k">nodePort</span>: <span class="n">30080</span>       <span class="c"># External port (30000-32767)</span>
+  <span class="k">sessionAffinity</span>: <span class="s">None</span>    <span class="c"># Round-robin load balancing</span>
+
+<span class="c">---
+# Access via: http://&lt;ANY-NODE-IP&gt;:30080
+# Example: http://192.168.1.11:30080
+#          http://192.168.1.12:30080  (same result!)
+#          http://192.168.1.13:30080  (same result!)</span></pre>
+  </div>
+
+  <div id="yaml-backend-deploy" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">03-backend-deployment.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-backend-deploy')">Copy</button></div>
+    <pre><span class="c"># Backend Deployment — 5 replicas, Node.js REST API</span>
+<span class="k">apiVersion</span>: <span class="v">apps/v1</span>
+<span class="k">kind</span>: <span class="s">Deployment</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">backend</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+  <span class="k">labels</span>:
+    <span class="k">app</span>: <span class="s">backend</span>
+    <span class="k">tier</span>: <span class="s">api</span>
+<span class="k">spec</span>:
+  <span class="k">replicas</span>: <span class="n">5</span>
+  <span class="k">selector</span>:
+    <span class="k">matchLabels</span>:
+      <span class="k">app</span>: <span class="s">backend</span>
+  <span class="k">strategy</span>:
+    <span class="k">type</span>: <span class="s">RollingUpdate</span>
+    <span class="k">rollingUpdate</span>:
+      <span class="k">maxUnavailable</span>: <span class="n">1</span>
+      <span class="k">maxSurge</span>: <span class="n">2</span>
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app</span>: <span class="s">backend</span>
+        <span class="k">tier</span>: <span class="s">api</span>
+    <span class="k">spec</span>:
+      <span class="c"># Anti-affinity: spread pods across different nodes</span>
+      <span class="k">affinity</span>:
+        <span class="k">podAntiAffinity</span>:
+          <span class="k">preferredDuringSchedulingIgnoredDuringExecution</span>:
+            - <span class="k">weight</span>: <span class="n">100</span>
+              <span class="k">podAffinityTerm</span>:
+                <span class="k">labelSelector</span>:
+                  <span class="k">matchLabels</span>:
+                    <span class="k">app</span>: <span class="s">backend</span>
+                <span class="k">topologyKey</span>: <span class="s">kubernetes.io/hostname</span>
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: <span class="s">backend</span>
+          <span class="k">image</span>: <span class="s">myregistry/backend:1.0.0</span>
+          <span class="k">imagePullPolicy</span>: <span class="s">Always</span>
+          <span class="k">ports</span>:
+            - <span class="k">containerPort</span>: <span class="n">8080</span>
+              <span class="k">name</span>: <span class="s">api</span>
+          <span class="k">env</span>:
+            - <span class="k">name</span>: <span class="s">NODE_ENV</span>
+              <span class="k">value</span>: <span class="s">"production"</span>
+            - <span class="k">name</span>: <span class="s">DB_HOST</span>
+              <span class="k">valueFrom</span>:
+                <span class="k">configMapKeyRef</span>:
+                  <span class="k">name</span>: <span class="s">app-config</span>
+                  <span class="k">key</span>: <span class="s">DB_HOST</span>
+            - <span class="k">name</span>: <span class="s">DB_PORT</span>
+              <span class="k">value</span>: <span class="s">"5432"</span>
+            - <span class="k">name</span>: <span class="s">DB_NAME</span>
+              <span class="k">value</span>: <span class="s">"appdb"</span>
+            - <span class="k">name</span>: <span class="s">DB_USER</span>
+              <span class="k">valueFrom</span>:
+                <span class="k">secretKeyRef</span>:
+                  <span class="k">name</span>: <span class="s">db-credentials</span>
+                  <span class="k">key</span>: <span class="s">username</span>
+            - <span class="k">name</span>: <span class="s">DB_PASSWORD</span>
+              <span class="k">valueFrom</span>:
+                <span class="k">secretKeyRef</span>:
+                  <span class="k">name</span>: <span class="s">db-credentials</span>
+                  <span class="k">key</span>: <span class="s">password</span>
+          <span class="k">resources</span>:
+            <span class="k">requests</span>:
+              <span class="k">cpu</span>: <span class="s">"250m"</span>
+              <span class="k">memory</span>: <span class="s">"128Mi"</span>
+            <span class="k">limits</span>:
+              <span class="k">cpu</span>: <span class="s">"500m"</span>
+              <span class="k">memory</span>: <span class="s">"256Mi"</span>
+          <span class="k">livenessProbe</span>:
+            <span class="k">httpGet</span>:
+              <span class="k">path</span>: <span class="s">/api/health</span>
+              <span class="k">port</span>: <span class="n">8080</span>
+            <span class="k">initialDelaySeconds</span>: <span class="n">15</span>
+            <span class="k">periodSeconds</span>: <span class="n">20</span>
+          <span class="k">readinessProbe</span>:
+            <span class="k">httpGet</span>:
+              <span class="k">path</span>: <span class="s">/api/ready</span>
+              <span class="k">port</span>: <span class="n">8080</span>
+            <span class="k">initialDelaySeconds</span>: <span class="n">10</span>
+            <span class="k">periodSeconds</span>: <span class="n">5</span>
+
+<span class="c">---
+# HorizontalPodAutoscaler — scale 5-10 replicas based on CPU</span>
+<span class="k">apiVersion</span>: <span class="v">autoscaling/v2</span>
+<span class="k">kind</span>: <span class="s">HorizontalPodAutoscaler</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">backend-hpa</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+<span class="k">spec</span>:
+  <span class="k">scaleTargetRef</span>:
+    <span class="k">apiVersion</span>: <span class="v">apps/v1</span>
+    <span class="k">kind</span>: <span class="s">Deployment</span>
+    <span class="k">name</span>: <span class="s">backend</span>
+  <span class="k">minReplicas</span>: <span class="n">5</span>
+  <span class="k">maxReplicas</span>: <span class="n">10</span>
+  <span class="k">metrics</span>:
+    - <span class="k">type</span>: <span class="s">Resource</span>
+      <span class="k">resource</span>:
+        <span class="k">name</span>: <span class="s">cpu</span>
+        <span class="k">target</span>:
+          <span class="k">type</span>: <span class="s">Utilization</span>
+          <span class="k">averageUtilization</span>: <span class="n">70</span></pre>
+  </div>
+
+  <div id="yaml-backend-svc" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">04-backend-service.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-backend-svc')">Copy</button></div>
+    <pre><span class="c"># ClusterIP Service — internal-only, no external access</span>
+<span class="k">apiVersion</span>: <span class="v">v1</span>
+<span class="k">kind</span>: <span class="s">Service</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">backend-svc</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+  <span class="k">labels</span>:
+    <span class="k">app</span>: <span class="s">backend</span>
+<span class="k">spec</span>:
+  <span class="k">type</span>: <span class="s">ClusterIP</span>           <span class="c"># ← Default type, internal only</span>
+  <span class="k">selector</span>:
+    <span class="k">app</span>: <span class="s">backend</span>
+  <span class="k">ports</span>:
+    - <span class="k">name</span>: <span class="s">api</span>
+      <span class="k">protocol</span>: <span class="s">TCP</span>
+      <span class="k">port</span>: <span class="n">8080</span>             <span class="c"># Service port</span>
+      <span class="k">targetPort</span>: <span class="n">8080</span>      <span class="c"># Pod container port</span>
+
+<span class="c"># DNS: backend-svc.fullstack-app.svc.cluster.local
+# Short: backend-svc (within same namespace)
+# ClusterIP: auto-assigned from service CIDR (e.g. 10.96.100.50)
+# Frontend calls: http://backend-svc:8080/api</span></pre>
+  </div>
+
+  <div id="yaml-postgres-ss" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">05-postgres-statefulset.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-postgres-ss')">Copy</button></div>
+    <pre><span class="c"># PostgreSQL StatefulSet — 1 primary + 2 replicas</span>
+<span class="k">apiVersion</span>: <span class="v">apps/v1</span>
+<span class="k">kind</span>: <span class="s">StatefulSet</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">postgres</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+  <span class="k">labels</span>:
+    <span class="k">app</span>: <span class="s">postgres</span>
+    <span class="k">tier</span>: <span class="s">database</span>
+<span class="k">spec</span>:
+  <span class="k">serviceName</span>: <span class="s">postgres-svc</span>   <span class="c"># Headless service for DNS</span>
+  <span class="k">replicas</span>: <span class="n">3</span>                  <span class="c"># 1 primary + 2 replicas</span>
+  <span class="k">selector</span>:
+    <span class="k">matchLabels</span>:
+      <span class="k">app</span>: <span class="s">postgres</span>
+  <span class="k">podManagementPolicy</span>: <span class="s">OrderedReady</span>  <span class="c"># Starts 0→1→2 in order</span>
+  <span class="k">updateStrategy</span>:
+    <span class="k">type</span>: <span class="s">RollingUpdate</span>
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app</span>: <span class="s">postgres</span>
+    <span class="k">spec</span>:
+      <span class="k">initContainers</span>:
+        <span class="c"># Detect if this pod is primary (index 0) or replica</span>
+        - <span class="k">name</span>: <span class="s">init-postgres</span>
+          <span class="k">image</span>: <span class="s">postgres:15-alpine</span>
+          <span class="k">command</span>:
+            - <span class="s">/bin/bash</span>
+            - <span class="s">-c</span>
+            - |
+              <span class="c">#!/bin/bash
+              # Get pod ordinal from hostname</span>
+              POD_INDEX=${HOSTNAME##*-}
+              <span class="k">if</span> [ "$POD_INDEX" = "0" ]; then
+                echo <span class="s">"primary"</span> > /mnt/role/role
+              else
+                echo <span class="s">"replica"</span> > /mnt/role/role
+              fi
+          <span class="k">volumeMounts</span>:
+            - <span class="k">name</span>: <span class="s">role</span>
+              <span class="k">mountPath</span>: <span class="s">/mnt/role</span>
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: <span class="s">postgres</span>
+          <span class="k">image</span>: <span class="s">postgres:15-alpine</span>
+          <span class="k">imagePullPolicy</span>: <span class="s">IfNotPresent</span>
+          <span class="k">ports</span>:
+            - <span class="k">containerPort</span>: <span class="n">5432</span>
+              <span class="k">name</span>: <span class="s">postgres</span>
+          <span class="k">env</span>:
+            - <span class="k">name</span>: <span class="s">POSTGRES_DB</span>
+              <span class="k">value</span>: <span class="s">"appdb"</span>
+            - <span class="k">name</span>: <span class="s">POSTGRES_USER</span>
+              <span class="k">valueFrom</span>:
+                <span class="k">secretKeyRef</span>:
+                  <span class="k">name</span>: <span class="s">db-credentials</span>
+                  <span class="k">key</span>: <span class="s">username</span>
+            - <span class="k">name</span>: <span class="s">POSTGRES_PASSWORD</span>
+              <span class="k">valueFrom</span>:
+                <span class="k">secretKeyRef</span>:
+                  <span class="k">name</span>: <span class="s">db-credentials</span>
+                  <span class="k">key</span>: <span class="s">password</span>
+            - <span class="k">name</span>: <span class="s">PGDATA</span>
+              <span class="k">value</span>: <span class="s">/var/lib/postgresql/data/pgdata</span>
+          <span class="k">volumeMounts</span>:
+            - <span class="k">name</span>: <span class="s">postgres-data</span>
+              <span class="k">mountPath</span>: <span class="s">/var/lib/postgresql/data</span>
+            - <span class="k">name</span>: <span class="s">role</span>
+              <span class="k">mountPath</span>: <span class="s">/mnt/role</span>
+          <span class="k">resources</span>:
+            <span class="k">requests</span>:
+              <span class="k">cpu</span>: <span class="s">"500m"</span>
+              <span class="k">memory</span>: <span class="s">"512Mi"</span>
+            <span class="k">limits</span>:
+              <span class="k">cpu</span>: <span class="s">"1000m"</span>
+              <span class="k">memory</span>: <span class="s">"1Gi"</span>
+          <span class="k">livenessProbe</span>:
+            <span class="k">exec</span>:
+              <span class="k">command</span>:
+                - <span class="s">pg_isready</span>
+                - <span class="s">-U</span>
+                - <span class="s">$(POSTGRES_USER)</span>
+            <span class="k">initialDelaySeconds</span>: <span class="n">30</span>
+            <span class="k">periodSeconds</span>: <span class="n">10</span>
+          <span class="k">readinessProbe</span>:
+            <span class="k">exec</span>:
+              <span class="k">command</span>:
+                - <span class="s">pg_isready</span>
+                - <span class="s">-U</span>
+                - <span class="s">$(POSTGRES_USER)</span>
+                - <span class="s">-d</span>
+                - <span class="s">$(POSTGRES_DB)</span>
+            <span class="k">initialDelaySeconds</span>: <span class="n">10</span>
+            <span class="k">periodSeconds</span>: <span class="n">5</span>
+      <span class="k">volumes</span>:
+        - <span class="k">name</span>: <span class="s">role</span>
+          <span class="k">emptyDir</span>: {}
+  <span class="c"># Each pod gets its OWN persistent volume claim</span>
+  <span class="k">volumeClaimTemplates</span>:
+    - <span class="k">metadata</span>:
+        <span class="k">name</span>: <span class="s">postgres-data</span>
+      <span class="k">spec</span>:
+        <span class="k">accessModes</span>: [<span class="s">"ReadWriteOnce"</span>]
+        <span class="k">storageClassName</span>: <span class="s">fast-ssd</span>
+        <span class="k">resources</span>:
+          <span class="k">requests</span>:
+            <span class="k">storage</span>: <span class="s">10Gi</span>
+
+<span class="c"># Pod DNS names (stable, survive restarts):
+# postgres-0.postgres-svc.fullstack-app.svc.cluster.local → PRIMARY
+# postgres-1.postgres-svc.fullstack-app.svc.cluster.local → REPLICA
+# postgres-2.postgres-svc.fullstack-app.svc.cluster.local → REPLICA</span></pre>
+  </div>
+
+  <div id="yaml-postgres-svc" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">06-postgres-service.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-postgres-svc')">Copy</button></div>
+    <pre><span class="c"># Headless Service for StatefulSet — no ClusterIP, direct pod DNS</span>
+<span class="k">apiVersion</span>: <span class="v">v1</span>
+<span class="k">kind</span>: <span class="s">Service</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">postgres-svc</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+  <span class="k">labels</span>:
+    <span class="k">app</span>: <span class="s">postgres</span>
+<span class="k">spec</span>:
+  <span class="k">clusterIP</span>: <span class="s">None</span>             <span class="c"># ← This makes it HEADLESS</span>
+  <span class="k">selector</span>:
+    <span class="k">app</span>: <span class="s">postgres</span>
+  <span class="k">ports</span>:
+    - <span class="k">name</span>: <span class="s">postgres</span>
+      <span class="k">protocol</span>: <span class="s">TCP</span>
+      <span class="k">port</span>: <span class="n">5432</span>
+      <span class="k">targetPort</span>: <span class="n">5432</span>
+  <span class="k">publishNotReadyAddresses</span>: <span class="s">true</span>  <span class="c"># Allow discovery during startup
+
+---
+# Read-only service pointing to replicas only (using labels)
+apiVersion: v1
+kind: Service</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">postgres-read-svc</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+<span class="k">spec</span>:
+  <span class="k">clusterIP</span>: <span class="s">None</span>
+  <span class="k">selector</span>:
+    <span class="k">app</span>: <span class="s">postgres</span>
+    <span class="k">role</span>: <span class="s">replica</span>             <span class="c"># Only targets replica pods</span>
+  <span class="k">ports</span>:
+    - <span class="k">port</span>: <span class="n">5432</span>
+      <span class="k">targetPort</span>: <span class="n">5432</span></pre>
+  </div>
+
+  <div id="yaml-configmap" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">07-configmap.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-configmap')">Copy</button></div>
+    <pre><span class="k">apiVersion</span>: <span class="v">v1</span>
+<span class="k">kind</span>: <span class="s">ConfigMap</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">app-config</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+<span class="k">data</span>:
+  <span class="c"># Frontend config</span>
+  <span class="k">BACKEND_URL</span>: <span class="s">"http://backend-svc:8080"</span>
+  <span class="k">API_TIMEOUT</span>: <span class="s">"30000"</span>
+
+  <span class="c"># Backend config</span>
+  <span class="k">DB_HOST</span>: <span class="s">"postgres-0.postgres-svc.fullstack-app.svc.cluster.local"</span>
+  <span class="k">DB_HOST_READ</span>: <span class="s">"postgres-read-svc.fullstack-app.svc.cluster.local"</span>
+  <span class="k">DB_PORT</span>: <span class="s">"5432"</span>
+  <span class="k">DB_NAME</span>: <span class="s">"appdb"</span>
+  <span class="k">LOG_LEVEL</span>: <span class="s">"info"</span>
+  <span class="k">NODE_ENV</span>: <span class="s">"production"</span>
+  <span class="k">PORT</span>: <span class="s">"8080"</span></pre>
+  </div>
+
+  <div id="yaml-secret" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">08-secret.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-secret')">Copy</button></div>
+    <pre><span class="c"># Store in Vault or use SealedSecrets in production!
+# Values are base64 encoded (NOT encrypted — use RBAC + encryption at rest)</span>
+<span class="k">apiVersion</span>: <span class="v">v1</span>
+<span class="k">kind</span>: <span class="s">Secret</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">db-credentials</span>
+  <span class="k">namespace</span>: <span class="s">fullstack-app</span>
+<span class="k">type</span>: <span class="s">Opaque</span>
+<span class="k">data</span>:
+  <span class="c"># echo -n "appuser" | base64</span>
+  <span class="k">username</span>: <span class="s">YXBwdXNlcg==</span>
+  <span class="c"># echo -n "S3cur3P@ssw0rd!" | base64</span>
+  <span class="k">password</span>: <span class="s">UzNjdXIzUEBzc3cwcmQh</span>
+
+<span class="c">---
+# Apply with: kubectl apply -f 08-secret.yaml
+# View with:  kubectl get secret db-credentials -o jsonpath='{.data.username}' | base64 -d</span></pre>
+  </div>
+
+  <div id="yaml-pvc" class="yaml-block">
+    <div class="yaml-header"><span class="yaml-filename">09-storageclass.yaml</span><button class="copy-btn" onclick="copyYaml('yaml-pvc')">Copy</button></div>
+    <pre><span class="c"># StorageClass for fast SSD — used by postgres volumeClaimTemplates</span>
+<span class="k">apiVersion</span>: <span class="v">storage.k8s.io/v1</span>
+<span class="k">kind</span>: <span class="s">StorageClass</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">fast-ssd</span>
+<span class="k">provisioner</span>: <span class="s">kubernetes.io/no-provisioner</span>  <span class="c"># Local (use cloud for prod)</span>
+<span class="k">volumeBindingMode</span>: <span class="s">WaitForFirstConsumer</span>
+<span class="k">reclaimPolicy</span>: <span class="s">Retain</span>                     <span class="c"># Keep data on pod delete</span>
+<span class="k">allowVolumeExpansion</span>: <span class="s">true</span>
+
+<span class="c">---
+# PersistentVolumes (one per postgres pod) — for local dev
+# In cloud: StorageClass auto-provisions these</span>
+<span class="k">apiVersion</span>: <span class="v">v1</span>
+<span class="k">kind</span>: <span class="s">PersistentVolume</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">postgres-pv-0</span>
+<span class="k">spec</span>:
+  <span class="k">storageClassName</span>: <span class="s">fast-ssd</span>
+  <span class="k">capacity</span>:
+    <span class="k">storage</span>: <span class="s">10Gi</span>
+  <span class="k">accessModes</span>: [<span class="s">"ReadWriteOnce"</span>]
+  <span class="k">persistentVolumeReclaimPolicy</span>: <span class="s">Retain</span>
+  <span class="k">local</span>:
+    <span class="k">path</span>: <span class="s">/mnt/data/postgres-0</span>
+  <span class="k">nodeAffinity</span>:
+    <span class="k">required</span>:
+      <span class="k">nodeSelectorTerms</span>:
+        - <span class="k">matchExpressions</span>:
+            - <span class="k">key</span>: <span class="s">kubernetes.io/hostname</span>
+              <span class="k">operator</span>: <span class="s">In</span>
+              <span class="k">values</span>: [<span class="s">worker-node-01</span>]
+<span class="c">---
+# Repeat for postgres-pv-1 (worker-node-02) and postgres-pv-2 (worker-node-03)</span>
+
+<span class="c"># Apply order:
+# kubectl apply -f 00-namespace.yaml
+# kubectl apply -f 09-storageclass.yaml
+# kubectl apply -f 07-configmap.yaml
+# kubectl apply -f 08-secret.yaml
+# kubectl apply -f 06-postgres-service.yaml
+# kubectl apply -f 05-postgres-statefulset.yaml
+# kubectl apply -f 02-frontend-service.yaml
+# kubectl apply -f 01-frontend-deployment.yaml
+# kubectl apply -f 04-backend-service.yaml
+# kubectl apply -f 03-backend-deployment.yaml</span></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SECTION: STATEFULSET DEEP DIVE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="statefulset">
+  <div class="sec-title">StatefulSet <span>Deep Dive</span></div>
+  <div class="sec-sub">How PostgreSQL primary/replica topology works in Kubernetes</div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg" class="diag" style="min-width:700px;width:100%;">
+      <defs>
+        <marker id="wal" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#7c3aed"/>
+        </marker>
+      </defs>
+      <rect width="900" height="380" fill="#0a0e17" rx="10"/>
+
+      <!-- Title -->
+      <text x="450" y="30" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700">PostgreSQL StatefulSet — Replication Architecture</text>
+
+      <!-- postgres-0 PRIMARY -->
+      <rect x="80" y="60" width="200" height="240" rx="10" fill="#1a0f30" stroke="#7c3aed" stroke-width="2"/>
+      <rect x="80" y="60" width="200" height="36" rx="10" fill="#2d1b69"/>
+      <text x="180" y="82" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">postgres-0</text>
+      <text x="180" y="94" text-anchor="middle" fill="#f59e0b" font-size="9">★ PRIMARY (Read-Write)</text>
+      <rect x="95" y="108" width="170" height="22" rx="4" fill="rgba(124,58,237,.15)"/>
+      <text x="180" y="123" text-anchor="middle" fill="#a78bfa" font-size="9">PostgreSQL 15 (RW mode)</text>
+      <rect x="95" y="138" width="170" height="22" rx="4" fill="rgba(239,68,68,.1)" stroke="rgba(239,68,68,.2)" stroke-width="1"/>
+      <text x="180" y="153" text-anchor="middle" fill="#ef4444" font-size="8.5">WAL (Write-Ahead Log)</text>
+      <rect x="95" y="168" width="170" height="22" rx="4" fill="rgba(16,185,129,.08)"/>
+      <text x="180" y="183" text-anchor="middle" fill="#10b981" font-size="8.5">pg_hba.conf (replication)</text>
+      <rect x="95" y="198" width="170" height="40" rx="4" fill="rgba(124,58,237,.08)"/>
+      <text x="180" y="213" text-anchor="middle" fill="#64748b" font-size="8">PVC: postgres-data-postgres-0</text>
+      <text x="180" y="228" text-anchor="middle" fill="#64748b" font-size="8">10Gi · ReadWriteOnce</text>
+      <!-- DNS label -->
+      <text x="180" y="278" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="JetBrains Mono">postgres-0.postgres-svc</text>
+      <text x="180" y="290" text-anchor="middle" fill="#64748b" font-size="7.5">worker-node-01</text>
+
+      <!-- postgres-1 REPLICA -->
+      <rect x="350" y="60" width="200" height="240" rx="10" fill="#0f1820" stroke="rgba(124,58,237,.5)" stroke-width="1.5"/>
+      <rect x="350" y="60" width="200" height="36" rx="10" fill="#162035"/>
+      <text x="450" y="82" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">postgres-1</text>
+      <text x="450" y="94" text-anchor="middle" fill="#00d4ff" font-size="9">REPLICA (Read-Only)</text>
+      <rect x="365" y="108" width="170" height="22" rx="4" fill="rgba(0,212,255,.06)"/>
+      <text x="450" y="123" text-anchor="middle" fill="#00d4ff" font-size="9">PostgreSQL 15 (RO mode)</text>
+      <rect x="365" y="138" width="170" height="22" rx="4" fill="rgba(124,58,237,.1)"/>
+      <text x="450" y="153" text-anchor="middle" fill="#a78bfa" font-size="8.5">WAL Receiver (streaming)</text>
+      <rect x="365" y="168" width="170" height="22" rx="4" fill="rgba(16,185,129,.06)"/>
+      <text x="450" y="183" text-anchor="middle" fill="#10b981" font-size="8.5">hot_standby = on</text>
+      <rect x="365" y="198" width="170" height="40" rx="4" fill="rgba(124,58,237,.06)"/>
+      <text x="450" y="213" text-anchor="middle" fill="#64748b" font-size="8">PVC: postgres-data-postgres-1</text>
+      <text x="450" y="228" text-anchor="middle" fill="#64748b" font-size="8">10Gi · ReadWriteOnce</text>
+      <text x="450" y="278" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="JetBrains Mono">postgres-1.postgres-svc</text>
+      <text x="450" y="290" text-anchor="middle" fill="#64748b" font-size="7.5">worker-node-02</text>
+
+      <!-- postgres-2 REPLICA -->
+      <rect x="620" y="60" width="200" height="240" rx="10" fill="#0f1820" stroke="rgba(124,58,237,.5)" stroke-width="1.5"/>
+      <rect x="620" y="60" width="200" height="36" rx="10" fill="#162035"/>
+      <text x="720" y="82" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">postgres-2</text>
+      <text x="720" y="94" text-anchor="middle" fill="#00d4ff" font-size="9">REPLICA (Read-Only)</text>
+      <rect x="635" y="108" width="170" height="22" rx="4" fill="rgba(0,212,255,.06)"/>
+      <text x="720" y="123" text-anchor="middle" fill="#00d4ff" font-size="9">PostgreSQL 15 (RO mode)</text>
+      <rect x="635" y="138" width="170" height="22" rx="4" fill="rgba(124,58,237,.1)"/>
+      <text x="720" y="153" text-anchor="middle" fill="#a78bfa" font-size="8.5">WAL Receiver (streaming)</text>
+      <rect x="635" y="168" width="170" height="22" rx="4" fill="rgba(16,185,129,.06)"/>
+      <text x="720" y="183" text-anchor="middle" fill="#10b981" font-size="8.5">hot_standby = on</text>
+      <rect x="635" y="198" width="170" height="40" rx="4" fill="rgba(124,58,237,.06)"/>
+      <text x="720" y="213" text-anchor="middle" fill="#64748b" font-size="8">PVC: postgres-data-postgres-2</text>
+      <text x="720" y="228" text-anchor="middle" fill="#64748b" font-size="8">10Gi · ReadWriteOnce</text>
+      <text x="720" y="278" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="JetBrains Mono">postgres-2.postgres-svc</text>
+      <text x="720" y="290" text-anchor="middle" fill="#64748b" font-size="7.5">worker-node-03</text>
+
+      <!-- WAL streaming arrows -->
+      <line x1="280" y1="155" x2="348" y2="155" stroke="#7c3aed" stroke-width="2" marker-end="url(#wal)"/>
+      <line x1="280" y1="175" x2="348" y2="175" stroke="#7c3aed" stroke-width="2" marker-end="url(#wal)"/>
+      <text x="314" y="148" text-anchor="middle" fill="#a78bfa" font-size="8.5">WAL</text>
+      <line x1="550" y1="155" x2="618" y2="155" stroke="#7c3aed" stroke-width="2" marker-end="url(#wal)"/>
+      <line x1="550" y1="175" x2="618" y2="175" stroke="#7c3aed" stroke-width="2" marker-end="url(#wal)"/>
+      <text x="584" y="148" text-anchor="middle" fill="#a78bfa" font-size="8.5">WAL</text>
+
+      <!-- Startup order -->
+      <text x="450" y="335" text-anchor="middle" fill="#64748b" font-size="9">Ordered startup: postgres-0 → postgres-1 → postgres-2</text>
+      <text x="450" y="352" text-anchor="middle" fill="#64748b" font-size="9">Deletion order is reversed: postgres-2 → postgres-1 → postgres-0</text>
+      <text x="450" y="368" text-anchor="middle" fill="#f59e0b" font-size="8.5">Each pod retains its PVC after deletion — data is NOT lost</text>
+    </svg>
+  </div>
+
+  <!-- Comparison Table -->
+  <table class="infra-table" style="margin-top:40px;">
+    <thead>
+      <tr>
+        <th>PROPERTY</th>
+        <th>DEPLOYMENT (Frontend/Backend)</th>
+        <th>STATEFULSET (PostgreSQL)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Pod names</td><td>Random (e.g. backend-7c8b-x2k9)</td><td>Stable ordinal (postgres-0, postgres-1)</td></tr>
+      <tr><td>Pod identity</td><td>Interchangeable</td><td>Unique, stable per pod</td></tr>
+      <tr><td>Storage</td><td>Shared or ephemeral</td><td>Dedicated PVC per pod (persists)</td></tr>
+      <tr><td>Startup order</td><td>All at once (parallel)</td><td>Ordered (0 → 1 → 2)</td></tr>
+      <tr><td>Network</td><td>Random pod IP via Service VIP</td><td>Stable DNS: pod-N.svc-name</td></tr>
+      <tr><td>Delete behavior</td><td>PVC deleted with pod</td><td>PVC kept after pod deletion</td></tr>
+      <tr><td>Rolling update</td><td>maxSurge / maxUnavailable</td><td>One pod at a time, highest ordinal first</td></tr>
+      <tr><td>Use case</td><td>Stateless applications</td><td>Databases, queues, distributed systems</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Footer -->
+<div style="text-align:center;padding:60px 20px;border-top:1px solid #1e2d45;color:#2a3a50;font-size:.8rem;font-family:'JetBrains Mono',monospace;letter-spacing:1px;">
+  ⎈ KUBERNETES SERVICES COMPLETE GUIDE · FULLSTACK ARCHITECTURE · 3-NODE CLUSTER
+</div>
+
+<script>
+// ─── WORKFLOW STEPS ───────────────────────────────────────
+let currentStep = 0;
+const totalSteps = 8;
+
+function showStep(n) {
+  document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.ws').forEach(el => el.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  document.querySelectorAll('.ws')[n].classList.add('active');
+  currentStep = n;
+}
+
+function nextStep() { showStep((currentStep + 1) % totalSteps); }
+function prevStep() { showStep((currentStep - 1 + totalSteps) % totalSteps); }
+
+// ─── YAML TABS ───────────────────────────────────────────
+function showYaml(id) {
+  document.querySelectorAll('.yaml-block').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.ytab').forEach(el => el.classList.remove('active'));
+  document.getElementById('yaml-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function copyYaml(blockId) {
+  const pre = document.getElementById(blockId).querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// ─── TRAFFIC SIMULATION ──────────────────────────────────
+const canvas = document.getElementById('traffic-canvas');
+const ctx = canvas.getContext('2d');
+let animating = true;
+let rate = 4;
+let numBackends = 5;
+let killedPod = -1;
+
+function resizeCanvas() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = 420;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const COLORS = {
+  bg: '#0d1220',
+  accent: '#00d4ff',
+  green: '#10b981',
+  purple: '#7c3aed',
+  yellow: '#f59e0b',
+  red: '#ef4444',
+  dim: '#1e2d45',
+  text: '#64748b',
+  textBright: '#94a3b8'
+};
+
+class Packet {
+  constructor(src, srcX, srcY, waypoints, color, label) {
+    this.waypoints = [{ x: srcX, y: srcY }, ...waypoints];
+    this.pos = 0;
+    this.color = color;
+    this.label = label;
+    this.done = false;
+    this.speed = 1.5 + Math.random();
+    this.progress = 0;
+    this.alpha = 1;
+  }
+
+  update() {
+    if (this.pos >= this.waypoints.length - 1) { this.done = true; return; }
+    const from = this.waypoints[this.pos];
+    const to = this.waypoints[this.pos + 1];
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    this.progress += this.speed;
+    if (this.progress >= dist) { this.progress = 0; this.pos++; }
+    const t = this.progress / dist;
+    this.x = from.x + dx * t;
+    this.y = from.y + dy * t;
+  }
+
+  draw(ctx) {
+    if (!this.x) return;
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = this.color;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+const packets = [];
+let lastSpawn = 0;
+
+function getLayout() {
+  const W = canvas.width, H = canvas.height;
+  const user = { x: 50, y: H / 2 };
+  const nodeport = { x: W * 0.18, y: H / 2 };
+  const frontX = W * 0.35;
+  const frontPods = [{ x: frontX, y: H * 0.3 }, { x: frontX, y: H * 0.7 }];
+  const clusterip = { x: W * 0.55, y: H / 2 };
+  const backX = W * 0.72;
+  const totalBack = numBackends;
+  const backPods = [];
+  for (let i = 0; i < totalBack; i++) {
+    backPods.push({ x: backX, y: H * (0.15 + i * (0.7 / (totalBack - 1 || 1))) });
+  }
+  const dbX = W * 0.9;
+  const dbPods = [
+    { x: dbX, y: H * 0.25, label: 'pg-0\nPRIMARY' },
+    { x: dbX, y: H * 0.5, label: 'pg-1\nREPLICA' },
+    { x: dbX, y: H * 0.75, label: 'pg-2\nREPLICA' }
+  ];
+  return { W, H, user, nodeport, frontPods, clusterip, backPods, dbPods };
+}
+
+function spawnPacket(layout) {
+  const { user, nodeport, frontPods, clusterip, backPods, dbPods } = layout;
+  const frontIdx = Math.floor(Math.random() * frontPods.length);
+  const fp = frontPods[frontIdx];
+  let backCandidates = backPods.filter((_, i) => i !== killedPod);
+  if (backCandidates.length === 0) backCandidates = backPods;
+  const bp = backCandidates[Math.floor(Math.random() * backCandidates.length)];
+  const db = Math.random() > 0.3 ? dbPods[0] : dbPods[1 + Math.floor(Math.random() * 2)];
+  packets.push(new Packet('user', user.x, user.y, [
+    { x: nodeport.x, y: nodeport.y },
+    { x: fp.x, y: fp.y },
+    { x: clusterip.x, y: clusterip.y },
+    { x: bp.x, y: bp.y },
+    { x: db.x, y: db.y }
+  ], COLORS.accent, 'req'));
+}
+
+function drawLayout(ctx, layout) {
+  const { W, H, user, nodeport, frontPods, clusterip, backPods, dbPods } = layout;
+
+  // Background grid
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw connecting lines (faint)
+  ctx.strokeStyle = '#1a2535';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+
+  frontPods.forEach(fp => {
+    ctx.beginPath(); ctx.moveTo(nodeport.x, nodeport.y); ctx.lineTo(fp.x, fp.y); ctx.stroke();
+    backPods.forEach(bp => {
+      ctx.beginPath(); ctx.moveTo(fp.x, fp.y); ctx.lineTo(clusterip.x, clusterip.y); ctx.stroke();
+    });
+  });
+  backPods.forEach(bp => {
+    ctx.beginPath(); ctx.moveTo(clusterip.x, clusterip.y); ctx.lineTo(bp.x, bp.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bp.x, bp.y); ctx.lineTo(dbPods[0].x, dbPods[0].y); ctx.stroke();
+  });
+
+  ctx.setLineDash([]);
+
+  function drawNode(x, y, label, color, w = 80, h = 40, isKilled = false) {
+    ctx.save();
+    if (isKilled) { ctx.globalAlpha = 0.3; }
+    ctx.fillStyle = color + '15';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(x - w / 2, y - h / 2, w, h, 6);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = isKilled ? COLORS.red : color;
+    ctx.font = `bold 9px 'JetBrains Mono', monospace`;
+    ctx.textAlign = 'center';
+    const lines = label.split('\n');
+    lines.forEach((l, i) => ctx.fillText(l, x, y + 3 + (i - (lines.length - 1) / 2) * 12));
+    ctx.restore();
+  }
+
+  // User
+  drawNode(user.x, user.y, '🌍 USER', COLORS.yellow);
+
+  // NodePort
+  drawNode(nodeport.x, nodeport.y, 'NodePort\n:30080', COLORS.green, 90, 44);
+
+  // Frontend pods
+  frontPods.forEach((fp, i) => drawNode(fp.x, fp.y, `frontend-${i + 1}`, COLORS.green, 85, 36));
+
+  // ClusterIP
+  drawNode(clusterip.x, clusterip.y, 'ClusterIP\n:8080', COLORS.accent, 90, 44);
+
+  // Backend pods
+  backPods.forEach((bp, i) => drawNode(bp.x, bp.y, `backend-${i + 1}`, COLORS.accent, 85, 34, i === killedPod));
+
+  // DB pods
+  dbPods.forEach((dp, i) => {
+    const c = i === 0 ? COLORS.purple : '#7c3aed99';
+    drawNode(dp.x, dp.y, dp.label, i === 0 ? COLORS.purple : '#a78bfa', 85, 40);
+  });
+
+  // WAL arrows between db pods
+  ctx.strokeStyle = COLORS.purple + '60';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(dbPods[0].x, dbPods[0].y + 20); ctx.lineTo(dbPods[1].x, dbPods[1].y - 20); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(dbPods[0].x, dbPods[0].y + 20); ctx.lineTo(dbPods[2].x, dbPods[2].y - 20); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Stats
+  ctx.fillStyle = COLORS.text;
+  ctx.font = '10px JetBrains Mono';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Active packets: ${packets.length}`, 10, 20);
+  ctx.fillText(`Backend replicas: ${numBackends}${killedPod >= 0 ? ` (pod-${killedPod + 1} ☠)` : ''}`, 10, 34);
+  ctx.fillText(`Traffic rate: ${rate} req/s`, 10, 48);
+}
+
+let lastTime = 0;
+function loop(ts) {
+  if (animating) {
+    const layout = getLayout();
+    drawLayout(ctx, layout);
+    packets.forEach(p => { p.update(); p.draw(ctx); });
+    for (let i = packets.length - 1; i >= 0; i--) {
+      if (packets[i].done) packets.splice(i, 1);
+    }
+    if (ts - lastSpawn > 1000 / rate) {
+      spawnPacket(layout);
+      lastSpawn = ts;
+    }
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function toggleTraffic() {
+  animating = !animating;
+  const btn = document.getElementById('btn-start');
+  btn.textContent = animating ? '⏸ Pause' : '▶ Resume';
+  btn.classList.toggle('active', animating);
+}
+
+function sendBurst() {
+  const layout = getLayout();
+  for (let i = 0; i < 12; i++) setTimeout(() => spawnPacket(layout), i * 80);
+}
+
+function killPod() {
+  killedPod = Math.floor(Math.random() * numBackends);
+}
+
+function resetPods() {
+  killedPod = -1;
+}
+
+function updateRate(v) {
+  rate = +v;
+  document.getElementById('rateVal').textContent = v + ' req/s';
+}
+
+function updateReplicas(v) {
+  numBackends = +v;
+  killedPod = -1;
+  document.getElementById('replicaVal').textContent = v + ' replicas';
+}
+</script>
+</body>
+</html>

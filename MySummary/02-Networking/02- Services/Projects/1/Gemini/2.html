@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Architecture & Port Mapping</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .code-block {
+            font-family: 'Fira Code', monospace;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            border: 1px solid #334155;
+        }
+
+        .node-shell {
+            background: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        .pod-shell {
+            background: #f1f5f9;
+            border: 1px dashed #94a3b8;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .container-shape {
+            background: #3b82f6;
+            color: white;
+            border-radius: 0.4rem;
+            padding: 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .port-flow-line {
+            stroke: #94a3b8;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 4;
+        }
+
+        .animate-flow {
+            stroke-dashoffset: 20;
+            animation: flow 1s linear infinite;
+        }
+
+        @keyframes flow {
+            to { stroke-dashoffset: 0; }
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="max-w-7xl mx-auto mb-12">
+        <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Full Cluster Architecture & Port Mapping</h1>
+        <p class="text-lg text-slate-600 mt-2">A deep dive into containers, pods, and how YAML connects them across nodes.</p>
+    </header>
+
+    <main class="max-w-7xl mx-auto space-y-16">
+
+        <!-- 1. Visual Architecture -->
+        <section>
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-2">
+                    <span class="bg-indigo-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm">1</span>
+                    Cluster & Container Topology
+                </h2>
+                <div class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                    3 Nodes | 10 Pods | 10 Containers
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8" id="cluster-view">
+                <!-- Nodes will be injected here by JS -->
+            </div>
+        </section>
+
+        <!-- 2. Port to YAML Mapping Diagram -->
+        <section class="bg-white rounded-3xl p-8 shadow-xl border border-slate-200">
+            <h2 class="text-2xl font-bold mb-8 flex items-center gap-2">
+                <span class="bg-rose-500 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm">2</span>
+                The "Port-to-YAML" Mapping Diagram
+            </h2>
+
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="relative h-[400px] w-full bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+                    <svg viewBox="0 0 400 400" class="w-full h-full">
+                        <!-- External User -->
+                        <circle cx="50" cy="50" r="20" fill="#f43f5e" />
+                        <text x="80" y="55" class="text-[12px] font-bold">User Request</text>
+                        
+                        <!-- Node Layer -->
+                        <rect x="150" y="30" width="200" height="80" rx="10" fill="white" stroke="#cbd5e1" stroke-width="2" />
+                        <text x="160" y="55" class="text-[10px] font-bold fill-slate-400">NODE (192.168.1.10)</text>
+                        <rect x="260" y="60" width="60" height="30" rx="4" fill="#fee2e2" stroke="#f43f5e" />
+                        <text x="265" y="80" class="text-[10px] fill-rose-700 font-mono font-bold">30001</text>
+                        
+                        <!-- Service Layer -->
+                        <rect x="150" y="160" width="200" height="80" rx="10" fill="white" stroke="#3b82f6" stroke-width="2" />
+                        <text x="160" y="185" class="text-[10px] font-bold fill-blue-400">SERVICE (ClusterIP)</text>
+                        <rect x="260" y="190" width="60" height="30" rx="4" fill="#dbeafe" stroke="#3b82f6" />
+                        <text x="275" y="210" class="text-[10px] fill-blue-700 font-mono font-bold">80</text>
+
+                        <!-- Pod Layer -->
+                        <rect x="150" y="290" width="200" height="80" rx="10" fill="white" stroke="#10b981" stroke-width="2" />
+                        <text x="160" y="315" class="text-[10px] font-bold fill-emerald-400">POD (10.244.1.5)</text>
+                        <rect x="260" y="320" width="60" height="30" rx="4" fill="#d1fae5" stroke="#10b981" />
+                        <text x="270" y="340" class="text-[10px] fill-emerald-700 font-mono font-bold">8080</text>
+
+                        <!-- Connector Lines -->
+                        <path d="M70 50 H150" class="port-flow-line animate-flow" />
+                        <path d="M290 90 V160" class="port-flow-line animate-flow" stroke="#f43f5e" />
+                        <path d="M290 240 V290" class="port-flow-line animate-flow" stroke="#3b82f6" />
+                    </svg>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="p-4 bg-rose-50 border-l-4 border-rose-500 rounded">
+                        <p class="text-xs font-bold text-rose-700 uppercase">Step 1: NodePort</p>
+                        <p class="text-sm text-slate-600">YAML: <code class="bg-rose-100 px-1 rounded">nodePort: 30001</code>. The traffic enters the physical server here.</p>
+                    </div>
+                    <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                        <p class="text-xs font-bold text-blue-700 uppercase">Step 2: Service Port</p>
+                        <p class="text-sm text-slate-600">YAML: <code class="bg-blue-100 px-1 rounded">port: 80</code>. The internal virtual IP of the service redirects traffic.</p>
+                    </div>
+                    <div class="p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded">
+                        <p class="text-xs font-bold text-emerald-700 uppercase">Step 3: Target Port</p>
+                        <p class="text-sm text-slate-600">YAML: <code class="bg-emerald-100 px-1 rounded">targetPort: 8080</code>. Traffic finally reaches the application inside the container.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Full Project YAML -->
+        <section>
+            <h2 class="text-2xl font-bold mb-8">3. Full Application Manifests</h2>
+            
+            <div class="flex border-b border-slate-200 mb-6 gap-8">
+                <button onclick="showTab('yaml-fe')" class="tab-btn py-4 border-b-2 border-indigo-600 text-indigo-600 font-bold text-sm">frontend.yaml</button>
+                <button onclick="showTab('yaml-be')" class="tab-btn py-4 border-slate-400 text-slate-500 font-medium text-sm">backend.yaml</button>
+                <button onclick="showTab('yaml-db')" class="tab-btn py-4 border-slate-400 text-slate-500 font-medium text-sm">postgres.yaml</button>
+            </div>
+
+            <div id="yaml-fe" class="tab-content active">
+                <div class="code-block">
+<pre>apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-svc
+spec:
+  type: NodePort
+  ports:
+  - port: 80           <span class="text-blue-400"># Port reachable inside cluster</span>
+    targetPort: 8080   <span class="text-emerald-400"># Port application listens on</span>
+    nodePort: 30001    <span class="text-rose-400"># Port reachable from outside</span>
+  selector:
+    app: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx:1.23
+        ports:
+        - containerPort: 8080</pre>
+                </div>
+            </div>
+
+            <div id="yaml-be" class="tab-content">
+                <div class="code-block">
+<pre>apiVersion: v1
+kind: Service
+metadata:
+  name: backend-svc
+spec:
+  type: ClusterIP      <span class="text-slate-400"># Default internal-only type</span>
+  ports:
+  - port: 9000
+    targetPort: 5000
+  selector:
+    app: backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: python-api
+        image: python:3.9-slim
+        ports:
+        - containerPort: 5000</pre>
+                </div>
+            </div>
+
+            <div id="yaml-db" class="tab-content">
+                <div class="code-block">
+<pre>apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+spec:
+  clusterIP: None      <span class="text-slate-400"># Headless for StatefulSet direct access</span>
+  ports:
+  - port: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: "postgres-headless"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres-db
+        image: postgres:15
+        ports:
+        - containerPort: 5432</pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const clusterData = [
+            {
+                name: "node-worker-1",
+                ip: "192.168.1.10",
+                pods: [
+                    { name: "frontend-7d4f9-ax2", type: "FE", ip: "10.244.1.2", container: "nginx:1.23", port: 8080, color: "bg-blue-600" },
+                    { name: "backend-8c11a-q8z", type: "BE", ip: "10.244.1.3", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "postgres-0", type: "DB (Primary)", ip: "10.244.1.4", container: "postgres:15", port: 5432, color: "bg-amber-600" }
+                ]
+            },
+            {
+                name: "node-worker-2",
+                ip: "192.168.1.11",
+                pods: [
+                    { name: "frontend-7d4f9-ly5", type: "FE", ip: "10.244.2.2", container: "nginx:1.23", port: 8080, color: "bg-blue-600" },
+                    { name: "backend-8c11a-m0p", type: "BE", ip: "10.244.2.3", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "backend-8c11a-gh9", type: "BE", ip: "10.244.2.4", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "postgres-1", type: "DB (Replica)", ip: "10.244.2.5", container: "postgres:15", port: 5432, color: "bg-amber-500" }
+                ]
+            },
+            {
+                name: "node-worker-3",
+                ip: "192.168.1.12",
+                pods: [
+                    { name: "backend-8c11a-ff2", type: "BE", ip: "10.244.3.2", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "backend-8c11a-tt1", type: "BE", ip: "10.244.3.3", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "postgres-2", type: "DB (Replica)", ip: "10.244.3.4", container: "postgres:15", port: 5432, color: "bg-amber-500" }
+                ]
+            }
+        ];
+
+        function renderCluster() {
+            const container = document.getElementById('cluster-view');
+            container.innerHTML = clusterData.map(node => `
+                <div class="node-shell shadow-sm">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-2">
+                        <span class="font-bold text-slate-800 text-sm uppercase tracking-wider">${node.name}</span>
+                        <span class="text-xs font-mono text-slate-400">${node.ip}</span>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        ${node.pods.map(pod => `
+                            <div class="pod-shell">
+                                <div class="flex justify-between text-[10px] mb-2 font-mono">
+                                    <span class="font-bold text-slate-700">${pod.name}</span>
+                                    <span class="text-slate-400">IP: ${pod.ip}</span>
+                                </div>
+                                <div class="container-shape ${pod.color} flex-col gap-1">
+                                    <span class="text-[8px] uppercase opacity-80">Container Shape</span>
+                                    <span>${pod.container}</span>
+                                    <span class="text-[9px] font-mono mt-1 border-t border-white/20 pt-1 w-full text-center">Port: ${pod.port}</span>
+                                </div>
+                                <div class="mt-2 text-[9px] text-slate-500 font-semibold italic">
+                                    Type: ${pod.type}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('border-indigo-600', 'text-indigo-600', 'font-bold');
+                b.classList.add('text-slate-500', 'font-medium');
+            });
+            
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
+            event.currentTarget.classList.remove('text-slate-500', 'font-medium');
+        }
+
+        window.onload = renderCluster;
+    </script>
+</body>
+</html>

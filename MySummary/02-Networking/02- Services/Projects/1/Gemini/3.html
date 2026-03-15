@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Architecture & Port Mapping</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .code-block {
+            font-family: 'Fira Code', monospace;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            border: 1px solid #334155;
+        }
+
+        .node-shell {
+            background: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        .pod-shell {
+            background: #f1f5f9;
+            border: 1px dashed #94a3b8;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .container-shape {
+            background: #3b82f6;
+            color: white;
+            border-radius: 0.4rem;
+            padding: 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .port-flow-line {
+            stroke: #94a3b8;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 4;
+            transition: stroke 0.3s ease, stroke-width 0.3s ease;
+        }
+
+        .active-flow {
+            stroke: #4f46e5;
+            stroke-width: 3;
+            stroke-dasharray: 8;
+            animation: flow 1s linear infinite;
+        }
+
+        @keyframes flow {
+            to { stroke-dashoffset: -16; }
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .port-hover:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+            cursor: pointer;
+        }
+
+        .traffic-packet {
+            fill: #4f46e5;
+            filter: drop-shadow(0 0 4px rgba(79, 70, 229, 0.6));
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="max-w-7xl mx-auto mb-12">
+        <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Full Cluster Architecture & Port Mapping</h1>
+        <p class="text-lg text-slate-600 mt-2">A deep dive into containers, pods, and how YAML connects them across nodes.</p>
+    </header>
+
+    <main class="max-w-7xl mx-auto space-y-16">
+
+        <!-- 1. Visual Architecture -->
+        <section>
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-2">
+                    <span class="bg-indigo-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm">1</span>
+                    Cluster & Container Topology
+                </h2>
+                <div class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                    3 Nodes | 10 Pods | 10 Containers
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8" id="cluster-view">
+                <!-- Nodes will be injected here by JS -->
+            </div>
+        </section>
+
+        <!-- 2. Interactive Port Mapping Plugin -->
+        <section class="bg-white rounded-3xl p-8 shadow-xl border border-slate-200">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                <h2 class="text-2xl font-bold flex items-center gap-2">
+                    <span class="bg-rose-500 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm">2</span>
+                    Interactive Port Plugin
+                </h2>
+                <button onclick="simulateTraffic()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Simulate Live Traffic
+                </button>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="relative bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden p-4">
+                    <svg viewBox="0 0 400 450" class="w-full h-auto" id="port-svg">
+                        <!-- External User -->
+                        <g class="port-hover">
+                            <circle cx="200" cy="40" r="22" fill="#f43f5e" />
+                            <text x="200" y="75" text-anchor="middle" class="text-[12px] font-bold fill-rose-600">Internet User</text>
+                        </g>
+                        
+                        <!-- Connector: Internet to Node -->
+                        <path id="path-internet-node" d="M200 62 V110" class="port-flow-line" />
+
+                        <!-- Node Layer -->
+                        <g class="port-hover" onmouseenter="highlightStep(1)" onmouseleave="resetHighlight()">
+                            <rect x="80" y="110" width="240" height="70" rx="12" fill="white" stroke="#cbd5e1" stroke-width="2" />
+                            <text x="95" y="130" class="text-[10px] font-bold fill-slate-400">NODE INTERFACE</text>
+                            <rect id="rect-nodeport" x="140" y="135" width="120" height="35" rx="6" fill="#fee2e2" stroke="#f43f5e" />
+                            <text x="200" y="157" text-anchor="middle" class="text-[11px] fill-rose-700 font-mono font-bold">NodePort: 30001</text>
+                        </g>
+                        
+                        <!-- Connector: Node to Service -->
+                        <path id="path-node-svc" d="M200 180 V230" class="port-flow-line" />
+
+                        <!-- Service Layer -->
+                        <g class="port-hover" onmouseenter="highlightStep(2)" onmouseleave="resetHighlight()">
+                            <rect x="80" y="230" width="240" height="70" rx="12" fill="white" stroke="#3b82f6" stroke-width="2" />
+                            <text x="95" y="250" class="text-[10px] font-bold fill-blue-400">SERVICE ABSTRACTION</text>
+                            <rect id="rect-port" x="140" y="255" width="120" height="35" rx="6" fill="#dbeafe" stroke="#3b82f6" />
+                            <text x="200" y="277" text-anchor="middle" class="text-[11px] fill-blue-700 font-mono font-bold">Port: 80</text>
+                        </g>
+
+                        <!-- Connector: Service to Pod -->
+                        <path id="path-svc-pod" d="M200 300 V350" class="port-flow-line" />
+
+                        <!-- Pod Layer -->
+                        <g class="port-hover" onmouseenter="highlightStep(3)" onmouseleave="resetHighlight()">
+                            <rect x="80" y="350" width="240" height="70" rx="12" fill="white" stroke="#10b981" stroke-width="2" />
+                            <text x="95" y="370" class="text-[10px] font-bold fill-emerald-400">POD CONTAINER</text>
+                            <rect id="rect-targetport" x="140" y="375" width="120" height="35" rx="6" fill="#d1fae5" stroke="#10b981" />
+                            <text x="200" y="397" text-anchor="middle" class="text-[11px] fill-emerald-700 font-mono font-bold">TargetPort: 8080</text>
+                        </g>
+
+                        <!-- Packet Animation Placeholder -->
+                        <circle id="packet" r="5" cx="200" cy="40" class="traffic-packet opacity-0" />
+                    </svg>
+                </div>
+
+                <div class="space-y-4" id="step-descriptions">
+                    <div id="desc-1" class="p-5 transition-all duration-300 border-l-4 border-transparent">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Layer 1: Entrypoint</h4>
+                        <p class="font-bold text-slate-800">NodePort (30001)</p>
+                        <p class="text-sm text-slate-500 mt-1">The public IP of your server listens here. This maps external traffic into the cluster network.</p>
+                        <div class="mt-2 text-[10px] font-mono text-indigo-600 opacity-0 group-hover:opacity-100">spec.ports[0].nodePort</div>
+                    </div>
+                    <div id="desc-2" class="p-5 transition-all duration-300 border-l-4 border-transparent">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Layer 2: Load Balancer</h4>
+                        <p class="font-bold text-slate-800">Service Port (80)</p>
+                        <p class="text-sm text-slate-500 mt-1">The virtual internal IP of the Service. Other pods in the cluster use this port to talk to this app.</p>
+                    </div>
+                    <div id="desc-3" class="p-5 transition-all duration-300 border-l-4 border-transparent">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Layer 3: Destination</h4>
+                        <p class="font-bold text-slate-800">TargetPort (8080)</p>
+                        <p class="text-sm text-slate-500 mt-1">The specific port where the containerized process (e.g. Nginx, Go, Node.js) is listening.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Full Project YAML -->
+        <section>
+            <h2 class="text-2xl font-bold mb-8">3. Full Application Manifests</h2>
+            
+            <div class="flex border-b border-slate-200 mb-6 gap-8">
+                <button onclick="showTab('yaml-fe')" class="tab-btn py-4 border-b-2 border-indigo-600 text-indigo-600 font-bold text-sm">frontend.yaml</button>
+                <button onclick="showTab('yaml-be')" class="tab-btn py-4 border-slate-400 text-slate-500 font-medium text-sm">backend.yaml</button>
+                <button onclick="showTab('yaml-db')" class="tab-btn py-4 border-slate-400 text-slate-500 font-medium text-sm">postgres.yaml</button>
+            </div>
+
+            <div id="yaml-fe" class="tab-content active">
+                <div class="code-block">
+<pre>apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-svc
+spec:
+  type: NodePort
+  ports:
+  - port: 80           <span class="text-blue-400"># [STEP 2] Internal Service Port</span>
+    targetPort: 8080   <span class="text-emerald-400"># [STEP 3] Where the code listens</span>
+    nodePort: 30001    <span class="text-rose-400"># [STEP 1] External Entrypoint</span>
+  selector:
+    app: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx:1.23
+        ports:
+        - containerPort: 8080</pre>
+                </div>
+            </div>
+
+            <div id="yaml-be" class="tab-content">
+                <div class="code-block">
+<pre>apiVersion: v1
+kind: Service
+metadata:
+  name: backend-svc
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 5000
+  selector:
+    app: backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 5
+  template:
+    spec:
+      containers:
+      - name: python-api
+        image: python:3.9-slim
+        ports:
+        - containerPort: 5000</pre>
+                </div>
+            </div>
+
+            <div id="yaml-db" class="tab-content">
+                <div class="code-block">
+<pre>apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+spec:
+  clusterIP: None
+  ports:
+  - port: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: "postgres-headless"
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: postgres-db
+        image: postgres:15
+        ports:
+        - containerPort: 5432</pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const clusterData = [
+            {
+                name: "node-worker-1",
+                ip: "192.168.1.10",
+                pods: [
+                    { name: "frontend-7d4f9-ax2", type: "FE", ip: "10.244.1.2", container: "nginx:1.23", port: 8080, color: "bg-blue-600" },
+                    { name: "backend-8c11a-q8z", type: "BE", ip: "10.244.1.3", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "postgres-0", type: "DB (Primary)", ip: "10.244.1.4", container: "postgres:15", port: 5432, color: "bg-amber-600" }
+                ]
+            },
+            {
+                name: "node-worker-2",
+                ip: "192.168.1.11",
+                pods: [
+                    { name: "frontend-7d4f9-ly5", type: "FE", ip: "10.244.2.2", container: "nginx:1.23", port: 8080, color: "bg-blue-600" },
+                    { name: "backend-8c11a-m0p", type: "BE", ip: "10.244.2.3", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "backend-8c11a-gh9", type: "BE", ip: "10.244.2.4", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "postgres-1", type: "DB (Replica)", ip: "10.244.2.5", container: "postgres:15", port: 5432, color: "bg-amber-500" }
+                ]
+            },
+            {
+                name: "node-worker-3",
+                ip: "192.168.1.12",
+                pods: [
+                    { name: "backend-8c11a-ff2", type: "BE", ip: "10.244.3.2", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "backend-8c11a-tt1", type: "BE", ip: "10.244.3.3", container: "python:3.9", port: 5000, color: "bg-emerald-600" },
+                    { name: "postgres-2", type: "DB (Replica)", ip: "10.244.3.4", container: "postgres:15", port: 5432, color: "bg-amber-500" }
+                ]
+            }
+        ];
+
+        function renderCluster() {
+            const container = document.getElementById('cluster-view');
+            container.innerHTML = clusterData.map(node => `
+                <div class="node-shell shadow-sm">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-2">
+                        <span class="font-bold text-slate-800 text-sm uppercase tracking-wider">${node.name}</span>
+                        <span class="text-xs font-mono text-slate-400">${node.ip}</span>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        ${node.pods.map(pod => `
+                            <div class="pod-shell">
+                                <div class="flex justify-between text-[10px] mb-2 font-mono">
+                                    <span class="font-bold text-slate-700">${pod.name}</span>
+                                    <span class="text-slate-400">IP: ${pod.ip}</span>
+                                </div>
+                                <div class="container-shape ${pod.color} flex-col gap-1">
+                                    <span class="text-[8px] uppercase opacity-80">Container Shape</span>
+                                    <span>${pod.container}</span>
+                                    <span class="text-[9px] font-mono mt-1 border-t border-white/20 pt-1 w-full text-center">Port: ${pod.port}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function highlightStep(step) {
+            resetHighlight();
+            const desc = document.getElementById(`desc-${step}`);
+            desc.classList.add('bg-white', 'shadow-md', 'border-indigo-600');
+            
+            // Highlight specific lines in SVG
+            if(step === 1) {
+                document.getElementById('path-internet-node').classList.add('active-flow');
+                document.getElementById('rect-nodeport').style.strokeWidth = "3px";
+            } else if(step === 2) {
+                document.getElementById('path-node-svc').classList.add('active-flow');
+                document.getElementById('rect-port').style.strokeWidth = "3px";
+            } else if(step === 3) {
+                document.getElementById('path-svc-pod').classList.add('active-flow');
+                document.getElementById('rect-targetport').style.strokeWidth = "3px";
+            }
+        }
+
+        function resetHighlight() {
+            document.querySelectorAll('#step-descriptions > div').forEach(d => {
+                d.classList.remove('bg-white', 'shadow-md', 'border-indigo-600');
+            });
+            document.querySelectorAll('.port-flow-line').forEach(l => l.classList.remove('active-flow'));
+            document.querySelectorAll('rect').forEach(r => r.style.strokeWidth = "2px");
+        }
+
+        function simulateTraffic() {
+            const packet = document.getElementById('packet');
+            packet.classList.remove('opacity-0');
+            
+            const animate = (start, end, duration, element, attr) => {
+                let startTime = null;
+                const run = (currentTime) => {
+                    if (!startTime) startTime = currentTime;
+                    const progress = Math.min((currentTime - startTime) / duration, 1);
+                    element.setAttribute(attr, start + (end - start) * progress);
+                    if (progress < 1) requestAnimationFrame(run);
+                };
+                requestAnimationFrame(run);
+            };
+
+            // Sequence of animations
+            setTimeout(() => {
+                highlightStep(1);
+                animate(40, 145, 800, packet, 'cy');
+            }, 0);
+
+            setTimeout(() => {
+                highlightStep(2);
+                animate(145, 265, 800, packet, 'cy');
+            }, 1000);
+
+            setTimeout(() => {
+                highlightStep(3);
+                animate(265, 385, 800, packet, 'cy');
+            }, 2000);
+
+            setTimeout(() => {
+                resetHighlight();
+                packet.classList.add('opacity-0');
+                packet.setAttribute('cy', 40);
+            }, 3500);
+        }
+
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('border-indigo-600', 'text-indigo-600', 'font-bold');
+                b.classList.add('text-slate-500', 'font-medium');
+            });
+            
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
+            event.currentTarget.classList.remove('text-slate-500', 'font-medium');
+        }
+
+        window.onload = renderCluster;
+    </script>
+</body>
+</html>

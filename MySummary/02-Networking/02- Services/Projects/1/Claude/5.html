@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Step-by-Step Cluster Tracer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:#eef0f5;color:#1c1e2b;font-family:'IBM Plex Sans',sans-serif;font-size:13px;display:flex;flex-direction:column;}
+
+/* ── TOP BAR ── */
+.topbar{flex-shrink:0;height:52px;background:#fff;border-bottom:2px solid #e2e6ef;display:flex;align-items:center;gap:14px;padding:0 20px;box-shadow:0 1px 4px rgba(0,0,0,.06);z-index:100;}
+.tb-logo{width:30px;height:30px;border-radius:7px;background:#3b5bdb;color:#fff;font-weight:800;font-size:.95rem;display:flex;align-items:center;justify-content:center;}
+.tb-title{font-size:1.05rem;font-weight:800;letter-spacing:-.2px;}
+.tb-badge{font-family:'IBM Plex Mono',monospace;font-size:.65rem;font-weight:600;padding:3px 10px;border-radius:20px;border:1.5px solid;}
+.tb-badge.bl{color:#3b5bdb;border-color:#c5d0fb;background:#eef2ff;}
+.tb-badge.gn{color:#2f9e44;border-color:#b2f2bb;background:#ebfbee;}
+.tb-badge.or{color:#e8590c;border-color:#ffc9a5;background:#fff4e6;}
+.tb-badge.gy{color:#6c757d;border-color:#d0d5e8;background:#f8f9fa;}
+.tb-right{margin-left:auto;display:flex;gap:8px;}
+
+/* ── SCENARIO TABS ── */
+.scen-bar{flex-shrink:0;display:flex;background:#fff;border-bottom:2px solid #e2e6ef;padding:0 20px;overflow-x:auto;}
+.scen-bar::-webkit-scrollbar{height:0}
+.stab{font-family:'IBM Plex Mono',monospace;font-size:.68rem;font-weight:500;padding:11px 16px;border:none;background:none;color:#8890aa;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s;}
+.stab:hover{color:#1c1e2b;}
+.stab.active{color:#3b5bdb;border-bottom-color:#3b5bdb;font-weight:600;}
+
+/* ── BODY LAYOUT ── */
+.body-wrap{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0;overflow:hidden;}
+
+/* ── DIAGRAM AREA ── */
+.diagram-area{position:relative;overflow-y:auto;overflow-x:hidden;padding:14px 16px;background:#eef0f5;}
+.diagram-area::-webkit-scrollbar{width:5px}
+.diagram-area::-webkit-scrollbar-thumb{background:#d0d5e8;border-radius:3px}
+#arrowCanvas{position:absolute;top:0;left:0;pointer-events:none;z-index:50;}
+
+/* ── BROWSER NODE ── */
+.browser-node{background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;transition:all .3s;position:relative;z-index:10;}
+.browser-node.active{border-color:#e8590c;box-shadow:0 0 0 3px rgba(232,89,12,.1);background:#fff9f6;}
+.bn-icon{font-size:1.3rem;}
+.bn-label{font-family:'IBM Plex Mono',monospace;font-size:.74rem;font-weight:700;}
+.bn-sub{font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:#8890aa;margin-top:2px;}
+.bn-resp{display:none;margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:.62rem;line-height:1.6;padding:5px 9px;border-radius:6px;border-left:3px solid #e8590c;background:#fff4e6;color:#7d3800;max-width:220px;}
+.browser-node.active .bn-resp{display:block;}
+
+/* ── CONTROL PLANE ── */
+.ctrl-plane{background:#fff;border:2px solid #ffd8a8;border-radius:14px;padding:12px 14px;margin-bottom:12px;position:relative;z-index:10;}
+.cp-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.cp-icon{width:24px;height:24px;border-radius:5px;background:#fff4e6;border:1.5px solid #ffd8a8;display:flex;align-items:center;justify-content:center;font-size:.85rem;}
+.cp-name{font-family:'IBM Plex Mono',monospace;font-size:.76rem;font-weight:700;color:#e8590c;}
+.cp-ip{font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:#aab0c4;margin-left:auto;}
+.cp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+
+.comp-card{background:#fff9f0;border:1.5px solid #ffd8a8;border-radius:9px;padding:9px 11px;transition:all .3s;position:relative;z-index:10;}
+.comp-card.active{background:#fff;border-color:#e8590c;box-shadow:0 0 0 3px rgba(232,89,12,.12);transform:translateY(-2px);}
+.cc-icon{font-size:1rem;margin-bottom:4px;}
+.cc-name{font-family:'IBM Plex Mono',monospace;font-size:.7rem;font-weight:700;color:#1c1e2b;}
+.cc-sub{font-family:'IBM Plex Mono',monospace;font-size:.58rem;color:#8890aa;margin-top:1px;}
+.cc-resp{display:none;margin-top:7px;font-family:'IBM Plex Mono',monospace;font-size:.6rem;line-height:1.65;padding:5px 7px;border-radius:5px;border-left:3px solid #e8590c;background:#fff4e6;color:#7d3800;white-space:pre-line;}
+.comp-card.active .cc-resp{display:block;}
+
+/* ── SERVICES ROW ── */
+.svc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+.svc-card{background:#fff;border:1.5px solid #e2e6ef;border-radius:11px;padding:10px 13px;transition:all .3s;position:relative;z-index:10;}
+.svc-card.active{transform:translateY(-2px);}
+.svc-card.s-np.active {border-color:#3b5bdb;box-shadow:0 0 0 3px rgba(59,91,219,.12);}
+.svc-card.s-cip.active{border-color:#2f9e44;box-shadow:0 0 0 3px rgba(47,158,68,.12);}
+.svc-card.s-hl.active {border-color:#6741d9;box-shadow:0 0 0 3px rgba(103,65,217,.12);}
+.svc-top{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.svc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.svc-name{font-family:'IBM Plex Mono',monospace;font-size:.72rem;font-weight:700;}
+.svc-type{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:.56rem;font-weight:600;padding:2px 7px;border-radius:20px;border:1px solid;}
+.svc-detail{font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:#8890aa;line-height:1.7;}
+.svc-resp{display:none;margin-top:7px;font-family:'IBM Plex Mono',monospace;font-size:.6rem;line-height:1.65;padding:5px 8px;border-radius:6px;border-left:3px solid;white-space:pre-line;}
+.svc-card.active .svc-resp{display:block;}
+.svc-card.s-np.active  .svc-resp{background:#eef2ff;border-color:#3b5bdb;color:#1a2f8a;}
+.svc-card.s-cip.active .svc-resp{background:#ebfbee;border-color:#2f9e44;color:#155225;}
+.svc-card.s-hl.active  .svc-resp{background:#f3f0ff;border-color:#6741d9;color:#3c1d8f;}
+
+/* ── NODES GRID ── */
+.nodes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+
+/* ── NODE CARD ── */
+.node-card{background:#fff;border:1.5px solid #e2e6ef;border-radius:13px;padding:13px 11px 11px;position:relative;z-index:10;}
+.node-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:13px 13px 0 0;}
+.nc-n1::before{background:#3b5bdb;} .nc-n2::before{background:#2f9e44;} .nc-n3::before{background:#6741d9;}
+.nc-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:9px;margin-top:3px;}
+.nc-name{font-family:'IBM Plex Mono',monospace;font-size:.76rem;font-weight:700;}
+.nc-ip{font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:#aab0c4;}
+
+/* kube-proxy */
+.kp-strip{background:#fff9f0;border:1.5px dashed #ffd8a8;border-radius:7px;padding:6px 9px;margin-bottom:9px;transition:all .3s;}
+.kp-strip.active{background:#fff4e6;border-style:solid;border-color:#e8590c;box-shadow:0 0 0 2px rgba(232,89,12,.1);}
+.kp-top{display:flex;align-items:center;gap:5px;margin-bottom:4px;}
+.kp-lbl{font-family:'IBM Plex Mono',monospace;font-size:.62rem;font-weight:700;color:#e8590c;}
+.kp-ports{display:flex;gap:3px;margin-left:auto;}
+.kpp{font-family:'IBM Plex Mono',monospace;font-size:.56rem;font-weight:600;padding:1px 5px;border-radius:3px;border:1px solid;}
+.kpp.p80  {color:#3b5bdb;border-color:#c5d0fb;background:#eef2ff;}
+.kpp.p8080{color:#2f9e44;border-color:#b2f2bb;background:#ebfbee;}
+.kpp.p5432{color:#6741d9;border-color:#d0bfff;background:#f3f0ff;}
+.kp-resp{display:none;font-family:'IBM Plex Mono',monospace;font-size:.58rem;line-height:1.65;padding:5px 7px;border-radius:4px;border-left:2px solid #e8590c;background:#fff4e6;color:#7d3800;white-space:pre-line;}
+.kp-strip.active .kp-resp{display:block;}
+
+/* ── POD CARD ── */
+.pod-card{background:#f8f9fc;border:1.5px dashed #d0d5e8;border-radius:9px;padding:8px 10px;margin-bottom:8px;transition:all .35s cubic-bezier(.34,1.4,.64,1);position:relative;z-index:10;}
+.pod-card:last-child{margin-bottom:0;}
+.pod-card.killed{opacity:.3;filter:grayscale(1);pointer-events:none;}
+.pod-card.active{background:#fff;border-style:solid;transform:translateY(-2px);}
+.pod-card.active.fe-pod{border-color:#3b5bdb;box-shadow:0 0 0 3px rgba(59,91,219,.12),0 4px 14px rgba(59,91,219,.08);}
+.pod-card.active.be-pod{border-color:#2f9e44;box-shadow:0 0 0 3px rgba(47,158,68,.12),0 4px 14px rgba(47,158,68,.08);}
+.pod-card.active.pg-pod{border-color:#6741d9;box-shadow:0 0 0 3px rgba(103,65,217,.12),0 4px 14px rgba(103,65,217,.08);}
+.pod-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.pod-name{font-family:'IBM Plex Mono',monospace;font-size:.66rem;font-weight:700;}
+.pod-ip{font-family:'IBM Plex Mono',monospace;font-size:.59rem;color:#aab0c4;}
+.pod-ip span{color:#6c757d;font-size:.57rem;}
+
+/* container block */
+.ctr-block{border-radius:7px;padding:7px 10px;text-align:center;position:relative;overflow:hidden;}
+.ctr-block::before{content:'CONTAINER';display:block;font-family:'IBM Plex Mono',monospace;font-size:.52rem;font-weight:700;letter-spacing:1.5px;opacity:.7;margin-bottom:3px;}
+.ctr-block.fe{background:#3b5bdb;color:#fff;}
+.ctr-block.be{background:#2f9e44;color:#fff;}
+.ctr-block.pg{background:#6741d9;color:#fff;}
+.ctr-img{font-family:'IBM Plex Mono',monospace;font-size:.73rem;font-weight:600;}
+.ctr-ports{margin-top:5px;display:flex;justify-content:center;gap:4px;flex-wrap:wrap;}
+.port-pill{font-family:'IBM Plex Mono',monospace;font-size:.6rem;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.3);transition:all .3s;}
+.pod-card.active .port-pill{background:rgba(255,255,255,.35);box-shadow:0 0 6px rgba(255,255,255,.3);}
+
+/* pod response */
+.pod-resp{display:none;margin-top:7px;font-family:'IBM Plex Mono',monospace;font-size:.6rem;line-height:1.65;padding:6px 8px;border-radius:6px;border-left:3px solid;white-space:pre-line;}
+.pod-card.active .pod-resp{display:block;}
+.pod-card.active.fe-pod .pod-resp{background:#eef2ff;border-color:#3b5bdb;color:#1a2f8a;}
+.pod-card.active.be-pod .pod-resp{background:#ebfbee;border-color:#2f9e44;color:#155225;}
+.pod-card.active.pg-pod .pod-resp{background:#f3f0ff;border-color:#6741d9;color:#3c1d8f;}
+
+/* killed */
+.pod-card.killed::after{content:'☠ KILLED';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:.78rem;font-weight:700;color:#dc3545;background:rgba(255,255,255,.7);border-radius:9px;}
+
+/* ── RIGHT PANEL ── */
+.right-panel{background:#fff;border-left:2px solid #e2e6ef;display:flex;flex-direction:column;overflow:hidden;}
+.step-nav{flex-shrink:0;background:#f8f9fc;border-bottom:1px solid #e2e6ef;padding:11px 13px;overflow-y:auto;max-height:260px;}
+.step-nav::-webkit-scrollbar{width:4px}
+.step-nav::-webkit-scrollbar-thumb{background:#e2e6ef;border-radius:2px}
+.sn-title{font-size:.62rem;font-weight:700;letter-spacing:1.5px;color:#8890aa;text-transform:uppercase;margin-bottom:8px;}
+.step-list{display:flex;flex-direction:column;gap:3px;}
+.step-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;border:1px solid transparent;transition:all .18s;}
+.step-item:hover{background:#f0f2f5;border-color:#d0d5e8;}
+.step-item.si-cur{background:#fff;border-color:#3b5bdb;box-shadow:0 2px 8px rgba(59,91,219,.1);}
+.step-item.si-done .si-num{background:#d3f9d8;color:#2f9e44;border-color:#b2f2bb;}
+.step-item.si-done .si-lbl{color:#2f9e44;}
+.step-item.si-cur .si-num{background:#3b5bdb;color:#fff;border-color:#3b5bdb;}
+.step-item.si-cur .si-lbl{color:#1c1e2b;font-weight:700;}
+.si-num{width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:.58rem;font-weight:700;border:1.5px solid #d0d5e8;color:#8890aa;background:#fff;transition:all .25s;}
+.si-lbl{font-size:.7rem;font-weight:500;color:#6c757d;transition:all .25s;}
+
+/* trace */
+.trace-head{flex-shrink:0;padding:9px 13px;border-bottom:1px solid #e2e6ef;display:flex;align-items:center;justify-content:space-between;}
+.trace-title{font-size:.7rem;font-weight:700;color:#1c1e2b;}
+.trace-clr{font-family:'IBM Plex Mono',monospace;font-size:.58rem;padding:2px 8px;border-radius:4px;border:1px solid #e2e6ef;background:none;color:#8890aa;cursor:pointer;transition:all .15s;}
+.trace-clr:hover{color:#dc3545;border-color:#dc3545;}
+.trace-body{flex:1;overflow-y:auto;padding:7px 9px;display:flex;flex-direction:column;gap:5px;}
+.trace-body::-webkit-scrollbar{width:4px}
+.trace-body::-webkit-scrollbar-thumb{background:#e2e6ef;border-radius:2px}
+.te{border-radius:7px;padding:7px 9px;border:1px solid #e2e6ef;border-left:3px solid #d0d5e8;background:#f8f9fc;animation:teIn .2s ease;}
+@keyframes teIn{from{opacity:0;transform:translateX(5px)}to{opacity:1;transform:none}}
+.te.te-br {border-left-color:#e8590c;background:#fff9f6;}
+.te.te-kp {border-left-color:#e8590c;background:#fff9f6;}
+.te.te-dns{border-left-color:#0ca678;background:#f0fdf8;}
+.te.te-svc{border-left-color:#3b5bdb;background:#f4f6ff;}
+.te.te-pod{border-left-color:#2f9e44;background:#f4fcf6;}
+.te.te-db {border-left-color:#6741d9;background:#f7f4ff;}
+.te.te-wal{border-left-color:#6741d9;background:#f7f4ff;}
+.te.te-ret{border-left-color:#d63384;background:#fff0f7;}
+.te.te-sys{border-left-color:#8890aa;background:#f8f9fc;}
+.te-head{display:flex;align-items:center;gap:5px;margin-bottom:3px;}
+.te-sn{font-family:'IBM Plex Mono',monospace;font-size:.56rem;font-weight:700;padding:1px 5px;border-radius:3px;background:#e9ecef;color:#5c6070;}
+.te-comp{font-family:'IBM Plex Mono',monospace;font-size:.66rem;font-weight:700;color:#1c1e2b;}
+.te-ts{font-family:'IBM Plex Mono',monospace;font-size:.56rem;color:#aab0c4;margin-left:auto;}
+.te-msg{font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:#5c6070;line-height:1.6;}
+.te-box{margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:.58rem;color:#8890aa;background:#f1f3f9;padding:4px 7px;border-radius:4px;line-height:1.7;white-space:pre-line;}
+
+/* ── CONTROLS BAR ── */
+.cbar{flex-shrink:0;background:#fff;border-top:2px solid #e2e6ef;height:50px;padding:0 18px;display:flex;align-items:center;gap:8px;box-shadow:0 -2px 8px rgba(0,0,0,.04);z-index:100;}
+.cb{font-family:'IBM Plex Mono',monospace;font-size:.68rem;font-weight:600;padding:6px 14px;border-radius:7px;border:1.5px solid;cursor:pointer;transition:all .18s;white-space:nowrap;}
+.cb:disabled{opacity:.4;cursor:default;}
+.cb.pr{background:#3b5bdb;color:#fff;border-color:#3b5bdb;} .cb.pr:hover:not(:disabled){background:#2f4ac0;}
+.cb.sc{background:#ebfbee;color:#2f9e44;border-color:#b2f2bb;} .cb.sc:hover:not(:disabled){background:#d3f9d8;}
+.cb.wa{background:#fff4e6;color:#e8590c;border-color:#ffc9a5;} .cb.wa:hover:not(:disabled){background:#ffe8cc;}
+.cb.da{background:#fff5f5;color:#dc3545;border-color:#ffc9c9;} .cb.da:hover:not(:disabled){background:#ffe3e3;}
+.cb.gl{background:#f8f9fa;color:#5c6070;border-color:#d0d5e8;} .cb.gl:hover:not(:disabled){border-color:#aab0c4;color:#1c1e2b;}
+.spd-grp{margin-left:auto;display:flex;align-items:center;gap:7px;}
+.spd-grp label{font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:#8890aa;font-weight:600;}
+input[type=range]{accent-color:#3b5bdb;width:90px;cursor:pointer;}
+.spd-val{font-family:'IBM Plex Mono',monospace;font-size:.67rem;color:#3b5bdb;min-width:26px;font-weight:700;}
+
+/* progress */
+.prog-wrap{flex-shrink:0;height:3px;background:#e2e6ef;}
+.prog-fill{height:100%;background:linear-gradient(90deg,#3b5bdb,#6741d9);transition:width .4s ease;border-radius:0 2px 2px 0;}
+
+/* tooltip */
+.tooltip{position:fixed;z-index:999;background:#1c1e2b;color:#fff;border-radius:8px;padding:9px 13px;font-family:'IBM Plex Mono',monospace;font-size:.64rem;line-height:1.7;max-width:260px;box-shadow:0 8px 32px rgba(0,0,0,.25);pointer-events:none;transition:opacity .25s;border:1px solid #2d3148;}
+.tooltip strong{color:#7dc7ff;display:block;margin-bottom:3px;}
+</style>
+</head>
+<body>
+
+<div class="tooltip" id="tooltip" style="display:none;opacity:0;"></div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tb-logo">⎈</div>
+  <span class="tb-title">K8s Interactive Cluster Tracer</span>
+  <span class="tb-badge bl" id="tbStatus">● READY</span>
+  <span class="tb-badge gn">3 Nodes · 10 Pods</span>
+  <span class="tb-badge or">3 Services</span>
+  <div class="tb-right">
+    <span class="tb-badge gy" id="tbStep">— / —</span>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="prog-wrap"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+
+<!-- SCENARIO TABS -->
+<div class="scen-bar">
+  <button class="stab active" onclick="setScen(0,this)">📋 Full Request Cycle</button>
+  <button class="stab" onclick="setScen(1,this)">⚡ Same-Node (N1→N1)</button>
+  <button class="stab" onclick="setScen(2,this)">🌐 Cross-Node (N1→N3)</button>
+  <button class="stab" onclick="setScen(3,this)">🔍 DNS Deep Dive</button>
+  <button class="stab" onclick="setScen(4,this)">💾 WAL Replication</button>
+</div>
+
+<!-- MAIN -->
+<div class="body-wrap">
+
+  <!-- DIAGRAM -->
+  <div class="diagram-area" id="diagramArea">
+    <canvas id="arrowCanvas"></canvas>
+
+    <!-- BROWSER -->
+    <div class="browser-node" id="el-browser">
+      <span class="bn-icon">🌍</span>
+      <div>
+        <div class="bn-label">Browser / Client</div>
+        <div class="bn-sub">http://192.168.1.11:30080  ·  any node IP works</div>
+      </div>
+      <div class="bn-resp" id="resp-browser">…</div>
+    </div>
+
+    <!-- CONTROL PLANE -->
+    <div class="ctrl-plane" id="el-cp">
+      <div class="cp-head">
+        <div class="cp-icon">▲</div>
+        <span class="cp-name">CONTROL PLANE</span>
+        <span class="cp-ip">192.168.1.10</span>
+      </div>
+      <div class="cp-grid">
+        <div class="comp-card" id="el-dns">
+          <div class="cc-icon">🔍</div>
+          <div class="cc-name">CoreDNS</div>
+          <div class="cc-sub">10.96.0.10 · :53 UDP/TCP</div>
+          <div class="cc-resp" id="resp-dns">…</div>
+        </div>
+        <div class="comp-card" id="el-ipt">
+          <div class="cc-icon">🔒</div>
+          <div class="cc-name">iptables / NAT</div>
+          <div class="cc-sub">KUBE-SVC chains · DNAT</div>
+          <div class="cc-resp" id="resp-ipt">…</div>
+        </div>
+        <div class="comp-card" id="el-api">
+          <div class="cc-icon">⚙</div>
+          <div class="cc-name">kube-apiserver</div>
+          <div class="cc-sub">:6443 · endpoint watch</div>
+          <div class="cc-resp" id="resp-api">…</div>
+        </div>
+        <div class="comp-card" id="el-etcd">
+          <div class="cc-icon">🗄</div>
+          <div class="cc-name">etcd</div>
+          <div class="cc-sub">:2379 · cluster state</div>
+          <div class="cc-resp" id="resp-etcd">…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SERVICES -->
+    <div class="svc-row">
+      <div class="svc-card s-np" id="el-svc-np">
+        <div class="svc-top">
+          <div class="svc-dot" style="background:#3b5bdb"></div>
+          <span class="svc-name" style="color:#3b5bdb">frontend-svc</span>
+          <span class="svc-type" style="color:#3b5bdb;border-color:#c5d0fb;background:#eef2ff">NodePort</span>
+        </div>
+        <div class="svc-detail">ClusterIP: <b>10.96.10.5</b><br>port:80 → targetPort:80 → nodePort:<b>30080</b></div>
+        <div class="svc-resp" id="resp-svc-np">…</div>
+      </div>
+      <div class="svc-card s-cip" id="el-svc-cip">
+        <div class="svc-top">
+          <div class="svc-dot" style="background:#2f9e44"></div>
+          <span class="svc-name" style="color:#2f9e44">backend-svc</span>
+          <span class="svc-type" style="color:#2f9e44;border-color:#b2f2bb;background:#ebfbee">ClusterIP</span>
+        </div>
+        <div class="svc-detail">ClusterIP: <b>10.96.20.14</b><br>port:8080 → targetPort:<b>8080</b> (5 pods)</div>
+        <div class="svc-resp" id="resp-svc-cip">…</div>
+      </div>
+      <div class="svc-card s-hl" id="el-svc-hl">
+        <div class="svc-top">
+          <div class="svc-dot" style="background:#6741d9"></div>
+          <span class="svc-name" style="color:#6741d9">postgres-svc</span>
+          <span class="svc-type" style="color:#6741d9;border-color:#d0bfff;background:#f3f0ff">Headless</span>
+        </div>
+        <div class="svc-detail">clusterIP: <b>None</b><br>port:5432 → DNS returns pod IP direct</div>
+        <div class="svc-resp" id="resp-svc-hl">…</div>
+      </div>
+    </div>
+
+    <!-- NODES -->
+    <div class="nodes-grid">
+
+      <!-- NODE 1 -->
+      <div class="node-card nc-n1" id="el-node1">
+        <div class="nc-head"><span class="nc-name">NODE-WORKER-1</span><span class="nc-ip">192.168.1.11</span></div>
+        <div class="kp-strip" id="el-kp1">
+          <div class="kp-top"><span class="kp-lbl">⚙ kube-proxy</span><div class="kp-ports"><span class="kpp p80">:30080</span><span class="kpp p8080">:8080</span><span class="kpp p5432">:5432</span></div></div>
+          <div class="kp-resp" id="resp-kp1">…</div>
+        </div>
+        <div class="pod-card fe-pod" id="el-fe1">
+          <div class="pod-row"><span class="pod-name">frontend-7d4f9-ax2</span><span class="pod-ip"><span>IP: </span>10.244.1.5</span></div>
+          <div class="ctr-block fe"><div class="ctr-img">nginx:1.25-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 80</span><span class="port-pill">sidecar:15001</span></div></div>
+          <div class="pod-resp" id="resp-fe1">…</div>
+        </div>
+        <div class="pod-card be-pod" id="el-be1">
+          <div class="pod-row"><span class="pod-name">backend-8c11a-q8z</span><span class="pod-ip"><span>IP: </span>10.244.1.8</span></div>
+          <div class="ctr-block be"><div class="ctr-img">node:20-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 8080</span></div></div>
+          <div class="pod-resp" id="resp-be1">…</div>
+        </div>
+        <div class="pod-card be-pod" id="el-be2">
+          <div class="pod-row"><span class="pod-name">backend-8c11a-m4p</span><span class="pod-ip"><span>IP: </span>10.244.1.12</span></div>
+          <div class="ctr-block be"><div class="ctr-img">node:20-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 8080</span></div></div>
+          <div class="pod-resp" id="resp-be2">…</div>
+        </div>
+        <div class="pod-card pg-pod" id="el-pg0">
+          <div class="pod-row"><span class="pod-name">postgres-0 ★ PRIMARY</span><span class="pod-ip"><span>IP: </span>10.244.1.20</span></div>
+          <div class="ctr-block pg"><div class="ctr-img">postgres:15.4-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 5432</span><span class="port-pill">PVC 10Gi</span></div></div>
+          <div class="pod-resp" id="resp-pg0">…</div>
+        </div>
+      </div>
+
+      <!-- NODE 2 -->
+      <div class="node-card nc-n2" id="el-node2">
+        <div class="nc-head"><span class="nc-name">NODE-WORKER-2</span><span class="nc-ip">192.168.1.12</span></div>
+        <div class="kp-strip" id="el-kp2">
+          <div class="kp-top"><span class="kp-lbl">⚙ kube-proxy</span><div class="kp-ports"><span class="kpp p80">:30080</span><span class="kpp p8080">:8080</span><span class="kpp p5432">:5432</span></div></div>
+          <div class="kp-resp" id="resp-kp2">…</div>
+        </div>
+        <div class="pod-card fe-pod" id="el-fe2">
+          <div class="pod-row"><span class="pod-name">frontend-7d4f9-1y5</span><span class="pod-ip"><span>IP: </span>10.244.2.3</span></div>
+          <div class="ctr-block fe"><div class="ctr-img">nginx:1.25-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 80</span></div></div>
+          <div class="pod-resp" id="resp-fe2">…</div>
+        </div>
+        <div class="pod-card be-pod" id="el-be3">
+          <div class="pod-row"><span class="pod-name">backend-8c11a-m0p</span><span class="pod-ip"><span>IP: </span>10.244.2.7</span></div>
+          <div class="ctr-block be"><div class="ctr-img">node:20-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 8080</span></div></div>
+          <div class="pod-resp" id="resp-be3">…</div>
+        </div>
+        <div class="pod-card be-pod" id="el-be4">
+          <div class="pod-row"><span class="pod-name">backend-8c11a-x9k</span><span class="pod-ip"><span>IP: </span>10.244.2.11</span></div>
+          <div class="ctr-block be"><div class="ctr-img">node:20-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 8080</span></div></div>
+          <div class="pod-resp" id="resp-be4">…</div>
+        </div>
+        <div class="pod-card pg-pod" id="el-pg1">
+          <div class="pod-row"><span class="pod-name">postgres-1 replica</span><span class="pod-ip"><span>IP: </span>10.244.2.18</span></div>
+          <div class="ctr-block pg"><div class="ctr-img">postgres:15.4-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 5432</span><span class="port-pill">PVC 10Gi</span></div></div>
+          <div class="pod-resp" id="resp-pg1">…</div>
+        </div>
+      </div>
+
+      <!-- NODE 3 -->
+      <div class="node-card nc-n3" id="el-node3">
+        <div class="nc-head"><span class="nc-name">NODE-WORKER-3</span><span class="nc-ip">192.168.1.13</span></div>
+        <div class="kp-strip" id="el-kp3">
+          <div class="kp-top"><span class="kp-lbl">⚙ kube-proxy</span><div class="kp-ports"><span class="kpp p80">:30080</span><span class="kpp p8080">:8080</span><span class="kpp p5432">:5432</span></div></div>
+          <div class="kp-resp" id="resp-kp3">…</div>
+        </div>
+        <div class="pod-card be-pod" id="el-be5">
+          <div class="pod-row"><span class="pod-name">backend-8c11a-ff2</span><span class="pod-ip"><span>IP: </span>10.244.3.4</span></div>
+          <div class="ctr-block be"><div class="ctr-img">node:20-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 8080</span></div></div>
+          <div class="pod-resp" id="resp-be5">…</div>
+        </div>
+        <div class="pod-card pg-pod" id="el-pg2">
+          <div class="pod-row"><span class="pod-name">postgres-2 replica</span><span class="pod-ip"><span>IP: </span>10.244.3.15</span></div>
+          <div class="ctr-block pg"><div class="ctr-img">postgres:15.4-alpine</div><div class="ctr-ports"><span class="port-pill">Port: 5432</span><span class="port-pill">PVC 10Gi</span></div></div>
+          <div class="pod-resp" id="resp-pg2">…</div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /diagram-area -->
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="step-nav">
+      <div class="sn-title">Request Steps</div>
+      <div class="step-list" id="stepList"></div>
+    </div>
+    <div class="trace-head">
+      <span class="trace-title">📡 Packet Trace Log</span>
+      <button class="trace-clr" onclick="clearLog()">clear</button>
+    </div>
+    <div class="trace-body" id="traceBody"></div>
+  </div>
+
+</div><!-- /body-wrap -->
+
+<!-- CONTROLS -->
+<div class="cbar">
+  <button class="cb pr"  id="btnAuto"  onclick="toggleAuto()">▶ Auto Play</button>
+  <button class="cb sc"  id="btnNext"  onclick="nextStep()">Next ▶</button>
+  <button class="cb gl"  id="btnPrev"  onclick="prevStep()">◀ Prev</button>
+  <button class="cb wa"  id="btnReset" onclick="doReset()">↺ Reset</button>
+  <button class="cb da"  id="btnKill"  onclick="doKill()">☠ Kill Pod</button>
+  <div class="spd-grp">
+    <label>SPEED</label>
+    <input type="range" min="0.5" max="4" step="0.5" value="1.5" id="spdR" oninput="setSpd(this.value)">
+    <span class="spd-val" id="spdV">1.5×</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   CANVAS + RESIZE
+═══════════════════════════════════════════════════════════════ */
+const CV  = document.getElementById('arrowCanvas');
+const CX  = CV.getContext('2d');
+const DA  = document.getElementById('diagramArea');
+
+function resizeCV(){
+  CV.width  = DA.scrollWidth  || DA.offsetWidth;
+  CV.height = DA.scrollHeight || DA.offsetHeight;
+}
+resizeCV();
+window.addEventListener('resize', resizeCV);
+new ResizeObserver(resizeCV).observe(DA);
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+function elCtr(id){
+  const el = document.getElementById(id);
+  if(!el) return null;
+  const er = el.getBoundingClientRect();
+  const dr = DA.getBoundingClientRect();
+  return {
+    x: er.left - dr.left + DA.scrollLeft + er.width/2,
+    y: er.top  - dr.top  + DA.scrollTop  + er.height/2
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+let scenIdx=0, stepIdx=-1, autoPlay=false, autoTmr=null, spd=1.5;
+let killed = new Set();
+let packets=[], arrows=[], raf=null, lastTs=0;
+
+/* ═══════════════════════════════════════════════════════════════
+   SCENARIOS
+═══════════════════════════════════════════════════════════════ */
+const S = [
+/* ──────── 0: Full Request Cycle ──────── */
+{ name:'Full Request Cycle', steps:[
+  { title:'① Browser → NodePort :30080',
+    tip:'User hits any node IP on port 30080.\nNodePort is open on ALL 3 nodes automatically.\nkube-proxy intercepts via iptables.',
+    on:['el-browser','el-kp1','el-svc-np'],
+    resp:{
+      'resp-browser':'GET http://192.168.1.11:30080/\nTCP SYN sent to node-1\nport 30080 is NodePort',
+      'resp-kp1':'NodePort :30080 hit on eth0!\niptables KUBE-NODEPORTS chain\n→ DNAT to ClusterIP 10.96.10.5:80',
+      'resp-svc-np':'NodePort 30080 active\nClusterIP: 10.96.10.5\nSelecting frontend endpoint…'
+    },
+    arr:{f:'el-browser',t:'el-kp1',c:'#e8590c',l:':30080 TCP'},
+    log:{cls:'te-br',comp:'🌍 Browser',msg:'GET http://192.168.1.11:30080/',box:'TCP SYN → 192.168.1.11:30080\nNodePort open on all 3 node IPs\nkube-proxy KUBE-NODEPORTS chain fires'}
+  },
+  { title:'② iptables DNAT → frontend pod',
+    tip:'iptables KUBE-SEP-fe1 rule DNAT\'s the traffic\nfrom NodePort → ClusterIP → Pod IP.\nConntrack records this translation.',
+    on:['el-kp1','el-ipt','el-svc-np','el-fe1'],
+    resp:{
+      'resp-kp1':'DNAT chain selected:\n-A KUBE-SEP-fe1 -j DNAT\n→ 10.244.1.5:80 (50% prob)\nconntrack entry added',
+      'resp-ipt':'KUBE-NODEPORTS → KUBE-SVC-frontend\nKUBE-SEP-fe1: DNAT → 10.244.1.5:80\nSEP-fe2: DNAT → 10.244.2.3:80\nconntrack: 54312→80 tracked',
+      'resp-svc-np':'Endpoint selected: fe1\n10.244.1.5:80 active ✓\nLoad balanced 50/50',
+      'resp-fe1':'nginx :80 RECEIVED!\nServing /index.html → 200 OK\nReact app loading…\nwill call backend-svc:8080'
+    },
+    arr:{f:'el-kp1',t:'el-fe1',c:'#3b5bdb',l:'DNAT →:80'},
+    log:{cls:'te-kp',comp:'kube-proxy iptables',msg:'DNAT :30080 → 10.244.1.5:80 (fe1)',box:'-A KUBE-SVC-frontend -j KUBE-SEP-fe1\n-A KUBE-SEP-fe1 -j DNAT --to 10.244.1.5:80\nconntrack entry: sport 54312 → dport 80'}
+  },
+  { title:'③ nginx → CoreDNS lookup',
+    tip:'React app calls fetch("http://backend-svc:8080").\nPod\'s /etc/resolv.conf: nameserver 10.96.0.10\nUDP query sent to CoreDNS.',
+    on:['el-fe1','el-dns'],
+    resp:{
+      'resp-fe1':'GET /index.html → 200 OK ✓\nReact loaded, calling API:\nfetch("http://backend-svc:8080/api")\nDNS query → 10.96.0.10:53',
+      'resp-dns':'UDP :53 query received\nType: A record\nbackend-svc.app.svc.cluster.local\nSearching zone records…'
+    },
+    arr:{f:'el-fe1',t:'el-dns',c:'#0ca678',l:'DNS UDP :53'},
+    log:{cls:'te-pod',comp:'nginx :80',msg:'React app → DNS query for backend-svc',box:'/etc/resolv.conf:\nnameserver 10.96.0.10 (CoreDNS)\nsearch app.svc.cluster.local\nQuery: backend-svc.app.svc.cluster.local A'}
+  },
+  { title:'④ CoreDNS → ClusterIP returned',
+    tip:'CoreDNS returns the ClusterIP (virtual IP).\nNo pod IP — iptables handles distribution.\nTTL 30s cached in pod DNS resolver.',
+    on:['el-dns','el-svc-cip','el-ipt'],
+    resp:{
+      'resp-dns':'RESOLVED:\nbackend-svc.app.svc.cluster.local\n→ A record: 10.96.20.14\nType: ClusterIP service\nTTL: 30s  ← cached',
+      'resp-svc-cip':'ClusterIP 10.96.20.14 queried\n5 endpoints registered:\n.1.8  .1.12  .2.7  .2.11  .3.4\niptables will load-balance',
+      'resp-ipt':'KUBE-SVC-backend chain ready\n5 KUBE-SEP rules (20% each)\nawaiting connection to 10.96.20.14'
+    },
+    arr:{f:'el-dns',t:'el-svc-cip',c:'#0ca678',l:'A: 10.96.20.14'},
+    log:{cls:'te-dns',comp:'CoreDNS :53',msg:'backend-svc.app → 10.96.20.14 (ClusterIP)',box:'A record: 10.96.20.14\nTTL: 30s  Type: ClusterIP\niptables KUBE-SVC chain does the LB\n(pod never sees individual pod IPs)'}
+  },
+  { title:'⑤ ClusterIP DNAT → backend pod',
+    tip:'TCP connect to ClusterIP 10.96.20.14:8080\nhits iptables KUBE-SVC-backend chain.\n20% probability → selects be1 (10.244.1.8).',
+    on:['el-svc-cip','el-ipt','el-kp1','el-be1'],
+    resp:{
+      'resp-svc-cip':'TCP connection on 10.96.20.14:8080\niptables selecting endpoint…\nSelected: be1  10.244.1.8',
+      'resp-ipt':'KUBE-SVC-backend:\n-m statistic --prob 0.20 → SEP-be1\n-A KUBE-SEP-be1 -j DNAT\n--to-dest 10.244.1.8:8080\nconntrack: 10.244.1.5→10.96.20.14 mapped',
+      'resp-kp1':'DNAT applied:\n10.96.20.14:8080 → 10.244.1.8:8080\nconntrack entry added\nbe1 on same node → local',
+      'resp-be1':'node.js :8080 RECEIVED!\nGET /api/users HTTP/1.1\nJWT token: valid ✓\nDB query needed → postgres-0'
+    },
+    arr:{f:'el-svc-cip',t:'el-be1',c:'#2f9e44',l:'DNAT → be1'},
+    log:{cls:'te-svc',comp:'ClusterIP :8080',msg:'DNAT 10.96.20.14:8080 → 10.244.1.8:8080 (be1)',box:'-m statistic --probability 0.20 -j KUBE-SEP-be1\n-j DNAT --to-destination 10.244.1.8:8080\nSame-node: packet stays on Node1 bridge'}
+  },
+  { title:'⑥ Backend → Headless DNS for postgres',
+    tip:'Backend uses env DB_HOST=postgres-0.postgres-svc\nHeadless service (clusterIP:None) returns\nthe actual pod IP directly — no VIP!',
+    on:['el-be1','el-dns','el-svc-hl'],
+    resp:{
+      'resp-be1':'DB_HOST: postgres-0.postgres-svc.app…\nDNS query → CoreDNS\nExpecting: pod IP directly',
+      'resp-dns':'HEADLESS query:\npostgres-0.postgres-svc.app.svc.cluster.local\nclusterIP: None → returns POD IP\n→ 10.244.1.20  ← direct pod IP!',
+      'resp-svc-hl':'Headless: clusterIP=None\nDNS A record: postgres-0 = 10.244.1.20\nNO iptables DNAT needed\nDirect pod-to-pod routing!'
+    },
+    arr:{f:'el-be1',t:'el-dns',c:'#6741d9',l:'headless DNS'},
+    log:{cls:'te-dns',comp:'CoreDNS Headless',msg:'postgres-0.postgres-svc → 10.244.1.20 (pod IP!)',box:'Headless: clusterIP=None\nCoreDNS returns pod A record (not VIP)\npostgres-0 → 10.244.1.20\nNo iptables chain — direct routing'}
+  },
+  { title:'⑦ Direct TCP → postgres-0 :5432',
+    tip:'With pod IP from headless DNS, backend connects\ndirectly to postgres-0 at 10.244.1.20:5432.\nBoth on Node1 → local veth bridge. No DNAT.',
+    on:['el-be1','el-pg0','el-svc-hl'],
+    resp:{
+      'resp-be1':'postgres-0 IP: 10.244.1.20\nDirect TCP :5432 (no DNAT!)\nAuthentication: md5 → OK ✓\nSending SQL INSERT…',
+      'resp-pg0':'Connection from 10.244.1.8 ✓\nAuth: md5 OK\nSQL: INSERT INTO events(…)\nWriting to PVC, WAL entry…',
+      'resp-svc-hl':'Headless resolved → direct\nbe1 (10.244.1.8) → pg0 (10.244.1.20)\nSame node: local veth bridge\nNo overlay, no DNAT'
+    },
+    arr:{f:'el-be1',t:'el-pg0',c:'#6741d9',l:'TCP :5432 direct'},
+    log:{cls:'te-db',comp:'postgres-0 :5432',msg:'Direct connection 10.244.1.8 → 10.244.1.20:5432',box:'Same node → local veth (no VXLAN)\nSQL INSERT committed to PVC\nWAL LSN: 0/1A00000 generated\nStreaming replication triggered'}
+  },
+  { title:'⑧ WAL stream → replicas',
+    tip:'postgres-0 PRIMARY commits and streams\nWAL (Write-Ahead Log) segments to\npostgres-1 (Node2) and postgres-2 (Node3).\nBoth replicas acknowledge receipt.',
+    on:['el-pg0','el-pg1','el-pg2'],
+    resp:{
+      'resp-pg0':'WRITE committed to PVC ✓\nWAL LSN: 0/1A00000\nStreaming to replicas:\n→ pg1 (10.244.2.18)\n→ pg2 (10.244.3.15)',
+      'resp-pg1':'WAL 0/1A00000 received!\nApplied to replica ✓\nHot standby active\nRead queries OK  lag:<1ms',
+      'resp-pg2':'WAL 0/1A00000 received!\nApplied to replica ✓\nHot standby active\nAll nodes consistent'
+    },
+    arr:{f:'el-pg0',t:'el-pg1',c:'#6741d9',l:'WAL stream'},
+    log:{cls:'te-wal',comp:'WAL Replication',msg:'pg0→pg1, pg0→pg2 streaming WAL 0/1A00000',box:'Streaming replication protocol\npg1 (10.244.2.18) Node2: applied ✓\npg2 (10.244.3.15) Node3: applied ✓\nAll nodes consistent · lag <1ms'}
+  },
+  { title:'⑨ Response → browser (200 OK)',
+    tip:'Response path reverses:\npostgres → backend → conntrack rev-NAT\n→ frontend → NodePort reverse-DNAT → browser.\nTotal RTT ~4ms.',
+    on:['el-browser','el-fe1','el-kp1'],
+    resp:{
+      'resp-be1':'SQL rows received ✓\nJSON: {"users":[…]}\nHTTP 200 sending\n→ conntrack reverse-NAT',
+      'resp-fe1':'API 200 OK received ✓\nRendering React UI\n→ NodePort 30080 → browser',
+      'resp-kp1':'Reverse conntrack:\nRestores original src/dst IPs\n10.244.1.5→browser\n→ 200 OK delivered',
+      'resp-browser':'HTTP 200 OK ✓\n{"users":[{"id":1,"name":"Alice"},…]}\nTotal RTT: ~4ms\nRequest complete!'
+    },
+    arr:{f:'el-fe1',t:'el-browser',c:'#d63384',l:'200 OK'},
+    log:{cls:'te-ret',comp:'HTTP 200 OK',msg:'Full cycle complete · RTT ~4ms',box:'pg0→be1 (SQL rows)\nbe1→conntrack rev-NAT→fe1\nfe1→NodePort 30080→browser\nTotal RTT: ~4ms  (same-node ~0.5ms)'}
+  },
+]},
+
+/* ──────── 1: Same-Node ──────── */
+{ name:'Same-Node (N1→N1)', steps:[
+  { title:'① Browser → NodePort on Node1',
+    tip:'Request arrives on Node1. kube-proxy has\niptables rules open on :30080 on ALL interfaces.',
+    on:['el-browser','el-kp1','el-svc-np'],
+    resp:{
+      'resp-browser':'GET :30080 → 192.168.1.11',
+      'resp-kp1':'NodePort :30080 triggered\niptables KUBE-NODEPORTS\n→ DNAT → fe1 (10.244.1.5)',
+      'resp-svc-np':'NodePort 30080 active\n→ frontend-7d4f9-ax2 selected'
+    },
+    arr:{f:'el-browser',t:'el-kp1',c:'#e8590c',l:':30080'},
+    log:{cls:'te-br',comp:'Browser',msg:'GET :30080 hits Node1 NodePort',box:'192.168.1.11:30080\niptables KUBE-NODEPORTS fires on Node1'}
+  },
+  { title:'② fe1 served → DNS → DNAT',
+    tip:'Frontend pod fe1 on Node1 resolves backend-svc.\nCritical: iptables RANDOMLY selects be1 (also on Node1).\nEntire call stays within Node1.',
+    on:['el-fe1','el-dns','el-svc-cip','el-ipt','el-kp1'],
+    resp:{
+      'resp-fe1':'nginx :80 serving ✓\ncalling backend-svc:8080\nDNS: 10.96.20.14 resolved',
+      'resp-dns':'backend-svc → 10.96.20.14\nTTL 30s',
+      'resp-ipt':'⚡ SAME-NODE selection!\nKUBE-SEP-be1 selected (20%)\n10.96.20.14 → 10.244.1.8\nboth on Node1 — NO overlay!',
+      'resp-svc-cip':'be1 (10.244.1.8) selected\nSame node as caller!\nLocal bridge path',
+      'resp-kp1':'⚡ LOCAL DNAT:\n10.96.20.14 → 10.244.1.8:8080\nNo VXLAN needed!'
+    },
+    arr:{f:'el-fe1',t:'el-kp1',c:'#0ca678',l:'DNS+DNAT'},
+    log:{cls:'te-dns',comp:'CoreDNS + iptables',msg:'DNS → 10.96.20.14 → DNAT → 10.244.1.8 (SAME NODE!)',box:'SAME-NODE path: kube-proxy DNAT stays local\nNo VXLAN encapsulation\nPacket: veth0 → cbr0 → veth1\nLatency: ~0.1ms (loopback-like)'}
+  },
+  { title:'③ ⚡ Direct veth delivery (no overlay)',
+    tip:'KEY POINT: Both fe1 and be1 are on Node1.\nPacket travels through the local Linux bridge cbr0.\nNo VXLAN, no CNI tunnel. Latency ~0.1ms.',
+    on:['el-fe1','el-be1','el-kp1'],
+    resp:{
+      'resp-kp1':'⚡ SAME-NODE PATH TAKEN\nfe1 → cbr0 → be1\nNo overlay, no encap!\nLatency: ~0.1ms',
+      'resp-fe1':'Sending to 10.244.1.8:8080\nvia local Linux bridge cbr0\n(no VXLAN encapsulation)',
+      'resp-be1':'node.js :8080 RECEIVED!\n⚡ Same-node delivery\n~0.1ms from fe1\nProcessing API request…'
+    },
+    arr:{f:'el-fe1',t:'el-be1',c:'#2f9e44',l:'⚡ local veth'},
+    log:{cls:'te-kp',comp:'⚡ Same-Node',msg:'fe1(10.244.1.5) → be1(10.244.1.8) via local bridge',box:'Path: veth-fe1 → cbr0 → veth-be1\nNo VXLAN (VNI: none)\nNo overlay network\nLatency: ~0.1ms  (vs ~2ms cross-node)'}
+  },
+  { title:'④ Response returns locally',
+    tip:'Response also stays on Node1.\nConntrack reverse-NATs back through fe1.\nFastest possible K8s path: ~0.2ms total.',
+    on:['el-be1','el-fe1','el-browser'],
+    resp:{
+      'resp-be1':'200 OK sending ✓\n→ fe1 via local veth\nno overlay return either',
+      'resp-fe1':'Response received ✓\n→ NodePort reverse-DNAT\n→ browser',
+      'resp-browser':'200 OK ✓\nSame-node RTT: ~0.2ms\n10× faster than cross-node!'
+    },
+    arr:{f:'el-be1',t:'el-browser',c:'#d63384',l:'200 local'},
+    log:{cls:'te-ret',comp:'Same-Node Return',msg:'be1→fe1→NodePort→browser · RTT ~0.2ms',box:'All hops stay on Node1\nConntrack reverse-NAT: restores IPs\nRTT: ~0.2ms vs ~4ms full cross-node cycle'}
+  },
+]},
+
+/* ──────── 2: Cross-Node ──────── */
+{ name:'Cross-Node (N1→N3)', steps:[
+  { title:'① NodePort → fe1 (Node1)',
+    tip:'Standard NodePort entry on Node1.\nfrontend pod fe1 selected.',
+    on:['el-browser','el-kp1','el-fe1'],
+    resp:{
+      'resp-browser':'GET :30080 → Node1',
+      'resp-kp1':'NodePort :30080 → DNAT → fe1',
+      'resp-fe1':'nginx :80 ✓\ncalling backend-svc:8080'
+    },
+    arr:{f:'el-browser',t:'el-fe1',c:'#3b5bdb',l:':30080→fe1'},
+    log:{cls:'te-br',comp:'Browser',msg:'Standard NodePort entry → fe1 on Node1',box:'192.168.1.11:30080 → 10.244.1.5:80'}
+  },
+  { title:'② iptables selects be5 on Node3!',
+    tip:'iptables randomly selects be5 (10.244.3.4)\nwhich lives on Node3.\nThis forces a CROSS-NODE hop via VXLAN overlay.',
+    on:['el-ipt','el-svc-cip','el-kp1','el-kp3'],
+    resp:{
+      'resp-ipt':'🔀 CROSS-NODE selected!\nKUBE-SEP-be5: 10.244.3.4 (Node3!)\nDNAT applied on Node1\nVXLAN encap required!',
+      'resp-svc-cip':'Endpoint: be5 (10.244.3.4)\nNode3: 192.168.1.13\nCNI overlay path required',
+      'resp-kp1':'DNAT: 10.96.20.14 → 10.244.3.4\nDst node: 192.168.1.13\nVXLAN UDP:4789 → Node3',
+      'resp-kp3':'VXLAN packet incoming!\nouter dst: 192.168.1.13\nDecapsulating UDP:4789…\nDelivering to be5 locally'
+    },
+    arr:{f:'el-kp1',t:'el-kp3',c:'#e8590c',l:'VXLAN UDP:4789'},
+    log:{cls:'te-kp',comp:'🔀 Cross-Node DNAT',msg:'10.96.20.14 → 10.244.3.4 (be5 on Node3)',box:'Node1 VXLAN encap:\nouter: 192.168.1.11 → 192.168.1.13  UDP:4789\ninner: 10.244.1.5 → 10.244.3.4:8080\nNode3 decap → local veth → be5'}
+  },
+  { title:'③ be5 receives on Node3',
+    tip:'Node3 kube-proxy decapsulates the VXLAN packet.\nDelivers to be5 via local veth bridge on Node3.\nLatency ~2ms vs ~0.1ms same-node.',
+    on:['el-kp3','el-be5'],
+    resp:{
+      'resp-kp3':'VXLAN decap complete ✓\nInner: → 10.244.3.4:8080\nDelivering via veth on Node3',
+      'resp-be5':'node.js :8080 RECEIVED!\n🌐 Came via VXLAN from Node1\nLatency: ~2ms\nProcessing API request…'
+    },
+    arr:{f:'el-kp3',t:'el-be5',c:'#2f9e44',l:'decap → be5'},
+    log:{cls:'te-pod',comp:'be5 Node3',msg:'Received after VXLAN decap on Node3',box:'VXLAN decapsulated by Node3 kube-proxy\nbe5 (10.244.3.4) responding\nLatency: ~2ms (LAN VXLAN)\nvs ~0.1ms same-node'}
+  },
+  { title:'④ Return crosses overlay back',
+    tip:'Response: be5 → VXLAN encap → Node1\nNode1 kube-proxy reverse conntrack\n→ fe1 → NodePort → browser.\nTotal ~3ms cross-node.',
+    on:['el-be5','el-kp3','el-kp1','el-fe1','el-browser'],
+    resp:{
+      'resp-be5':'200 OK, returning via VXLAN\n→ 10.244.1.5 (Node1)',
+      'resp-kp3':'VXLAN encap: 192.168.1.13→192.168.1.11',
+      'resp-kp1':'VXLAN decap ✓\nConntrack reverse-NAT\n10.244.1.5 → browser restored',
+      'resp-fe1':'Response via overlay ✓\nForwarding → NodePort',
+      'resp-browser':'200 OK ✓\nCross-node RTT: ~3ms\n(vs ~0.2ms same-node)'
+    },
+    arr:{f:'el-be5',t:'el-browser',c:'#d63384',l:'200 cross-node'},
+    log:{cls:'te-ret',comp:'Cross-Node Return',msg:'be5(N3)→VXLAN→fe1(N1)→browser · ~3ms',box:'Return VXLAN: Node3 → Node1\nNode1 conntrack reverse-NAT\nfe1 → NodePort → browser\nRTT: ~3ms  (same-node: ~0.2ms)'}
+  },
+]},
+
+/* ──────── 3: DNS ──────── */
+{ name:'DNS Deep Dive', steps:[
+  { title:'① Pod resolv.conf → CoreDNS',
+    tip:'kubelet injects /etc/resolv.conf into every pod.\nnameserver points to CoreDNS ClusterIP 10.96.0.10.\nSearch domains enable short names.',
+    on:['el-fe1','el-dns'],
+    resp:{
+      'resp-fe1':'/etc/resolv.conf injected:\nnameserver 10.96.0.10\nsearch app.svc.cluster.local\n  svc.cluster.local\n  cluster.local',
+      'resp-dns':'CoreDNS :53 listening\nUDP + TCP queries accepted\nCluster domain: cluster.local\nReady for lookups'
+    },
+    arr:{f:'el-fe1',t:'el-dns',c:'#0ca678',l:'UDP :53 query'},
+    log:{cls:'te-dns',comp:'resolv.conf',msg:'kubelet injects DNS config into every pod',box:'/etc/resolv.conf:\nnameserver 10.96.0.10\nsearch app.svc.cluster.local svc.cluster.local cluster.local\nndots:5 (tries FQDN after 5 dots)'}
+  },
+  { title:'② ClusterIP service A lookup',
+    tip:'For ClusterIP services, CoreDNS returns ONE virtual IP.\nkube-proxy iptables distributes to actual pods.\nPod never knows individual pod IPs.',
+    on:['el-dns','el-svc-cip','el-ipt'],
+    resp:{
+      'resp-dns':'QUERY: backend-svc.app.svc.cluster.local\nType: ClusterIP service\nRESPONSE: A 10.96.20.14\nSingle VIP returned\nTTL: 30s',
+      'resp-svc-cip':'ClusterIP 10.96.20.14 hit\n5 endpoints in Endpoints object\niptables KUBE-SVC-backend\ndistributes 20% each',
+      'resp-ipt':'KUBE-SVC-backend has:\n5 × KUBE-SEP rules\n-m statistic --prob 0.20 each\niptables handles ALL LB'
+    },
+    arr:{f:'el-dns',t:'el-svc-cip',c:'#0ca678',l:'A: 10.96.20.14'},
+    log:{cls:'te-dns',comp:'CoreDNS ClusterIP',msg:'backend-svc → 10.96.20.14 (single VIP)',box:'Single A record returned\niptables KUBE-SVC chain does load-balancing\nPod sees only VIP — not individual pod IPs\nTTL 30s cached by pod DNS'}
+  },
+  { title:'③ Headless service — pod IP direct',
+    tip:'For headless services (clusterIP:None),\nCoreDNS returns actual pod IPs.\nNo iptables DNAT. Direct routing.',
+    on:['el-dns','el-svc-hl','el-pg0'],
+    resp:{
+      'resp-dns':'HEADLESS QUERY:\npostgres-0.postgres-svc.app.svc.cluster.local\nclusterIP: None → return POD IP\nRESPONSE: A 10.244.1.20\n⚠ ACTUAL POD IP returned!',
+      'resp-svc-hl':'Headless: clusterIP=None\nDNS A records:\npostgres-0 → 10.244.1.20\npostgres-1 → 10.244.2.18\npostgres-2 → 10.244.3.15',
+      'resp-pg0':'Inbound direct from DNS\n10.244.1.8 connecting\nNo VIP, no DNAT used'
+    },
+    arr:{f:'el-dns',t:'el-pg0',c:'#6741d9',l:'A: 10.244.1.20 (pod!)'},
+    log:{cls:'te-dns',comp:'CoreDNS Headless',msg:'postgres-0 → 10.244.1.20 (actual pod IP!)',box:'HEADLESS: clusterIP=None\nCOREDNS returns individual pod A records\npostgres-0 → 10.244.1.20  ← direct connection\nNo iptables DNAT path needed\nCritical for StatefulSet stable identity'}
+  },
+  { title:'④ StatefulSet stable DNS names',
+    tip:'StatefulSets get predictable pod names (0,1,2…)\nand stable DNS names that survive pod restarts.\npostgres-0 ALWAYS has the same DNS → PRIMARY.',
+    on:['el-pg0','el-pg1','el-pg2','el-dns'],
+    resp:{
+      'resp-dns':'StatefulSet DNS records:\npostgres-0.postgres-svc → 10.244.1.20\npostgres-1.postgres-svc → 10.244.2.18\npostgres-2.postgres-svc → 10.244.3.15\nStable: survive pod restarts!',
+      'resp-pg0':'postgres-0: stable DNS ✓\nAlways resolvable\nPRIMARY candidate guaranteed',
+      'resp-pg1':'postgres-1: stable DNS ✓\nReplica, hot standby',
+      'resp-pg2':'postgres-2: stable DNS ✓\nReplica, hot standby'
+    },
+    arr:{f:'el-dns',t:'el-pg0',c:'#6741d9',l:'stable identity'},
+    log:{cls:'te-dns',comp:'StatefulSet DNS',msg:'All 3 postgres pods: stable A records survive restarts',box:'Format: {pod-name}.{svc}.{namespace}.svc.cluster.local\npostgres-0: ALWAYS same DNS, even after restart\nKubernetes guarantee: predictable ordinal identity\nEssential for PRIMARY/REPLICA election logic'}
+  },
+]},
+
+/* ──────── 4: WAL ──────── */
+{ name:'WAL Replication', steps:[
+  { title:'① Backend → postgres-0 PRIMARY',
+    tip:'Backend uses env DB_HOST=postgres-0.postgres-svc\nHeadless DNS returns pod IP 10.244.1.20.\nDirect TCP connection to PRIMARY.',
+    on:['el-be1','el-dns','el-svc-hl','el-pg0'],
+    resp:{
+      'resp-be1':'DB_HOST: postgres-0.postgres-svc.app…\nHeadless DNS → 10.244.1.20\nTCP :5432 connecting…\nAuth: md5 → OK',
+      'resp-dns':'postgres-0.postgres-svc\n→ 10.244.1.20 (pod IP)\nHeadless: no VIP',
+      'resp-svc-hl':'Headless resolved:\npostgres-0 = 10.244.1.20\ndirect TCP connection',
+      'resp-pg0':'Connection from be1 ✓\nAuth: md5 OK\nReady for SQL'
+    },
+    arr:{f:'el-be1',t:'el-pg0',c:'#6741d9',l:'TCP :5432'},
+    log:{cls:'te-db',comp:'be1 → postgres-0',msg:'Direct TCP to 10.244.1.20:5432 via headless DNS',box:'Headless DNS resolves pod IP directly\nNo VIP, no iptables DNAT\nPostgreSQL md5 authentication passed'}
+  },
+  { title:'② SQL WRITE committed to PVC',
+    tip:'postgres-0 executes the INSERT.\nWrites to PVC (persistent volume).\nGenerates WAL (Write-Ahead Log) segment.\nWAL is replicated BEFORE ack sent.',
+    on:['el-pg0'],
+    resp:{
+      'resp-pg0':'INSERT INTO events VALUES(…)\nWRITE to PVC committed ✓\nPVC: postgres-data-postgres-0\nWAL LSN: 0/1A00000 written\nNotifying 2 replication slots…',
+      'resp-be1':'SQL INSERT sent\nAwaiting commit confirmation…'
+    },
+    arr:{f:'el-be1',t:'el-pg0',c:'#6741d9',l:'SQL INSERT'},
+    log:{cls:'te-db',comp:'postgres-0 PRIMARY',msg:'INSERT committed · WAL LSN 0/1A00000',box:'PVC write: postgres-data-postgres-0 (10Gi SSD)\nWAL segment: 0/1A00000 written to disk\n2 replication slots notified\nStreaming replication triggered'}
+  },
+  { title:'③ WAL stream → postgres-1 (Node2)',
+    tip:'postgres-0 streams WAL segment to pg1 on Node2\nvia PostgreSQL streaming replication protocol.\npg1 applies the changes and becomes consistent.',
+    on:['el-pg0','el-pg1'],
+    resp:{
+      'resp-pg0':'Streaming WAL 0/1A00000:\n→ pg1 (10.244.2.18) Node2\n→ pg2 (10.244.3.15) Node3\nawaiting ACKs…',
+      'resp-pg1':'WAL 0/1A00000 received!\nApplying changes to replica\nApplied ✓\nHot standby: active\nRead queries: available\nLag: <1ms'
+    },
+    arr:{f:'el-pg0',t:'el-pg1',c:'#6741d9',l:'WAL stream'},
+    log:{cls:'te-wal',comp:'WAL → pg1 (Node2)',msg:'Streaming replication: pg0 → pg1 LSN 0/1A00000',box:'Protocol: PostgreSQL streaming replication\nWAL LSN 0/1A00000 → applied on pg1\nHot standby mode: read queries OK\nReplication lag: <1ms'}
+  },
+  { title:'④ WAL stream → postgres-2 (Node3)',
+    tip:'Same WAL segment streamed to pg2 on Node3.\nAll 3 nodes now have identical data.\nSystem is fully consistent.',
+    on:['el-pg0','el-pg1','el-pg2'],
+    resp:{
+      'resp-pg0':'All replicas confirmed:\npg1: ACK 0/1A00000 ✓\npg2: ACK 0/1A00000 ✓\nAll 3 nodes consistent!',
+      'resp-pg1':'pg1 in sync ✓\nLag: <1ms',
+      'resp-pg2':'WAL 0/1A00000 received!\nApplied to replica ✓\nHot standby: active\nAll 3 nodes consistent ✓\nLag: <1ms'
+    },
+    arr:{f:'el-pg0',t:'el-pg2',c:'#6741d9',l:'WAL stream'},
+    log:{cls:'te-wal',comp:'WAL → pg2 (Node3)',msg:'pg0 → pg2 LSN 0/1A00000 · All nodes consistent',box:'pg2 (10.244.3.15) on Node3: applied ✓\nAll 3 replicas in sync\nTotal replication time: <2ms\nHA: any replica can be promoted to PRIMARY'}
+  },
+]},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   PACKET ANIMATION CLASS
+═══════════════════════════════════════════════════════════════ */
+class Pkt {
+  constructor(fx,fy,tx,ty,col){
+    this.fx=fx; this.fy=fy; this.tx=tx; this.ty=ty;
+    this.col=col; this.t=0; this.done=false; this.trail=[];
+  }
+  upd(dt){
+    this.t += dt * spd * 1.1;
+    if(this.t>1){this.t=1;this.done=true;}
+    const cx=this.fx+(this.tx-this.fx)*this.t;
+    const cy=this.fy+(this.ty-this.fy)*this.t;
+    this.trail.push({x:cx,y:cy});
+    if(this.trail.length>22) this.trail.shift();
+  }
+  draw(c){
+    this.trail.forEach((p,i)=>{
+      const a=(i/this.trail.length)*0.45;
+      const r=6*(i/this.trail.length);
+      c.beginPath(); c.arc(p.x,p.y,r,0,Math.PI*2);
+      c.fillStyle=this.col; c.globalAlpha=a; c.fill();
+    });
+    c.globalAlpha=1;
+    const cx=this.fx+(this.tx-this.fx)*this.t;
+    const cy=this.fy+(this.ty-this.fy)*this.t;
+    c.beginPath(); c.arc(cx,cy,7,0,Math.PI*2);
+    c.fillStyle=this.col;
+    c.shadowBlur=16; c.shadowColor=this.col; c.fill(); c.shadowBlur=0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ARROW DRAWING
+═══════════════════════════════════════════════════════════════ */
+function drawArr(c,x1,y1,x2,y2,col,lbl){
+  const dx=x2-x1, dy=y2-y1;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  const mx=(x1+x2)/2 - dy*0.18;
+  const my=(y1+y2)/2 + dx*0.18;
+  c.save();
+  c.strokeStyle=col; c.lineWidth=2.5;
+  c.shadowBlur=8; c.shadowColor=col+'88';
+  c.setLineDash([]);
+  c.beginPath(); c.moveTo(x1,y1); c.quadraticCurveTo(mx,my,x2,y2); c.stroke();
+  // arrowhead
+  c.shadowBlur=0;
+  const ang=Math.atan2(y2-my,x2-mx);
+  const hs=11;
+  c.fillStyle=col;
+  c.beginPath();
+  c.moveTo(x2,y2);
+  c.lineTo(x2-hs*Math.cos(ang-0.42),y2-hs*Math.sin(ang-0.42));
+  c.lineTo(x2-hs*Math.cos(ang+0.42),y2-hs*Math.sin(ang+0.42));
+  c.closePath(); c.fill();
+  // label
+  if(lbl){
+    c.font='bold 9px IBM Plex Mono,monospace';
+    const tw=c.measureText(lbl).width;
+    const pw=tw+14, ph=17;
+    const lx=mx, ly=my-7;
+    c.fillStyle=col+'ee';
+    c.beginPath(); c.roundRect(lx-pw/2,ly-ph/2,pw,ph,8); c.fill();
+    c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(lbl,lx,ly);
+  }
+  c.restore();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER LOOP
+═══════════════════════════════════════════════════════════════ */
+function loop(ts){
+  const dt=Math.min((ts-lastTs)/1000,0.05); lastTs=ts;
+  resizeCV();
+  CX.clearRect(0,0,CV.width,CV.height);
+  // static arrows
+  arrows.forEach(a=>{
+    const f=elCtr(a.f), t=elCtr(a.t);
+    if(f&&t) drawArr(CX,f.x,f.y,t.x,t.y,a.c,a.l);
+  });
+  // packets
+  packets.forEach(p=>{p.upd(dt);p.draw(CX);});
+  packets=packets.filter(p=>!p.done);
+  raf=requestAnimationFrame(loop);
+}
+raf=requestAnimationFrame(loop);
+
+function fire(fid,tid,col){
+  const f=elCtr(fid), t=elCtr(tid);
+  if(!f||!t) return;
+  for(let i=0;i<4;i++) setTimeout(()=>packets.push(new Pkt(f.x,f.y,t.x,t.y,col)), i*150/spd);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STEP ENGINE
+═══════════════════════════════════════════════════════════════ */
+function clearAll(){
+  document.querySelectorAll('.comp-card,.svc-card,.kp-strip,.pod-card,.browser-node').forEach(el=>{
+    el.classList.remove('active');
+  });
+  // Reset ALL response texts
+  document.querySelectorAll('[id^="resp-"]').forEach(el=>{ el.textContent='…'; });
+  arrows=[];
+}
+
+function applyStep(idx){
+  const steps=S[scenIdx].steps;
+  if(idx<0||idx>=steps.length) return;
+  stepIdx=idx;
+  clearAll();
+  const step=steps[idx];
+
+  // Activate elements
+  step.on.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&!el.classList.contains('killed')) el.classList.add('active');
+  });
+
+  // Set response texts
+  if(step.resp) Object.entries(step.resp).forEach(([id,txt])=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=txt;
+  });
+
+  // Arrow + packets
+  if(step.arr){
+    arrows=[step.arr];
+    fire(step.arr.f, step.arr.t, step.arr.c);
+  }
+
+  addLog(idx+1, step.log);
+  buildStepper();
+  updateProg();
+  updateBtns();
+  showTip(idx, step.tip);
+  document.getElementById('tbStep').textContent=`${idx+1} / ${steps.length}`;
+  document.getElementById('tbStatus').textContent='● RUNNING';
+
+  // scroll
+  step.on.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&(el.classList.contains('pod-card')||el.classList.contains('comp-card'))){
+      el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STEPPER + PROGRESS
+═══════════════════════════════════════════════════════════════ */
+function buildStepper(){
+  const list=document.getElementById('stepList');
+  list.innerHTML='';
+  S[scenIdx].steps.forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='step-item'+(i===stepIdx?' si-cur':i<stepIdx?' si-done':'');
+    d.onclick=()=>applyStep(i);
+    d.innerHTML=`<div class="si-num">${i<stepIdx?'✓':i+1}</div><span class="si-lbl">${s.title}</span>`;
+    list.appendChild(d);
+  });
+}
+function updateProg(){
+  const t=S[scenIdx].steps.length;
+  document.getElementById('progFill').style.width=(t>0?((stepIdx+1)/t)*100:0)+'%';
+}
+function updateBtns(){
+  const t=S[scenIdx].steps.length;
+  document.getElementById('btnPrev').disabled=stepIdx<=0;
+  document.getElementById('btnNext').disabled=stepIdx>=t-1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRACE LOG
+═══════════════════════════════════════════════════════════════ */
+function addLog(sn,log){
+  const body=document.getElementById('traceBody');
+  const now=new Date();
+  const ts=`${String(now.getSeconds()).padStart(2,'0')}.${String(now.getMilliseconds()).slice(0,2)}`;
+  const d=document.createElement('div');
+  d.className='te '+(log.cls||'');
+  d.innerHTML=`<div class="te-head"><span class="te-sn">STEP ${sn}</span><span class="te-comp">${log.comp}</span><span class="te-ts">${ts}</span></div><div class="te-msg">${log.msg}</div>${log.box?`<div class="te-box">${log.box}</div>`:''}`;
+  body.appendChild(d);
+  body.scrollTop=body.scrollHeight;
+  if(body.children.length>120) body.removeChild(body.firstChild);
+}
+function clearLog(){ document.getElementById('traceBody').innerHTML=''; }
+
+/* ═══════════════════════════════════════════════════════════════
+   TOOLTIP
+═══════════════════════════════════════════════════════════════ */
+let ttTO=null;
+function showTip(idx,msg){
+  const tt=document.getElementById('tooltip');
+  const s=S[scenIdx].steps[idx];
+  tt.innerHTML=`<strong>Step ${idx+1}: ${s.title}</strong>${msg.replace(/\n/g,'<br>')}`;
+  tt.style.left='16px'; tt.style.bottom='58px'; tt.style.top='auto';
+  tt.style.display='block'; tt.style.opacity='1';
+  if(ttTO) clearTimeout(ttTO);
+  ttTO=setTimeout(()=>{ tt.style.opacity='0'; setTimeout(()=>tt.style.display='none',300); },5500);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTROLS
+═══════════════════════════════════════════════════════════════ */
+function nextStep(){ applyStep(stepIdx+1); }
+function prevStep(){ applyStep(stepIdx-1); }
+
+let isAuto=false;
+function toggleAuto(){
+  isAuto=!isAuto;
+  const btn=document.getElementById('btnAuto');
+  if(isAuto){
+    btn.textContent='⏸ Pause'; btn.className='cb wa';
+    document.getElementById('tbStatus').textContent='● AUTO';
+    if(stepIdx>=S[scenIdx].steps.length-1) { doReset(); }
+    if(stepIdx<0) applyStep(0); else nextStep();
+    autoTmr=setInterval(()=>{
+      if(!isAuto){clearInterval(autoTmr);return;}
+      if(stepIdx<S[scenIdx].steps.length-1) nextStep();
+      else { stopAuto(); document.getElementById('tbStatus').textContent='● DONE'; }
+    }, 2600/spd);
+  } else stopAuto();
+}
+function stopAuto(){
+  isAuto=false; clearInterval(autoTmr);
+  const btn=document.getElementById('btnAuto');
+  btn.textContent='▶ Auto Play'; btn.className='cb pr';
+}
+function doReset(){
+  stopAuto(); stepIdx=-1;
+  clearAll(); arrows=[]; packets=[];
+  killed.clear();
+  document.querySelectorAll('.pod-card.killed').forEach(el=>el.classList.remove('killed'));
+  buildStepper(); updateProg(); updateBtns();
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('tbStep').textContent='— / '+S[scenIdx].steps.length;
+  document.getElementById('tbStatus').textContent='● READY';
+  addLog(0,{cls:'te-sys',comp:'[RESET]',msg:`Scenario: ${S[scenIdx].name}`,box:'Click "Next ▶" to step through\nor "▶ Auto Play" for automatic walkthrough'});
+}
+function doKill(){
+  const ids=['el-fe1','el-fe2','el-be1','el-be2','el-be3','el-be4','el-be5','el-pg1','el-pg2'];
+  const alive=ids.filter(id=>!killed.has(id));
+  if(!alive.length) return;
+  const id=alive[Math.floor(Math.random()*alive.length)];
+  document.getElementById(id).classList.add('killed');
+  document.getElementById(id).classList.remove('active');
+  killed.add(id);
+  addLog(stepIdx+1,{cls:'te-sys',comp:'[KILLED]',msg:`☠ ${id.replace('el-','')} terminated`,box:'Pod removed from Endpoints object\nkube-proxy updates iptables rules ~1s\nTraffic auto-rerouted to healthy pods'});
+}
+function setSpd(v){
+  spd=parseFloat(v);
+  document.getElementById('spdV').textContent=v+'×';
+  if(isAuto){stopAuto();toggleAuto();}
+}
+function setScen(idx,btn){
+  scenIdx=idx;
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  doReset();
+}
+
+/* ─── INIT ─── */
+doReset();
+</script>
+</body>
+</html>

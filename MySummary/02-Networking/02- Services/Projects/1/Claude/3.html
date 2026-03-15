@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Live Cluster Tracer — Full Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: #0f1117;
+  color: #c9d1e0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── BOOTSTRAP-STYLE VARS ── */
+:root {
+  /* Page bg layers */
+  --bs-body-bg:      #0f1117;
+  --bs-card-bg:      #161b27;
+  --bs-card-border:  #1e2535;
+  --bs-inner-bg:     #1c2333;
+  --bs-deep-bg:      #111621;
+
+  /* Bootstrap-inspired accent colours */
+  --bs-primary:   #0d6efd;
+  --bs-success:   #198754;
+  --bs-warning:   #ffc107;
+  --bs-danger:    #dc3545;
+  --bs-info:      #0dcaf0;
+  --bs-secondary: #6c757d;
+  --bs-purple:    #6f42c1;
+  --bs-pink:      #d63384;
+  --bs-orange:    #fd7e14;
+  --bs-teal:      #20c997;
+
+  /* Node colours */
+  --node-ctrl:   #ffc10733;
+  --node-w1:     #0d6efd22;
+  --node-w2:     #19875422;
+  --node-w3:     #6f42c122;
+  --node-ctrl-border: #ffc107;
+  --node-w1-border:   #0d6efd;
+  --node-w2-border:   #198754;
+  --node-w3-border:   #6f42c1;
+
+  /* Port plug colours */
+  --port-http:   #0dcaf0;
+  --port-api:    #0d6efd;
+  --port-db:     #6f42c1;
+  --port-sys:    #ffc107;
+  --port-dns:    #20c997;
+  --port-proxy:  #fd7e14;
+
+  --ff-code: 'Fira Code', monospace;
+  --ff-ui:   'Plus Jakarta Sans', sans-serif;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  background: #0a0d14;
+  border-bottom: 2px solid #1e2535;
+  padding: 0 24px;
+  height: 50px;
+  display: flex; align-items: center; gap: 16px;
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-logo {
+  font-family: var(--ff-code);
+  font-size: .95rem;
+  font-weight: 600;
+  color: #0dcaf0;
+  letter-spacing: 1px;
+}
+.topbar-badge {
+  font-family: var(--ff-code);
+  font-size: .65rem;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: .5px;
+  font-weight: 500;
+}
+.badge-running { background: #19875444; color: #198754; border: 1px solid #198754; }
+.badge-info    { background: #0dcaf022; color: #0dcaf0; border: 1px solid #0dcaf0; }
+.badge-warn    { background: #ffc10722; color: #ffc107; border: 1px solid #ffc107; }
+.topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+/* ── SCENARIO TABS ── */
+.scenario-bar {
+  background: #0d1020;
+  border-bottom: 1px solid #1e2535;
+  padding: 0 24px;
+  display: flex; gap: 0; align-items: flex-end;
+}
+.scen-tab {
+  font-family: var(--ff-code);
+  font-size: .72rem;
+  padding: 12px 20px;
+  border: none; background: none;
+  color: #6c757d;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all .2s;
+  letter-spacing: .3px;
+  white-space: nowrap;
+}
+.scen-tab:hover { color: #c9d1e0; }
+.scen-tab.active {
+  color: #0dcaf0;
+  border-bottom-color: #0dcaf0;
+}
+
+/* ── MAIN LAYOUT ── */
+.main {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 0;
+  height: calc(100vh - 100px);
+  min-height: 600px;
+}
+
+/* ── CANVAS AREA ── */
+.canvas-area {
+  background: var(--bs-deep-bg);
+  border-right: 1px solid var(--bs-card-border);
+  position: relative;
+  overflow: hidden;
+}
+#clusterCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── LOG PANEL ── */
+.log-panel {
+  background: var(--bs-body-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.log-header {
+  background: var(--bs-card-bg);
+  border-bottom: 1px solid var(--bs-card-border);
+  padding: 10px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.log-title {
+  font-family: var(--ff-code);
+  font-size: .72rem;
+  color: #0dcaf0;
+  letter-spacing: 1px;
+}
+.log-clear {
+  font-family: var(--ff-code);
+  font-size: .62rem;
+  color: #6c757d;
+  background: none; border: 1px solid #2a2f3e;
+  padding: 2px 8px; border-radius: 3px;
+  cursor: pointer; transition: all .2s;
+}
+.log-clear:hover { color: #dc3545; border-color: #dc3545; }
+.log-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 10px;
+  font-family: var(--ff-code);
+  font-size: .68rem;
+  line-height: 1.75;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.log-entry {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 3px 6px; border-radius: 3px;
+  animation: slideIn .2s ease;
+  border-left: 2px solid transparent;
+}
+@keyframes slideIn { from { opacity:0; transform:translateX(6px) } to { opacity:1; transform:none } }
+.log-ts { color: #3a4055; min-width: 48px; flex-shrink: 0; }
+.log-src { min-width: 90px; flex-shrink: 0; font-weight: 600; }
+.log-msg { color: #8890aa; flex: 1; }
+.log-entry.step-browser { border-left-color: #ffc107; background: #ffc10708; }
+.log-entry.step-nodeport { border-left-color: #0dcaf0; background: #0dcaf008; }
+.log-entry.step-iptable  { border-left-color: #fd7e14; background: #fd7e1408; }
+.log-entry.step-coredns  { border-left-color: #20c997;  background: #20c99708; }
+.log-entry.step-pod      { border-left-color: #198754;  background: #19875408; }
+.log-entry.step-backend  { border-left-color: #0d6efd;  background: #0d6efd08; }
+.log-entry.step-db       { border-left-color: #6f42c1;  background: #6f42c108; }
+.log-entry.step-return   { border-left-color: #d63384;  background: #d6338408; }
+
+/* scrollbar */
+.log-body::-webkit-scrollbar { width: 4px; }
+.log-body::-webkit-scrollbar-track { background: transparent; }
+.log-body::-webkit-scrollbar-thumb { background: #2a2f3e; border-radius: 2px; }
+
+/* ── BOTTOM CONTROLS ── */
+.controls-bar {
+  background: #0a0d14;
+  border-top: 2px solid #1e2535;
+  padding: 8px 20px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.ctrl-btn {
+  font-family: var(--ff-code);
+  font-size: .7rem;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all .18s;
+  letter-spacing: .3px;
+  font-weight: 500;
+}
+.btn-primary  { background: #0d6efd22; color: #0d6efd; border-color: #0d6efd; }
+.btn-success  { background: #19875422; color: #198754; border-color: #198754; }
+.btn-warning  { background: #ffc10722; color: #ffc107; border-color: #ffc107; }
+.btn-danger   { background: #dc354522; color: #dc3545; border-color: #dc3545; }
+.btn-info     { background: #0dcaf022; color: #0dcaf0; border-color: #0dcaf0; }
+.btn-secondary{ background: #6c757d22; color: #6c757d; border-color: #6c757d; }
+.ctrl-btn:hover { filter: brightness(1.3); }
+.ctrl-btn.active { filter: brightness(1.5); box-shadow: 0 0 8px currentColor; }
+
+.speed-group { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.speed-group label { font-family: var(--ff-code); font-size: .65rem; color: #6c757d; }
+input[type=range] { accent-color: #0dcaf0; width: 100px; }
+.speed-val { font-family: var(--ff-code); font-size: .7rem; color: #0dcaf0; min-width: 32px; }
+
+/* ── LEGEND ── */
+.legend-bar {
+  position: absolute;
+  bottom: 10px; left: 10px;
+  background: rgba(10,13,20,.85);
+  border: 1px solid #1e2535;
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex; flex-wrap: wrap; gap: 10px;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+.leg-item { display: flex; align-items: center; gap: 5px; }
+.leg-sq { width: 10px; height: 10px; border-radius: 2px; }
+.leg-txt { font-family: var(--ff-code); font-size: .62rem; color: #6c757d; }
+
+/* ── INFO OVERLAY ── */
+.info-overlay {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: rgba(10,13,20,.9);
+  border: 1px solid #0dcaf0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: var(--ff-code);
+  font-size: .65rem;
+  line-height: 1.8;
+  color: #6c757d;
+  pointer-events: none;
+  min-width: 220px;
+  backdrop-filter: blur(4px);
+}
+.info-overlay .io-title { color: #0dcaf0; font-weight: 600; margin-bottom: 4px; font-size: .7rem; }
+.info-overlay .io-key { color: #ffc107; }
+.info-overlay .io-val { color: #c9d1e0; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="topbar-logo">⎈ K8s Cluster Tracer</span>
+  <span class="topbar-badge badge-running">● RUNNING</span>
+  <span class="topbar-badge badge-info">3 NODES</span>
+  <span class="topbar-badge badge-info">10 PODS</span>
+  <span class="topbar-badge badge-warn">3 SERVICES</span>
+  <div class="topbar-right">
+    <span class="topbar-badge badge-info" id="packetCount">packets: 0</span>
+    <span class="topbar-badge badge-running" id="stepLabel">idle</span>
+  </div>
+</div>
+
+<!-- SCENARIO TABS -->
+<div class="scenario-bar">
+  <button class="scen-tab active" onclick="setScenario(0,this)">📋 Full Cluster View</button>
+  <button class="scen-tab" onclick="setScenario(1,this)">🔄 Same-Node Request (frontend→backend on Node 1)</button>
+  <button class="scen-tab" onclick="setScenario(2,this)">🌐 Cross-Node Request (frontend Node1 → backend Node3)</button>
+  <button class="scen-tab" onclick="setScenario(3,this)">🧬 DNS Resolution Deep Dive</button>
+  <button class="scen-tab" onclick="setScenario(4,this)">💾 DB Write + WAL Replication</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="canvas-area">
+    <canvas id="clusterCanvas"></canvas>
+    <div class="legend-bar" id="legendBar">
+      <div class="leg-item"><div class="leg-sq" style="background:#ffc107"></div><span class="leg-txt">Control Plane</span></div>
+      <div class="leg-item"><div class="leg-sq" style="background:#0d6efd"></div><span class="leg-txt">Worker Node 1</span></div>
+      <div class="leg-item"><div class="leg-sq" style="background:#198754"></div><span class="leg-txt">Worker Node 2</span></div>
+      <div class="leg-item"><div class="leg-sq" style="background:#6f42c1"></div><span class="leg-txt">Worker Node 3</span></div>
+      <div class="leg-item"><div class="leg-sq" style="background:#0dcaf0"></div><span class="leg-txt">Port / Interface</span></div>
+      <div class="leg-item"><div class="leg-sq" style="background:#20c997"></div><span class="leg-txt">CoreDNS</span></div>
+      <div class="leg-item"><div class="leg-sq" style="background:#fd7e14"></div><span class="leg-txt">iptables</span></div>
+      <div class="leg-item"><div class="leg-sq" style="background:#d63384"></div><span class="leg-txt">Response Packet</span></div>
+    </div>
+    <div class="info-overlay" id="infoOverlay">
+      <div class="io-title">Scenario Info</div>
+      <span id="infoText" style="color:#8890aa">Select a scenario tab above<br>or press Play to start.</span>
+    </div>
+  </div>
+
+  <div class="log-panel">
+    <div class="log-header">
+      <span class="log-title">// PACKET TRACE LOG</span>
+      <button class="log-clear" onclick="clearLog()">clear</button>
+    </div>
+    <div class="log-body" id="logBody"></div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls-bar">
+  <button class="ctrl-btn btn-primary active" id="playBtn" onclick="togglePlay()">⏸ Pause</button>
+  <button class="ctrl-btn btn-success" onclick="triggerSingle()">▶ Send Request</button>
+  <button class="ctrl-btn btn-warning" onclick="triggerBurst()">💥 Burst ×10</button>
+  <button class="ctrl-btn btn-danger"  onclick="killRandomPod()">☠ Kill Pod</button>
+  <button class="ctrl-btn btn-info"    onclick="restoreAll()">🔄 Restore All</button>
+  <button class="ctrl-btn btn-secondary" onclick="toggleComponents()">🔧 Toggle Internals</button>
+  <div class="speed-group">
+    <label>SPEED</label>
+    <input type="range" min="0.4" max="3" step="0.2" value="1" id="spdSlider" oninput="setSpd(this.value)">
+    <span class="speed-val" id="spdVal">1×</span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CLUSTER DATA MODEL
+// ═══════════════════════════════════════════════════════════════
+const C = document.getElementById('clusterCanvas');
+const ctx = C.getContext('2d');
+const FF = "'Fira Code', monospace";
+const FFB = "'Plus Jakarta Sans', sans-serif";
+
+let playing = true, speed = 1, showInternals = true, scenario = 0;
+let killedPods = new Set();
+let packets = [], logEntries = [], frameCount = 0;
+let autoTimer = 0;
+
+// ── Canvas resize ──
+function resize() {
+  const area = C.parentElement.getBoundingClientRect();
+  C.width = area.width;
+  C.height = area.height;
+}
+resize();
+window.addEventListener('resize', () => { resize(); });
+
+// ── Color helpers ──
+const COL = {
+  ctrl:    '#ffc107', ctrlBg:  '#ffc10718', ctrlBorder: '#ffc10755',
+  node1:   '#0d6efd', node1Bg: '#0d6efd14', node1Border: '#0d6efd44',
+  node2:   '#198754', node2Bg: '#19875414', node2Border: '#19875444',
+  node3:   '#6f42c1', node3Bg: '#6f42c114', node3Border: '#6f42c144',
+  fe:      '#20c997', feBg:    '#20c99718',
+  be:      '#0d6efd', beBg:    '#0d6efd18',
+  pg:      '#6f42c1', pgBg:    '#6f42c118',
+  dns:     '#20c997', dnsBg:   '#20c99722',
+  ipt:     '#fd7e14', iptBg:   '#fd7e1420',
+  svc_np:  '#20c997',
+  svc_cip: '#0d6efd',
+  svc_hl:  '#6f42c1',
+  pkt_fwd: '#0dcaf0',
+  pkt_ret: '#d63384',
+  pkt_dns: '#20c997',
+  pkt_wal: '#6f42c1',
+  port:    '#0dcaf0',
+  muted:   '#3a4055',
+  text:    '#c9d1e0',
+  dim:     '#6c757d',
+};
+
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT ENGINE — recomputes on every resize
+// ═══════════════════════════════════════════════════════════════
+function getLayout() {
+  const W = C.width, H = C.height;
+  const pad = 14;
+
+  // Control plane — top strip
+  const cpH = 100;
+  const cpW = W * 0.48;
+  const cpX = pad, cpY = pad;
+
+  // CoreDNS + iptables inside control plane
+  const dnsX = cpX + 20, dnsY = cpY + 30, dnsW = 100, dnsH = 52;
+  const iptX = dnsX + dnsW + 12, iptY = dnsY, iptW = 110, iptH = 52;
+  const apiserverX = iptX + iptW + 12, apiserverY = dnsY;
+
+  // Services strip — right of control plane
+  const svcStripX = cpX + cpW + 12;
+  const svcStripW = W - svcStripX - pad;
+  const svcNPy  = cpY + 8;
+  const svcCIPy = cpY + 40;
+  const svcHLy  = cpY + 72;
+  const svcW = svcStripW - 4, svcH = 26;
+
+  // 3 worker nodes — bottom two thirds
+  const nodesY = cpY + cpH + 14;
+  const nodesH = H - nodesY - pad;
+  const nodeW = (W - pad * 4) / 3;
+
+  const nodes = [
+    { x: pad,              y: nodesY, w: nodeW, h: nodesH, label: 'WORKER NODE 1', ip: '192.168.1.11', col: COL.node1, bg: COL.node1Bg, border: COL.node1Border },
+    { x: pad*2 + nodeW,    y: nodesY, w: nodeW, h: nodesH, label: 'WORKER NODE 2', ip: '192.168.1.12', col: COL.node2, bg: COL.node2Bg, border: COL.node2Border },
+    { x: pad*3 + nodeW*2,  y: nodesY, w: nodeW, h: nodesH, label: 'WORKER NODE 3', ip: '192.168.1.13', col: COL.node3, bg: COL.node3Bg, border: COL.node3Border },
+  ];
+
+  // Pods inside nodes
+  function nodePods(ni) {
+    const n = nodes[ni];
+    const innerX = n.x + 8, innerW = n.w - 16;
+    const startY = n.y + 30;
+    const podH = 52, podGap = 6;
+
+    // kube-proxy block at bottom
+    const kpY = n.y + n.h - 36;
+    const kpBlock = { x: innerX, y: kpY, w: innerW, h: 28, label: 'kube-proxy (iptables)', col: COL.ipt };
+
+    const podSets = [
+      // node0 pods
+      [
+        { id:'fe1', name:'frontend-7d9f-xk2p', image:'nginx:1.25', ip:'10.244.1.5',  type:'fe', ports:[{n:'HTTP',p:80,col:COL.port}], pvcLabel:null },
+        { id:'be1', name:'backend-5c7b-mn4q',  image:'node:20',    ip:'10.244.1.8',  type:'be', ports:[{n:'API',p:8080,col:'#0d6efd'}], pvcLabel:null },
+        { id:'be2', name:'backend-5c7b-pw6r',  image:'node:20',    ip:'10.244.1.12', type:'be', ports:[{n:'API',p:8080,col:'#0d6efd'}], pvcLabel:null },
+        { id:'pg0', name:'postgres-0 ★',       image:'pg:15.4',    ip:'10.244.1.20', type:'pg', ports:[{n:'DB',p:5432,col:'#6f42c1'}],  pvcLabel:'PVC 10Gi' },
+      ],
+      // node1 pods
+      [
+        { id:'fe2', name:'frontend-7d9f-wz7t', image:'nginx:1.25', ip:'10.244.2.3',  type:'fe', ports:[{n:'HTTP',p:80,col:COL.port}], pvcLabel:null },
+        { id:'be3', name:'backend-5c7b-hj5s',  image:'node:20',    ip:'10.244.2.7',  type:'be', ports:[{n:'API',p:8080,col:'#0d6efd'}], pvcLabel:null },
+        { id:'be4', name:'backend-5c7b-qt1v',  image:'node:20',    ip:'10.244.2.11', type:'be', ports:[{n:'API',p:8080,col:'#0d6efd'}], pvcLabel:null },
+        { id:'pg1', name:'postgres-1',         image:'pg:15.4',    ip:'10.244.2.18', type:'pg', ports:[{n:'DB',p:5432,col:'#6f42c1'}],  pvcLabel:'PVC 10Gi' },
+      ],
+      // node2 pods
+      [
+        { id:'be5', name:'backend-5c7b-lm8a',  image:'node:20',    ip:'10.244.3.4',  type:'be', ports:[{n:'API',p:8080,col:'#0d6efd'}], pvcLabel:null },
+        { id:'pg2', name:'postgres-2',         image:'pg:15.4',    ip:'10.244.3.15', type:'pg', ports:[{n:'DB',p:5432,col:'#6f42c1'}],  pvcLabel:'PVC 10Gi' },
+      ],
+    ];
+
+    const available = kpY - startY - 4;
+    const totalPods = podSets[ni].length;
+    const actualPodH = Math.min(podH, Math.floor((available - podGap*(totalPods-1)) / totalPods));
+
+    return podSets[ni].map((pd, pi) => {
+      const py = startY + pi * (actualPodH + podGap);
+      return {
+        ...pd,
+        x: innerX, y: py, w: innerW, h: actualPodH,
+        nodeIdx: ni,
+        kpBlock,
+        portPlugs: pd.ports.map((pt, pti) => ({
+          ...pt,
+          px: innerX + innerW - 10 - pti * 52,
+          py: py + actualPodH - 10,
+        })),
+        cx: innerX + innerW/2,
+        cy: py + actualPodH/2,
+      };
+    });
+  }
+
+  const allPods = [...nodePods(0), ...nodePods(1), ...nodePods(2)];
+  const podMap = {};
+  allPods.forEach(p => { podMap[p.id] = p; });
+
+  // Internet client
+  const clientX = W - 80, clientY = nodesY + 20;
+
+  return {
+    W, H, pad,
+    cpX, cpY, cpW, cpH,
+    dnsX, dnsY, dnsW, dnsH,
+    iptX, iptY, iptW, iptH,
+    apiserverX, apiserverY,
+    svcStripX, svcStripW, svcW, svcH,
+    svcNPy, svcCIPy, svcHLy,
+    nodes, nodesY, nodesH,
+    allPods, podMap,
+    clientX, clientY,
+    // Named component centres (for packet routing)
+    dns:  { x: dnsX + dnsW/2,  y: dnsY + dnsH/2 },
+    ipt:  { x: iptX + iptW/2,  y: iptY + iptH/2 },
+    svcNP:  { x: svcStripX + svcW/2, y: svcNPy + svcH/2 },
+    svcCIP: { x: svcStripX + svcW/2, y: svcCIPy + svcH/2 },
+    svcHL:  { x: svcStripX + svcW/2, y: svcHLy + svcH/2 },
+    client: { x: W - 60, y: nodesY + 40 },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DRAW ENGINE
+// ═══════════════════════════════════════════════════════════════
+function roundRect(ctx, x, y, w, h, r, fill, stroke, sw=1) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  if (fill)  { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke(); }
+}
+
+function drawText(txt, x, y, font, color, align='left', baseline='alphabetic') {
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  ctx.fillText(txt, x, y);
+}
+
+function drawPortPlug(x, y, label, port, col, active=false) {
+  const pw = 44, ph = 16;
+  const px = x - pw/2, py = y - ph/2;
+  // socket circle
+  ctx.beginPath();
+  ctx.arc(px - 6, y, 5, 0, Math.PI*2);
+  ctx.fillStyle = active ? col : col + '40';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(px - 6, y, 3, 0, Math.PI*2);
+  ctx.fillStyle = active ? '#fff' : col + '80';
+  ctx.fill();
+  // plug body
+  roundRect(ctx, px, py, pw, ph, 3, active ? col+'22' : col+'0d', col + (active ? 'cc' : '55'), 1);
+  drawText(`:${port}`, px + pw/2, y, `bold 7.5px ${FF}`, active ? col : col+'88', 'center', 'middle');
+  // label above
+  drawText(label, px + pw/2, py - 2, `7px ${FF}`, col+'88', 'center', 'alphabetic');
+}
+
+function drawPod(pod, highlightColor=null, killed=false) {
+  const { x, y, w, h, name, image, ip, type, portPlugs } = pod;
+  const typeColors = { fe: COL.fe, be: COL.be, pg: COL.pg };
+  const base = typeColors[type] || '#6c757d';
+  const bg   = base + (killed ? '08' : '18');
+  const bord = base + (killed ? '30' : (highlightColor ? 'cc' : '55'));
+  const alpha = killed ? 0.3 : 1;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  roundRect(ctx, x, y, w, h, 5, bg, highlightColor || bord, highlightColor ? 2 : 1);
+
+  // Top strip
+  roundRect(ctx, x, y, w, 14, [5,5,0,0], base+'22', null);
+  drawText(name, x+6, y+9, `bold 7px ${FF}`, base, 'left', 'alphabetic');
+  drawText(ip, x+w-6, y+9, `7px ${FF}`, base+'bb', 'right', 'alphabetic');
+
+  // Image
+  drawText(image, x+6, y+22, `6.5px ${FF}`, '#6c757d', 'left', 'alphabetic');
+
+  if (pod.pvcLabel) {
+    drawText('💾 '+pod.pvcLabel, x+6, y+32, `6px ${FF}`, '#6f42c1aa', 'left', 'alphabetic');
+  }
+
+  if (killed) {
+    drawText('☠ KILLED', x+w/2, y+h/2+4, `bold 10px ${FF}`, '#dc3545', 'center', 'middle');
+  }
+
+  ctx.restore();
+
+  // Port plugs
+  portPlugs.forEach(pp => {
+    drawPortPlug(pp.px, pp.py, pp.n, pp.p, pp.col, highlightColor !== null && !killed);
+  });
+}
+
+function drawService(x, y, w, h, label, type, detail, col, active=false) {
+  roundRect(ctx, x, y, w, h, 4, active ? col+'25' : col+'10', active ? col : col+'44', active ? 2 : 1);
+  drawText(label, x+8, y+h/2-2, `bold 7.5px ${FF}`, active ? col : col+'bb', 'left', 'middle');
+  drawText(type,  x+8, y+h/2+7, `6.5px ${FF}`, col+'88', 'left', 'middle');
+  drawText(detail, x+w-8, y+h/2, `6.5px ${FF}`, col+'99', 'right', 'middle');
+  // Port plug on right edge
+  const ppx = x + w + 6, ppy = y + h/2;
+  ctx.beginPath(); ctx.arc(ppx, ppy, 5, 0, Math.PI*2);
+  ctx.fillStyle = active ? col : col+'44';
+  ctx.fill();
+  ctx.beginPath(); ctx.arc(ppx, ppy, 2.5, 0, Math.PI*2);
+  ctx.fillStyle = active ? '#fff' : col+'66';
+  ctx.fill();
+}
+
+function drawInternalComponent(x, y, w, h, icon, label, sub, col, active=false) {
+  roundRect(ctx, x, y, w, h, 5, active ? col+'25' : col+'12', active ? col : col+'55', active ? 2 : 1);
+  drawText(icon, x+8, y+h/2, `12px ${FFB}`, col, 'left', 'middle');
+  drawText(label, x+24, y+h/2-5, `bold 7.5px ${FF}`, active ? col : col+'cc', 'left', 'alphabetic');
+  drawText(sub,   x+24, y+h/2+6, `6.5px ${FF}`, col+'88', 'left', 'alphabetic');
+}
+
+function drawKubeProxy(kp, active=false) {
+  roundRect(ctx, kp.x, kp.y, kp.w, kp.h, 4, active ? '#fd7e1420' : '#fd7e1410', active ? '#fd7e14' : '#fd7e1444', active ? 2 : 1);
+  drawText('⚙ kube-proxy — iptables/ebpf rules', kp.x+8, kp.y+kp.h/2+1, `bold 6.5px ${FF}`, active ? '#fd7e14' : '#fd7e1499', 'left', 'middle');
+  // Small port plugs
+  [30080, 8080, 5432].forEach((p, i) => {
+    const px = kp.x + kp.w - 48 + i*1, py = kp.y;
+    ctx.beginPath(); ctx.arc(kp.x + kp.w - 60 + i*20, kp.y-5, 4, 0, Math.PI*2);
+    ctx.fillStyle = active ? '#fd7e14' : '#fd7e1444';
+    ctx.fill();
+    drawText(':'+p, kp.x + kp.w - 60 + i*20, kp.y-5, `5.5px ${FF}`, '#fd7e1488', 'center', 'middle');
+  });
+}
+
+function drawArrow(x1, y1, x2, y2, col, dashed=false, label='', width=1.5) {
+  ctx.save();
+  ctx.strokeStyle = col;
+  ctx.lineWidth = width;
+  ctx.shadowBlur = 6;
+  ctx.shadowColor = col;
+  if (dashed) ctx.setLineDash([4, 3]);
+  else ctx.setLineDash([]);
+
+  // Curved path
+  const mx = (x1+x2)/2, my = (y1+y2)/2;
+  const dx = x2-x1, dy = y2-y1;
+  const nx = -dy*0.15, ny = dx*0.15;
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(mx+nx, my+ny, x2, y2);
+  ctx.stroke();
+
+  // Arrow head
+  const angle = Math.atan2(y2-(my+ny), x2-(mx+nx));
+  const hs = 8;
+  ctx.setLineDash([]);
+  ctx.fillStyle = col;
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - hs*Math.cos(angle-0.4), y2 - hs*Math.sin(angle-0.4));
+  ctx.lineTo(x2 - hs*Math.cos(angle+0.4), y2 - hs*Math.sin(angle+0.4));
+  ctx.closePath();
+  ctx.fill();
+
+  if (label) {
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
+    ctx.font = `6.5px ${FF}`;
+    ctx.fillStyle = col;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, mx+nx, my+ny-4);
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FULL SCENE DRAW
+// ═══════════════════════════════════════════════════════════════
+let activeComponents = new Set(); // component IDs to highlight
+let highlightedPods  = new Set();
+let activeRoutes = [];
+
+function drawScene() {
+  const L = getLayout();
+  ctx.clearRect(0, 0, L.W, L.H);
+
+  // BG gradient
+  const grad = ctx.createLinearGradient(0,0,0,L.H);
+  grad.addColorStop(0, '#0d1020');
+  grad.addColorStop(1, '#0a0d16');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, L.W, L.H);
+
+  // ── CONTROL PLANE ──
+  const cpActive = activeComponents.has('ctrl');
+  roundRect(ctx, L.cpX, L.cpY, L.cpW, L.cpH, 8, COL.ctrlBg, cpActive ? COL.ctrl : COL.ctrlBorder, cpActive ? 2 : 1);
+  drawText('▲ CONTROL PLANE', L.cpX+10, L.cpY+13, `bold 8px ${FF}`, COL.ctrl, 'left', 'alphabetic');
+  drawText('192.168.1.10  4vCPU 8GB', L.cpX+10, L.cpY+23, `6.5px ${FF}`, COL.ctrl+'88', 'left', 'alphabetic');
+
+  // CoreDNS
+  if (showInternals) {
+    const dnsActive = activeComponents.has('dns');
+    drawInternalComponent(L.dnsX, L.dnsY, L.dnsW, L.dnsH, '🔍', 'CoreDNS', ':53 UDP/TCP\n10.96.0.10', COL.dns, dnsActive);
+
+    // iptables on CP (KUBE-PROXY concept)
+    const iptActive = activeComponents.has('ipt');
+    drawInternalComponent(L.iptX, L.iptY, L.iptW, L.iptH, '🔒', 'iptables/NAT', 'KUBE-SVC chains\nDNAT rules', COL.ipt, iptActive);
+
+    // API server
+    drawInternalComponent(L.apiserverX, L.apiserverY, 90, L.iptH, '⚙', 'kube-apiserver', ':6443 HTTPS', COL.ctrl, cpActive);
+  }
+
+  // ── SERVICES STRIP ──
+  const svcs = [
+    { y: L.svcNPy,  label:'frontend-svc', type:'NodePort', detail:'port:80 → nodePort:30080', col: COL.svc_np,  id:'svcNP' },
+    { y: L.svcCIPy, label:'backend-svc',  type:'ClusterIP 10.96.20.14', detail:'port:8080 → targetPort:8080', col: COL.svc_cip, id:'svcCIP' },
+    { y: L.svcHLy,  label:'postgres-svc', type:'Headless (clusterIP:None)', detail:'port:5432 → DNS direct', col: COL.svc_hl, id:'svcHL' },
+  ];
+  roundRect(ctx, L.svcStripX-4, L.cpY, L.svcStripW+4, L.cpH, 6, '#ffffff06', '#ffffff15', 1);
+  drawText('SERVICES', L.svcStripX+2, L.cpY+11, `bold 7.5px ${FF}`, '#6c757d', 'left', 'alphabetic');
+  svcs.forEach(s => {
+    drawService(L.svcStripX, s.y, L.svcW, L.svcH, s.label, s.type, s.detail, s.col, activeComponents.has(s.id));
+  });
+
+  // ── WORKER NODES ──
+  L.nodes.forEach((n, ni) => {
+    roundRect(ctx, n.x, n.y, n.w, n.h, 8, n.bg, n.border, 1.5);
+    drawText(n.label, n.x+10, n.y+16, `bold 8px ${FF}`, n.col, 'left', 'alphabetic');
+    drawText(n.ip, n.x+10, n.y+26, `6.5px ${FF}`, n.col+'88', 'left', 'alphabetic');
+    // NodePort indicator on node edge
+    const npY = n.y + 38;
+    roundRect(ctx, n.x+n.w-58, npY, 50, 14, 3, '#0dcaf014', '#0dcaf055', 1);
+    drawText(':30080', n.x+n.w-33, npY+9, `6px ${FF}`, '#0dcaf0', 'center', 'alphabetic');
+  });
+
+  // ── ALL PODS ──
+  L.allPods.forEach(pod => {
+    const killed = killedPods.has(pod.id);
+    const hlColor = highlightedPods.has(pod.id) ? (pod.type==='fe'?COL.fe:pod.type==='be'?COL.be:COL.pg) : null;
+    drawPod(pod, hlColor, killed);
+    // kube-proxy block per node (once per node)
+    if (pod.id === 'pg0' || pod.id === 'pg1' || pod.id === 'pg2' ||
+        pod.id === 'be5') {
+      const kp = pod.kpBlock;
+      if (kp) drawKubeProxy(kp, activeComponents.has('kp'+pod.nodeIdx));
+    }
+  });
+
+  // ── ACTIVE ROUTES (static highlight lines) ──
+  activeRoutes.forEach(r => {
+    drawArrow(r.x1, r.y1, r.x2, r.y2, r.col, r.dashed, r.label, r.width||1.5);
+  });
+
+  // ── PACKETS ──
+  packets.forEach(pkt => pkt.draw());
+
+  // ── INTERNET CLIENT ──
+  const cl = L.client;
+  roundRect(ctx, cl.x-28, cl.y-18, 56, 36, 6, '#ffc10718', '#ffc107', 1.5);
+  drawText('🌍', cl.x, cl.y-5, `12px ${FFB}`, '#ffc107', 'center', 'middle');
+  drawText('Browser', cl.x, cl.y+12, `bold 6.5px ${FF}`, '#ffc107', 'center', 'alphabetic');
+  drawText(':30080', cl.x, cl.y+22, `6px ${FF}`, '#ffc10799', 'center', 'alphabetic');
+
+  // ── PACKET COUNTER ──
+  document.getElementById('packetCount').textContent = `packets: ${packets.length}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PACKET CLASS
+// ═══════════════════════════════════════════════════════════════
+class Packet {
+  constructor(waypoints, col, onStep, onDone) {
+    this.waypoints = waypoints;
+    this.col = col;
+    this.onStep = onStep;
+    this.onDone = onDone;
+    this.seg = 0;
+    this.t = 0;
+    this.done = false;
+    this.trail = [];
+    this.r = 5;
+    this.pulse = 0;
+  }
+  get pos() {
+    if (this.seg >= this.waypoints.length - 1) return this.waypoints[this.waypoints.length-1];
+    const a = this.waypoints[this.seg], b = this.waypoints[this.seg+1];
+    return { x: a.x + (b.x-a.x)*this.t, y: a.y + (b.y-a.y)*this.t };
+  }
+  advance() {
+    const p = this.pos;
+    this.trail.push({...p, a: 1});
+    if (this.trail.length > 18) this.trail.shift();
+    this.t += speed * 0.022;
+    this.pulse += 0.15;
+    if (this.t >= 1) {
+      this.t = 0;
+      this.seg++;
+      if (this.onStep) this.onStep(this.seg);
+      if (this.seg >= this.waypoints.length - 1) {
+        this.done = true;
+        if (this.onDone) this.onDone();
+      }
+    }
+  }
+  draw() {
+    if (this.done) return;
+    // Trail
+    this.trail.forEach((tp, i) => {
+      const a = (i / this.trail.length) * 0.5;
+      ctx.beginPath();
+      ctx.arc(tp.x, tp.y, this.r * (i/this.trail.length) * 0.7, 0, Math.PI*2);
+      ctx.fillStyle = this.col;
+      ctx.globalAlpha = a;
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    const p = this.pos;
+    const pulse = Math.sin(this.pulse) * 1.5;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, this.r + pulse, 0, Math.PI*2);
+    ctx.fillStyle = this.col;
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = this.col;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════════════════════════
+let logTimer = 0;
+function addLog(cls, src, msg) {
+  const lb = document.getElementById('logBody');
+  const now = new Date();
+  const ts = String(now.getSeconds()).padStart(2,'0') + '.' + String(now.getMilliseconds()).slice(0,2);
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + cls;
+  div.innerHTML = `<span class="log-ts">${ts}</span><span class="log-src" style="color:var(--color)">${src}</span><span class="log-msg">${msg}</span>`;
+  lb.appendChild(div);
+  lb.scrollTop = lb.scrollHeight;
+  if (lb.children.length > 200) lb.removeChild(lb.firstChild);
+}
+function clearLog() { document.getElementById('logBody').innerHTML = ''; }
+
+// ═══════════════════════════════════════════════════════════════
+// SCENARIOS
+// ═══════════════════════════════════════════════════════════════
+const SCENARIOS = [
+  {
+    name: 'Full Cluster — continuous traffic',
+    info: 'Continuous mixed traffic:\nbrowser → NodePort → frontend pods\nfrontend → ClusterIP → backend pods\nbackend → Headless → postgres-0 (write)\nWAL stream → postgres-1, postgres-2',
+    infoLines: [
+      '• NodePort :30080 open on all 3 nodes',
+      '• kube-proxy DNAT on each node',
+      '• CoreDNS resolves service names',
+      '• All 5 backend pods receive traffic',
+    ],
+  },
+  {
+    name: 'Same-Node: fe1 → be1 (both on Node 1)',
+    info: 'Same-Node optimisation:\nfrontend-7d9f-xk2p (10.244.1.5)\n→ backend-5c7b-mn4q (10.244.1.8)\n\nNo cross-node hop needed.\nkube-proxy DNAT stays on Node 1.\nPacket never leaves the node.',
+    infoLines: [
+      '• fe1 (10.244.1.5) → be1 (10.244.1.8)',
+      '• Both pods on worker-node-01',
+      '• iptables DNAT happens locally',
+      '• No overlay network crossing',
+      '• Latency: ~0.1ms (loopback-like)',
+    ],
+  },
+  {
+    name: 'Cross-Node: fe1 (Node1) → be5 (Node3)',
+    info: 'Cross-Node packet journey:\nfrontend-7d9f-xk2p (10.244.1.5, Node1)\n→ kube-proxy DNAT Node1\n→ CNI overlay tunnel\n→ backend-5c7b-lm8a (10.244.3.4, Node3)\n\nPacket traverses the overlay network.',
+    infoLines: [
+      '• fe1 (10.244.1.5) on worker-node-01',
+      '• be5 (10.244.3.4) on worker-node-03',
+      '• kube-proxy DNAT: 10.96.20.14 → 10.244.3.4',
+      '• CNI overlay (VXLAN/Calico) encapsulates',
+      '• Pod CIDR routing between nodes',
+      '• Latency: ~1–3ms (LAN)',
+    ],
+  },
+  {
+    name: 'DNS Resolution deep dive',
+    info: 'Full DNS resolution:\nbrowser URL → NodePort (:30080)\nnginx → fetch("http://backend-svc:8080")\n→ resolv.conf nameserver 10.96.0.10\n→ CoreDNS A-record query\n→ ClusterIP returned\n→ kube-proxy DNAT → pod\n\nHeadless:\npostgres-0.postgres-svc → pod IP direct',
+    infoLines: [
+      '• DNS query: backend-svc.app.svc.cluster.local',
+      '• CoreDNS (10.96.0.10:53) responds',
+      '• Returns ClusterIP: 10.96.20.14',
+      '• Headless: postgres-0.postgres-svc',
+      '• CoreDNS returns pod IP 10.244.1.20 directly',
+      '• No VIP, no iptables for headless',
+    ],
+  },
+  {
+    name: 'DB Write + WAL Replication',
+    info: 'Database write cycle:\nbackend-5c7b-mn4q → postgres-0 (PRIMARY)\npostgres-0 commits write to PVC\nWAL log streamed to:\n  postgres-1 (10.244.2.18, Node2)\n  postgres-2 (10.244.3.15, Node3)\n\nEach replica acknowledges WAL receipt.',
+    infoLines: [
+      '• postgres-0 PRIMARY at 10.244.1.20:5432',
+      '• WAL (Write-Ahead Log) streamed',
+      '• Streaming replication protocol',
+      '• postgres-1 replica (Node2) syncs',
+      '• postgres-2 replica (Node3) syncs',
+      '• Eventual consistency in ~1ms',
+    ],
+  },
+];
+
+let currentScenario = 0;
+function setScenario(idx, btn) {
+  currentScenario = idx;
+  document.querySelectorAll('.scen-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  packets.length = 0;
+  activeComponents.clear();
+  highlightedPods.clear();
+  activeRoutes = [];
+  const s = SCENARIOS[idx];
+  document.getElementById('stepLabel').textContent = s.name.slice(0,30)+'…';
+  const info = s.infoLines ? `<b style="color:#0dcaf0">${s.name}</b><br><br>${s.infoLines.map(l=>`<span style="color:#20c997">▸</span> <span style="color:#c9d1e0">${l}</span>`).join('<br>')}` : s.info.replace(/\n/g,'<br>');
+  document.getElementById('infoText').innerHTML = info;
+  addLog('step-browser', '[SCENARIO]', s.name);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PACKET SPAWNERS PER SCENARIO
+// ═══════════════════════════════════════════════════════════════
+function spawnPacket() {
+  if (!playing) return;
+  const L = getLayout();
+  const pm = L.podMap;
+
+  switch (currentScenario) {
+    case 0: spawnFullCluster(L); break;
+    case 1: spawnSameNode(L); break;
+    case 2: spawnCrossNode(L); break;
+    case 3: spawnDNS(L); break;
+    case 4: spawnWAL(L); break;
+  }
+}
+
+function podCentre(pod) { return { x: pod.cx, y: pod.cy }; }
+
+// ── Scenario 0: Full cluster ──
+function spawnFullCluster(L) {
+  const pm = L.podMap;
+  const roll = Math.random();
+  if (roll < 0.4) {
+    // browser → NodePort → frontend pod
+    const cl = L.client;
+    const fe = Math.random()<.5 ? pm.fe1 : pm.fe2;
+    if (killedPods.has(fe.id)) return;
+    const nIdx = fe.nodeIdx;
+    const npPt = { x: L.nodes[nIdx].x + L.nodes[nIdx].w - 33, y: L.nodes[nIdx].y + 44 };
+    const kp = L.nodes[nIdx];
+    const kpPt = { x: kp.x + kp.w/2, y: L.allPods.find(p=>p.nodeIdx===nIdx&&p.id.startsWith('pg')).kpBlock.y + 14 };
+    const steps = [cl, npPt, kpPt, podCentre(fe)];
+    const p = new Packet(steps, COL.pkt_fwd, seg => {
+      if(seg===1){ activeComponents.add('svcNP'); highlightedPods.add(fe.id); }
+      if(seg===2){ activeComponents.add('kp'+nIdx); addLog('step-nodeport','NodePort',`:30080 → kube-proxy DNAT → ${fe.ip}:80`); }
+      if(seg===3){ addLog('step-pod','nginx',`${fe.name} :80 serving HTTP`); }
+    }, () => {
+      activeComponents.delete('svcNP'); highlightedPods.delete(fe.id);
+      activeComponents.delete('kp'+nIdx);
+    });
+    packets.push(p);
+  } else if (roll < 0.75) {
+    // frontend → ClusterIP → random backend
+    const fe = killedPods.has('fe1') ? pm.fe2 : (killedPods.has('fe2') ? pm.fe1 : (Math.random()<.5?pm.fe1:pm.fe2));
+    const bes = ['be1','be2','be3','be4','be5'].filter(id=>!killedPods.has(id));
+    if (!bes.length) return;
+    const beId = bes[Math.floor(Math.random()*bes.length)];
+    const be = pm[beId];
+    const steps = [podCentre(fe), L.dns, L.svcCIP, podCentre(be)];
+    const p = new Packet(steps, COL.pkt_fwd, seg => {
+      if(seg===1){ activeComponents.add('dns'); addLog('step-coredns','CoreDNS',`backend-svc.app → 10.96.20.14 (ClusterIP)`); }
+      if(seg===2){ activeComponents.add('svcCIP'); highlightedPods.add(beId); addLog('step-iptable','iptables',`DNAT 10.96.20.14:8080 → ${be.ip}:8080`); }
+      if(seg===3){ addLog('step-backend','backend',`${be.name} :8080 processing`); }
+    }, () => {
+      activeComponents.delete('dns'); activeComponents.delete('svcCIP'); highlightedPods.delete(beId);
+    });
+    packets.push(p);
+    // return packet
+    setTimeout(() => {
+      const ret = new Packet([podCentre(be), podCentre(fe), L.client], COL.pkt_ret, seg=>{
+        if(seg===2) addLog('step-return','Response',`JSON 200 OK → browser`);
+      }, null);
+      packets.push(ret);
+    }, 600 / speed);
+  } else {
+    // backend → postgres-0 write
+    const bes = ['be1','be2','be3','be4','be5'].filter(id=>!killedPods.has(id));
+    if (!bes.length) return;
+    const beId = bes[Math.floor(Math.random()*bes.length)];
+    const be = pm[beId];
+    const pg0 = pm.pg0;
+    if (killedPods.has('pg0')) return;
+    const steps = [podCentre(be), L.dns, podCentre(pg0)];
+    const p = new Packet(steps, COL.pkt_wal, seg => {
+      if(seg===1){ activeComponents.add('dns'); addLog('step-coredns','CoreDNS',`postgres-0.postgres-svc → ${pg0.ip} (direct)`); }
+      if(seg===2){ activeComponents.add('svcHL'); highlightedPods.add('pg0'); addLog('step-db','postgres-0',`WRITE :5432 — WAL begin`); }
+    }, () => {
+      activeComponents.delete('dns'); activeComponents.delete('svcHL'); highlightedPods.delete('pg0');
+      // WAL to replicas
+      ['pg1','pg2'].forEach((rid,i) => {
+        if (killedPods.has(rid)) return;
+        const rp = pm[rid];
+        setTimeout(() => {
+          const w = new Packet([podCentre(pg0), podCentre(rp)], COL.pkt_wal, seg=>{
+            if(seg===1){ highlightedPods.add(rid); addLog('step-db','WAL',`→ ${rp.name} streaming replica`); }
+          }, ()=>{ highlightedPods.delete(rid); });
+          packets.push(w);
+        }, i * 200 / speed);
+      });
+    });
+    packets.push(p);
+  }
+}
+
+// ── Scenario 1: Same-node ──
+function spawnSameNode(L) {
+  const pm = L.podMap;
+  const fe = pm.fe1, be = Math.random()<.5 ? pm.be1 : pm.be2;
+  if (killedPods.has(fe.id) || killedPods.has(be.id)) return;
+  const kp = fe.kpBlock;
+  const kpPt = { x: kp.x + kp.w*0.5, y: kp.y + 14 };
+  const steps = [L.client, { x: L.nodes[0].x + L.nodes[0].w - 33, y: L.nodes[0].y + 44 },
+    podCentre(fe), L.svcCIP, kpPt, podCentre(be)];
+  activeRoutes = [{ x1:podCentre(fe).x, y1:podCentre(fe).y, x2:podCentre(be).x, y2:podCentre(be).y,
+    col:'#20c99744', dashed:true, label:'same node' }];
+  const p = new Packet(steps, COL.pkt_fwd, seg=>{
+    if(seg===1){ addLog('step-nodeport','NodePort',`:30080 hit on 192.168.1.11`); }
+    if(seg===2){ highlightedPods.add('fe1'); addLog('step-pod','nginx','fe1 :80 → makes API call to backend-svc'); }
+    if(seg===3){ activeComponents.add('dns'); addLog('step-coredns','CoreDNS',`backend-svc → ClusterIP 10.96.20.14`); }
+    if(seg===4){ activeComponents.add('kp0'); addLog('step-iptable','iptables',`⚡ SAME-NODE: DNAT 10.96.20.14 → ${be.ip}:8080 (no cross-node!)`); }
+    if(seg===5){ highlightedPods.delete('fe1'); highlightedPods.add(be.id); addLog('step-backend','backend',`${be.name} :8080 — same node, minimal latency ~0.1ms`); }
+  }, ()=>{
+    activeComponents.delete('dns'); activeComponents.delete('kp0'); highlightedPods.clear();
+    activeRoutes = [];
+    setTimeout(()=>{
+      const ret = new Packet([podCentre(be), podCentre(fe), L.client], COL.pkt_ret, null, ()=>{
+        addLog('step-return','Response','200 OK back to browser (same-node path)');
+      });
+      packets.push(ret);
+    }, 300 / speed);
+  });
+  packets.push(p);
+}
+
+// ── Scenario 2: Cross-node ──
+function spawnCrossNode(L) {
+  const pm = L.podMap;
+  const fe = pm.fe1, be = pm.be5;
+  if (killedPods.has('fe1') || killedPods.has('be5')) return;
+  // CNI overlay midpoint between node1 and node3
+  const n1 = L.nodes[0], n3 = L.nodes[2];
+  const overlay = { x: (n1.x + n1.w + n3.x)/2, y: L.nodesY - 10 };
+  const kp0Pt = { x: n1.x + n1.w/2, y: fe.kpBlock.y + 14 };
+  const kp2Pt = { x: n3.x + n3.w/2, y: be.kpBlock.y + 14 };
+  activeRoutes = [
+    { x1:n1.x+n1.w, y1:n1.y+n1.h/2, x2:n3.x, y2:n3.y+n3.h/2, col:'#0dcaf033', dashed:true, label:'CNI overlay (VXLAN)' },
+  ];
+  const steps = [L.client, podCentre(fe), L.svcCIP, kp0Pt, overlay, kp2Pt, podCentre(be)];
+  const p = new Packet(steps, COL.pkt_fwd, seg=>{
+    if(seg===1){ highlightedPods.add('fe1'); addLog('step-pod','nginx','fe1 (Node1) calls backend-svc:8080'); }
+    if(seg===2){ activeComponents.add('dns'); addLog('step-coredns','CoreDNS','backend-svc → 10.96.20.14'); }
+    if(seg===3){ activeComponents.add('kp0'); addLog('step-iptable','iptables',`Node1 DNAT: 10.96.20.14 → 10.244.3.4 (Node3!)`); }
+    if(seg===4){ addLog('step-iptable','CNI','VXLAN encap — packet crossing to worker-node-03'); }
+    if(seg===5){ activeComponents.add('kp2'); addLog('step-iptable','iptables','Node3 kube-proxy decap + deliver to be5'); }
+    if(seg===6){ highlightedPods.delete('fe1'); highlightedPods.add('be5'); addLog('step-backend','backend',`be5 (Node3) :8080 — cross-node ~2ms`); }
+  }, ()=>{
+    activeComponents.delete('dns'); activeComponents.delete('kp0'); activeComponents.delete('kp2');
+    highlightedPods.clear(); activeRoutes=[];
+    setTimeout(()=>{
+      const ret = new Packet([podCentre(be), overlay, podCentre(fe), L.client], COL.pkt_ret, seg=>{
+        if(seg===1) addLog('step-return','CNI','return VXLAN decap Node1');
+        if(seg===3) addLog('step-return','Response','200 OK → browser (cross-node)');
+      }, null);
+      packets.push(ret);
+    }, 400 / speed);
+  });
+  packets.push(p);
+}
+
+// ── Scenario 3: DNS ──
+function spawnDNS(L) {
+  const pm = L.podMap;
+  // Step 1: frontend → CoreDNS for ClusterIP
+  const fe = killedPods.has('fe1') ? pm.fe2 : pm.fe1;
+  const dnsPt = { x: L.dnsX + L.dnsW/2, y: L.dnsY + L.dnsH/2 };
+  const steps1 = [podCentre(fe), dnsPt];
+  const p1 = new Packet(steps1, COL.pkt_dns, seg=>{
+    if(seg===1){ activeComponents.add('dns');
+      addLog('step-coredns','CoreDNS',`Query: backend-svc.app.svc.cluster.local`);
+    }
+  }, ()=>{
+    // DNS reply → ClusterIP
+    const steps2 = [dnsPt, L.svcCIP, podCentre(fe)];
+    const p2 = new Packet(steps2, '#ffffff', seg=>{
+      if(seg===1){ addLog('step-coredns','CoreDNS',`A record: 10.96.20.14 (ClusterIP)`); activeComponents.add('svcCIP'); }
+      if(seg===2){ addLog('step-pod','nginx',`fe1 connects → 10.96.20.14:8080`); }
+    }, ()=>{
+      activeComponents.delete('dns'); activeComponents.delete('svcCIP');
+      // Now headless DNS for postgres
+      const be = killedPods.has('be1') ? pm.be2 : pm.be1;
+      const steps3 = [podCentre(be), dnsPt];
+      const p3 = new Packet(steps3, COL.pkt_dns, seg=>{
+        if(seg===1){ activeComponents.add('dns'); addLog('step-coredns','CoreDNS',`Query: postgres-0.postgres-svc.app.svc.cluster.local`); }
+      }, ()=>{
+        const pg0 = pm.pg0;
+        const steps4 = [dnsPt, podCentre(pg0)];
+        const p4 = new Packet(steps4, '#ffffff', seg=>{
+          if(seg===1){ activeComponents.add('svcHL'); highlightedPods.add('pg0');
+            addLog('step-coredns','CoreDNS',`HEADLESS A record: ${pg0.ip} (direct pod IP, no VIP!)`);
+          }
+        }, ()=>{ activeComponents.delete('dns'); activeComponents.delete('svcHL'); highlightedPods.delete('pg0'); });
+        packets.push(p4);
+      });
+      packets.push(p3);
+    });
+    packets.push(p2);
+  });
+  packets.push(p1);
+}
+
+// ── Scenario 4: WAL replication ──
+function spawnWAL(L) {
+  const pm = L.podMap;
+  const bes = ['be1','be2','be3','be4','be5'].filter(id=>!killedPods.has(id));
+  if (!bes.length || killedPods.has('pg0')) return;
+  const be = pm[bes[Math.floor(Math.random()*bes.length)]];
+  const pg0 = pm.pg0;
+  addLog('step-db','WRITE',`${be.name} → postgres-0 :5432`);
+  const p = new Packet([podCentre(be), L.svcHL, podCentre(pg0)], COL.pkt_wal, seg=>{
+    if(seg===1){ activeComponents.add('svcHL'); addLog('step-coredns','CoreDNS',`postgres-0.postgres-svc → ${pg0.ip}`); }
+    if(seg===2){ highlightedPods.add('pg0'); addLog('step-db','pg-0 PRIMARY',`WRITE committed :5432 PVC. WAL segments ready.`); }
+  }, ()=>{
+    activeComponents.delete('svcHL');
+    ['pg1','pg2'].forEach((rid,i)=>{
+      if (killedPods.has(rid)) return;
+      const rp = pm[rid];
+      setTimeout(()=>{
+        const w = new Packet([podCentre(pg0), podCentre(rp)], '#a78bfa', seg=>{
+          if(seg===1){ highlightedPods.add(rid); addLog('step-db','WAL stream',`pg-0 → ${rp.name} :5432 streaming replication`); }
+        }, ()=>{ highlightedPods.delete(rid); highlightedPods.delete('pg0'); });
+        packets.push(w);
+      }, i * 250 / speed);
+    });
+  });
+  packets.push(p);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════════
+function togglePlay() {
+  playing = !playing;
+  const b = document.getElementById('playBtn');
+  b.textContent = playing ? '⏸ Pause' : '▶ Play';
+  b.classList.toggle('active', playing);
+}
+
+function triggerSingle() { spawnPacket(); }
+
+function triggerBurst() {
+  for (let i=0; i<10; i++) setTimeout(() => spawnPacket(), i * (180/speed));
+}
+
+function killRandomPod() {
+  const ids = ['fe1','fe2','be1','be2','be3','be4','be5','pg1','pg2'];
+  const candidates = ids.filter(id => !killedPods.has(id));
+  if (!candidates.length) return;
+  const id = candidates[Math.floor(Math.random()*candidates.length)];
+  killedPods.add(id);
+  addLog('step-pod','[KILL]',`Pod ${id} terminated — traffic rerouted`);
+}
+
+function restoreAll() {
+  killedPods.clear();
+  packets.length = 0;
+  activeComponents.clear();
+  highlightedPods.clear();
+  activeRoutes = [];
+  addLog('step-pod','[RESTORE]','All pods restored ✓');
+}
+
+function toggleComponents() {
+  showInternals = !showInternals;
+  addLog('step-nodeport','[VIEW]', showInternals ? 'Internal components shown' : 'Internal components hidden');
+}
+
+function setSpd(v) {
+  speed = parseFloat(v);
+  document.getElementById('spdVal').textContent = v+'×';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════════════════════════════
+let lastSpawn = 0;
+function loop(ts) {
+  frameCount++;
+  if (playing) {
+    // Auto-spawn
+    const interval = currentScenario === 0 ? 700 : 1400;
+    if (ts - lastSpawn > interval / speed) {
+      spawnPacket();
+      lastSpawn = ts;
+    }
+    packets.forEach(p => p.advance());
+    packets = packets.filter(p => !p.done);
+  }
+  drawScene();
+  requestAnimationFrame(loop);
+}
+
+// ── Initial log messages ──
+addLog('step-browser', '[INIT]', 'K8s Cluster Tracer started');
+addLog('step-browser', '[INFO]', '3 worker nodes · 10 pods · 3 services');
+addLog('step-coredns', '[DNS]',  'CoreDNS running at 10.96.0.10:53');
+addLog('step-iptable', '[IPT]',  'kube-proxy iptables rules installed on all nodes');
+addLog('step-browser', '[TIP]',  'Select scenario tab to change traffic pattern');
+
+setScenario(0, document.querySelector('.scen-tab.active'));
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
