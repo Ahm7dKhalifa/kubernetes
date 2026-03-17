@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Ingress & Egress — Complete Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;500;600;700;800&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050a14;--bg2:#0a1628;--bg3:#0d1f3c;--surface:#0f2344;--surface2:#152d52;--border:#1e3a5f;--accent:#00d4ff;--accent2:#7c3aed;--accent3:#10b981;--accent4:#f59e0b;--accent5:#ef4444;--accent6:#ec4899;--text:#e2eaf6;--text2:#8ba3c4;--text3:#4d6b8a;--glow:rgba(0,212,255,0.15);--glow2:rgba(124,58,237,0.15)}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;overflow-x:hidden;line-height:1.6;font-size:16px}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(5,10,20,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;gap:0.3rem;height:50px;overflow-x:auto}
+nav a{color:var(--text2);text-decoration:none;font-family:'Share Tech Mono',monospace;font-size:0.64rem;white-space:nowrap;padding:4px 8px;border-radius:4px;transition:all 0.2s}
+nav a:hover{color:var(--accent);background:var(--glow)}
+.nav-logo{color:var(--accent);font-family:'Oxanium',sans-serif;font-weight:800;font-size:0.88rem;margin-right:0.8rem;white-space:nowrap}
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6rem 2rem 4rem;position:relative;overflow:hidden;text-align:center}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,212,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.04) 1px,transparent 1px);background-size:44px 44px}
+.hero-glow{position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(0,212,255,0.06) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);animation:pulse 5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:0.4;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.hero-tag{font-family:'Share Tech Mono',monospace;font-size:0.72rem;color:var(--accent);background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:20px;padding:5px 18px;margin-bottom:2rem;animation:fadeUp 0.6s ease both}
+.hero h1{font-family:'Oxanium',sans-serif;font-size:clamp(3rem,9vw,6rem);font-weight:800;line-height:1.0;animation:fadeUp 0.8s ease 0.1s both;margin-bottom:1.5rem}
+.hero h1 .in{color:var(--accent)}.hero h1 .eg{color:var(--accent2)}
+.hero p{font-size:1.1rem;color:var(--text2);max-width:640px;animation:fadeUp 0.8s ease 0.2s both;margin-bottom:2.5rem}
+.hero-badges{display:flex;gap:0.8rem;flex-wrap:wrap;justify-content:center;animation:fadeUp 0.8s ease 0.3s both}
+.badge{display:flex;align-items:center;gap:0.4rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-family:'Share Tech Mono',monospace;font-size:0.68rem}
+.dot{width:7px;height:7px;border-radius:50%}
+section{padding:4.5rem 2rem;max-width:1400px;margin:0 auto}
+.section-label{font-family:'Share Tech Mono',monospace;font-size:0.66rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.8rem;display:flex;align-items:center;gap:0.5rem}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+h2{font-family:'Oxanium',sans-serif;font-size:clamp(1.7rem,4vw,2.6rem);font-weight:800;margin-bottom:1rem}
+h3{font-family:'Oxanium',sans-serif;font-size:1.25rem;font-weight:700;margin-bottom:0.7rem}
+h4{font-family:'Oxanium',sans-serif;font-size:0.98rem;font-weight:700;margin-bottom:0.4rem}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:0}
+.callout{border-radius:10px;padding:1rem 1.3rem;margin:1.2rem 0;display:flex;gap:0.8rem;align-items:flex-start;font-size:0.9rem}
+.callout.bad{background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);color:var(--text2)}
+.callout.tip{background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);color:var(--text2)}
+.callout.info{background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.2);color:var(--text2)}
+.diagram-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin:1.5rem 0;overflow-x:auto}
+.dtitle{font-family:'Share Tech Mono',monospace;font-size:0.68rem;color:var(--text2);margin-bottom:1rem;letter-spacing:2px;display:flex;align-items:center;gap:0.5rem}
+.dtitle::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--accent)}
+.dtitle.red::before{background:var(--accent5)}.dtitle.green::before{background:var(--accent3)}
+svg text{font-family:'Share Tech Mono',monospace}
+.tab-row{display:flex;gap:0.3rem;flex-wrap:wrap}
+.tab-btn{padding:7px 13px;border-radius:6px 6px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--bg2);cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:0.64rem;color:var(--text3);transition:all 0.2s}
+.tab-btn.active{background:var(--surface2);color:var(--accent);border-color:var(--accent)}
+.tab-body{display:none;background:var(--surface);border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.4rem;overflow-x:auto;max-height:560px;overflow-y:auto}
+.tab-body.active{display:block}
+pre{font-family:'Share Tech Mono',monospace;font-size:0.76rem;line-height:1.8;color:var(--text);white-space:pre}
+.kw{color:#7dd3fc}.val{color:#86efac}.str{color:#fcd34d}.cmt{color:#4d6b8a;font-style:italic}.key{color:var(--accent)}
+.why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1.5rem}
+.why-card{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:1.3rem;transition:all 0.3s}
+.why-card:hover{border-color:var(--accent);box-shadow:0 0 16px var(--glow)}
+.why-num{font-family:'Oxanium',sans-serif;font-size:1.8rem;font-weight:800;color:var(--border);line-height:1;margin-bottom:0.3rem}
+.why-card h4{color:var(--accent);font-size:0.9rem}.why-card p{font-size:0.86rem;color:var(--text2);line-height:1.6;margin-top:0.3rem}
+.sre-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1.5rem}
+.sre-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent4);border-radius:10px;padding:1.3rem;transition:all 0.3s}
+.sre-card:hover{transform:translateX(3px)}
+.sre-card h4{color:var(--accent4);font-size:0.9rem}.sre-card p{font-size:0.85rem;color:var(--text2);line-height:1.6}
+.sre-tag{display:inline-block;margin-top:0.5rem;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:2px 7px;font-family:'Share Tech Mono',monospace;font-size:0.62rem;color:var(--accent4)}
+.sre-card.green{border-left-color:var(--accent3)}.sre-card.green h4{color:var(--accent3)}.sre-card.green .sre-tag{background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);color:var(--accent3)}
+.sre-card.red{border-left-color:var(--accent5)}.sre-card.red h4{color:var(--accent5)}.sre-card.red .sre-tag{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);color:var(--accent5)}
+.sre-card.purple{border-left-color:var(--accent2)}.sre-card.purple h4{color:var(--accent2)}.sre-card.purple .sre-tag{background:rgba(124,58,237,0.1);border-color:rgba(124,58,237,0.3);color:var(--accent2)}
+.data-table{width:100%;border-collapse:collapse;margin:1rem 0}
+.data-table th{background:var(--surface);padding:9px 13px;text-align:left;font-family:'Share Tech Mono',monospace;font-size:0.68rem;color:var(--text2);border:1px solid var(--border)}
+.data-table td{padding:9px 13px;border:1px solid var(--border);font-size:0.85rem;color:var(--text2);background:var(--bg2)}
+.data-table tr:hover td{background:var(--surface)}.data-table td:first-child{color:var(--text);font-weight:600}
+.legend{display:flex;gap:1rem;flex-wrap:wrap;margin-top:0.8rem}
+.legend-item{display:flex;align-items:center;gap:0.4rem;font-family:'Share Tech Mono',monospace;font-size:0.64rem;color:var(--text2)}
+.leg-box{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.prob-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-top:1.5rem}
+.prob-card{background:#100808;border:1px solid var(--accent5);border-radius:10px;padding:1.2rem}
+.prob-card h4{color:var(--accent5);margin-bottom:0.4rem}.prob-card p{font-size:0.85rem;color:var(--text2);line-height:1.6}
+.gain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-top:1.5rem}
+.gain-card{background:#081008;border:1px solid var(--accent3);border-radius:10px;padding:1.2rem}
+.gain-card h4{color:var(--accent3);margin-bottom:0.4rem}.gain-card p{font-size:0.85rem;color:var(--text2);line-height:1.6}
+.wf-step{display:flex;gap:1rem;margin-bottom:1rem;align-items:flex-start}
+.wf-num{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:0.78rem;font-weight:700;background:var(--surface);border:2px solid var(--accent);color:var(--accent)}
+.wf-content{flex:1;padding-top:4px}.wf-content p{color:var(--text2);font-size:0.86rem}
+.wf-line{width:2px;height:16px;background:var(--border);margin-left:17px}
+.slider-demo{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.6rem;margin:1.5rem 0}
+.sl-row{display:flex;align-items:center;gap:1rem;margin-bottom:0.7rem;flex-wrap:wrap}
+.sl-row label{font-family:'Share Tech Mono',monospace;font-size:0.68rem;color:var(--text2);width:160px;flex-shrink:0}
+.sl-row input[type=range]{flex:1;min-width:100px;-webkit-appearance:none;appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none}
+.sl-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 8px rgba(0,212,255,0.5)}
+.sl-val{font-family:'Share Tech Mono',monospace;font-size:0.68rem;color:var(--accent);width:60px;text-align:right}
+mark{background:rgba(0,212,255,0.12);color:var(--accent);padding:1px 4px;border-radius:3px}
+.toc-float{position:fixed;right:1rem;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;z-index:900}
+.toc-dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:all 0.2s;border:none;padding:0}
+.toc-dot:hover,.toc-dot.active{background:var(--accent);box-shadow:0 0 7px var(--accent);transform:scale(1.4)}
+@media(max-width:900px){.toc-float{display:none}}
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:1.8rem;text-align:center;font-family:'Share Tech Mono',monospace;font-size:0.68rem;color:var(--text3)}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">⎈ K8s Network</span>
+  <a href="#hero">Home</a>
+  <a href="#definitions">Concepts</a>
+  <a href="#why">Why</a>
+  <a href="#before">Before Cluster</a>
+  <a href="#after">After Cluster</a>
+  <a href="#yaml-before">YAML Before</a>
+  <a href="#yaml-after">YAML After</a>
+  <a href="#workflow">Workflow</a>
+  <a href="#sre">SRE</a>
+</nav>
+
+<div class="toc-float" id="toc">
+  <button class="toc-dot active" title="Hero"></button>
+  <button class="toc-dot" title="Definitions"></button>
+  <button class="toc-dot" title="Why"></button>
+  <button class="toc-dot" title="Before"></button>
+  <button class="toc-dot" title="After"></button>
+  <button class="toc-dot" title="YAML Before"></button>
+  <button class="toc-dot" title="YAML After"></button>
+  <button class="toc-dot" title="Workflow"></button>
+  <button class="toc-dot" title="SRE"></button>
+</div>
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-tag">Kubernetes Networking — Complete Reference</div>
+  <h1><span class="in">Ingress</span> &amp; <span class="eg">Egress</span></h1>
+  <p>Full 3-node cluster architecture, every pod shown, complete before &amp; after project YAMLs, interactive simulator, SRE principles.</p>
+  <div class="hero-badges">
+    <div class="badge"><div class="dot" style="background:var(--accent5)"></div>BEFORE — Naive / Unsecured</div>
+    <div class="badge"><div class="dot" style="background:var(--accent3)"></div>AFTER — Production-Ready</div>
+    <div class="badge"><div class="dot" style="background:var(--accent)"></div>3 Nodes · 2 Apps · 6 Pods</div>
+    <div class="badge"><div class="dot" style="background:var(--accent2)"></div>NetworkPolicy · Zero-Trust</div>
+    <div class="badge"><div class="dot" style="background:var(--accent4)"></div>11 Full YAML Manifests</div>
+  </div>
+</div>
+
+<!-- DEFINITIONS -->
+<section id="definitions">
+  <div class="section-label">01 // CORE CONCEPTS</div>
+  <h2>Ingress vs Egress</h2>
+  <p style="color:var(--text2);max-width:800px;line-height:1.8;margin-bottom:1.5rem">Every Pod has a cluster-internal IP — ephemeral, invisible to the outside world. <strong>Ingress</strong> is the controlled gate for traffic coming <em>in</em>. <strong>Egress</strong> is the controlled gate for traffic going <em>out</em>. Without them: chaos, cost overruns, and zero security posture.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:12px;padding:1.6rem">
+      <div style="font-size:1.8rem;margin-bottom:0.6rem">📥</div>
+      <h3 style="color:var(--accent)">Ingress — Inbound</h3>
+      <p style="color:var(--text2);font-size:0.9rem;line-height:1.7;margin-bottom:0.8rem">The <strong>Ingress resource</strong> is a K8s API object defining HTTP/HTTPS routing rules. The <strong>Ingress Controller</strong> is the actual running Pod (nginx, traefik, AWS ALB) that enforces them.</p>
+      <ul style="list-style:none;color:var(--text2);font-size:0.86rem">
+        <li style="padding:3px 0">→ Routes external traffic → internal ClusterIP Services</li>
+        <li style="padding:3px 0">→ SSL/TLS termination at the edge (cert-manager)</li>
+        <li style="padding:3px 0">→ Host-based and path-based routing</li>
+        <li style="padding:3px 0">→ Rate limiting, WAF, auth via annotations</li>
+        <li style="padding:3px 0">→ One cloud LB for ALL services</li>
+        <li style="padding:3px 0">→ Canary / blue-green traffic splitting</li>
+      </ul>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-top:3px solid var(--accent2);border-radius:12px;padding:1.6rem">
+      <div style="font-size:1.8rem;margin-bottom:0.6rem">📤</div>
+      <h3 style="color:var(--accent2)">Egress — Outbound</h3>
+      <p style="color:var(--text2);font-size:0.9rem;line-height:1.7;margin-bottom:0.8rem">K8s default: all Pod-to-Pod and Pod-to-Internet traffic is allowed. <strong>Egress NetworkPolicies</strong> flip this to default-deny. An <strong>Egress Gateway</strong> (Istio/Cilium) centralises outbound through one audited exit node.</p>
+      <ul style="list-style:none;color:var(--text2);font-size:0.86rem">
+        <li style="padding:3px 0">→ Controls Pod → external destinations</li>
+        <li style="padding:3px 0">→ Default-deny = zero-trust outbound</li>
+        <li style="padding:3px 0">→ Whitelist only DB, cache, 3rd-party APIs</li>
+        <li style="padding:3px 0">→ Limits blast radius on compromise</li>
+        <li style="padding:3px 0">→ PCI-DSS, HIPAA, SOC2 compliance</li>
+        <li style="padding:3px 0">→ Static egress IP via NAT gateway</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="diagram-wrap" style="margin-top:2rem">
+    <div class="dtitle">CONCEPTUAL OVERVIEW — INGRESS IN, EGRESS OUT</div>
+    <svg viewBox="0 0 960 240" width="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="c0" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#00d4ff"/></marker>
+        <marker id="c1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#7c3aed"/></marker>
+        <marker id="c2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#10b981"/></marker>
+        <marker id="c3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ec4899"/></marker>
+      </defs>
+      <circle cx="55" cy="120" r="40" fill="none" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="55" y="114" fill="#8ba3c4" text-anchor="middle" font-size="18">🌐</text>
+      <text x="55" y="132" fill="#4d6b8a" text-anchor="middle" font-size="9">Internet</text>
+      <rect x="10" y="155" width="90" height="20" rx="4" fill="none" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="55" y="169" fill="#4d6b8a" text-anchor="middle" font-size="8">HTTP/S :443</text>
+      <rect x="155" y="75" width="155" height="90" rx="10" fill="#0d1f3c" stroke="#00d4ff" stroke-width="2"/>
+      <text x="232" y="103" fill="#00d4ff" text-anchor="middle" font-size="11" font-weight="bold">Ingress Controller</text>
+      <text x="232" y="120" fill="#4d6b8a" text-anchor="middle" font-size="9">nginx / traefik / alb</text>
+      <text x="232" y="136" fill="#4d6b8a" text-anchor="middle" font-size="9">TLS termination · routing</text>
+      <text x="232" y="151" fill="#4d6b8a" text-anchor="middle" font-size="9">rate-limit · WAF · CORS</text>
+      <rect x="160" y="20" width="145" height="40" rx="7" fill="#050a14" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="232" y="37" fill="#7c3aed" text-anchor="middle" font-size="9">Ingress Resource</text>
+      <text x="232" y="52" fill="#4d6b8a" text-anchor="middle" font-size="9">rules: host / path → service</text>
+      <rect x="380" y="60" width="120" height="44" rx="8" fill="#0a1628" stroke="#10b981" stroke-width="1.5"/>
+      <text x="440" y="80" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">Service A</text>
+      <text x="440" y="96" fill="#4d6b8a" text-anchor="middle" font-size="8">/api → ClusterIP</text>
+      <rect x="380" y="125" width="120" height="44" rx="8" fill="#0a1628" stroke="#ec4899" stroke-width="1.5"/>
+      <text x="440" y="145" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">Service B</text>
+      <text x="440" y="161" fill="#4d6b8a" text-anchor="middle" font-size="8">/ → ClusterIP</text>
+      <rect x="565" y="62" width="60" height="30" rx="6" fill="#050a14" stroke="#10b981" stroke-width="1"/>
+      <text x="595" y="81" fill="#10b981" text-anchor="middle" font-size="9">3× pods</text>
+      <rect x="565" y="127" width="60" height="30" rx="6" fill="#050a14" stroke="#ec4899" stroke-width="1"/>
+      <text x="595" y="146" fill="#ec4899" text-anchor="middle" font-size="9">3× pods</text>
+      <rect x="145" y="175" width="155" height="50" rx="10" fill="#0d1f3c" stroke="#7c3aed" stroke-width="2"/>
+      <text x="222" y="197" fill="#7c3aed" text-anchor="middle" font-size="10" font-weight="bold">NetworkPolicy</text>
+      <text x="222" y="213" fill="#4d6b8a" text-anchor="middle" font-size="9">Egress Rules — default deny</text>
+      <rect x="820" y="100" width="100" height="44" rx="8" fill="#0a1628" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="870" y="120" fill="#7c3aed" text-anchor="middle" font-size="9">External DB</text>
+      <text x="870" y="136" fill="#4d6b8a" text-anchor="middle" font-size="8">Whitelisted</text>
+      <text x="125" y="90" fill="#00d4ff" text-anchor="middle" font-size="9" font-weight="bold">INGRESS →</text>
+      <text x="700" y="175" fill="#7c3aed" text-anchor="middle" font-size="9" font-weight="bold">← EGRESS</text>
+      <line x1="95" y1="108" x2="153" y2="108" stroke="#00d4ff" stroke-width="2" marker-end="url(#c0)"/>
+      <line x1="310" y1="95" x2="378" y2="82" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#c0)"/>
+      <line x1="310" y1="112" x2="378" y2="147" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#c0)"/>
+      <line x1="500" y1="82" x2="563" y2="77" stroke="#10b981" stroke-width="1.5" marker-end="url(#c2)"/>
+      <line x1="500" y1="147" x2="563" y2="142" stroke="#ec4899" stroke-width="1.5" marker-end="url(#c3)"/>
+      <line x1="300" y1="200" x2="818" y2="122" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#c1)"/>
+    </svg>
+  </div>
+</section>
+
+<!-- WHY -->
+<section id="why">
+  <div class="section-label">02 // MOTIVATION</div>
+  <h2>Why Do You Need Them?</h2>
+  <div class="why-grid">
+    <div class="why-card"><div class="why-num">01</div><h4>Single LoadBalancer</h4><p>One Ingress Controller = one cloud LB shared by all services. Without it: one LB per service. 10 services = 10× cost ≈ $750/mo vs $75/mo.</p></div>
+    <div class="why-card"><div class="why-num">02</div><h4>Automated TLS</h4><p>cert-manager + Let's Encrypt auto-issues &amp; renews certs. Backends use plain HTTP internally — simpler, faster, zero manual cert rotation.</p></div>
+    <div class="why-card"><div class="why-num">03</div><h4>Path Routing</h4><p><code>/api</code> → backend, <code>/web</code> → frontend, <code>/metrics</code> → prometheus — all on one hostname, one IP, zero extra infra.</p></div>
+    <div class="why-card"><div class="why-num">04</div><h4>Zero-Trust Egress</h4><p>Default-deny outbound. Pods reach only whitelisted IPs/ports. Lateral movement eliminated if a pod is compromised.</p></div>
+    <div class="why-card"><div class="why-num">05</div><h4>Rate Limiting</h4><p>Per-IP and per-route limits via annotations. One runaway client can't exhaust your error budget for every other user.</p></div>
+    <div class="why-card"><div class="why-num">06</div><h4>Canary Releases</h4><p>Route 5% of traffic to v2. Monitor. If healthy: raise to 20%, 50%, 100%. Rollback in &lt;30 seconds via one annotation change.</p></div>
+    <div class="why-card"><div class="why-num">07</div><h4>Compliance</h4><p>PCI-DSS, HIPAA, SOC2 require strict network controls. Egress policies prove data never leaves to unauthorised destinations.</p></div>
+    <div class="why-card"><div class="why-num">08</div><h4>Observability</h4><p>Nginx exports Prometheus metrics per route: RPS, P99 latency, 4xx/5xx rates. Feeds directly into Grafana SLO dashboards.</p></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- BEFORE CLUSTER -->
+<section id="before">
+  <div class="section-label">03 // BEFORE — NAIVE CLUSTER — FULL ARCHITECTURE</div>
+  <h2 style="color:var(--accent5)">Before: The Unsecured Cluster</h2>
+  <p style="color:var(--text2);max-width:860px;line-height:1.8;margin-bottom:1rem">Three worker nodes. App A (API) runs 3 replicas, App B (Frontend) runs 3 replicas. Redis sits on Node 3 unsecured. Every app has its own dedicated cloud LoadBalancer. No TLS. No NetworkPolicy. Any pod can reach any other pod, Redis, or Postgres. This is the starting state most teams inherit.</p>
+
+  <div class="callout bad">
+    <span style="font-size:1.2rem">🔥</span>
+    <div><strong>Problem state:</strong> 3 separate cloud LoadBalancers ($225/mo), NodePort exposed on every node, plain HTTP only, app-b and any other pod can freely connect to Redis and Postgres, no rate limiting, no audit trail, no metrics. A single compromised pod = full database access.</div>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="dtitle red">FULL CLUSTER — BEFORE — 3 NODES · app-a ×3 · app-b ×3 · redis · postgres · ALL PROBLEMS VISIBLE</div>
+    <svg viewBox="0 0 1140 760" width="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="b0" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ef4444"/></marker>
+        <marker id="b1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f59e0b"/></marker>
+        <marker id="b2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#8ba3c4"/></marker>
+      </defs>
+
+      <!-- cloud band -->
+      <rect x="0" y="0" width="1140" height="118" fill="#0a0808"/>
+      <text x="570" y="15" fill="#2d1a1a" text-anchor="middle" font-size="9" letter-spacing="3">CLOUD / INTERNET — UNSECURED</text>
+
+      <!-- internet -->
+      <circle cx="60" cy="62" r="36" fill="none" stroke="#4d2020" stroke-width="1.5"/>
+      <text x="60" y="56" fill="#8ba3c4" text-anchor="middle" font-size="17">🌐</text>
+      <text x="60" y="74" fill="#4d6b8a" text-anchor="middle" font-size="8">Users</text>
+
+      <!-- LB 1 -->
+      <rect x="150" y="20" width="175" height="54" rx="8" fill="#1a0808" stroke="#ef4444" stroke-width="2"/>
+      <text x="237" y="41" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">LB #1 — App A</text>
+      <text x="237" y="57" fill="#ef4444" text-anchor="middle" font-size="9">104.10.1.1 · NodePort 31001</text>
+      <text x="237" y="68" fill="#4d2020" text-anchor="middle" font-size="8">$75/month dedicated</text>
+      <!-- LB 2 -->
+      <rect x="375" y="20" width="175" height="54" rx="8" fill="#1a0808" stroke="#ef4444" stroke-width="2"/>
+      <text x="462" y="41" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">LB #2 — App B</text>
+      <text x="462" y="57" fill="#ef4444" text-anchor="middle" font-size="9">104.10.1.2 · NodePort 31002</text>
+      <text x="462" y="68" fill="#4d2020" text-anchor="middle" font-size="8">$75/month dedicated</text>
+      <!-- LB 3 -->
+      <rect x="600" y="20" width="185" height="54" rx="8" fill="#1a0808" stroke="#ef4444" stroke-width="2"/>
+      <text x="692" y="41" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">LB #3 — Redis Mgmt ⚠</text>
+      <text x="692" y="57" fill="#ef4444" text-anchor="middle" font-size="9">104.10.1.3 · INTERNET EXPOSED!</text>
+      <text x="692" y="68" fill="#4d2020" text-anchor="middle" font-size="8">$75/month — should NEVER exist</text>
+      <!-- cost box -->
+      <rect x="840" y="22" width="265" height="50" rx="8" fill="#1a1000" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="972" y="39" fill="#f59e0b" text-anchor="middle" font-size="9">💸  3× LB = $225/month</text>
+      <text x="972" y="54" fill="#f59e0b" text-anchor="middle" font-size="9">10 services = $750/month</text>
+      <text x="972" y="67" fill="#4d3a00" text-anchor="middle" font-size="8">1 Ingress Controller → $75/month total</text>
+
+      <!-- users → LBs -->
+      <line x1="96" y1="55" x2="148" y2="47" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#b0)"/>
+      <line x1="96" y1="62" x2="373" y2="47" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#b0)"/>
+
+      <!-- cluster border -->
+      <rect x="10" y="126" width="1120" height="622" rx="14" fill="none" stroke="#3a1a1a" stroke-width="2" stroke-dasharray="8,4"/>
+      <text x="570" y="143" fill="#2d1010" text-anchor="middle" font-size="9" letter-spacing="2">KUBERNETES CLUSTER — flannel CNI — NO NetworkPolicy — default-allow-all</text>
+
+      <!-- ── NODE 1 ── -->
+      <rect x="22" y="153" width="340" height="580" rx="12" fill="rgba(239,68,68,0.015)" stroke="#3a1a1a" stroke-width="1.5"/>
+      <text x="192" y="172" fill="#4d2020" text-anchor="middle" font-size="11" font-weight="bold">NODE 1 — worker-node-1</text>
+      <text x="192" y="186" fill="#2d1a1a" text-anchor="middle" font-size="8">IP: 10.0.1.10  |  4 vCPU  8 GB RAM  |  Ubuntu 22.04</text>
+
+      <!-- app-a-pod-1 -->
+      <rect x="34" y="198" width="316" height="108" rx="10" fill="#0f0a0a" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="192" y="218" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-1</text>
+      <text x="192" y="234" fill="#4d6b8a" text-anchor="middle" font-size="8.5">image: myapp/api:latest  ⚠ (floating tag)</text>
+      <text x="192" y="249" fill="#4d6b8a" text-anchor="middle" font-size="8.5">port: 8080  |  podIP: 10.244.1.2</text>
+      <text x="192" y="264" fill="#ef4444" text-anchor="middle" font-size="8">⚠ plain HTTP — no TLS</text>
+      <text x="192" y="278" fill="#4d2020" text-anchor="middle" font-size="8">NodePort 31001 open on THIS node IP</text>
+      <text x="192" y="292" fill="#4d2020" text-anchor="middle" font-size="8">no resource limits · runs as root · no probes</text>
+
+      <!-- app-b-pod-1 -->
+      <rect x="34" y="320" width="316" height="108" rx="10" fill="#0f0a0a" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="192" y="340" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-1</text>
+      <text x="192" y="356" fill="#4d6b8a" text-anchor="middle" font-size="8.5">image: myapp/frontend:latest  ⚠</text>
+      <text x="192" y="371" fill="#4d6b8a" text-anchor="middle" font-size="8.5">port: 3000  |  podIP: 10.244.1.3</text>
+      <text x="192" y="386" fill="#ef4444" text-anchor="middle" font-size="8">⚠ CAN freely call redis:6379</text>
+      <text x="192" y="400" fill="#ef4444" text-anchor="middle" font-size="8">⚠ CAN freely call postgres:5432</text>
+      <text x="192" y="414" fill="#4d2020" text-anchor="middle" font-size="8">no resource limits · hardcoded secrets in env</text>
+
+      <!-- kube-proxy -->
+      <rect x="34" y="442" width="316" height="38" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="192" y="458" fill="#4d6b8a" text-anchor="middle" font-size="9">kube-proxy  (iptables mode)</text>
+      <text x="192" y="472" fill="#2d4a6a" text-anchor="middle" font-size="8">routes NodePort 31001 + 31002 to pod IPs</text>
+      <!-- kubelet -->
+      <rect x="34" y="492" width="316" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="192" y="510" fill="#4d6b8a" text-anchor="middle" font-size="9">kubelet</text>
+      <text x="192" y="523" fill="#2d4a6a" text-anchor="middle" font-size="8">manages pod lifecycle on this node</text>
+      <!-- containerd -->
+      <rect x="34" y="540" width="316" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="192" y="558" fill="#4d6b8a" text-anchor="middle" font-size="9">containerd  (runtime)</text>
+      <text x="192" y="571" fill="#2d4a6a" text-anchor="middle" font-size="8">executes container images</text>
+      <!-- CNI -->
+      <rect x="34" y="588" width="316" height="36" rx="7" fill="#1a0808" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="192" y="606" fill="#ef4444" text-anchor="middle" font-size="9">CNI: flannel — NO NetworkPolicy support</text>
+      <text x="192" y="619" fill="#4d2020" text-anchor="middle" font-size="8">⚠ all pods reach all pods — no restriction</text>
+      <!-- node label -->
+      <rect x="34" y="636" width="316" height="28" rx="6" fill="#0a0a0a" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="192" y="655" fill="#2d4a6a" text-anchor="middle" font-size="8">Labels: kubernetes.io/hostname=worker-node-1</text>
+
+      <!-- ── NODE 2 ── -->
+      <rect x="400" y="153" width="340" height="580" rx="12" fill="rgba(239,68,68,0.015)" stroke="#3a1a1a" stroke-width="1.5"/>
+      <text x="570" y="172" fill="#4d2020" text-anchor="middle" font-size="11" font-weight="bold">NODE 2 — worker-node-2</text>
+      <text x="570" y="186" fill="#2d1a1a" text-anchor="middle" font-size="8">IP: 10.0.1.11  |  4 vCPU  8 GB RAM  |  Ubuntu 22.04</text>
+
+      <rect x="412" y="198" width="316" height="108" rx="10" fill="#0f0a0a" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="570" y="218" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-2</text>
+      <text x="570" y="234" fill="#4d6b8a" text-anchor="middle" font-size="8.5">image: myapp/api:latest</text>
+      <text x="570" y="249" fill="#4d6b8a" text-anchor="middle" font-size="8.5">port: 8080  |  podIP: 10.244.2.2</text>
+      <text x="570" y="264" fill="#ef4444" text-anchor="middle" font-size="8">⚠ plain HTTP — no TLS</text>
+      <text x="570" y="278" fill="#4d2020" text-anchor="middle" font-size="8">NodePort 31001 also open on THIS node</text>
+      <text x="570" y="292" fill="#4d2020" text-anchor="middle" font-size="8">any pod in cluster can connect directly</text>
+
+      <rect x="412" y="320" width="316" height="108" rx="10" fill="#0f0a0a" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="570" y="340" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-2</text>
+      <text x="570" y="356" fill="#4d6b8a" text-anchor="middle" font-size="8.5">image: myapp/frontend:latest</text>
+      <text x="570" y="371" fill="#4d6b8a" text-anchor="middle" font-size="8.5">port: 3000  |  podIP: 10.244.2.3</text>
+      <text x="570" y="386" fill="#ef4444" text-anchor="middle" font-size="8">⚠ freely calls redis — no block</text>
+      <text x="570" y="400" fill="#ef4444" text-anchor="middle" font-size="8">⚠ freely calls postgres — no block</text>
+      <text x="570" y="414" fill="#4d2020" text-anchor="middle" font-size="8">DB_PASSWORD hardcoded in env vars</text>
+
+      <rect x="412" y="442" width="316" height="38" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="570" y="458" fill="#4d6b8a" text-anchor="middle" font-size="9">kube-proxy  (iptables mode)</text>
+      <text x="570" y="472" fill="#2d4a6a" text-anchor="middle" font-size="8">routes NodePort 31001 + 31002 to pod IPs</text>
+      <rect x="412" y="492" width="316" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="570" y="510" fill="#4d6b8a" text-anchor="middle" font-size="9">kubelet</text>
+      <text x="570" y="523" fill="#2d4a6a" text-anchor="middle" font-size="8">manages pod lifecycle on this node</text>
+      <rect x="412" y="540" width="316" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="570" y="558" fill="#4d6b8a" text-anchor="middle" font-size="9">containerd  (runtime)</text>
+      <text x="570" y="571" fill="#2d4a6a" text-anchor="middle" font-size="8">executes container images</text>
+      <rect x="412" y="588" width="316" height="36" rx="7" fill="#1a0808" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="570" y="606" fill="#ef4444" text-anchor="middle" font-size="9">CNI: flannel — NO NetworkPolicy support</text>
+      <text x="570" y="619" fill="#4d2020" text-anchor="middle" font-size="8">⚠ all pods reach all pods — no restriction</text>
+      <rect x="412" y="636" width="316" height="28" rx="6" fill="#0a0a0a" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="570" y="655" fill="#2d4a6a" text-anchor="middle" font-size="8">Labels: kubernetes.io/hostname=worker-node-2</text>
+
+      <!-- ── NODE 3 ── -->
+      <rect x="778" y="153" width="340" height="580" rx="12" fill="rgba(239,68,68,0.015)" stroke="#3a1a1a" stroke-width="1.5"/>
+      <text x="948" y="172" fill="#4d2020" text-anchor="middle" font-size="11" font-weight="bold">NODE 3 — worker-node-3</text>
+      <text x="948" y="186" fill="#2d1a1a" text-anchor="middle" font-size="8">IP: 10.0.1.12  |  4 vCPU  8 GB RAM  |  Ubuntu 22.04</text>
+
+      <rect x="790" y="198" width="316" height="108" rx="10" fill="#0f0a0a" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="948" y="218" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-3</text>
+      <text x="948" y="234" fill="#4d6b8a" text-anchor="middle" font-size="8.5">image: myapp/api:latest</text>
+      <text x="948" y="249" fill="#4d6b8a" text-anchor="middle" font-size="8.5">port: 8080  |  podIP: 10.244.3.2</text>
+      <text x="948" y="264" fill="#ef4444" text-anchor="middle" font-size="8">⚠ plain HTTP — no TLS</text>
+      <text x="948" y="278" fill="#4d2020" text-anchor="middle" font-size="8">no rate-limit · no auth · no probes</text>
+      <text x="948" y="292" fill="#4d2020" text-anchor="middle" font-size="8">single client can exhaust all 3 replicas</text>
+
+      <rect x="790" y="320" width="316" height="108" rx="10" fill="#0f0a0a" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="948" y="340" fill="#ef4444" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-3</text>
+      <text x="948" y="356" fill="#4d6b8a" text-anchor="middle" font-size="8.5">image: myapp/frontend:latest</text>
+      <text x="948" y="371" fill="#4d6b8a" text-anchor="middle" font-size="8.5">port: 3000  |  podIP: 10.244.3.3</text>
+      <text x="948" y="386" fill="#ef4444" text-anchor="middle" font-size="8">⚠ can FLUSHALL redis from here</text>
+      <text x="948" y="400" fill="#ef4444" text-anchor="middle" font-size="8">⚠ can DROP postgres tables from here</text>
+      <text x="948" y="414" fill="#4d2020" text-anchor="middle" font-size="8">any compromise = full data breach</text>
+
+      <!-- redis on node 3 -->
+      <rect x="790" y="440" width="316" height="88" rx="10" fill="#1a0808" stroke="#ef4444" stroke-width="2.5"/>
+      <text x="948" y="462" fill="#ef4444" text-anchor="middle" font-size="11" font-weight="bold">redis-pod-1  ⚠ FULLY EXPOSED</text>
+      <text x="948" y="478" fill="#4d6b8a" text-anchor="middle" font-size="8.5">image: redis:7  |  port: 6379</text>
+      <text x="948" y="493" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.3.4  |  NO auth (no --requirepass)</text>
+      <text x="948" y="508" fill="#ef4444" text-anchor="middle" font-size="8">EVERY pod in the cluster can connect!</text>
+      <text x="948" y="521" fill="#4d2020" text-anchor="middle" font-size="8">LB#3 also exposes port 6379 to internet!</text>
+
+      <rect x="790" y="540" width="316" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="948" y="558" fill="#4d6b8a" text-anchor="middle" font-size="9">kubelet + containerd</text>
+      <text x="948" y="571" fill="#2d4a6a" text-anchor="middle" font-size="8">manages pods on this node</text>
+      <rect x="790" y="588" width="316" height="36" rx="7" fill="#1a0808" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="948" y="606" fill="#ef4444" text-anchor="middle" font-size="9">CNI: flannel — NO NetworkPolicy</text>
+      <text x="948" y="619" fill="#4d2020" text-anchor="middle" font-size="8">⚠ unrestricted pod-to-pod traffic</text>
+      <rect x="790" y="636" width="316" height="28" rx="6" fill="#0a0a0a" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="948" y="655" fill="#2d4a6a" text-anchor="middle" font-size="8">Labels: kubernetes.io/hostname=worker-node-3</text>
+
+      <!-- LB → nodes arrows (spread to all nodes) -->
+      <line x1="237" y1="74" x2="192" y2="150" stroke="#ef4444" stroke-width="1.5" marker-end="url(#b0)"/>
+      <line x1="237" y1="74" x2="570" y2="150" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.5" marker-end="url(#b0)"/>
+      <line x1="237" y1="74" x2="948" y2="150" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.3" marker-end="url(#b0)"/>
+      <line x1="462" y1="74" x2="570" y2="150" stroke="#ef4444" stroke-width="1.5" marker-end="url(#b0)"/>
+      <line x1="462" y1="74" x2="192" y2="150" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.4" marker-end="url(#b0)"/>
+      <line x1="692" y1="74" x2="948" y2="150" stroke="#ef4444" stroke-width="1.5" marker-end="url(#b0)"/>
+
+      <!-- chaos: pods reaching each other freely -->
+      <line x1="350" y1="252" x2="410" y2="252" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.5" marker-end="url(#b0)"/>
+      <line x1="728" y1="252" x2="788" y2="252" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.5" marker-end="url(#b0)"/>
+      <line x1="350" y1="374" x2="410" y2="374" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.5" marker-end="url(#b0)"/>
+
+      <!-- app-b → redis (big red arrow = danger) -->
+      <line x1="570" y1="428" x2="820" y2="462" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="5,2" opacity="0.9" marker-end="url(#b0)"/>
+      <text x="700" y="445" fill="#ef4444" text-anchor="middle" font-size="9" font-weight="bold">UNRESTRICTED ACCESS</text>
+      <!-- app-a → redis -->
+      <line x1="350" y1="292" x2="786" y2="475" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" opacity="0.4" marker-end="url(#b0)"/>
+    </svg>
+
+    <div class="legend">
+      <div class="legend-item"><div class="leg-box" style="background:#ef4444"></div>Exposed/Unsecured pods &amp; services</div>
+      <div class="legend-item"><div class="leg-box" style="background:#f59e0b"></div>Cost problem (3 cloud LBs)</div>
+      <div class="legend-item"><div class="leg-box" style="background:#4d6b8a"></div>Unrestricted pod-to-pod traffic</div>
+    </div>
+  </div>
+
+  <div class="prob-grid">
+    <div class="prob-card"><h4>💸 3× LoadBalancer Cost</h4><p>Three dedicated cloud LBs × $75/month = $225/month just for ingress. Scale to 10 services = $750/month. One Ingress Controller sharing a single LB costs $75/month total.</p></div>
+    <div class="prob-card"><h4>🔓 Zero TLS</h4><p>All traffic between users and services is plain HTTP. Passwords, tokens, and PII transmitted in cleartext. MITM attacks are trivial on any public network.</p></div>
+    <div class="prob-card"><h4>🦠 Unrestricted Lateral Movement</h4><p>app-b can directly connect to Redis (FLUSHALL) and Postgres (DROP TABLE). One compromised frontend pod = full database access. No audit trail. No block.</p></div>
+    <div class="prob-card"><h4>📡 NodePort on Every Node</h4><p>NodePort 31001/31002 are open on the public IP of every node. Even nodes meant for internal workloads become part of the attack surface.</p></div>
+    <div class="prob-card"><h4>📉 No Metrics</h4><p>No central RPS, latency, or error rate per service. Incidents are discovered by users, not alerts. MTTR measured in hours, not minutes.</p></div>
+    <div class="prob-card"><h4>🔑 Secrets in Plain Env Vars</h4><p>DB_PASSWORD hardcoded in Deployment YAML and stored unencrypted in etcd. Readable by anyone with kubectl access. No rotation possible without redeploying.</p></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- AFTER CLUSTER -->
+<section id="after">
+  <div class="section-label">04 // AFTER — PRODUCTION CLUSTER — FULL ARCHITECTURE</div>
+  <h2 style="color:var(--accent3)">After: The Secured Cluster</h2>
+  <p style="color:var(--text2);max-width:860px;line-height:1.8;margin-bottom:1rem">Same three nodes, same apps, same replica counts — but now with an HA Ingress Controller (2 replicas across nodes 1 &amp; 2), TLS via cert-manager, path-based routing, NetworkPolicy default-deny across all namespaces, Calico CNI enforcing eBPF policies, Prometheus scraping every workload, and Postgres/Redis isolated in their own namespace.</p>
+
+  <div class="callout tip">
+    <span style="font-size:1.2rem">✅</span>
+    <div><strong>Secured state:</strong> ONE shared cloud LoadBalancer → 2× nginx-controller (HA). TLS terminates at edge. app-a and app-b are ClusterIP-only (not reachable from internet directly). app-b CANNOT reach Redis or Postgres — NetworkPolicy blocks it. All secrets from K8s Secret resources. All pods have resource limits, readiness probes, and security contexts. Prometheus scrapes /metrics on every pod.</div>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="dtitle green">FULL CLUSTER — AFTER — 3 NODES · nginx-controller ×2 · app-a ×3 · app-b ×3 · postgres · redis · NetworkPolicy</div>
+    <svg viewBox="0 0 1140 900" width="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a0" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#00d4ff"/></marker>
+        <marker id="a1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#10b981"/></marker>
+        <marker id="a2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#7c3aed"/></marker>
+        <marker id="a3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f59e0b"/></marker>
+        <marker id="a4" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ef4444"/></marker>
+        <marker id="a5" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ec4899"/></marker>
+      </defs>
+
+      <!-- cloud band -->
+      <rect x="0" y="0" width="1140" height="132" fill="#050a14"/>
+      <text x="570" y="15" fill="#1e3a5f" text-anchor="middle" font-size="9" letter-spacing="3">CLOUD / INTERNET</text>
+
+      <!-- internet -->
+      <circle cx="58" cy="72" r="36" fill="none" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="58" y="66" fill="#8ba3c4" text-anchor="middle" font-size="17">🌐</text>
+      <text x="58" y="84" fill="#4d6b8a" text-anchor="middle" font-size="8">Users</text>
+
+      <!-- SINGLE LB -->
+      <rect x="150" y="28" width="200" height="58" rx="9" fill="#071a12" stroke="#10b981" stroke-width="2.5"/>
+      <text x="250" y="50" fill="#10b981" text-anchor="middle" font-size="11" font-weight="bold">Cloud LoadBalancer ✓</text>
+      <text x="250" y="66" fill="#10b981" text-anchor="middle" font-size="9">203.0.113.10  — SHARED</text>
+      <text x="250" y="80" fill="#4d6b8a" text-anchor="middle" font-size="8">:80 redirect → :443 · HTTPS only</text>
+
+      <!-- DNS -->
+      <rect x="400" y="34" width="175" height="46" rx="8" fill="#0a0f1f" stroke="#4d6b8a" stroke-width="1"/>
+      <text x="487" y="54" fill="#8ba3c4" text-anchor="middle" font-size="9">DNS</text>
+      <text x="487" y="70" fill="#4d6b8a" text-anchor="middle" font-size="8">api.myapp.com → 203.0.113.10</text>
+      <!-- cert-manager -->
+      <rect x="610" y="34" width="175" height="46" rx="8" fill="#0a0f1f" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="697" y="54" fill="#7c3aed" text-anchor="middle" font-size="9">cert-manager</text>
+      <text x="697" y="70" fill="#4d6b8a" text-anchor="middle" font-size="8">Auto TLS · Let's Encrypt · 90d</text>
+      <!-- prometheus -->
+      <rect x="830" y="34" width="260" height="46" rx="8" fill="#0a0f1f" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="960" y="54" fill="#f59e0b" text-anchor="middle" font-size="9">Prometheus + Grafana</text>
+      <text x="960" y="70" fill="#4d6b8a" text-anchor="middle" font-size="8">ns: monitoring · scrapes /metrics :9090</text>
+
+      <!-- user → LB -->
+      <line x1="94" y1="65" x2="148" y2="58" stroke="#00d4ff" stroke-width="2" marker-end="url(#a0)"/>
+
+      <!-- cluster border -->
+      <rect x="10" y="140" width="1120" height="748" rx="14" fill="none" stroke="#1e3a5f" stroke-width="1.5" stroke-dasharray="8,4"/>
+      <text x="570" y="156" fill="#1e3a5f" text-anchor="middle" font-size="9" letter-spacing="2">KUBERNETES CLUSTER — Calico CNI — NetworkPolicy enforced — TLS everywhere</text>
+
+      <!-- ── ingress-nginx namespace ── -->
+      <rect x="18" y="164" width="1104" height="108" rx="10" fill="rgba(0,212,255,0.025)" stroke="rgba(0,212,255,0.12)" stroke-width="1"/>
+      <text x="30" y="180" fill="rgba(0,212,255,0.35)" font-size="8">namespace: ingress-nginx</text>
+
+      <!-- nginx-ctrl-1 on node 1 -->
+      <rect x="30" y="186" width="240" height="74" rx="9" fill="#0d1f3c" stroke="#00d4ff" stroke-width="2"/>
+      <text x="150" y="208" fill="#00d4ff" text-anchor="middle" font-size="10" font-weight="bold">nginx-controller-1  (LEADER)</text>
+      <text x="150" y="224" fill="#4d6b8a" text-anchor="middle" font-size="8.5">Deployment Pod → Node 1</text>
+      <text x="150" y="239" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.1.10  |  :80 :443 :10254</text>
+      <text x="150" y="253" fill="#00d4ff" text-anchor="middle" font-size="8">leader election · Prometheus metrics ✓</text>
+
+      <!-- nginx-ctrl-2 on node 2 -->
+      <rect x="300" y="186" width="240" height="74" rx="9" fill="#0d1f3c" stroke="#00d4ff" stroke-width="2"/>
+      <text x="420" y="208" fill="#00d4ff" text-anchor="middle" font-size="10" font-weight="bold">nginx-controller-2  (STANDBY)</text>
+      <text x="420" y="224" fill="#4d6b8a" text-anchor="middle" font-size="8.5">Deployment Pod → Node 2</text>
+      <text x="420" y="239" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.2.10  |  :80 :443 :10254</text>
+      <text x="420" y="253" fill="#4d6b8a" text-anchor="middle" font-size="8">HA failover · podAntiAffinity enforced</text>
+
+      <!-- ingress rules callout -->
+      <rect x="570" y="186" width="270" height="74" rx="9" fill="#050a14" stroke="#1e3a5f" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="705" y="203" fill="#4d6b8a" text-anchor="middle" font-size="8">Ingress Rules (read by both controllers):</text>
+      <text x="580" y="218" fill="#10b981" font-size="8.5">api.myapp.com/api/* → app-a-svc:80</text>
+      <text x="580" y="233" fill="#ec4899" font-size="8.5">web.myapp.com/      → app-b-svc:80</text>
+      <text x="580" y="248" fill="#f59e0b" font-size="8.5">TLS: *.myapp.com · cert auto-managed</text>
+
+      <!-- annotations callout -->
+      <rect x="870" y="186" width="240" height="74" rx="9" fill="#050a14" stroke="#1e3a5f" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="990" y="203" fill="#4d6b8a" text-anchor="middle" font-size="8">Active Annotations:</text>
+      <text x="880" y="218" fill="#7c3aed" font-size="8.5">limit-rps: 100 · ssl-redirect: true</text>
+      <text x="880" y="233" fill="#7c3aed" font-size="8.5">cors: enabled · proxy-body: 50m</text>
+      <text x="880" y="248" fill="#7c3aed" font-size="8.5">X-Frame-Options · X-Content-Type</text>
+
+      <!-- LB → controllers -->
+      <line x1="250" y1="86" x2="150" y2="184" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#a0)"/>
+      <line x1="250" y1="86" x2="420" y2="184" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#a0)"/>
+
+      <!-- ── production namespace ── -->
+      <rect x="18" y="284" width="840" height="556" rx="10" fill="rgba(16,185,129,0.015)" stroke="rgba(16,185,129,0.12)" stroke-width="1"/>
+      <text x="30" y="299" fill="rgba(16,185,129,0.35)" font-size="8">namespace: production</text>
+
+      <!-- ── NODE 1 ── -->
+      <rect x="26" y="306" width="260" height="522" rx="12" fill="rgba(0,212,255,0.018)" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="156" y="323" fill="#2d4a6a" text-anchor="middle" font-size="10" font-weight="bold">NODE 1 — worker-node-1</text>
+      <text x="156" y="336" fill="#1e3a5f" text-anchor="middle" font-size="7.5">10.0.1.10  |  4 vCPU  8 GB  |  role=worker zone=a</text>
+
+      <!-- app-a-pod-1 -->
+      <rect x="38" y="348" width="236" height="114" rx="10" fill="#071a12" stroke="#10b981" stroke-width="2"/>
+      <text x="156" y="368" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-1</text>
+      <text x="156" y="384" fill="#4d6b8a" text-anchor="middle" font-size="8.5">myapp/api:v1.2.0  |  :8080  :9090</text>
+      <text x="156" y="399" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.1.2  |  runAsUser:1000</text>
+      <text x="156" y="414" fill="#10b981" text-anchor="middle" font-size="8">TLS at Ingress ✓  readinessProbe ✓</text>
+      <text x="156" y="428" fill="#10b981" text-anchor="middle" font-size="8">Egress: postgres+redis only ✓</text>
+      <text x="156" y="442" fill="#10b981" text-anchor="middle" font-size="8">Ingress: nginx-ctrl only ✓</text>
+      <text x="156" y="455" fill="#10b981" text-anchor="middle" font-size="8">resources: req 200m/256Mi · lim 1/512Mi</text>
+
+      <!-- app-b-pod-1 -->
+      <rect x="38" y="476" width="236" height="108" rx="10" fill="#120818" stroke="#ec4899" stroke-width="2"/>
+      <text x="156" y="496" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-1</text>
+      <text x="156" y="512" fill="#4d6b8a" text-anchor="middle" font-size="8.5">myapp/frontend:v2.0.1  |  :3000</text>
+      <text x="156" y="527" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.1.3  |  runAsUser:1001</text>
+      <text x="156" y="542" fill="#10b981" text-anchor="middle" font-size="8">Egress: DNS + app-a only ✓</text>
+      <text x="156" y="557" fill="#10b981" text-anchor="middle" font-size="8">CANNOT reach Redis/Postgres ✓</text>
+      <text x="156" y="571" fill="#10b981" text-anchor="middle" font-size="8">readOnlyRootFilesystem: true ✓</text>
+
+      <!-- node 1 system -->
+      <rect x="38" y="598" width="236" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="156" y="614" fill="#4d6b8a" text-anchor="middle" font-size="8.5">kube-proxy (IPVS mode)</text>
+      <text x="156" y="627" fill="#2d4a6a" text-anchor="middle" font-size="7.5">ClusterIP service routing</text>
+      <rect x="38" y="646" width="236" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="156" y="662" fill="#4d6b8a" text-anchor="middle" font-size="8.5">kubelet + containerd</text>
+      <text x="156" y="675" fill="#2d4a6a" text-anchor="middle" font-size="7.5">pod lifecycle management</text>
+      <rect x="38" y="694" width="236" height="36" rx="7" fill="#071a12" stroke="#10b981" stroke-width="1.5"/>
+      <text x="156" y="710" fill="#10b981" text-anchor="middle" font-size="8.5">CNI: Calico  (eBPF + NetworkPolicy)</text>
+      <text x="156" y="723" fill="#4d6b8a" text-anchor="middle" font-size="7.5">enforces all NetworkPolicy rules ✓</text>
+      <rect x="38" y="742" width="236" height="26" rx="6" fill="#071a12" stroke="#10b981" stroke-width="1"/>
+      <text x="156" y="759" fill="#10b981" text-anchor="middle" font-size="7.5">role=worker · zone=a · calico-node running</text>
+
+      <!-- ── NODE 2 ── -->
+      <rect x="306" y="306" width="260" height="522" rx="12" fill="rgba(0,212,255,0.018)" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="436" y="323" fill="#2d4a6a" text-anchor="middle" font-size="10" font-weight="bold">NODE 2 — worker-node-2</text>
+      <text x="436" y="336" fill="#1e3a5f" text-anchor="middle" font-size="7.5">10.0.1.11  |  4 vCPU  8 GB  |  role=worker zone=b</text>
+
+      <rect x="318" y="348" width="236" height="114" rx="10" fill="#071a12" stroke="#10b981" stroke-width="2"/>
+      <text x="436" y="368" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-2</text>
+      <text x="436" y="384" fill="#4d6b8a" text-anchor="middle" font-size="8.5">myapp/api:v1.2.0  |  :8080  :9090</text>
+      <text x="436" y="399" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.2.2  |  runAsUser:1000</text>
+      <text x="436" y="414" fill="#10b981" text-anchor="middle" font-size="8">HPA managed: 3→10 replicas ✓</text>
+      <text x="436" y="428" fill="#10b981" text-anchor="middle" font-size="8">topologySpread: 1 per node ✓</text>
+      <text x="436" y="442" fill="#10b981" text-anchor="middle" font-size="8">DB secret from K8s Secret ref ✓</text>
+      <text x="436" y="455" fill="#10b981" text-anchor="middle" font-size="8">Prometheus scrape port 9090 ✓</text>
+
+      <rect x="318" y="476" width="236" height="108" rx="10" fill="#120818" stroke="#ec4899" stroke-width="2"/>
+      <text x="436" y="496" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-2</text>
+      <text x="436" y="512" fill="#4d6b8a" text-anchor="middle" font-size="8.5">myapp/frontend:v2.0.1  |  :3000</text>
+      <text x="436" y="527" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.2.3  |  runAsUser:1001</text>
+      <text x="436" y="542" fill="#10b981" text-anchor="middle" font-size="8">Egress: DNS + app-a only ✓</text>
+      <text x="436" y="557" fill="#10b981" text-anchor="middle" font-size="8">CANNOT reach Redis/Postgres ✓</text>
+      <text x="436" y="571" fill="#10b981" text-anchor="middle" font-size="8">capabilities: drop ALL ✓</text>
+
+      <rect x="318" y="598" width="236" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="436" y="614" fill="#4d6b8a" text-anchor="middle" font-size="8.5">kube-proxy (IPVS mode)</text>
+      <text x="436" y="627" fill="#2d4a6a" text-anchor="middle" font-size="7.5">ClusterIP service routing</text>
+      <rect x="318" y="646" width="236" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="436" y="662" fill="#4d6b8a" text-anchor="middle" font-size="8.5">kubelet + containerd</text>
+      <text x="436" y="675" fill="#2d4a6a" text-anchor="middle" font-size="7.5">pod lifecycle management</text>
+      <rect x="318" y="694" width="236" height="36" rx="7" fill="#071a12" stroke="#10b981" stroke-width="1.5"/>
+      <text x="436" y="710" fill="#10b981" text-anchor="middle" font-size="8.5">CNI: Calico  (eBPF + NetworkPolicy)</text>
+      <text x="436" y="723" fill="#4d6b8a" text-anchor="middle" font-size="7.5">enforces all NetworkPolicy rules ✓</text>
+      <rect x="318" y="742" width="236" height="26" rx="6" fill="#071a12" stroke="#10b981" stroke-width="1"/>
+      <text x="436" y="759" fill="#10b981" text-anchor="middle" font-size="7.5">role=worker · zone=b · calico-node running</text>
+
+      <!-- ── NODE 3 ── -->
+      <rect x="586" y="306" width="260" height="522" rx="12" fill="rgba(0,212,255,0.018)" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="716" y="323" fill="#2d4a6a" text-anchor="middle" font-size="10" font-weight="bold">NODE 3 — worker-node-3</text>
+      <text x="716" y="336" fill="#1e3a5f" text-anchor="middle" font-size="7.5">10.0.1.12  |  4 vCPU  8 GB  |  role=worker zone=c</text>
+
+      <rect x="598" y="348" width="236" height="114" rx="10" fill="#071a12" stroke="#10b981" stroke-width="2"/>
+      <text x="716" y="368" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-3</text>
+      <text x="716" y="384" fill="#4d6b8a" text-anchor="middle" font-size="8.5">myapp/api:v1.2.0  |  :8080  :9090</text>
+      <text x="716" y="399" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.3.2  |  runAsUser:1000</text>
+      <text x="716" y="414" fill="#10b981" text-anchor="middle" font-size="8">Rolling update: maxUnavailable:0 ✓</text>
+      <text x="716" y="428" fill="#10b981" text-anchor="middle" font-size="8">PDB: minAvailable:2 ✓</text>
+      <text x="716" y="442" fill="#10b981" text-anchor="middle" font-size="8">liveness + readiness probes ✓</text>
+      <text x="716" y="455" fill="#10b981" text-anchor="middle" font-size="8">allowPrivilegeEscalation: false ✓</text>
+
+      <rect x="598" y="476" width="236" height="108" rx="10" fill="#120818" stroke="#ec4899" stroke-width="2"/>
+      <text x="716" y="496" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-3</text>
+      <text x="716" y="512" fill="#4d6b8a" text-anchor="middle" font-size="8.5">myapp/frontend:v2.0.1  |  :3000</text>
+      <text x="716" y="527" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.3.3  |  runAsUser:1001</text>
+      <text x="716" y="542" fill="#10b981" text-anchor="middle" font-size="8">Egress: DNS + app-a only ✓</text>
+      <text x="716" y="557" fill="#10b981" text-anchor="middle" font-size="8">CANNOT reach Redis/Postgres ✓</text>
+      <text x="716" y="571" fill="#10b981" text-anchor="middle" font-size="8">seccompProfile: RuntimeDefault ✓</text>
+
+      <rect x="598" y="598" width="236" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="716" y="614" fill="#4d6b8a" text-anchor="middle" font-size="8.5">kube-proxy (IPVS mode)</text>
+      <text x="716" y="627" fill="#2d4a6a" text-anchor="middle" font-size="7.5">ClusterIP service routing</text>
+      <rect x="598" y="646" width="236" height="36" rx="7" fill="#050a14" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="716" y="662" fill="#4d6b8a" text-anchor="middle" font-size="8.5">kubelet + containerd</text>
+      <text x="716" y="675" fill="#2d4a6a" text-anchor="middle" font-size="7.5">pod lifecycle management</text>
+      <rect x="598" y="694" width="236" height="36" rx="7" fill="#071a12" stroke="#10b981" stroke-width="1.5"/>
+      <text x="716" y="710" fill="#10b981" text-anchor="middle" font-size="8.5">CNI: Calico  (eBPF + NetworkPolicy)</text>
+      <text x="716" y="723" fill="#4d6b8a" text-anchor="middle" font-size="7.5">enforces all NetworkPolicy rules ✓</text>
+      <rect x="598" y="742" width="236" height="26" rx="6" fill="#071a12" stroke="#10b981" stroke-width="1"/>
+      <text x="716" y="759" fill="#10b981" text-anchor="middle" font-size="7.5">role=worker · zone=c · calico-node running</text>
+
+      <!-- ── DATABASE namespace (right panel) ── -->
+      <rect x="866" y="284" width="264" height="556" rx="10" fill="rgba(124,58,237,0.025)" stroke="rgba(124,58,237,0.2)" stroke-width="1"/>
+      <text x="878" y="299" fill="rgba(124,58,237,0.45)" font-size="8">namespace: database</text>
+
+      <!-- postgres -->
+      <rect x="878" y="310" width="240" height="118" rx="10" fill="#0a0a1f" stroke="#7c3aed" stroke-width="2"/>
+      <text x="998" y="332" fill="#7c3aed" text-anchor="middle" font-size="11" font-weight="bold">PostgreSQL</text>
+      <text x="998" y="350" fill="#4d6b8a" text-anchor="middle" font-size="8.5">StatefulSet  |  port: 5432</text>
+      <text x="998" y="365" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.3.10  (node 3)</text>
+      <text x="998" y="380" fill="#4d6b8a" text-anchor="middle" font-size="8.5">PVC: postgres-data 100Gi (fast-ssd)</text>
+      <text x="998" y="395" fill="#10b981" text-anchor="middle" font-size="8">Only app-a pods can reach ✓</text>
+      <text x="998" y="409" fill="#10b981" text-anchor="middle" font-size="8">password from K8s Secret ✓</text>
+      <text x="998" y="422" fill="#10b981" text-anchor="middle" font-size="8">readiness: pg_isready probe ✓</text>
+
+      <!-- redis -->
+      <rect x="878" y="442" width="240" height="108" rx="10" fill="#0a0a1f" stroke="#f59e0b" stroke-width="2"/>
+      <text x="998" y="464" fill="#f59e0b" text-anchor="middle" font-size="11" font-weight="bold">Redis Cache</text>
+      <text x="998" y="482" fill="#4d6b8a" text-anchor="middle" font-size="8.5">Deployment  |  port: 6379</text>
+      <text x="998" y="497" fill="#4d6b8a" text-anchor="middle" font-size="8.5">podIP: 10.244.2.11  (node 2)</text>
+      <text x="998" y="512" fill="#4d6b8a" text-anchor="middle" font-size="8.5">maxmemory: 2Gi · AUTH enabled</text>
+      <text x="998" y="527" fill="#10b981" text-anchor="middle" font-size="8">Only app-a pods can reach ✓</text>
+      <text x="998" y="541" fill="#10b981" text-anchor="middle" font-size="8">password from K8s Secret ✓</text>
+
+      <!-- services row -->
+      <rect x="878" y="564" width="240" height="36" rx="7" fill="#050a14" stroke="#10b981" stroke-width="1.5"/>
+      <text x="998" y="580" fill="#10b981" text-anchor="middle" font-size="8.5">app-a-service (ClusterIP)</text>
+      <text x="998" y="593" fill="#4d6b8a" text-anchor="middle" font-size="7.5">10.96.0.10:80 → pods :8080</text>
+
+      <rect x="878" y="610" width="240" height="36" rx="7" fill="#050a14" stroke="#ec4899" stroke-width="1.5"/>
+      <text x="998" y="626" fill="#ec4899" text-anchor="middle" font-size="8.5">app-b-service (ClusterIP)</text>
+      <text x="998" y="639" fill="#4d6b8a" text-anchor="middle" font-size="7.5">10.96.0.11:80 → pods :3000</text>
+
+      <rect x="878" y="656" width="240" height="36" rx="7" fill="#050a14" stroke="#f59e0b" stroke-width="1"/>
+      <text x="998" y="672" fill="#f59e0b" text-anchor="middle" font-size="8.5">HPA: app-a 3→10 replicas</text>
+      <text x="998" y="685" fill="#4d6b8a" text-anchor="middle" font-size="7.5">CPU trigger: 70%</text>
+
+      <rect x="878" y="702" width="240" height="36" rx="7" fill="#050a14" stroke="#4d6b8a" stroke-width="1"/>
+      <text x="998" y="718" fill="#8ba3c4" text-anchor="middle" font-size="8.5">PodDisruptionBudget</text>
+      <text x="998" y="731" fill="#4d6b8a" text-anchor="middle" font-size="7.5">minAvailable: 2  (both apps)</text>
+
+      <rect x="878" y="748" width="240" height="36" rx="7" fill="#071a12" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="998" y="764" fill="#7c3aed" text-anchor="middle" font-size="8.5">NetworkPolicy  (9 rules active)</text>
+      <text x="998" y="777" fill="#4d6b8a" text-anchor="middle" font-size="7.5">default-deny + explicit allow rules</text>
+
+      <!-- ctrl → app-a pods (ingress traffic) -->
+      <line x1="150" y1="260" x2="156" y2="344" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#a0)"/>
+      <line x1="420" y1="260" x2="436" y2="344" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#a0)"/>
+      <line x1="420" y1="260" x2="716" y2="344" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,2" opacity="0.5" marker-end="url(#a0)"/>
+      <!-- ctrl → app-b pods -->
+      <line x1="150" y1="260" x2="156" y2="472" stroke="#ec4899" stroke-width="1" stroke-dasharray="3,2" opacity="0.4" marker-end="url(#a5)"/>
+      <line x1="420" y1="260" x2="436" y2="472" stroke="#ec4899" stroke-width="1" stroke-dasharray="3,2" opacity="0.4" marker-end="url(#a5)"/>
+      <!-- app-a egress → postgres (allowed) -->
+      <line x1="274" y1="405" x2="876" y2="368" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.8" marker-end="url(#a2)"/>
+      <!-- app-a egress → redis (allowed) -->
+      <line x1="274" y1="430" x2="876" y2="490" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.7" marker-end="url(#a3)"/>
+      <!-- BLOCKED: app-b → postgres (X) -->
+      <line x1="274" y1="540" x2="500" y2="380" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>
+      <text x="378" y="458" fill="#ef4444" text-anchor="middle" font-size="14" font-weight="bold">✗</text>
+      <text x="378" y="474" fill="#ef4444" text-anchor="middle" font-size="7.5">BLOCKED BY</text>
+      <text x="378" y="486" fill="#ef4444" text-anchor="middle" font-size="7.5">NetworkPolicy</text>
+    </svg>
+
+    <div class="legend">
+      <div class="legend-item"><div class="leg-box" style="background:#00d4ff"></div>HTTPS Ingress traffic</div>
+      <div class="legend-item"><div class="leg-box" style="background:#10b981"></div>app-a (API) — secured pods</div>
+      <div class="legend-item"><div class="leg-box" style="background:#ec4899"></div>app-b (Frontend) — secured pods</div>
+      <div class="legend-item"><div class="leg-box" style="background:#7c3aed"></div>Allowed egress → Postgres</div>
+      <div class="legend-item"><div class="leg-box" style="background:#f59e0b"></div>Allowed egress → Redis</div>
+      <div class="legend-item"><div class="leg-box" style="background:#ef4444"></div>Blocked by NetworkPolicy</div>
+    </div>
+  </div>
+
+  <div class="gain-grid">
+    <div class="gain-card"><h4>✅ One Shared LoadBalancer</h4><p>Single cloud LB for the entire cluster. $75/month regardless of how many services run behind it. 10x cheaper at 10 services.</p></div>
+    <div class="gain-card"><h4>✅ Automated TLS</h4><p>cert-manager provisions and auto-renews Let's Encrypt certs. Alert at 14 days before expiry. Zero manual rotation ever.</p></div>
+    <div class="gain-card"><h4>✅ Zero-Trust Network</h4><p>app-b is <em>incapable</em> of reaching Redis or Postgres — NetworkPolicy blocks it at the kernel via Calico eBPF. Compromise contained.</p></div>
+    <div class="gain-card"><h4>✅ Full Observability</h4><p>Every pod exposes Prometheus metrics. Nginx exports per-route RPS, P99 latency, error rates. Grafana SLO dashboards populated automatically.</p></div>
+    <div class="gain-card"><h4>✅ HA Ingress Controller</h4><p>Two nginx controller pods across two nodes via podAntiAffinity. If Node 1 fails, Node 2's controller handles all traffic — zero intervention.</p></div>
+    <div class="gain-card"><h4>✅ Production Hygiene</h4><p>Pinned image tags, resource limits, readiness/liveness probes, security contexts, Secrets references, PodDisruptionBudgets — all set correctly.</p></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- YAML BEFORE -->
+<section id="yaml-before">
+  <div class="section-label">05 // FULL PROJECT YAML — BEFORE STATE</div>
+  <h2 style="color:var(--accent5)">Complete YAML: Before (Unsecured)</h2>
+  <p style="color:var(--text2);max-width:800px;line-height:1.8;margin-bottom:1.5rem">Every manifest for the naive "before" state. Notice the LoadBalancer Services, :latest image tags, hardcoded secrets, no NetworkPolicy, Redis without auth, Postgres as Deployment (not StatefulSet).</p>
+
+  <div class="tab-row" id="bt">
+    <button class="tab-btn active" onclick="sw('b','b0')">Namespace</button>
+    <button class="tab-btn" onclick="sw('b','b1')">App A — Deploy</button>
+    <button class="tab-btn" onclick="sw('b','b2')">App A — LB Svc</button>
+    <button class="tab-btn" onclick="sw('b','b3')">App B — Deploy</button>
+    <button class="tab-btn" onclick="sw('b','b4')">App B — LB Svc</button>
+    <button class="tab-btn" onclick="sw('b','b5')">Redis</button>
+    <button class="tab-btn" onclick="sw('b','b6')">Postgres</button>
+  </div>
+
+  <div id="b0" class="tab-body active"><pre><span class="cmt"># ─────────────────────────────────────────────
+# NAMESPACE — BEFORE
+# No labels, no quotas, no limits
+# ⚠ No labels = NetworkPolicy selectors can't target it
+# ⚠ No ResourceQuota = one app starves all others
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">production</span>
+  <span class="cmt">  # ⚠ No labels — NetworkPolicy selectors can't reference this
+  # ⚠ No ResourceQuota — unlimited CPU/RAM consumption
+  # ⚠ No LimitRange — containers run completely unbounded
+  # ⚠ Everything in one namespace — no isolation at all</span></pre></div>
+
+  <div id="b1" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# APP A — DEPLOYMENT (BEFORE)
+# ⚠ :latest tag, hardcoded secrets, no limits,
+#   no probes, runs as root, no anti-affinity
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">3</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>:
+      <span class="kw">app</span>: <span class="str">app-a</span>
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>:
+        <span class="kw">app</span>: <span class="str">app-a</span>
+    <span class="kw">spec</span>:
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">api</span>
+        <span class="kw">image</span>: <span class="str">myapp/api:latest</span>        <span class="cmt"># ⚠ floating tag — not reproducible</span>
+        <span class="kw">ports</span>:
+        - <span class="kw">containerPort</span>: <span class="val">8080</span>
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">DB_PASSWORD</span>
+          <span class="kw">value</span>: <span class="str">"supersecret"</span>         <span class="cmt"># ⚠ HARDCODED — stored in git!</span>
+        - <span class="kw">name</span>: <span class="str">DB_HOST</span>
+          <span class="kw">value</span>: <span class="str">"postgres.production.svc"</span>
+        - <span class="kw">name</span>: <span class="str">REDIS_HOST</span>
+          <span class="kw">value</span>: <span class="str">"redis.production.svc"</span>
+        <span class="cmt">        # ⚠ No resources block — can consume all node CPU/RAM
+        # ⚠ No securityContext — runs as root (UID 0)
+        # ⚠ No readinessProbe — traffic sent before app is ready
+        # ⚠ No livenessProbe — zombie process never restarted
+        # ⚠ No podAntiAffinity — all 3 pods may land on node 1</span></pre></div>
+
+  <div id="b2" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# APP A — SERVICE (BEFORE)
+# ⚠ Type: LoadBalancer = dedicated $75/month cloud LB
+# ⚠ NodePort exposed on every node public IP
+# ⚠ No TLS, no rate limiting, no auth
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a-service</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">LoadBalancer</span>        <span class="cmt"># ⚠ dedicated cloud LB — expensive</span>
+  <span class="kw">selector</span>:
+    <span class="kw">app</span>: <span class="str">app-a</span>
+  <span class="kw">ports</span>:
+  - <span class="kw">port</span>: <span class="val">80</span>
+    <span class="kw">targetPort</span>: <span class="val">8080</span>
+    <span class="kw">nodePort</span>: <span class="val">31001</span>           <span class="cmt"># ⚠ open on every node IP</span>
+  <span class="cmt">  # externalIP: 104.10.1.1 (provisioned by cloud)
+  # ⚠ plain HTTP — passwords in transit cleartext
+  # ⚠ no rate limiting — DDoS / abuse unmitigated
+  # ⚠ no authentication layer</span></pre></div>
+
+  <div id="b3" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# APP B — DEPLOYMENT (BEFORE)
+# Same problems as App A.
+# Additionally: CAN directly call redis:6379
+# and postgres:5432 — nothing stops it
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-b</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">3</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>:
+      <span class="kw">app</span>: <span class="str">app-b</span>
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>:
+        <span class="kw">app</span>: <span class="str">app-b</span>
+    <span class="kw">spec</span>:
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">frontend</span>
+        <span class="kw">image</span>: <span class="str">myapp/frontend:latest</span>   <span class="cmt"># ⚠ floating tag</span>
+        <span class="kw">ports</span>:
+        - <span class="kw">containerPort</span>: <span class="val">3000</span>
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">API_URL</span>
+          <span class="kw">value</span>: <span class="str">"http://app-a-service"</span>  <span class="cmt"># ⚠ HTTP not HTTPS</span>
+        <span class="cmt">        # ⚠ This pod can ALSO directly call:
+        #   redis.production.svc.cluster.local:6379
+        #   postgres.production.svc.cluster.local:5432
+        #   ANY other pod in the cluster
+        # There is ZERO restriction. Flannel CNI
+        # does not enforce NetworkPolicy objects.</span></pre></div>
+
+  <div id="b4" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# APP B — SERVICE (BEFORE)
+# Second dedicated cloud LoadBalancer
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-b-service</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">LoadBalancer</span>        <span class="cmt"># ⚠ second $75/month LB</span>
+  <span class="kw">selector</span>:
+    <span class="kw">app</span>: <span class="str">app-b</span>
+  <span class="kw">ports</span>:
+  - <span class="kw">port</span>: <span class="val">80</span>
+    <span class="kw">targetPort</span>: <span class="val">3000</span>
+    <span class="kw">nodePort</span>: <span class="val">31002</span>           <span class="cmt"># ⚠ open on every node</span>
+  <span class="cmt">  # externalIP: 104.10.1.2
+  # ⚠ LB#1 + LB#2 + LB#3(Redis) + 2 NodePorts = 5 attack vectors
+  # ⚠ no session affinity for stateful users</span></pre></div>
+
+  <div id="b5" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# REDIS — BEFORE
+# ⚠ No auth, same namespace, reachable by ALL pods
+# ⚠ LB#3 also exposes :6379 to the internet!
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">redis</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>   <span class="cmt"># ⚠ same namespace = no isolation</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">1</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>:
+      <span class="kw">app</span>: <span class="str">redis</span>
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>:
+        <span class="kw">app</span>: <span class="str">redis</span>
+    <span class="kw">spec</span>:
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">redis</span>
+        <span class="kw">image</span>: <span class="str">redis:7</span>
+        <span class="cmt">        # ⚠ no --requirepass = open to unauthenticated connections
+        # ⚠ no resource limits = can OOM the entire node
+        # ⚠ any pod in cluster can FLUSHALL the cache
+        # ⚠ any pod can read all cached user sessions / tokens</span>
+        <span class="kw">ports</span>:
+        - <span class="kw">containerPort</span>: <span class="val">6379</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">redis</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">ClusterIP</span>   <span class="cmt"># type ok BUT no NetworkPolicy enforcing access</span>
+  <span class="kw">selector</span>:
+    <span class="kw">app</span>: <span class="str">redis</span>
+  <span class="kw">ports</span>:
+  - <span class="kw">port</span>: <span class="val">6379</span>
+    <span class="kw">targetPort</span>: <span class="val">6379</span></pre></div>
+
+  <div id="b6" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# POSTGRES — BEFORE
+# ⚠ Deployment not StatefulSet = data loss on restart
+# ⚠ No PVC with storageClass = ephemeral storage!
+# ⚠ Hardcoded password in plain env
+# ⚠ Reachable by ALL pods — no NetworkPolicy
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>          <span class="cmt"># ⚠ must be StatefulSet for a database!</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">postgres</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>   <span class="cmt"># ⚠ same namespace as app — no isolation</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">1</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>:
+      <span class="kw">app</span>: <span class="str">postgres</span>
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>:
+        <span class="kw">app</span>: <span class="str">postgres</span>
+    <span class="kw">spec</span>:
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">postgres</span>
+        <span class="kw">image</span>: <span class="str">postgres:15</span>    <span class="cmt"># ⚠ not pinned — minor updates break things</span>
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">POSTGRES_PASSWORD</span>
+          <span class="kw">value</span>: <span class="str">"hunter2"</span>     <span class="cmt"># ⚠ HARDCODED — visible in `kubectl describe pod`</span>
+        <span class="kw">ports</span>:
+        - <span class="kw">containerPort</span>: <span class="val">5432</span>
+        <span class="cmt">        # ⚠ No volumeMount → data stored in container layer
+        # ⚠ Pod restart = ALL DATA LOST
+        # ⚠ No readinessProbe → traffic before DB is ready
+        # ⚠ No resource limits
+        # ⚠ Any pod in cluster can run DROP DATABASE</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">postgres</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">ClusterIP</span>
+  <span class="kw">selector</span>:
+    <span class="kw">app</span>: <span class="str">postgres</span>
+  <span class="kw">ports</span>:
+  - <span class="kw">port</span>: <span class="val">5432</span>
+    <span class="kw">targetPort</span>: <span class="val">5432</span>
+  <span class="cmt">  # Reachable by every single pod in the cluster.
+  # No NetworkPolicy = ClusterIP is not a security boundary.</span></pre></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- YAML AFTER -->
+<section id="yaml-after">
+  <div class="section-label">06 // FULL PROJECT YAML — AFTER STATE</div>
+  <h2 style="color:var(--accent3)">Complete YAML: After (Production-Ready)</h2>
+  <p style="color:var(--text2);max-width:800px;line-height:1.8;margin-bottom:1.5rem">Every manifest for the secured cluster — Ingress Controller (HA), Ingress Resource, cert-manager, NetworkPolicies (9 rules), App A &amp; B with security contexts, Redis with auth, Postgres as StatefulSet, Secrets, HPA, and PDB.</p>
+
+  <div class="tab-row" id="at">
+    <button class="tab-btn active" onclick="sw('a','a0')">Namespaces + Quotas</button>
+    <button class="tab-btn" onclick="sw('a','a1')">Ingress Controller</button>
+    <button class="tab-btn" onclick="sw('a','a2')">Ingress Resource</button>
+    <button class="tab-btn" onclick="sw('a','a3')">cert-manager TLS</button>
+    <button class="tab-btn" onclick="sw('a','a4')">App A — Full</button>
+    <button class="tab-btn" onclick="sw('a','a5')">App B — Full</button>
+    <button class="tab-btn" onclick="sw('a','a6')">Redis — Secured</button>
+    <button class="tab-btn" onclick="sw('a','a7')">Postgres StatefulSet</button>
+    <button class="tab-btn" onclick="sw('a','a8')">NetworkPolicies (all 9)</button>
+    <button class="tab-btn" onclick="sw('a','a9')">HPA + PDB</button>
+    <button class="tab-btn" onclick="sw('a','a10')">Secrets</button>
+  </div>
+
+  <div id="a0" class="tab-body active"><pre><span class="cmt"># ─────────────────────────────────────────────
+# NAMESPACES — AFTER
+# Labels required for NetworkPolicy namespaceSelector
+# Isolated namespaces per concern
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">ingress-nginx</span>
+  <span class="kw">labels</span>:
+    <span class="kw">name</span>: <span class="str">ingress-nginx</span>     <span class="cmt"># required for NetworkPolicy namespaceSelector</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">production</span>
+  <span class="kw">labels</span>:
+    <span class="kw">name</span>: <span class="str">production</span>
+    <span class="kw">env</span>: <span class="str">prod</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">database</span>
+  <span class="kw">labels</span>:
+    <span class="kw">name</span>: <span class="str">database</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">monitoring</span>
+  <span class="kw">labels</span>:
+    <span class="kw">name</span>: <span class="str">monitoring</span>
+---
+<span class="cmt"># ResourceQuota — cap the production namespace</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">ResourceQuota</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">production-quota</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">hard</span>:
+    <span class="kw">requests.cpu</span>: <span class="str">"8"</span>
+    <span class="kw">requests.memory</span>: <span class="str">16Gi</span>
+    <span class="kw">limits.cpu</span>: <span class="str">"16"</span>
+    <span class="kw">limits.memory</span>: <span class="str">32Gi</span>
+    <span class="kw">pods</span>: <span class="str">"30"</span>
+---
+<span class="cmt"># LimitRange — defaults if container omits resources</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">LimitRange</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">default-limits</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">limits</span>:
+  - <span class="kw">type</span>: <span class="val">Container</span>
+    <span class="kw">default</span>:      { <span class="kw">cpu</span>: <span class="str">500m</span>,  <span class="kw">memory</span>: <span class="str">256Mi</span> }
+    <span class="kw">defaultRequest</span>: { <span class="kw">cpu</span>: <span class="str">100m</span>, <span class="kw">memory</span>: <span class="str">128Mi</span> }</pre></div>
+
+  <div id="a1" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# INGRESS CONTROLLER — nginx (HA, 2 replicas)
+# podAntiAffinity spreads them across nodes
+# ONE shared LoadBalancer Service
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">nginx-ingress-controller</span>
+  <span class="kw">namespace</span>: <span class="str">ingress-nginx</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">2</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>:
+      <span class="kw">app</span>: <span class="str">ingress-nginx</span>
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>:
+        <span class="kw">app</span>: <span class="str">ingress-nginx</span>
+      <span class="kw">annotations</span>:
+        <span class="kw">prometheus.io/scrape</span>: <span class="str">"true"</span>
+        <span class="kw">prometheus.io/port</span>: <span class="str">"10254"</span>
+    <span class="kw">spec</span>:
+      <span class="kw">serviceAccountName</span>: <span class="str">nginx-ingress-sa</span>
+      <span class="kw">affinity</span>:
+        <span class="kw">podAntiAffinity</span>:
+          <span class="kw">requiredDuringSchedulingIgnoredDuringExecution</span>:
+          - <span class="kw">labelSelector</span>:
+              <span class="kw">matchLabels</span>:
+                <span class="kw">app</span>: <span class="str">ingress-nginx</span>
+            <span class="kw">topologyKey</span>: <span class="str">kubernetes.io/hostname</span>
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">controller</span>
+        <span class="kw">image</span>: <span class="str">registry.k8s.io/ingress-nginx/controller:v1.9.4</span>
+        <span class="kw">args</span>:
+        - <span class="str">/nginx-ingress-controller</span>
+        - <span class="str">--publish-service=ingress-nginx/ingress-nginx-svc</span>
+        - <span class="str">--ingress-class=nginx</span>
+        - <span class="str">--configmap=ingress-nginx/nginx-config</span>
+        - <span class="str">--enable-metrics=true</span>
+        <span class="kw">ports</span>:
+        - { <span class="kw">name</span>: <span class="str">http</span>,    <span class="kw">containerPort</span>: <span class="val">80</span>    }
+        - { <span class="kw">name</span>: <span class="str">https</span>,   <span class="kw">containerPort</span>: <span class="val">443</span>   }
+        - { <span class="kw">name</span>: <span class="str">metrics</span>, <span class="kw">containerPort</span>: <span class="val">10254</span> }
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: { <span class="kw">cpu</span>: <span class="str">100m</span>, <span class="kw">memory</span>: <span class="str">90Mi</span>  }
+          <span class="kw">limits</span>:   { <span class="kw">cpu</span>: <span class="str">500m</span>, <span class="kw">memory</span>: <span class="str">256Mi</span> }
+        <span class="kw">livenessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/healthz</span>, <span class="kw">port</span>: <span class="val">10254</span> }
+          <span class="kw">initialDelaySeconds</span>: <span class="val">10</span>
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/healthz</span>, <span class="kw">port</span>: <span class="val">10254</span> }
+          <span class="kw">periodSeconds</span>: <span class="val">5</span>
+        <span class="kw">securityContext</span>:
+          <span class="kw">allowPrivilegeEscalation</span>: <span class="val">true</span>
+          <span class="kw">runAsUser</span>: <span class="val">101</span>
+---
+<span class="cmt"># THE ONE SHARED LoadBalancer (replaces 3 separate ones)</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">ingress-nginx-svc</span>
+  <span class="kw">namespace</span>: <span class="str">ingress-nginx</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">LoadBalancer</span>    <span class="cmt"># only ONE for the whole cluster</span>
+  <span class="kw">selector</span>:
+    <span class="kw">app</span>: <span class="str">ingress-nginx</span>
+  <span class="kw">ports</span>:
+  - { <span class="kw">name</span>: <span class="str">http</span>,  <span class="kw">port</span>: <span class="val">80</span>,  <span class="kw">targetPort</span>: <span class="val">80</span>  }
+  - { <span class="kw">name</span>: <span class="str">https</span>, <span class="kw">port</span>: <span class="val">443</span>, <span class="kw">targetPort</span>: <span class="val">443</span> }
+---
+<span class="cmt"># nginx ConfigMap — global settings</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">ConfigMap</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">nginx-config</span>
+  <span class="kw">namespace</span>: <span class="str">ingress-nginx</span>
+<span class="kw">data</span>:
+  <span class="kw">ssl-protocols</span>: <span class="str">"TLSv1.2 TLSv1.3"</span>
+  <span class="kw">hsts</span>: <span class="str">"true"</span>
+  <span class="kw">hsts-max-age</span>: <span class="str">"31536000"</span>
+  <span class="kw">use-forwarded-headers</span>: <span class="str">"true"</span>
+  <span class="kw">log-format-escape-json</span>: <span class="str">"true"</span>
+  <span class="kw">log-format-upstream</span>: <span class="str">'{"ts":"$time_iso8601","method":"$request_method","host":"$host","path":"$uri","status":$status,"ms":$request_time,"upstream":"$upstream_addr"}'</span>
+  <span class="kw">worker-processes</span>: <span class="str">"auto"</span>
+  <span class="kw">keep-alive-requests</span>: <span class="str">"1000"</span></pre></div>
+
+  <div id="a2" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# INGRESS RESOURCE
+# One resource routes all traffic for both apps
+# TLS auto-managed by cert-manager
+# Rate limiting, CORS, security headers
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">production-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="kw">kubernetes.io/ingress.class</span>: <span class="str">"nginx"</span>
+    <span class="kw">cert-manager.io/cluster-issuer</span>: <span class="str">"letsencrypt-prod"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/ssl-redirect</span>: <span class="str">"true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/limit-rps</span>: <span class="str">"100"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/limit-connections</span>: <span class="str">"20"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/limit-burst-multiplier</span>: <span class="str">"3"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/enable-cors</span>: <span class="str">"true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/cors-allow-origin</span>: <span class="str">"https://web.myapp.com"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/cors-allow-methods</span>: <span class="str">"GET,POST,PUT,DELETE,OPTIONS"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/proxy-read-timeout</span>: <span class="str">"60"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/proxy-body-size</span>: <span class="str">"50m"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/use-regex</span>: <span class="str">"true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/configuration-snippet</span>: |
+      <span class="str">more_set_headers "X-Content-Type-Options: nosniff";</span>
+      <span class="str">more_set_headers "X-Frame-Options: DENY";</span>
+      <span class="str">more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";</span>
+<span class="kw">spec</span>:
+  <span class="kw">tls</span>:
+  - <span class="kw">hosts</span>: [<span class="str">api.myapp.com</span>, <span class="str">web.myapp.com</span>]
+    <span class="kw">secretName</span>: <span class="str">myapp-tls-secret</span>   <span class="cmt"># filled automatically by cert-manager</span>
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">api.myapp.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - <span class="kw">path</span>: <span class="str">/api</span>
+        <span class="kw">pathType</span>: <span class="val">Prefix</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">app-a-service</span>
+            <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> }
+      - <span class="kw">path</span>: <span class="str">/healthz</span>
+        <span class="kw">pathType</span>: <span class="val">Exact</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">app-a-service</span>
+            <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> }
+  - <span class="kw">host</span>: <span class="str">web.myapp.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - <span class="kw">path</span>: <span class="str">/</span>
+        <span class="kw">pathType</span>: <span class="val">Prefix</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">app-b-service</span>
+            <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> }</pre></div>
+
+  <div id="a3" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# CERT-MANAGER — AUTOMATED TLS
+# ClusterIssuer talks to Let's Encrypt
+# Certificate auto-renews 15 days before expiry
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">cert-manager.io/v1</span>
+<span class="kw">kind</span>: <span class="val">ClusterIssuer</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">letsencrypt-prod</span>
+<span class="kw">spec</span>:
+  <span class="kw">acme</span>:
+    <span class="kw">server</span>: <span class="str">https://acme-v02.api.letsencrypt.org/directory</span>
+    <span class="kw">email</span>: <span class="str">ops@myapp.com</span>
+    <span class="kw">privateKeySecretRef</span>:
+      <span class="kw">name</span>: <span class="str">letsencrypt-prod-key</span>
+    <span class="kw">solvers</span>:
+    - <span class="kw">http01</span>:
+        <span class="kw">ingress</span>:
+          <span class="kw">class</span>: <span class="str">nginx</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">cert-manager.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Certificate</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">myapp-tls</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">secretName</span>: <span class="str">myapp-tls-secret</span>
+  <span class="kw">duration</span>: <span class="str">2160h</span>      <span class="cmt"># 90 days</span>
+  <span class="kw">renewBefore</span>: <span class="str">360h</span>    <span class="cmt"># renew 15 days before expiry</span>
+  <span class="kw">issuerRef</span>:
+    <span class="kw">name</span>: <span class="str">letsencrypt-prod</span>
+    <span class="kw">kind</span>: <span class="val">ClusterIssuer</span>
+  <span class="kw">dnsNames</span>:
+  - <span class="str">api.myapp.com</span>
+  - <span class="str">web.myapp.com</span>
+---
+<span class="cmt"># Prometheus alert — cert expiring soon</span>
+<span class="kw">apiVersion</span>: <span class="val">monitoring.coreos.com/v1</span>
+<span class="kw">kind</span>: <span class="val">PrometheusRule</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">cert-expiry</span>
+  <span class="kw">namespace</span>: <span class="str">monitoring</span>
+<span class="kw">spec</span>:
+  <span class="kw">groups</span>:
+  - <span class="kw">name</span>: <span class="str">tls</span>
+    <span class="kw">rules</span>:
+    - <span class="kw">alert</span>: <span class="str">CertExpiringSoon</span>
+      <span class="kw">expr</span>: <span class="str">certmanager_certificate_expiry_seconds - time() &lt; 14*24*3600</span>
+      <span class="kw">for</span>: <span class="str">5m</span>
+      <span class="kw">annotations</span>:
+        <span class="kw">summary</span>: <span class="str">"TLS cert expires in under 14 days"</span></pre></div>
+
+  <div id="a4" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# APP A — FULL PRODUCTION DEPLOYMENT
+# Pinned image, resource limits, security context,
+# probes, secret refs, topologySpread, annotations
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">app-a</span>, <span class="kw">version</span>: <span class="str">v1.2</span> }
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">3</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-a</span> }
+  <span class="kw">strategy</span>:
+    <span class="kw">type</span>: <span class="val">RollingUpdate</span>
+    <span class="kw">rollingUpdate</span>: { <span class="kw">maxSurge</span>: <span class="val">1</span>, <span class="kw">maxUnavailable</span>: <span class="val">0</span> }  <span class="cmt"># zero-downtime</span>
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">app-a</span>, <span class="kw">version</span>: <span class="str">v1.2</span> }
+      <span class="kw">annotations</span>:
+        <span class="kw">prometheus.io/scrape</span>: <span class="str">"true"</span>
+        <span class="kw">prometheus.io/port</span>: <span class="str">"9090"</span>
+    <span class="kw">spec</span>:
+      <span class="kw">topologySpreadConstraints</span>:      <span class="cmt"># spread 1 pod per node</span>
+      - <span class="kw">maxSkew</span>: <span class="val">1</span>
+        <span class="kw">topologyKey</span>: <span class="str">kubernetes.io/hostname</span>
+        <span class="kw">whenUnsatisfiable</span>: <span class="val">DoNotSchedule</span>
+        <span class="kw">labelSelector</span>:
+          <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-a</span> }
+      <span class="kw">securityContext</span>:
+        <span class="kw">runAsNonRoot</span>: <span class="val">true</span>
+        <span class="kw">runAsUser</span>: <span class="val">1000</span>
+        <span class="kw">fsGroup</span>: <span class="val">2000</span>
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">api</span>
+        <span class="kw">image</span>: <span class="str">myapp/api:v1.2.0</span>     <span class="cmt"># pinned semver</span>
+        <span class="kw">ports</span>:
+        - { <span class="kw">name</span>: <span class="str">http</span>,    <span class="kw">containerPort</span>: <span class="val">8080</span> }
+        - { <span class="kw">name</span>: <span class="str">metrics</span>, <span class="kw">containerPort</span>: <span class="val">9090</span> }
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">DB_PASSWORD</span>
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: { <span class="kw">name</span>: <span class="str">app-a-secrets</span>, <span class="kw">key</span>: <span class="str">db-password</span> }
+        - <span class="kw">name</span>: <span class="str">REDIS_PASSWORD</span>
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: { <span class="kw">name</span>: <span class="str">app-a-secrets</span>, <span class="kw">key</span>: <span class="str">redis-password</span> }
+        - <span class="kw">name</span>: <span class="str">DB_HOST</span>
+          <span class="kw">value</span>: <span class="str">"postgres.database.svc.cluster.local"</span>
+        - <span class="kw">name</span>: <span class="str">REDIS_HOST</span>
+          <span class="kw">value</span>: <span class="str">"redis.database.svc.cluster.local"</span>
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: { <span class="kw">cpu</span>: <span class="str">200m</span>, <span class="kw">memory</span>: <span class="str">256Mi</span>  }
+          <span class="kw">limits</span>:   { <span class="kw">cpu</span>: <span class="str">1000m</span>, <span class="kw">memory</span>: <span class="str">512Mi</span> }
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/healthz</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+          <span class="kw">initialDelaySeconds</span>: <span class="val">5</span>
+          <span class="kw">periodSeconds</span>: <span class="val">5</span>
+          <span class="kw">failureThreshold</span>: <span class="val">3</span>
+        <span class="kw">livenessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/healthz</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+          <span class="kw">initialDelaySeconds</span>: <span class="val">10</span>
+          <span class="kw">periodSeconds</span>: <span class="val">15</span>
+        <span class="kw">securityContext</span>:
+          <span class="kw">allowPrivilegeEscalation</span>: <span class="val">false</span>
+          <span class="kw">readOnlyRootFilesystem</span>: <span class="val">true</span>
+          <span class="kw">capabilities</span>: { <span class="kw">drop</span>: [<span class="str">ALL</span>] }
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a-service</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">ClusterIP</span>    <span class="cmt"># internal only — Ingress Controller fronts it</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">app-a</span> }
+  <span class="kw">ports</span>:
+  - { <span class="kw">name</span>: <span class="str">http</span>, <span class="kw">port</span>: <span class="val">80</span>, <span class="kw">targetPort</span>: <span class="val">8080</span> }</pre></div>
+
+  <div id="a5" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# APP B — FULL PRODUCTION DEPLOYMENT
+# Frontend — ClusterIP only
+# Egress: can reach app-a but NOT Redis/Postgres
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-b</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">app-b</span>, <span class="kw">version</span>: <span class="str">v2.0</span> }
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">3</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-b</span> }
+  <span class="kw">strategy</span>:
+    <span class="kw">type</span>: <span class="val">RollingUpdate</span>
+    <span class="kw">rollingUpdate</span>: { <span class="kw">maxSurge</span>: <span class="val">1</span>, <span class="kw">maxUnavailable</span>: <span class="val">0</span> }
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">app-b</span>, <span class="kw">version</span>: <span class="str">v2.0</span> }
+      <span class="kw">annotations</span>:
+        <span class="kw">prometheus.io/scrape</span>: <span class="str">"true"</span>
+        <span class="kw">prometheus.io/port</span>: <span class="str">"9090"</span>
+    <span class="kw">spec</span>:
+      <span class="kw">topologySpreadConstraints</span>:
+      - <span class="kw">maxSkew</span>: <span class="val">1</span>
+        <span class="kw">topologyKey</span>: <span class="str">kubernetes.io/hostname</span>
+        <span class="kw">whenUnsatisfiable</span>: <span class="val">DoNotSchedule</span>
+        <span class="kw">labelSelector</span>:
+          <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-b</span> }
+      <span class="kw">securityContext</span>:
+        <span class="kw">runAsNonRoot</span>: <span class="val">true</span>
+        <span class="kw">runAsUser</span>: <span class="val">1001</span>
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">frontend</span>
+        <span class="kw">image</span>: <span class="str">myapp/frontend:v2.0.1</span>
+        <span class="kw">ports</span>:
+        - { <span class="kw">name</span>: <span class="str">http</span>, <span class="kw">containerPort</span>: <span class="val">3000</span> }
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">API_URL</span>
+          <span class="kw">value</span>: <span class="str">"https://api.myapp.com"</span>
+        <span class="cmt">        # NetworkPolicy ensures this pod CANNOT reach
+        # postgres:5432 or redis:6379 — kernel-enforced</span>
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: { <span class="kw">cpu</span>: <span class="str">100m</span>, <span class="kw">memory</span>: <span class="str">128Mi</span> }
+          <span class="kw">limits</span>:   { <span class="kw">cpu</span>: <span class="str">500m</span>, <span class="kw">memory</span>: <span class="str">256Mi</span> }
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/</span>, <span class="kw">port</span>: <span class="val">3000</span> }
+          <span class="kw">periodSeconds</span>: <span class="val">5</span>
+        <span class="kw">securityContext</span>:
+          <span class="kw">allowPrivilegeEscalation</span>: <span class="val">false</span>
+          <span class="kw">readOnlyRootFilesystem</span>: <span class="val">true</span>
+          <span class="kw">capabilities</span>: { <span class="kw">drop</span>: [<span class="str">ALL</span>] }
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-b-service</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">ClusterIP</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">app-b</span> }
+  <span class="kw">ports</span>:
+  - { <span class="kw">name</span>: <span class="str">http</span>, <span class="kw">port</span>: <span class="val">80</span>, <span class="kw">targetPort</span>: <span class="val">3000</span> }</pre></div>
+
+  <div id="a6" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# REDIS — SECURED
+# Isolated in database namespace
+# Auth required, resource limits, no external access
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">redis</span>
+  <span class="kw">namespace</span>: <span class="str">database</span>   <span class="cmt"># isolated namespace</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">1</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">redis</span> }
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">redis</span> }
+    <span class="kw">spec</span>:
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">redis</span>
+        <span class="kw">image</span>: <span class="str">redis:7.2.3</span>
+        <span class="kw">command</span>: [<span class="str">"redis-server"</span>]
+        <span class="kw">args</span>:
+        - <span class="str">"--requirepass"</span>
+        - <span class="str">"$(REDIS_PASSWORD)"</span>   <span class="cmt"># auth from Secret</span>
+        - <span class="str">"--maxmemory"</span>
+        - <span class="str">"2gb"</span>
+        - <span class="str">"--maxmemory-policy"</span>
+        - <span class="str">"allkeys-lru"</span>
+        - <span class="str">"--save"</span>
+        - <span class="str">""</span>                    <span class="cmt"># disable RDB persistence (cache only)</span>
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">REDIS_PASSWORD</span>
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: { <span class="kw">name</span>: <span class="str">redis-secrets</span>, <span class="kw">key</span>: <span class="str">password</span> }
+        <span class="kw">ports</span>:
+        - <span class="kw">containerPort</span>: <span class="val">6379</span>
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: { <span class="kw">cpu</span>: <span class="str">100m</span>, <span class="kw">memory</span>: <span class="str">256Mi</span> }
+          <span class="kw">limits</span>:   { <span class="kw">cpu</span>: <span class="str">500m</span>, <span class="kw">memory</span>: <span class="str">2Gi</span>   }
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">exec</span>:
+            <span class="kw">command</span>: [<span class="str">"redis-cli"</span>, <span class="str">"-a"</span>, <span class="str">"$(REDIS_PASSWORD)"</span>, <span class="str">"ping"</span>]
+          <span class="kw">periodSeconds</span>: <span class="val">5</span>
+        <span class="kw">securityContext</span>:
+          <span class="kw">runAsNonRoot</span>: <span class="val">true</span>
+          <span class="kw">runAsUser</span>: <span class="val">999</span>
+          <span class="kw">allowPrivilegeEscalation</span>: <span class="val">false</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">redis</span>
+  <span class="kw">namespace</span>: <span class="str">database</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">ClusterIP</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">redis</span> }
+  <span class="kw">ports</span>:
+  - { <span class="kw">port</span>: <span class="val">6379</span>, <span class="kw">targetPort</span>: <span class="val">6379</span> }</pre></div>
+
+  <div id="a7" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# POSTGRES — StatefulSet (AFTER)
+# Persistent volume, proper StatefulSet,
+# isolated namespace, secret reference
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">StatefulSet</span>    <span class="cmt"># correct resource type for stateful workloads</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">postgres</span>
+  <span class="kw">namespace</span>: <span class="str">database</span>
+<span class="kw">spec</span>:
+  <span class="kw">serviceName</span>: <span class="str">postgres</span>
+  <span class="kw">replicas</span>: <span class="val">1</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">postgres</span> }
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">postgres</span> }
+    <span class="kw">spec</span>:
+      <span class="kw">securityContext</span>:
+        <span class="kw">fsGroup</span>: <span class="val">999</span>
+        <span class="kw">runAsUser</span>: <span class="val">999</span>
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">postgres</span>
+        <span class="kw">image</span>: <span class="str">postgres:15.4</span>   <span class="cmt"># pinned patch version</span>
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">POSTGRES_PASSWORD</span>
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: { <span class="kw">name</span>: <span class="str">postgres-secrets</span>, <span class="kw">key</span>: <span class="str">password</span> }
+        - <span class="kw">name</span>: <span class="str">POSTGRES_DB</span>
+          <span class="kw">value</span>: <span class="str">appdb</span>
+        - <span class="kw">name</span>: <span class="str">PGDATA</span>
+          <span class="kw">value</span>: <span class="str">/var/lib/postgresql/data/pgdata</span>
+        <span class="kw">ports</span>:
+        - <span class="kw">containerPort</span>: <span class="val">5432</span>
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: { <span class="kw">cpu</span>: <span class="str">500m</span>,  <span class="kw">memory</span>: <span class="str">512Mi</span> }
+          <span class="kw">limits</span>:   { <span class="kw">cpu</span>: <span class="str">2000m</span>, <span class="kw">memory</span>: <span class="str">4Gi</span>   }
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">exec</span>:
+            <span class="kw">command</span>: [<span class="str">"pg_isready"</span>, <span class="str">"-U"</span>, <span class="str">"postgres"</span>]
+          <span class="kw">periodSeconds</span>: <span class="val">5</span>
+          <span class="kw">failureThreshold</span>: <span class="val">3</span>
+        <span class="kw">volumeMounts</span>:
+        - { <span class="kw">name</span>: <span class="str">postgres-data</span>, <span class="kw">mountPath</span>: <span class="str">/var/lib/postgresql/data</span> }
+  <span class="kw">volumeClaimTemplates</span>:
+  - <span class="kw">metadata</span>:
+      <span class="kw">name</span>: <span class="str">postgres-data</span>
+    <span class="kw">spec</span>:
+      <span class="kw">accessModes</span>: [<span class="str">ReadWriteOnce</span>]
+      <span class="kw">storageClassName</span>: <span class="str">fast-ssd</span>
+      <span class="kw">resources</span>:
+        <span class="kw">requests</span>:
+          <span class="kw">storage</span>: <span class="str">100Gi</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">postgres</span>
+  <span class="kw">namespace</span>: <span class="str">database</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">ClusterIP</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">postgres</span> }
+  <span class="kw">ports</span>:
+  - { <span class="kw">port</span>: <span class="val">5432</span>, <span class="kw">targetPort</span>: <span class="val">5432</span> }</pre></div>
+
+  <div id="a8" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# NETWORK POLICIES — ALL 9 RULES
+# Philosophy: default-deny everything,
+# then allow only what must communicate
+# ─────────────────────────────────────────────</span>
+
+<span class="cmt"># ① Default deny ALL ingress — production ns</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">default-deny-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>]
+---
+<span class="cmt"># ② Default deny ALL egress — production ns</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">default-deny-egress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>: [<span class="val">Egress</span>]
+---
+<span class="cmt"># ③ Allow nginx-controller → app-a (port 8080)</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">allow-ingress-to-app-a</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-a</span> }
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>]
+  <span class="kw">ingress</span>:
+  - <span class="kw">from</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">ingress-nginx</span> }
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">ingress-nginx</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+---
+<span class="cmt"># ④ Allow nginx-controller → app-b (port 3000)</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">allow-ingress-to-app-b</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-b</span> }
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>]
+  <span class="kw">ingress</span>:
+  - <span class="kw">from</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">ingress-nginx</span> }
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">ingress-nginx</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">3000</span> }
+---
+<span class="cmt"># ⑤ Egress for app-a: DNS + postgres + redis ONLY</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a-egress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-a</span> }
+  <span class="kw">policyTypes</span>: [<span class="val">Egress</span>]
+  <span class="kw">egress</span>:
+  - <span class="kw">ports</span>:                          <span class="cmt"># DNS — always needed</span>
+    - { <span class="kw">protocol</span>: <span class="val">UDP</span>, <span class="kw">port</span>: <span class="val">53</span> }
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">53</span> }
+  - <span class="kw">to</span>:                             <span class="cmt"># Postgres</span>
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">database</span> }
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">postgres</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">5432</span> }
+  - <span class="kw">to</span>:                             <span class="cmt"># Redis</span>
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">database</span> }
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">redis</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">6379</span> }
+---
+<span class="cmt"># ⑥ Egress for app-b: DNS + app-a ONLY
+#    app-b CANNOT reach postgres or redis</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-b-egress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-b</span> }
+  <span class="kw">policyTypes</span>: [<span class="val">Egress</span>]
+  <span class="kw">egress</span>:
+  - <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">UDP</span>, <span class="kw">port</span>: <span class="val">53</span> }
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">53</span> }
+  - <span class="kw">to</span>:
+    - <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-a</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+<span class="cmt">  # postgres/redis NOT listed = kernel-level block</span>
+---
+<span class="cmt"># ⑦ Default deny ALL in database namespace</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">default-deny-database</span>
+  <span class="kw">namespace</span>: <span class="str">database</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>, <span class="val">Egress</span>]
+---
+<span class="cmt"># ⑧ Allow app-a → database namespace workloads</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">allow-app-a-to-db</span>
+  <span class="kw">namespace</span>: <span class="str">database</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>]
+  <span class="kw">ingress</span>:
+  - <span class="kw">from</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">production</span> }
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-a</span> }
+---
+<span class="cmt"># ⑨ Allow Prometheus to scrape all namespaces</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">allow-prometheus-scrape</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>]
+  <span class="kw">ingress</span>:
+  - <span class="kw">from</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">monitoring</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">9090</span> }</pre></div>
+
+  <div id="a9" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# HPA — Horizontal Pod Autoscaler
+# app-a: scale 3→10 on CPU/memory
+# app-b: scale 3→8 on CPU
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">autoscaling/v2</span>
+<span class="kw">kind</span>: <span class="val">HorizontalPodAutoscaler</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a-hpa</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">scaleTargetRef</span>:
+    <span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+    <span class="kw">kind</span>: <span class="val">Deployment</span>
+    <span class="kw">name</span>: <span class="str">app-a</span>
+  <span class="kw">minReplicas</span>: <span class="val">3</span>
+  <span class="kw">maxReplicas</span>: <span class="val">10</span>
+  <span class="kw">metrics</span>:
+  - <span class="kw">type</span>: <span class="val">Resource</span>
+    <span class="kw">resource</span>:
+      <span class="kw">name</span>: <span class="val">cpu</span>
+      <span class="kw">target</span>: { <span class="kw">type</span>: <span class="val">Utilization</span>, <span class="kw">averageUtilization</span>: <span class="val">70</span> }
+  - <span class="kw">type</span>: <span class="val">Resource</span>
+    <span class="kw">resource</span>:
+      <span class="kw">name</span>: <span class="val">memory</span>
+      <span class="kw">target</span>: { <span class="kw">type</span>: <span class="val">Utilization</span>, <span class="kw">averageUtilization</span>: <span class="val">80</span> }
+  <span class="kw">behavior</span>:
+    <span class="kw">scaleDown</span>:
+      <span class="kw">stabilizationWindowSeconds</span>: <span class="val">300</span>  <span class="cmt"># wait 5m before scaling down</span>
+    <span class="kw">scaleUp</span>:
+      <span class="kw">stabilizationWindowSeconds</span>: <span class="val">30</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">autoscaling/v2</span>
+<span class="kw">kind</span>: <span class="val">HorizontalPodAutoscaler</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-b-hpa</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">scaleTargetRef</span>:
+    <span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+    <span class="kw">kind</span>: <span class="val">Deployment</span>
+    <span class="kw">name</span>: <span class="str">app-b</span>
+  <span class="kw">minReplicas</span>: <span class="val">3</span>
+  <span class="kw">maxReplicas</span>: <span class="val">8</span>
+  <span class="kw">metrics</span>:
+  - <span class="kw">type</span>: <span class="val">Resource</span>
+    <span class="kw">resource</span>:
+      <span class="kw">name</span>: <span class="val">cpu</span>
+      <span class="kw">target</span>: { <span class="kw">type</span>: <span class="val">Utilization</span>, <span class="kw">averageUtilization</span>: <span class="val">70</span> }
+---
+<span class="cmt"># PodDisruptionBudget — app-a</span>
+<span class="kw">apiVersion</span>: <span class="val">policy/v1</span>
+<span class="kw">kind</span>: <span class="val">PodDisruptionBudget</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a-pdb</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">minAvailable</span>: <span class="val">2</span>    <span class="cmt"># at least 2 must stay up during node drain</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-a</span> }
+---
+<span class="cmt"># PodDisruptionBudget — app-b</span>
+<span class="kw">apiVersion</span>: <span class="val">policy/v1</span>
+<span class="kw">kind</span>: <span class="val">PodDisruptionBudget</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-b-pdb</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">minAvailable</span>: <span class="val">2</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">app-b</span> }</pre></div>
+
+  <div id="a10" class="tab-body"><pre><span class="cmt"># ─────────────────────────────────────────────
+# SECRETS — K8s Secret resources
+# base64 encoded values (echo -n "val" | base64)
+# In production: use External Secrets Operator
+# pointing to HashiCorp Vault or AWS Secrets Manager
+# ─────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Secret</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a-secrets</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">type</span>: <span class="val">Opaque</span>
+<span class="kw">data</span>:
+  <span class="kw">db-password</span>: <span class="str">bXlzZWN1cmVwYXNz</span>    <span class="cmt"># base64("mysecurepass")</span>
+  <span class="kw">redis-password</span>: <span class="str">cmVkaXNwYXNz</span>
+  <span class="kw">jwt-secret</span>: <span class="str">andsdHNlY3JldA==</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Secret</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">redis-secrets</span>
+  <span class="kw">namespace</span>: <span class="str">database</span>
+<span class="kw">type</span>: <span class="val">Opaque</span>
+<span class="kw">data</span>:
+  <span class="kw">password</span>: <span class="str">cmVkaXNwYXNz</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Secret</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">postgres-secrets</span>
+  <span class="kw">namespace</span>: <span class="str">database</span>
+<span class="kw">type</span>: <span class="val">Opaque</span>
+<span class="kw">data</span>:
+  <span class="kw">password</span>: <span class="str">cG9zdGdyZXNwYXNz</span>
+---
+<span class="cmt"># Production pattern: External Secrets Operator
+# Syncs from Vault/AWS SSM automatically</span>
+<span class="kw">apiVersion</span>: <span class="val">external-secrets.io/v1beta1</span>
+<span class="kw">kind</span>: <span class="val">ExternalSecret</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">app-a-vault-sync</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">refreshInterval</span>: <span class="str">1h</span>
+  <span class="kw">secretStoreRef</span>:
+    <span class="kw">name</span>: <span class="str">vault-backend</span>
+    <span class="kw">kind</span>: <span class="val">ClusterSecretStore</span>
+  <span class="kw">target</span>:
+    <span class="kw">name</span>: <span class="str">app-a-secrets</span>
+  <span class="kw">data</span>:
+  - <span class="kw">secretKey</span>: <span class="str">db-password</span>
+    <span class="kw">remoteRef</span>: { <span class="kw">key</span>: <span class="str">production/app-a</span>, <span class="kw">property</span>: <span class="str">db-password</span> }
+  - <span class="kw">secretKey</span>: <span class="str">redis-password</span>
+    <span class="kw">remoteRef</span>: { <span class="kw">key</span>: <span class="str">production/app-a</span>, <span class="kw">property</span>: <span class="str">redis-password</span> }</pre></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- WORKFLOW -->
+<section id="workflow">
+  <div class="section-label">07 // REQUEST LIFECYCLE</div>
+  <h2>Full Traffic Workflow</h2>
+
+  <div class="slider-demo">
+    <h4 style="color:var(--accent);margin-bottom:1rem">⚡ Interactive Traffic Simulator</h4>
+    <div class="sl-row">
+      <label>Requests / second</label>
+      <input type="range" min="1" max="1000" value="120" id="rps" oninput="updateSim()">
+      <span class="sl-val" id="rps-v">120 rps</span>
+    </div>
+    <div class="sl-row">
+      <label>Controller replicas</label>
+      <input type="range" min="1" max="5" value="2" id="ir" oninput="updateSim()">
+      <span class="sl-val" id="ir-v">2</span>
+    </div>
+    <div class="sl-row">
+      <label>App pod replicas</label>
+      <input type="range" min="1" max="10" value="3" id="ar" oninput="updateSim()">
+      <span class="sl-val" id="ar-v">3</span>
+    </div>
+    <div class="sl-row">
+      <label>Pod latency (ms)</label>
+      <input type="range" min="5" max="500" value="40" id="lat" oninput="updateSim()">
+      <span class="sl-val" id="lat-v">40ms</span>
+    </div>
+    <canvas id="sim-canvas" width="900" height="180" style="border-radius:8px;margin-top:1rem;width:100%"></canvas>
+    <div id="sim-stats" style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:0.6rem;font-family:'Share Tech Mono',monospace;font-size:0.7rem;color:var(--text2)"></div>
+  </div>
+
+  <h3 style="margin-top:2rem">8-Step Request Journey (After State)</h3>
+  <div class="wf-step"><div class="wf-num">1</div><div class="wf-content"><h4>DNS Resolution</h4><p>Browser resolves api.myapp.com → DNS CNAME → cloud LoadBalancer IP (203.0.113.10). The single shared IP fronting all apps.</p></div></div>
+  <div class="wf-line"></div>
+  <div class="wf-step"><div class="wf-num">2</div><div class="wf-content"><h4>Cloud LB → Ingress Controller</h4><p>TCP packet hits cloud LB → health checks route only to healthy nginx-controller pods. Controller-1 (leader) handles normally. If it fails, Controller-2 (standby) takes over — zero intervention required.</p></div></div>
+  <div class="wf-line"></div>
+  <div class="wf-step"><div class="wf-num">3</div><div class="wf-content"><h4>TLS Termination</h4><p>Nginx terminates TLS using the cert in Secret myapp-tls-secret (filled automatically by cert-manager). Backend pods receive plain HTTP internally — faster. HSTS header added on response to enforce future HTTPS-only.</p></div></div>
+  <div class="wf-line"></div>
+  <div class="wf-step"><div class="wf-num">4</div><div class="wf-content"><h4>Annotation Middleware</h4><p>Rate limit check (100 rps/IP) → connection limit (20 concurrent) → CORS headers → proxy body size guard → security header injection. Any violation returns 429/400 before touching backend pods.</p></div></div>
+  <div class="wf-line"></div>
+  <div class="wf-step"><div class="wf-num">5</div><div class="wf-content"><h4>Host + Path Rule Matching</h4><p>Host: api.myapp.com, Path: /api/users → matches rule 1 → forwards to app-a-service ClusterIP (10.96.0.10:80). Path: /api/health → also matches app-a. web.myapp.com/* → app-b-service.</p></div></div>
+  <div class="wf-line"></div>
+  <div class="wf-step"><div class="wf-num">6</div><div class="wf-content"><h4>kube-proxy IPVS Service LB</h4><p>IPVS rules select one of 3 healthy app-a pod endpoints (round-robin). Only pods that pass readinessProbe are in the endpoint list. A pod being restarted never receives traffic.</p></div></div>
+  <div class="wf-line"></div>
+  <div class="wf-step"><div class="wf-num">7</div><div class="wf-content"><h4>Pod Processes — Egress Begins</h4><p>app-a-pod-2 handles request. It queries Postgres and Redis. Each outbound connection goes through Calico eBPF rules in the kernel — checked against NetworkPolicy before the packet even leaves the pod's network namespace.</p></div></div>
+  <div class="wf-line"></div>
+  <div class="wf-step"><div class="wf-num">8</div><div class="wf-content"><h4>Response + Prometheus</h4><p>Response: Pod → kube-proxy → Ingress Controller → Cloud LB → User. Nginx adds X-Content-Type-Options, X-Frame-Options, Referrer-Policy. nginx_ingress_requests_total counter incremented. Latency histogram updated for this route.</p></div></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SRE -->
+<section id="sre">
+  <div class="section-label">08 // SRE PRINCIPLES</div>
+  <h2>SRE Around Ingress &amp; Egress</h2>
+  <p style="color:var(--text2);max-width:820px;line-height:1.8;margin-bottom:1.5rem">SREs treat the Ingress Controller as the cluster's primary <mark>observability boundary</mark> and NetworkPolicies as the primary <mark>blast-radius limiter</mark>. Both are prerequisites for reliable service ownership.</p>
+
+  <div class="sre-grid">
+    <div class="sre-card"><h4>📊 Golden Signals at Ingress</h4><p>Ingress Controller exports per-route Prometheus metrics: Latency (P50/P95/P99), Traffic (RPS), Errors (4xx/5xx rate), Saturation (connection queue depth). These feed SLO dashboards without any app-side instrumentation.</p><span class="sre-tag">OBSERVABILITY</span></div>
+    <div class="sre-card green"><h4>🎯 SLO Enforcement via Rate Limits</h4><p>"99.9% of requests in &lt;200ms." Rate limiting prevents one client from burning your entire error budget for all users. Set burst = RPS × P99 latency. Return 429 (not 503) — signal to client, not blast to backend.</p><span class="sre-tag">ERROR BUDGET</span></div>
+    <div class="sre-card red"><h4>🔥 Blast Radius Reduction</h4><p>If app-b is compromised, NetworkPolicy prevents it from reaching Postgres or Redis. Incident is contained to one service's data. Without egress policies, one compromised frontend pod = full database access.</p><span class="sre-tag">INCIDENT SCOPE</span></div>
+    <div class="sre-card purple"><h4>🔄 Canary + Error Budget</h4><p>Canary Ingress: 5% traffic to v2. SRE monitors error rate differential. If v2 burns error budget 2× faster than v1, auto-rollback by setting canary weight back to 0. No runbook needed — one annotation edit.</p><span class="sre-tag">TOIL REDUCTION</span></div>
+    <div class="sre-card"><h4>🔒 TLS as an SLI</h4><p>Expired cert = 100% request failure = instant P0. SLI: "cert must not expire." Alert at 30d, 14d, 7d remaining. cert-manager automates renewal but you MUST alert on renewal failures — automation fails silently.</p><span class="sre-tag">RELIABILITY</span></div>
+    <div class="sre-card green"><h4>⏱️ Structured Logs → MTTR</h4><p>JSON logs from Nginx: ts, method, host, path, status, latency_ms, upstream, bytes. During incident: query "which upstream caused 502 spike in last 5m?" Cuts MTTR from hours to minutes.</p><span class="sre-tag">MTTR</span></div>
+    <div class="sre-card red"><h4>⚠️ Silent NetworkPolicy Failures</h4><p>Misconfigured NetworkPolicy blocks traffic silently — no error, no crash, just timeout. Write CI tests: "can app-a reach 5432? can app-b NOT reach 5432?" Run with netcat/curl in a test pod pre-merge.</p><span class="sre-tag">TESTING</span></div>
+    <div class="sre-card purple"><h4>📈 Capacity Planning</h4><p>Ingress RPS histograms reveal daily/weekly traffic patterns. HPA scales pods before saturation using CPU threshold. Egress metrics show DB connection pool usage — alert before exhaustion, not after the outage.</p><span class="sre-tag">CAPACITY</span></div>
+    <div class="sre-card"><h4>📋 Runbook: Ingress Down</h4><p>(1) Check controller pod logs. (2) Verify cloud LB health targets. (3) Check TLS secret exists + not expired. (4) kubectl port-forward to bypass Ingress for testing. (5) Check controller CPU/memory limits. (6) Roll back Ingress annotations if recently changed.</p><span class="sre-tag">RUNBOOK</span></div>
+  </div>
+
+  <div style="overflow-x:auto;margin-top:2rem">
+    <h3>Key Prometheus Metrics</h3>
+    <table class="data-table">
+      <thead><tr><th>Metric</th><th>Source</th><th>Alert Threshold</th><th>SLO Impact</th></tr></thead>
+      <tbody>
+        <tr><td>nginx_ingress_requests_total (5xx rate)</td><td>Ingress Controller</td><td>&gt;1% over 5m</td><td>Error rate SLO</td></tr>
+        <tr><td>nginx_ingress_request_duration_seconds p99</td><td>Ingress Controller</td><td>&gt;500ms for 5m</td><td>Latency SLO</td></tr>
+        <tr><td>nginx_ingress_nginx_connections_active</td><td>Ingress Controller</td><td>&gt;80% max_connections</td><td>Saturation</td></tr>
+        <tr><td>certmanager_certificate_expiry_seconds</td><td>cert-manager</td><td>&lt;14 days remaining</td><td>Availability SLO</td></tr>
+        <tr><td>network_policy_dropped_packets_total</td><td>Cilium/Calico</td><td>Spike above baseline</td><td>Security signal</td></tr>
+        <tr><td>container_network_transmit_bytes_total</td><td>cAdvisor</td><td>Unusual spike per pod</td><td>Exfil detection</td></tr>
+        <tr><td>kube_pod_container_status_restarts_total</td><td>kube-state-metrics</td><td>&gt;3 in 10 minutes</td><td>Reliability SLO</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <div style="color:var(--text2);font-size:0.78rem;font-family:'Oxanium',sans-serif;font-weight:700;margin-bottom:0.3rem">Kubernetes Ingress &amp; Egress — Complete Reference</div>
+  <div>3 nodes · 2 apps · 6 pods · before &amp; after full cluster diagrams · 18 YAML manifests · 9 NetworkPolicy rules · SRE principles</div>
+</footer>
+
+<script>
+// ── TABS ──
+function sw(group, id) {
+  const prefix = group === 'b' ? 'b' : 'a';
+  document.querySelectorAll('#' + (group === 'b' ? 'bt' : 'at') + ' .tab-btn')
+    .forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelectorAll('[id^="' + prefix + '"]').forEach(t => {
+    if (t.classList.contains('tab-body')) t.classList.remove('active');
+  });
+  document.getElementById(id).classList.add('active');
+}
+
+// ── FADE IN ──
+const obs = new IntersectionObserver(entries => entries.forEach(e => {
+  if (e.isIntersecting) e.target.classList.add('visible');
+}), { threshold: 0.06 });
+document.querySelectorAll('section').forEach(el => obs.observe(el));
+
+// ── TOC DOTS ──
+const secs = ['#hero','#definitions','#why','#before','#after','#yaml-before','#yaml-after','#workflow','#sre'];
+const dots = document.querySelectorAll('.toc-dot');
+window.addEventListener('scroll', () => {
+  const y = window.scrollY + 200;
+  secs.forEach((s, i) => {
+    const el = document.querySelector(s);
+    if (el && el.offsetTop <= y) {
+      dots.forEach(d => d.classList.remove('active'));
+      if (dots[i]) dots[i].classList.add('active');
+    }
+  });
+});
+dots.forEach((d, i) => d.addEventListener('click', () => {
+  const el = document.querySelector(secs[i]);
+  if (el) el.scrollIntoView({ behavior: 'smooth' });
+}));
+document.querySelectorAll('nav a').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  const t = document.querySelector(a.getAttribute('href'));
+  if (t) t.scrollIntoView({ behavior: 'smooth' });
+}));
+
+// ── SIMULATOR ──
+function updateSim() {
+  const rps = +document.getElementById('rps').value;
+  const ir  = +document.getElementById('ir').value;
+  const ar  = +document.getElementById('ar').value;
+  const lat = +document.getElementById('lat').value;
+  document.getElementById('rps-v').textContent = rps + ' rps';
+  document.getElementById('ir-v').textContent = ir;
+  document.getElementById('ar-v').textContent = ar;
+  document.getElementById('lat-v').textContent = lat + 'ms';
+  const maxTput = Math.round(ar * (1000 / lat));
+  const util = Math.min(100, Math.round((rps / maxTput) * 100));
+  const p99 = Math.round(lat * (1 + (util / 100) * 4));
+  const healthy = util < 80;
+  document.getElementById('sim-stats').innerHTML = `
+    <span>RPS/Controller: <b style="color:var(--accent)">${Math.round(rps/ir)}</b></span>
+    <span>RPS/Pod: <b style="color:var(--accent)">${Math.round(rps/ar)}</b></span>
+    <span>Max Throughput: <b style="color:var(--accent3)">${maxTput} rps</b></span>
+    <span>Utilization: <b style="color:${util>80?'#ef4444':'#10b981'}">${util}%</b></span>
+    <span>Est P99: <b style="color:${p99>200?'#ef4444':'#f59e0b'}">${p99}ms</b></span>
+    <span>Status: <b style="color:${healthy?'#10b981':'#ef4444'}">${healthy?'HEALTHY':'⚠ DEGRADED'}</b></span>
+  `;
+  drawSim(rps, ir, ar, lat, util);
+}
+function drawSim(rps, ir, ar, lat, util) {
+  const cv = document.getElementById('sim-canvas');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a1628'; ctx.fillRect(0, 0, W, H);
+  const cw = 64, gap = 10, baseY = 148, chMax = 100;
+  ctx.fillStyle = '#1e3a5f'; ctx.fillRect(18, 6, W - 36, 9);
+  const bc = util > 80 ? '#ef4444' : util > 60 ? '#f59e0b' : '#10b981';
+  ctx.fillStyle = bc; ctx.fillRect(18, 6, (W - 36) * (util / 100), 9);
+  ctx.fillStyle = '#8ba3c4'; ctx.font = '8px Share Tech Mono';
+  ctx.fillText('System utilization: ' + util + '%', 22, 14);
+  for (let i = 0; i < ir; i++) {
+    const h = Math.min(chMax, (rps / ir / 80) * chMax);
+    ctx.fillStyle = '#00d4ff18'; ctx.fillRect(28 + i * (cw + gap), baseY - chMax, cw, chMax);
+    ctx.fillStyle = '#00d4ff';   ctx.fillRect(28 + i * (cw + gap), baseY - h, cw, h);
+    ctx.fillStyle = '#8ba3c4'; ctx.textAlign = 'center';
+    ctx.fillText('ctrl-' + (i+1), 28 + i * (cw + gap) + cw / 2, baseY + 12);
+    ctx.fillText(Math.round(rps/ir) + 'rps', 28 + i * (cw + gap) + cw / 2, baseY + 23);
+  }
+  const ax = 28 + ir * (cw + gap) + 16;
+  ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(ax, baseY - 50); ctx.lineTo(ax + 44, baseY - 50); ctx.stroke();
+  ctx.setLineDash([]);
+  const px = ax + 54;
+  for (let i = 0; i < ar; i++) {
+    const ph = Math.min(chMax, (rps / ar / 35) * chMax);
+    const pc = util > 80 ? '#f59e0b' : '#10b981';
+    ctx.fillStyle = pc + '18'; ctx.fillRect(px + i * 68, baseY - chMax, 56, chMax);
+    ctx.fillStyle = pc;         ctx.fillRect(px + i * 68, baseY - ph, 56, ph);
+    ctx.fillStyle = '#8ba3c4';
+    ctx.fillText('pod-' + (i+1), px + i * 68 + 28, baseY + 12);
+    ctx.fillText(Math.round(rps/ar) + 'rps', px + i * 68 + 28, baseY + 23);
+  }
+}
+updateSim();
+</script>
+</body>
+</html>

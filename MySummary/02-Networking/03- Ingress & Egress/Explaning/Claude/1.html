@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Ingress & Egress — Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;500;600;700;800&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050a14;
+  --bg2: #0a1628;
+  --bg3: #0d1f3c;
+  --surface: #0f2344;
+  --surface2: #152d52;
+  --border: #1e3a5f;
+  --accent: #00d4ff;
+  --accent2: #7c3aed;
+  --accent3: #10b981;
+  --accent4: #f59e0b;
+  --accent5: #ef4444;
+  --accent6: #ec4899;
+  --text: #e2eaf6;
+  --text2: #8ba3c4;
+  --text3: #4d6b8a;
+  --glow: rgba(0,212,255,0.15);
+  --glow2: rgba(124,58,237,0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ─── NAV ─── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(5,10,20,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  display: flex; align-items: center; gap: 1rem;
+  height: 56px; overflow-x: auto;
+}
+nav a {
+  color: var(--text2); text-decoration: none;
+  font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+  white-space: nowrap; padding: 6px 10px;
+  border-radius: 4px; transition: all 0.2s;
+}
+nav a:hover { color: var(--accent); background: var(--glow); }
+.nav-logo { color: var(--accent); font-weight: 800; font-size: 0.85rem; margin-right: 1rem; white-space: nowrap; }
+
+/* ─── HERO ─── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 8rem 2rem 4rem;
+  position: relative; overflow: hidden;
+  text-align: center;
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.hero-glow {
+  position: absolute; width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,212,255,0.08) 0%, transparent 70%);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  animation: pulse 4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:0.5;transform:translate(-50%,-50%) scale(1)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)} }
+
+.hero-tag {
+  font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+  color: var(--accent); background: rgba(0,212,255,0.1);
+  border: 1px solid rgba(0,212,255,0.3); border-radius: 20px;
+  padding: 4px 16px; margin-bottom: 2rem;
+  animation: fadeUp 0.6s ease both;
+}
+.hero h1 {
+  font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; line-height: 1.0;
+  font-family: 'Oxanium', sans-serif;
+  animation: fadeUp 0.8s ease 0.1s both;
+  margin-bottom: 1.5rem;
+}
+.hero h1 span.in { color: var(--accent); }
+.hero h1 span.eg { color: var(--accent2); }
+.hero p {
+  font-size: 1.1rem; color: var(--text2); max-width: 640px;
+  animation: fadeUp 0.8s ease 0.2s both; margin-bottom: 3rem;
+}
+.hero-badges {
+  display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+  animation: fadeUp 0.8s ease 0.3s both;
+}
+.badge {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 16px;
+  font-family: 'Share Tech Mono', monospace; font-size: 0.72rem;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+
+/* ─── SECTIONS ─── */
+section { padding: 5rem 2rem; max-width: 1300px; margin: 0 auto; }
+.section-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 0.68rem;
+  color: var(--accent); letter-spacing: 3px; text-transform: uppercase;
+  margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.section-label::after { content:''; flex:1; height:1px; background: var(--border); }
+h2 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: 1.5rem; font-family: 'Oxanium', sans-serif; }
+h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.8rem; color: var(--text); font-family: 'Oxanium', sans-serif; }
+
+/* ─── DEFINITION CARDS ─── */
+.def-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; }
+@media(max-width:768px){.def-grid{grid-template-columns:1fr}}
+
+.def-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 2rem; position: relative; overflow: hidden;
+  transition: transform 0.3s, border-color 0.3s;
+}
+.def-card:hover { transform: translateY(-4px); }
+.def-card.ingress { border-top: 3px solid var(--accent); }
+.def-card.egress { border-top: 3px solid var(--accent2); }
+.def-card::before {
+  content:''; position: absolute; top:-80px; right:-80px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+}
+.def-card.egress::before { background: radial-gradient(circle, var(--glow2) 0%, transparent 70%); }
+.def-icon {
+  width: 56px; height: 56px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; margin-bottom: 1.2rem;
+}
+.def-icon.in-icon { background: rgba(0,212,255,0.15); }
+.def-icon.eg-icon { background: rgba(124,58,237,0.15); }
+.def-card p { color: var(--text2); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem; }
+.def-list { list-style: none; }
+.def-list li {
+  padding: 6px 0; color: var(--text2); font-size: 0.88rem;
+  display: flex; gap: 0.5rem; align-items: flex-start;
+}
+.def-list li::before { content:'→'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.def-card.egress .def-list li::before { color: var(--accent2); }
+
+/* ─── WHY CARDS ─── */
+.why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+.why-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 1.5rem; transition: all 0.3s;
+}
+.why-card:hover { border-color: var(--accent); box-shadow: 0 0 20px var(--glow); }
+.why-num {
+  font-family: 'Share Tech Mono', monospace; font-size: 2rem; font-weight: 700;
+  color: var(--border); line-height: 1; margin-bottom: 0.5rem;
+}
+.why-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--accent); }
+.why-card p { font-size: 0.87rem; color: var(--text2); line-height: 1.6; }
+
+/* ─── YAML TABS ─── */
+.yaml-tabs { display: flex; gap: 0.5rem; margin-bottom: 0; flex-wrap: wrap; }
+.yaml-tab {
+  padding: 8px 18px; border-radius: 8px 8px 0 0;
+  border: 1px solid var(--border); border-bottom: none;
+  background: var(--bg2); cursor: pointer;
+  font-family: 'Share Tech Mono', monospace; font-size: 0.72rem;
+  color: var(--text3); transition: all 0.2s;
+}
+.yaml-tab.active { background: var(--surface); color: var(--accent); border-color: var(--accent); }
+.yaml-panel {
+  display: none; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 0 8px 8px 8px;
+  padding: 1.5rem; overflow-x: auto;
+}
+.yaml-panel.active { display: block; }
+.yaml-panel pre {
+  font-family: 'Share Tech Mono', monospace; font-size: 0.8rem;
+  line-height: 1.7; color: var(--text);
+  white-space: pre;
+}
+.kw { color: #7dd3fc; }
+.val { color: #86efac; }
+.str { color: #fcd34d; }
+.cmt { color: var(--text3); font-style: italic; }
+.key { color: var(--accent); }
+
+/* ─── DIAGRAMS ─── */
+.diagram-container {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 2rem; margin: 2rem 0;
+  overflow-x: auto;
+}
+.diagram-title {
+  font-family: 'Share Tech Mono', monospace; font-size: 0.75rem;
+  color: var(--text2); margin-bottom: 1.5rem; letter-spacing: 2px;
+}
+
+/* ─── SVG DIAGRAMS ─── */
+svg text { font-family: 'Share Tech Mono', monospace; }
+
+/* ─── SLIDER DEMO ─── */
+.slider-demo {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 2rem; margin: 2rem 0;
+}
+.slider-demo h4 { color: var(--accent); font-size: 1rem; margin-bottom: 1.5rem; }
+.slider-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.slider-row label { font-family:'Space Mono',monospace; font-size:0.72rem; color:var(--text2); width:180px; flex-shrink:0; }
+.slider-row input[type=range] {
+  flex: 1; min-width: 120px;
+  -webkit-appearance: none; appearance: none;
+  height: 4px; background: var(--border); border-radius: 2px; outline: none;
+}
+.slider-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+  box-shadow: 0 0 8px rgba(0,212,255,0.5);
+}
+.slider-val {
+  font-family:'Space Mono',monospace; font-size:0.72rem;
+  color: var(--accent); width: 60px; text-align: right;
+}
+#traffic-vis { margin-top: 1.5rem; border-radius: 8px; overflow: hidden; }
+
+/* ─── CLUSTER ARCHITECTURE ─── */
+.cluster-section { margin: 3rem 0; }
+.before-after {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0;
+}
+@media(max-width:900px){.before-after{grid-template-columns:1fr}}
+.ba-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem;
+}
+.ba-card h4 {
+  font-family:'Space Mono',monospace; font-size:0.75rem; margin-bottom:1.2rem;
+  display:flex; align-items:center; gap:0.5rem;
+}
+.ba-before h4 { color: var(--accent5); }
+.ba-after h4 { color: var(--accent3); }
+
+/* ─── SRE SECTION ─── */
+.sre-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+.sre-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;
+  border-left: 3px solid var(--accent4);
+  transition: all 0.3s;
+}
+.sre-card:hover { transform: translateX(4px); }
+.sre-card h4 { color: var(--accent4); font-size: 0.95rem; margin-bottom: 0.5rem; }
+.sre-card p { color: var(--text2); font-size: 0.87rem; line-height: 1.6; }
+.sre-tag {
+  display: inline-block; margin-top: 0.7rem;
+  background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 4px; padding: 2px 8px;
+  font-family:'Space Mono',monospace; font-size:0.65rem; color: var(--accent4);
+}
+.sre-card.red { border-left-color: var(--accent5); }
+.sre-card.red h4 { color: var(--accent5); }
+.sre-card.red .sre-tag { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--accent5); }
+.sre-card.green { border-left-color: var(--accent3); }
+.sre-card.green h4 { color: var(--accent3); }
+.sre-card.green .sre-tag { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: var(--accent3); }
+.sre-card.purple { border-left-color: var(--accent2); }
+.sre-card.purple h4 { color: var(--accent2); }
+.sre-card.purple .sre-tag { background: rgba(124,58,237,0.1); border-color: rgba(124,58,237,0.3); color: var(--accent2); }
+
+/* ─── WORKFLOW TIMELINE ─── */
+.workflow { margin: 2rem 0; }
+.wf-step {
+  display: flex; gap: 1.5rem; margin-bottom: 1.5rem; align-items: flex-start;
+}
+.wf-num {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family:'Space Mono',monospace; font-size: 0.8rem; font-weight: 700;
+  background: var(--surface); border: 2px solid var(--accent); color: var(--accent);
+}
+.wf-content { flex: 1; padding-top: 6px; }
+.wf-content h4 { color: var(--text); font-size: 0.95rem; margin-bottom: 0.3rem; }
+.wf-content p { color: var(--text2); font-size: 0.87rem; }
+.wf-line { width: 2px; height: 24px; background: var(--border); margin-left: 19px; margin-bottom: 0; }
+
+/* ─── COMPARISON TABLE ─── */
+.compare-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+.compare-table th {
+  background: var(--surface); padding: 12px 16px; text-align: left;
+  font-family:'Space Mono',monospace; font-size: 0.72rem; color: var(--text2);
+  border: 1px solid var(--border);
+}
+.compare-table td {
+  padding: 12px 16px; border: 1px solid var(--border);
+  font-size: 0.87rem; color: var(--text2);
+  background: var(--bg2);
+}
+.compare-table tr:hover td { background: var(--surface); }
+.compare-table td:first-child { color: var(--text); font-weight: 600; font-size: 0.9rem; }
+.check { color: var(--accent3); }
+.cross { color: var(--accent5); }
+
+/* ─── CALLOUTS ─── */
+.callout {
+  border-radius: 10px; padding: 1.2rem 1.5rem; margin: 1.5rem 0;
+  display: flex; gap: 1rem; align-items: flex-start;
+  font-size: 0.9rem;
+}
+.callout.info { background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.2); color: var(--text2); }
+.callout.warn { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2); color: var(--text2); }
+.callout.tip { background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.2); color: var(--text2); }
+.callout-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+/* ─── FOOTER ─── */
+footer {
+  background: var(--bg2); border-top: 1px solid var(--border);
+  padding: 2rem; text-align: center;
+  font-family:'Space Mono',monospace; font-size: 0.7rem; color: var(--text3);
+}
+
+/* ─── STICKY TOC ─── */
+.toc-float {
+  position: fixed; right: 1.5rem; top: 50%;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 6px; z-index: 900;
+}
+.toc-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border); cursor: pointer; transition: all 0.2s;
+  border: none; padding: 0; title: '';
+}
+.toc-dot:hover, .toc-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); transform: scale(1.4); }
+
+@media(max-width:900px){ .toc-float { display: none; } }
+
+/* ─── TABS ─── */
+.tab-container { margin: 2rem 0; }
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 0; flex-wrap: wrap; }
+.tab {
+  padding: 9px 20px; border-radius: 8px 8px 0 0;
+  border: 1px solid var(--border); border-bottom: none;
+  background: var(--bg2); cursor: pointer;
+  font-family:'Space Mono',monospace; font-size:0.72rem;
+  color: var(--text3); transition: all 0.2s;
+}
+.tab.active { background: var(--surface2); color: var(--accent); border-color: var(--accent); }
+.tab-content {
+  display: none; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 0 8px 8px 8px; padding: 2rem;
+}
+.tab-content.active { display: block; }
+
+/* ─── ANIMATION ─── */
+.fade-in { opacity: 0; transform: translateY(20px); transition: all 0.6s ease; }
+.fade-in.visible { opacity: 1; transform: none; }
+
+/* ─── HIGHLIGHT ─── */
+mark { background: rgba(0,212,255,0.15); color: var(--accent); padding: 1px 4px; border-radius: 3px; }
+
+.divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 4rem 0; }
+
+/* ─── NODE LEGEND ─── */
+.legend { display:flex; gap:1.5rem; flex-wrap:wrap; margin-top:1rem; }
+.legend-item { display:flex; align-items:center; gap:0.5rem; font-family:'Space Mono',monospace; font-size:0.68rem; color:var(--text2); }
+.legend-box { width:16px; height:16px; border-radius:3px; flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="nav-logo">⎈ K8s Network</span>
+  <a href="#definitions">Definitions</a>
+  <a href="#why">Why & Benefits</a>
+  <a href="#yaml">YAML Config</a>
+  <a href="#workflow">Workflow</a>
+  <a href="#architecture">Cluster Architecture</a>
+  <a href="#sre">SRE Principles</a>
+</nav>
+
+<!-- TOC DOTS -->
+<div class="toc-float" id="toc">
+  <button class="toc-dot active" onclick="scrollTo('#hero')" title="Top"></button>
+  <button class="toc-dot" onclick="scrollTo('#definitions')" title="Definitions"></button>
+  <button class="toc-dot" onclick="scrollTo('#why')" title="Why"></button>
+  <button class="toc-dot" onclick="scrollTo('#yaml')" title="YAML"></button>
+  <button class="toc-dot" onclick="scrollTo('#workflow')" title="Workflow"></button>
+  <button class="toc-dot" onclick="scrollTo('#architecture')" title="Architecture"></button>
+  <button class="toc-dot" onclick="scrollTo('#sre')" title="SRE"></button>
+</div>
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-tag">Kubernetes Networking Deep Dive</div>
+  <h1><span class="in">Ingress</span> &amp; <span class="eg">Egress</span></h1>
+  <p>A complete visual guide to Kubernetes traffic management — from definitions and YAML to cluster architecture, SRE principles, and interactive diagrams.</p>
+  <div class="hero-badges">
+    <div class="badge"><div class="dot" style="background:var(--accent)"></div>Inbound Traffic Control</div>
+    <div class="badge"><div class="dot" style="background:var(--accent2)"></div>Outbound Traffic Control</div>
+    <div class="badge"><div class="dot" style="background:var(--accent3)"></div>Network Policies</div>
+    <div class="badge"><div class="dot" style="background:var(--accent4)"></div>SRE Observability</div>
+    <div class="badge"><div class="dot" style="background:var(--accent6)"></div>Zero-Trust Security</div>
+  </div>
+</div>
+
+<!-- ════════════ DEFINITIONS ════════════ -->
+<section id="definitions">
+  <div class="section-label">01 // DEFINITIONS</div>
+  <h2>What Are They, Exactly?</h2>
+  <p style="color:var(--text2);max-width:760px;font-size:0.97rem;line-height:1.8;">In Kubernetes, every Pod gets an IP address — but those IPs are ephemeral, cluster-internal, and not directly routable from the outside world. <strong>Ingress</strong> and <strong>Egress</strong> are the two gatekeeping concepts that control <em>how</em> traffic flows in and out of your cluster, services, and pods.</p>
+
+  <div class="def-grid fade-in">
+    <div class="def-card ingress">
+      <div class="def-icon in-icon">📥</div>
+      <h3 style="color:var(--accent)">Ingress</h3>
+      <p>Ingress manages <strong>inbound traffic</strong> from outside the cluster to Services inside it. It provides HTTP/HTTPS routing, SSL termination, virtual hosting, and path-based routing — all via a single LoadBalancer IP. Think of it as the <em>smart front door</em> of your cluster.</p>
+      <p>Kubernetes defines two objects:</p>
+      <ul class="def-list">
+        <li><strong>Ingress Resource</strong> — a declarative YAML config defining routing rules (host, path → service)</li>
+        <li><strong>Ingress Controller</strong> — an actual running Pod (nginx, traefik, HAProxy, etc.) that reads the Ingress Resource and enforces the rules</li>
+        <li>SSL/TLS termination at the cluster edge</li>
+        <li>Name-based and path-based virtual hosting</li>
+        <li>Rate limiting, auth, IP whitelisting via annotations</li>
+        <li>WebSocket and gRPC support</li>
+        <li>Load balancing algorithms (round-robin, sticky sessions)</li>
+      </ul>
+    </div>
+    <div class="def-card egress">
+      <div class="def-icon eg-icon">📤</div>
+      <h3 style="color:var(--accent2)">Egress</h3>
+      <p>Egress controls <strong>outbound traffic</strong> from Pods in the cluster to external destinations — databases, third-party APIs, the internet, or other clusters. Without egress controls, any Pod can phone home anywhere. Egress policies enforce <em>zero-trust</em> outbound behavior.</p>
+      <p>Kubernetes controls egress via:</p>
+      <ul class="def-list">
+        <li><strong>NetworkPolicy</strong> — L4 rules (IP/port) that permit or deny egress flows per Pod selector</li>
+        <li><strong>Egress Gateway</strong> (Istio/Cilium) — routes all outbound through a single audited exit node</li>
+        <li>DNS-based egress filtering (by hostname, not just IP)</li>
+        <li>Force all outbound through a NAT gateway for static IPs</li>
+        <li>Block internet access for compliance-sensitive workloads</li>
+        <li>Mutual TLS (mTLS) for outbound service-to-service calls</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CONCEPTUAL DIAGRAM -->
+  <div class="diagram-container fade-in">
+    <div class="diagram-title">CONCEPTUAL OVERVIEW — TRAFFIC FLOW</div>
+    <svg viewBox="0 0 900 320" width="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#00d4ff"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#7c3aed"/>
+        </marker>
+        <marker id="arr3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#10b981"/>
+        </marker>
+      </defs>
+
+      <!-- Internet -->
+      <circle cx="60" cy="160" r="40" fill="none" stroke="#1e3a5f" stroke-width="2"/>
+      <text x="60" y="155" fill="#8ba3c4" text-anchor="middle" font-size="10">🌐</text>
+      <text x="60" y="172" fill="#8ba3c4" text-anchor="middle" font-size="10">Internet</text>
+
+      <!-- Ingress arrow -->
+      <line x1="100" y1="140" x2="200" y2="120" stroke="#00d4ff" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arr)"/>
+      <text x="148" y="120" fill="#00d4ff" text-anchor="middle" font-size="10">INGRESS</text>
+
+      <!-- Cluster box -->
+      <rect x="200" y="40" width="540" height="240" rx="16" fill="none" stroke="#1e3a5f" stroke-width="2" stroke-dasharray="8,4"/>
+      <text x="470" y="58" fill="#4d6b8a" text-anchor="middle" font-size="10" font-style="italic">Kubernetes Cluster</text>
+
+      <!-- Ingress Controller box -->
+      <rect x="220" y="70" width="140" height="60" rx="10" fill="#0d1f3c" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="290" y="95" fill="#00d4ff" text-anchor="middle" font-size="10" font-weight="bold">Ingress Controller</text>
+      <text x="290" y="112" fill="#4d6b8a" text-anchor="middle" font-size="9">(nginx / traefik)</text>
+
+      <!-- Service A -->
+      <rect x="420" y="60" width="120" height="50" rx="8" fill="#0d1f3c" stroke="#10b981" stroke-width="1.5"/>
+      <text x="480" y="82" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">Service A</text>
+      <text x="480" y="98" fill="#4d6b8a" text-anchor="middle" font-size="9">:80 / api/v1</text>
+
+      <!-- Service B -->
+      <rect x="420" y="130" width="120" height="50" rx="8" fill="#0d1f3c" stroke="#ec4899" stroke-width="1.5"/>
+      <text x="480" y="152" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">Service B</text>
+      <text x="480" y="168" fill="#4d6b8a" text-anchor="middle" font-size="9">:80 / api/v2</text>
+
+      <!-- Pods A -->
+      <rect x="600" y="55" width="52" height="32" rx="6" fill="#0a1628" stroke="#10b981" stroke-width="1"/>
+      <text x="626" y="75" fill="#10b981" text-anchor="middle" font-size="9">Pod ×3</text>
+
+      <!-- Pods B -->
+      <rect x="600" y="125" width="52" height="32" rx="6" fill="#0a1628" stroke="#ec4899" stroke-width="1"/>
+      <text x="626" y="145" fill="#ec4899" text-anchor="middle" font-size="9">Pod ×3</text>
+
+      <!-- NetworkPolicy box -->
+      <rect x="220" y="195" width="140" height="60" rx="10" fill="#0d1f3c" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="290" y="220" fill="#7c3aed" text-anchor="middle" font-size="10" font-weight="bold">NetworkPolicy</text>
+      <text x="290" y="237" fill="#4d6b8a" text-anchor="middle" font-size="9">(Egress Rules)</text>
+
+      <!-- Arrows: controller → services -->
+      <line x1="360" y1="95" x2="420" y2="88" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="360" y1="115" x2="420" y2="152" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Services → Pods -->
+      <line x1="540" y1="82" x2="600" y2="72" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <line x1="540" y1="152" x2="600" y2="140" stroke="#ec4899" stroke-width="1.5" marker-end="url(#arr3)"/>
+
+      <!-- Egress arrow -->
+      <line x1="360" y1="230" x2="770" y2="230" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6,3"/>
+      <line x1="770" y1="230" x2="840" y2="230" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr2)"/>
+      <text x="590" y="222" fill="#7c3aed" text-anchor="middle" font-size="10">EGRESS (controlled)</text>
+
+      <!-- External DB -->
+      <rect x="840" y="210" width="48" height="40" rx="6" fill="#0a1628" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="864" y="234" fill="#7c3aed" text-anchor="middle" font-size="9">Ext DB</text>
+
+      <!-- Labels -->
+      <text x="60" y="215" fill="#4d6b8a" text-anchor="middle" font-size="9">User/Client</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ════════════ WHY & BENEFITS ════════════ -->
+<section id="why">
+  <div class="section-label">02 // WHY & BENEFITS</div>
+  <h2>Why Do You Need Them?</h2>
+  <p style="color:var(--text2);max-width:760px;font-size:0.97rem;line-height:1.8;">Before Ingress existed, exposing services required one LoadBalancer per service — that's expensive (each cloud LB costs money) and operationally painful. NetworkPolicies came later to fix the naive "allow all" default networking model.</p>
+
+  <div class="why-grid fade-in">
+    <div class="why-card">
+      <div class="why-num">01</div>
+      <h4>Cost Efficiency</h4>
+      <p>One Ingress Controller = one cloud LoadBalancer for <em>all</em> services. Without it, you'd pay for an LB per service — 10 services = 10 LBs = 10× the cost.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-num">02</div>
+      <h4>SSL Termination</h4>
+      <p>Handle TLS certificates once at the Ingress layer via cert-manager + Let's Encrypt. Your backend services communicate over plain HTTP internally — simpler, faster.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-num">03</div>
+      <h4>Path-Based Routing</h4>
+      <p>Route <code>/api/*</code> → backend service, <code>/web/*</code> → frontend service, <code>/metrics/*</code> → monitoring — all on the same IP and hostname.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-num">04</div>
+      <h4>Security Layer</h4>
+      <p>Ingress annotations enable rate limiting, IP whitelisting, OAuth2 proxy, WAF integration, and basic auth without touching application code.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-num">05</div>
+      <h4>Zero-Trust Egress</h4>
+      <p>NetworkPolicies default-deny all outbound. Pods can only talk to explicitly whitelisted destinations — databases, queues, APIs. Lateral movement is eliminated.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-num">06</div>
+      <h4>Compliance Ready</h4>
+      <p>PCI-DSS, HIPAA, SOC2 require strict network controls. Egress policies enforce data residency and prevent exfiltration to unauthorized IPs.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-num">07</div>
+      <h4>Observability</h4>
+      <p>Ingress Controllers expose Prometheus metrics: request rate, latency P50/P99, error rate, upstream response time — per route, per service.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-num">08</div>
+      <h4>Canary & A/B Testing</h4>
+      <p>Nginx Ingress supports canary annotations: route 10% of traffic to the new service version, 90% to stable — zero infrastructure changes needed.</p>
+    </div>
+  </div>
+
+  <!-- COMPARISON TABLE -->
+  <div class="fade-in" style="margin-top:2.5rem">
+    <h3>Ingress vs NodePort vs LoadBalancer vs ClusterIP</h3>
+    <div style="overflow-x:auto">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Externally Accessible</th>
+          <th>TLS Termination</th>
+          <th>Path Routing</th>
+          <th>Cost</th>
+          <th>Use Case</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>ClusterIP</td>
+          <td><span class="cross">✗ No</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+          <td>Free</td>
+          <td>Internal only</td>
+        </tr>
+        <tr>
+          <td>NodePort</td>
+          <td><span class="check">✓ Yes (port 30000+)</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+          <td>Free</td>
+          <td>Dev/test only</td>
+        </tr>
+        <tr>
+          <td>LoadBalancer</td>
+          <td><span class="check">✓ Yes</span></td>
+          <td>Sometimes</td>
+          <td><span class="cross">✗</span></td>
+          <td>$$$$ (per service)</td>
+          <td>Simple exposure</td>
+        </tr>
+        <tr>
+          <td style="color:var(--accent)">Ingress</td>
+          <td><span class="check">✓ Yes (HTTP/S)</span></td>
+          <td><span class="check">✓ Yes</span></td>
+          <td><span class="check">✓ Yes</span></td>
+          <td>$ (one LB shared)</td>
+          <td>Production web traffic</td>
+        </tr>
+        <tr>
+          <td>Gateway API</td>
+          <td><span class="check">✓ Yes (all protocols)</span></td>
+          <td><span class="check">✓ Yes</span></td>
+          <td><span class="check">✓ Yes</span></td>
+          <td>$ (future of Ingress)</td>
+          <td>Next-gen routing</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ YAML ════════════ -->
+<section id="yaml">
+  <div class="section-label">03 // YAML CONFIGURATIONS</div>
+  <h2>Production YAML Configs</h2>
+  <p style="color:var(--text2);margin-bottom:2rem;font-size:0.97rem;">Full, annotated YAML for every object you'll need in a production cluster.</p>
+
+  <div class="tab-container fade-in">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(this,'t1')">Ingress Resource</button>
+      <button class="tab" onclick="switchTab(this,'t2')">Ingress Controller</button>
+      <button class="tab" onclick="switchTab(this,'t3')">Egress NetworkPolicy</button>
+      <button class="tab" onclick="switchTab(this,'t4')">Ingress NetworkPolicy</button>
+      <button class="tab" onclick="switchTab(this,'t5')">TLS + cert-manager</button>
+      <button class="tab" onclick="switchTab(this,'t6')">Canary Ingress</button>
+    </div>
+
+    <div id="t1" class="tab-content active">
+      <pre><code><span class="cmt"># ────────────────────────────────────────────
+# INGRESS RESOURCE — routes external HTTP/S traffic
+# to internal Services based on host + path rules
+# ────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">production-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="cmt"># Use nginx ingress controller</span>
+    <span class="kw">kubernetes.io/ingress.class</span>: <span class="str">"nginx"</span>
+    <span class="cmt"># Force HTTPS redirect</span>
+    <span class="kw">nginx.ingress.kubernetes.io/ssl-redirect</span>: <span class="str">"true"</span>
+    <span class="cmt"># Rate limit: 100 req/min per IP</span>
+    <span class="kw">nginx.ingress.kubernetes.io/limit-rps</span>: <span class="str">"100"</span>
+    <span class="cmt"># Enable CORS</span>
+    <span class="kw">nginx.ingress.kubernetes.io/enable-cors</span>: <span class="str">"true"</span>
+    <span class="cmt"># Enable proxy buffering for performance</span>
+    <span class="kw">nginx.ingress.kubernetes.io/proxy-buffering</span>: <span class="str">"on"</span>
+    <span class="cmt"># Increase body size for file uploads</span>
+    <span class="kw">nginx.ingress.kubernetes.io/proxy-body-size</span>: <span class="str">"50m"</span>
+    <span class="cmt"># Timeout configuration</span>
+    <span class="kw">nginx.ingress.kubernetes.io/proxy-read-timeout</span>: <span class="str">"60"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/proxy-send-timeout</span>: <span class="str">"60"</span>
+
+<span class="kw">spec</span>:
+  <span class="cmt"># TLS configuration — terminates SSL here</span>
+  <span class="kw">tls</span>:
+  - <span class="kw">hosts</span>:
+    - <span class="str">api.myapp.com</span>
+    - <span class="str">web.myapp.com</span>
+    <span class="kw">secretName</span>: <span class="str">myapp-tls-secret</span>   <span class="cmt"># cert stored here</span>
+
+  <span class="kw">rules</span>:
+  <span class="cmt"># Rule 1: API service on subdomain</span>
+  - <span class="kw">host</span>: <span class="str">api.myapp.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - <span class="kw">path</span>: <span class="str">/v1</span>
+        <span class="kw">pathType</span>: <span class="val">Prefix</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">api-service-v1</span>
+            <span class="kw">port</span>:
+              <span class="kw">number</span>: <span class="val">80</span>
+      - <span class="kw">path</span>: <span class="str">/v2</span>
+        <span class="kw">pathType</span>: <span class="val">Prefix</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">api-service-v2</span>
+            <span class="kw">port</span>:
+              <span class="kw">number</span>: <span class="val">80</span>
+
+  <span class="cmt"># Rule 2: Frontend service on main domain</span>
+  - <span class="kw">host</span>: <span class="str">web.myapp.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - <span class="kw">path</span>: <span class="str">/</span>
+        <span class="kw">pathType</span>: <span class="val">Prefix</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">frontend-service</span>
+            <span class="kw">port</span>:
+              <span class="kw">number</span>: <span class="val">3000</span></code></pre>
+    </div>
+
+    <div id="t2" class="tab-content">
+      <pre><code><span class="cmt"># ────────────────────────────────────────────
+# NGINX INGRESS CONTROLLER DEPLOYMENT
+# This is what actually processes the Ingress rules
+# Runs as a Deployment in the cluster
+# ────────────────────────────────────────────</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">ingress-nginx</span>
+
+---
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">nginx-ingress-controller</span>
+  <span class="kw">namespace</span>: <span class="str">ingress-nginx</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">2</span>       <span class="cmt"># HA — 2 controller replicas</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>:
+      <span class="kw">app</span>: <span class="str">ingress-nginx</span>
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>:
+        <span class="kw">app</span>: <span class="str">ingress-nginx</span>
+    <span class="kw">spec</span>:
+      <span class="kw">serviceAccountName</span>: <span class="str">nginx-ingress-serviceaccount</span>
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">nginx-ingress-controller</span>
+        <span class="kw">image</span>: <span class="str">registry.k8s.io/ingress-nginx/controller:v1.9.4</span>
+        <span class="kw">args</span>:
+        - <span class="str">/nginx-ingress-controller</span>
+        - <span class="str">--publish-service=ingress-nginx/ingress-nginx-svc</span>
+        - <span class="str">--election-id=ingress-controller-leader</span>
+        - <span class="str">--ingress-class=nginx</span>
+        - <span class="str">--configmap=ingress-nginx/nginx-configuration</span>
+        <span class="kw">ports</span>:
+        - <span class="kw">name</span>: <span class="str">http</span>
+          <span class="kw">containerPort</span>: <span class="val">80</span>
+        - <span class="kw">name</span>: <span class="str">https</span>
+          <span class="kw">containerPort</span>: <span class="val">443</span>
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>:
+            <span class="kw">cpu</span>: <span class="str">"100m"</span>
+            <span class="kw">memory</span>: <span class="str">"90Mi"</span>
+          <span class="kw">limits</span>:
+            <span class="kw">cpu</span>: <span class="str">"500m"</span>
+            <span class="kw">memory</span>: <span class="str">"256Mi"</span>
+        <span class="kw">livenessProbe</span>:
+          <span class="kw">httpGet</span>:
+            <span class="kw">path</span>: <span class="str">/healthz</span>
+            <span class="kw">port</span>: <span class="val">10254</span>
+          <span class="kw">initialDelaySeconds</span>: <span class="val">10</span>
+          <span class="kw">periodSeconds</span>: <span class="val">10</span>
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">httpGet</span>:
+            <span class="kw">path</span>: <span class="str">/healthz</span>
+            <span class="kw">port</span>: <span class="val">10254</span>
+          <span class="kw">periodSeconds</span>: <span class="val">10</span>
+
+---
+<span class="cmt"># LoadBalancer Service — this gets the external IP</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">ingress-nginx-svc</span>
+  <span class="kw">namespace</span>: <span class="str">ingress-nginx</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">LoadBalancer</span>
+  <span class="kw">selector</span>:
+    <span class="kw">app</span>: <span class="str">ingress-nginx</span>
+  <span class="kw">ports</span>:
+  - <span class="kw">name</span>: <span class="str">http</span>
+    <span class="kw">port</span>: <span class="val">80</span>
+    <span class="kw">targetPort</span>: <span class="val">80</span>
+  - <span class="kw">name</span>: <span class="str">https</span>
+    <span class="kw">port</span>: <span class="val">443</span>
+    <span class="kw">targetPort</span>: <span class="val">443</span></code></pre>
+    </div>
+
+    <div id="t3" class="tab-content">
+      <pre><code><span class="cmt"># ────────────────────────────────────────────
+# EGRESS NetworkPolicy — controls outbound traffic
+# Strategy: default-deny all, then allow explicitly
+# ────────────────────────────────────────────</span>
+
+<span class="cmt"># Step 1: Default DENY ALL egress for the namespace</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">default-deny-egress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}    <span class="cmt"># applies to ALL pods in namespace</span>
+  <span class="kw">policyTypes</span>:
+  - <span class="val">Egress</span>
+  <span class="cmt"># No egress rules = deny everything by default</span>
+
+---
+<span class="cmt"># Step 2: Allow specific egress for the API pods</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">api-egress-policy</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>:
+      <span class="kw">app</span>: <span class="str">api-service</span>    <span class="cmt"># only applies to api pods</span>
+  <span class="kw">policyTypes</span>:
+  - <span class="val">Egress</span>
+  <span class="kw">egress</span>:
+  <span class="cmt"># Allow DNS (required for name resolution)</span>
+  - <span class="kw">ports</span>:
+    - <span class="kw">protocol</span>: <span class="val">UDP</span>
+      <span class="kw">port</span>: <span class="val">53</span>
+    - <span class="kw">protocol</span>: <span class="val">TCP</span>
+      <span class="kw">port</span>: <span class="val">53</span>
+
+  <span class="cmt"># Allow talk to the database (in db namespace)</span>
+  - <span class="kw">to</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>:
+          <span class="kw">name</span>: <span class="str">database</span>
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>:
+          <span class="kw">app</span>: <span class="str">postgres</span>
+    <span class="kw">ports</span>:
+    - <span class="kw">protocol</span>: <span class="val">TCP</span>
+      <span class="kw">port</span>: <span class="val">5432</span>
+
+  <span class="cmt"># Allow talk to Redis cache (same namespace)</span>
+  - <span class="kw">to</span>:
+    - <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>:
+          <span class="kw">app</span>: <span class="str">redis</span>
+    <span class="kw">ports</span>:
+    - <span class="kw">protocol</span>: <span class="val">TCP</span>
+      <span class="kw">port</span>: <span class="val">6379</span>
+
+  <span class="cmt"># Allow external HTTPS to payment gateway only</span>
+  - <span class="kw">to</span>:
+    - <span class="kw">ipBlock</span>:
+        <span class="kw">cidr</span>: <span class="str">203.0.113.0/24</span>    <span class="cmt"># payment gateway IP range</span>
+    <span class="kw">ports</span>:
+    - <span class="kw">protocol</span>: <span class="val">TCP</span>
+      <span class="kw">port</span>: <span class="val">443</span></code></pre>
+    </div>
+
+    <div id="t4" class="tab-content">
+      <pre><code><span class="cmt"># ────────────────────────────────────────────
+# INGRESS NetworkPolicy — controls who can REACH
+# your pods from inside the cluster
+# ────────────────────────────────────────────</span>
+
+<span class="cmt"># Default deny all ingress to production namespace</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">default-deny-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>:
+  - <span class="val">Ingress</span>
+
+---
+<span class="cmt"># Allow ingress only from nginx controller to api-service</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">allow-ingress-controller</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>:
+      <span class="kw">app</span>: <span class="str">api-service</span>
+  <span class="kw">policyTypes</span>:
+  - <span class="val">Ingress</span>
+  <span class="kw">ingress</span>:
+  <span class="cmt"># Only nginx ingress controller pods can reach this service</span>
+  - <span class="kw">from</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>:
+          <span class="kw">name</span>: <span class="str">ingress-nginx</span>
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>:
+          <span class="kw">app</span>: <span class="str">ingress-nginx</span>
+    <span class="kw">ports</span>:
+    - <span class="kw">protocol</span>: <span class="val">TCP</span>
+      <span class="kw">port</span>: <span class="val">8080</span>
+
+---
+<span class="cmt"># Allow prometheus to scrape metrics from all pods</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">allow-prometheus-scrape</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>:
+  - <span class="val">Ingress</span>
+  <span class="kw">ingress</span>:
+  - <span class="kw">from</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>:
+          <span class="kw">name</span>: <span class="str">monitoring</span>
+    <span class="kw">ports</span>:
+    - <span class="kw">protocol</span>: <span class="val">TCP</span>
+      <span class="kw">port</span>: <span class="val">9090</span></code></pre>
+    </div>
+
+    <div id="t5" class="tab-content">
+      <pre><code><span class="cmt"># ────────────────────────────────────────────
+# AUTOMATED TLS WITH CERT-MANAGER
+# Auto-renewing Let's Encrypt certificates
+# ────────────────────────────────────────────</span>
+
+<span class="cmt"># 1. ClusterIssuer — defines how to get certs</span>
+<span class="kw">apiVersion</span>: <span class="val">cert-manager.io/v1</span>
+<span class="kw">kind</span>: <span class="val">ClusterIssuer</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">letsencrypt-prod</span>
+<span class="kw">spec</span>:
+  <span class="kw">acme</span>:
+    <span class="kw">server</span>: <span class="str">https://acme-v02.api.letsencrypt.org/directory</span>
+    <span class="kw">email</span>: <span class="str">ops@myapp.com</span>
+    <span class="kw">privateKeySecretRef</span>:
+      <span class="kw">name</span>: <span class="str">letsencrypt-prod-key</span>
+    <span class="kw">solvers</span>:
+    - <span class="kw">http01</span>:
+        <span class="kw">ingress</span>:
+          <span class="kw">class</span>: <span class="str">nginx</span>
+
+---
+<span class="cmt"># 2. Certificate — requests the actual cert</span>
+<span class="kw">apiVersion</span>: <span class="val">cert-manager.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Certificate</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">myapp-tls</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">secretName</span>: <span class="str">myapp-tls-secret</span>    <span class="cmt"># matches Ingress tls.secretName</span>
+  <span class="kw">duration</span>: <span class="str">2160h</span>                  <span class="cmt"># 90 days</span>
+  <span class="kw">renewBefore</span>: <span class="str">360h</span>                <span class="cmt"># renew 15 days before expiry</span>
+  <span class="kw">issuerRef</span>:
+    <span class="kw">name</span>: <span class="str">letsencrypt-prod</span>
+    <span class="kw">kind</span>: <span class="val">ClusterIssuer</span>
+  <span class="kw">dnsNames</span>:
+  - <span class="str">api.myapp.com</span>
+  - <span class="str">web.myapp.com</span>
+  - <span class="str">*.myapp.com</span>                   <span class="cmt"># wildcard cert</span>
+
+---
+<span class="cmt"># 3. Ingress now just references the secret</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">secure-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="kw">cert-manager.io/cluster-issuer</span>: <span class="str">"letsencrypt-prod"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/ssl-redirect</span>: <span class="str">"true"</span>
+<span class="kw">spec</span>:
+  <span class="kw">tls</span>:
+  - <span class="kw">hosts</span>: [<span class="str">api.myapp.com</span>, <span class="str">web.myapp.com</span>]
+    <span class="kw">secretName</span>: <span class="str">myapp-tls-secret</span>   <span class="cmt"># cert-manager fills this</span>
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">api.myapp.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - <span class="kw">path</span>: <span class="str">/</span>
+        <span class="kw">pathType</span>: <span class="val">Prefix</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">api-service</span>
+            <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> }</code></pre>
+    </div>
+
+    <div id="t6" class="tab-content">
+      <pre><code><span class="cmt"># ────────────────────────────────────────────
+# CANARY INGRESS — Route % of traffic to new version
+# Useful for A/B testing and gradual rollouts
+# ────────────────────────────────────────────</span>
+
+<span class="cmt"># Main (stable) Ingress</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">api-ingress-stable</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">api.myapp.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - <span class="kw">path</span>: <span class="str">/</span>
+        <span class="kw">pathType</span>: <span class="val">Prefix</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">api-v1-service</span>    <span class="cmt"># stable version</span>
+            <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> }
+
+---
+<span class="cmt"># Canary Ingress — 20% of traffic to v2</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">api-ingress-canary</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="cmt"># Mark this as a canary ingress</span>
+    <span class="kw">nginx.ingress.kubernetes.io/canary</span>: <span class="str">"true"</span>
+    <span class="cmt"># Send 20% of requests here</span>
+    <span class="kw">nginx.ingress.kubernetes.io/canary-weight</span>: <span class="str">"20"</span>
+    <span class="cmt"># OR: route users with header "X-Canary: true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/canary-by-header</span>: <span class="str">"X-Canary"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/canary-by-header-value</span>: <span class="str">"true"</span>
+    <span class="cmt"># OR: route users based on cookie</span>
+    <span class="kw">nginx.ingress.kubernetes.io/canary-by-cookie</span>: <span class="str">"canary"</span>
+<span class="kw">spec</span>:
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">api.myapp.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - <span class="kw">path</span>: <span class="str">/</span>
+        <span class="kw">pathType</span>: <span class="val">Prefix</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">api-v2-service</span>    <span class="cmt"># new version — gets 20%</span>
+            <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> }</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ WORKFLOW ════════════ -->
+<section id="workflow">
+  <div class="section-label">04 // REQUEST LIFECYCLE</div>
+  <h2>Full Traffic Workflow</h2>
+
+  <!-- INTERACTIVE SLIDER -->
+  <div class="slider-demo fade-in">
+    <h4>⚡ Interactive Traffic Flow Simulator</h4>
+    <div class="slider-row">
+      <label>Requests per second</label>
+      <input type="range" min="1" max="1000" value="100" id="rps" oninput="updateSim()">
+      <span class="slider-val" id="rps-val">100 rps</span>
+    </div>
+    <div class="slider-row">
+      <label>Ingress replicas</label>
+      <input type="range" min="1" max="5" value="2" id="ireplicas" oninput="updateSim()">
+      <span class="slider-val" id="ireplicas-val">2</span>
+    </div>
+    <div class="slider-row">
+      <label>App pod replicas</label>
+      <input type="range" min="1" max="6" value="3" id="areplicas" oninput="updateSim()">
+      <span class="slider-val" id="areplicas-val">3</span>
+    </div>
+    <div class="slider-row">
+      <label>Latency per pod (ms)</label>
+      <input type="range" min="5" max="500" value="50" id="latency" oninput="updateSim()">
+      <span class="slider-val" id="latency-val">50ms</span>
+    </div>
+    <canvas id="traffic-vis" width="860" height="200"></canvas>
+    <div id="sim-stats" style="display:flex;gap:2rem;flex-wrap:wrap;margin-top:1rem;font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--text2)"></div>
+  </div>
+
+  <!-- INGRESS WORKFLOW -->
+  <h3 style="margin-top:2rem">Ingress Request Journey (Step-by-Step)</h3>
+  <div class="workflow fade-in">
+    <div class="wf-step">
+      <div class="wf-num">1</div>
+      <div class="wf-content">
+        <h4>DNS Resolution</h4>
+        <p>User's browser resolves <code>api.myapp.com</code> → DNS CNAME points to the cloud LoadBalancer's external IP (the one assigned to the Ingress Controller Service).</p>
+      </div>
+    </div>
+    <div class="wf-line"></div>
+    <div class="wf-step">
+      <div class="wf-num">2</div>
+      <div class="wf-content">
+        <h4>Cloud LoadBalancer → Ingress Controller Pod</h4>
+        <p>TCP packet arrives at cloud LB → forwarded to one of the Ingress Controller pods on port 80/443. The LB performs health checks and only routes to healthy controller pods.</p>
+      </div>
+    </div>
+    <div class="wf-line"></div>
+    <div class="wf-step">
+      <div class="wf-num">3</div>
+      <div class="wf-content">
+        <h4>TLS Termination</h4>
+        <p>Nginx terminates the TLS connection using the cert stored in the Secret (from cert-manager). The connection to backend pods is plain HTTP — simpler and faster internally.</p>
+      </div>
+    </div>
+    <div class="wf-line"></div>
+    <div class="wf-step">
+      <div class="wf-num">4</div>
+      <div class="wf-content">
+        <h4>Rule Matching (Host + Path)</h4>
+        <p>Nginx evaluates the <code>Host</code> header and URL path against Ingress rules. <code>api.myapp.com/v1/*</code> matches rule 1 → routes to <code>api-service-v1</code>. Most-specific path wins.</p>
+      </div>
+    </div>
+    <div class="wf-line"></div>
+    <div class="wf-step">
+      <div class="wf-num">5</div>
+      <div class="wf-content">
+        <h4>Middleware Execution</h4>
+        <p>Annotations are applied in order: rate limit check → IP allowlist → auth header validation → request body size check → add <code>X-Real-IP</code> header. Any failure returns 4xx immediately.</p>
+      </div>
+    </div>
+    <div class="wf-line"></div>
+    <div class="wf-step">
+      <div class="wf-num">6</div>
+      <div class="wf-content">
+        <h4>kube-proxy + Service Load Balancing</h4>
+        <p>Nginx proxies to the ClusterIP of <code>api-service-v1</code>. kube-proxy (iptables/IPVS rules) then selects one of the 3 healthy Endpoints (pod IPs) using round-robin or least-connections.</p>
+      </div>
+    </div>
+    <div class="wf-line"></div>
+    <div class="wf-step">
+      <div class="wf-num">7</div>
+      <div class="wf-content">
+        <h4>Pod Processes Request + Egress</h4>
+        <p>The selected Pod receives the request, processes it, and may need to make egress calls (DB, cache, external APIs). These are checked against NetworkPolicy egress rules before leaving the pod.</p>
+      </div>
+    </div>
+    <div class="wf-line"></div>
+    <div class="wf-step">
+      <div class="wf-num">8</div>
+      <div class="wf-content">
+        <h4>Response Flows Back</h4>
+        <p>Response travels: Pod → kube-proxy → Ingress Controller → Cloud LB → User. Nginx adds response headers (CORS, HSTS, X-Content-Type-Options) on the way out.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PATH ROUTING DIAGRAM -->
+  <div class="diagram-container fade-in">
+    <div class="diagram-title">PATH-BASED ROUTING — HOW NGINX RESOLVES ROUTES</div>
+    <svg viewBox="0 0 900 280" width="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#00d4ff"/></marker>
+        <marker id="a2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#10b981"/></marker>
+        <marker id="a3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ec4899"/></marker>
+        <marker id="a4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/></marker>
+      </defs>
+
+      <!-- Requests -->
+      <rect x="10" y="30" width="160" height="32" rx="6" fill="#0a1628" stroke="#00d4ff" stroke-width="1"/>
+      <text x="90" y="51" fill="#00d4ff" text-anchor="middle" font-size="10">api.myapp.com/v1/users</text>
+      <rect x="10" y="78" width="160" height="32" rx="6" fill="#0a1628" stroke="#10b981" stroke-width="1"/>
+      <text x="90" y="99" fill="#10b981" text-anchor="middle" font-size="10">web.myapp.com/</text>
+      <rect x="10" y="126" width="160" height="32" rx="6" fill="#0a1628" stroke="#ec4899" stroke-width="1"/>
+      <text x="90" y="147" fill="#ec4899" text-anchor="middle" font-size="10">api.myapp.com/v2/orders</text>
+      <rect x="10" y="174" width="160" height="32" rx="6" fill="#0a1628" stroke="#f59e0b" stroke-width="1"/>
+      <text x="90" y="195" fill="#f59e0b" text-anchor="middle" font-size="10">api.myapp.com/metrics</text>
+
+      <!-- Nginx box -->
+      <rect x="230" y="50" width="140" height="160" rx="10" fill="#0d1f3c" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="300" y="72" fill="#00d4ff" text-anchor="middle" font-size="11" font-weight="bold">Ingress</text>
+      <text x="300" y="88" fill="#00d4ff" text-anchor="middle" font-size="11" font-weight="bold">Controller</text>
+      <line x1="242" y1="100" x2="358" y2="100" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="300" y="116" fill="#4d6b8a" text-anchor="middle" font-size="9">Rule Matcher</text>
+      <text x="300" y="132" fill="#4d6b8a" text-anchor="middle" font-size="9">host: api → svc-v1/v2</text>
+      <text x="300" y="148" fill="#4d6b8a" text-anchor="middle" font-size="9">host: web → frontend</text>
+      <text x="300" y="164" fill="#4d6b8a" text-anchor="middle" font-size="9">/metrics → prometheus</text>
+      <text x="300" y="196" fill="#4d6b8a" text-anchor="middle" font-size="9">No match → 404</text>
+
+      <!-- Services -->
+      <rect x="450" y="30" width="120" height="44" rx="8" fill="#0a1628" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="510" y="53" fill="#00d4ff" text-anchor="middle" font-size="10" font-weight="bold">api-svc-v1</text>
+      <text x="510" y="68" fill="#4d6b8a" text-anchor="middle" font-size="9">/v1 → port 8080</text>
+
+      <rect x="450" y="95" width="120" height="44" rx="8" fill="#0a1628" stroke="#10b981" stroke-width="1.5"/>
+      <text x="510" y="118" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">frontend-svc</text>
+      <text x="510" y="133" fill="#4d6b8a" text-anchor="middle" font-size="9">web.* → port 3000</text>
+
+      <rect x="450" y="160" width="120" height="44" rx="8" fill="#0a1628" stroke="#ec4899" stroke-width="1.5"/>
+      <text x="510" y="183" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">api-svc-v2</text>
+      <text x="510" y="198" fill="#4d6b8a" text-anchor="middle" font-size="9">/v2 → port 8080</text>
+
+      <rect x="450" y="225" width="120" height="44" rx="8" fill="#0a1628" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="510" y="248" fill="#f59e0b" text-anchor="middle" font-size="10" font-weight="bold">prometheus-svc</text>
+      <text x="510" y="263" fill="#4d6b8a" text-anchor="middle" font-size="9">/metrics → port 9090</text>
+
+      <!-- Pods -->
+      <rect x="640" y="38" width="55" height="28" rx="5" fill="#050a14" stroke="#00d4ff" stroke-width="1"/>
+      <text x="667" y="57" fill="#00d4ff" text-anchor="middle" font-size="9">3× pods</text>
+      <rect x="640" y="103" width="55" height="28" rx="5" fill="#050a14" stroke="#10b981" stroke-width="1"/>
+      <text x="667" y="122" fill="#10b981" text-anchor="middle" font-size="9">3× pods</text>
+      <rect x="640" y="168" width="55" height="28" rx="5" fill="#050a14" stroke="#ec4899" stroke-width="1"/>
+      <text x="667" y="187" fill="#ec4899" text-anchor="middle" font-size="9">3× pods</text>
+      <rect x="640" y="233" width="55" height="28" rx="5" fill="#050a14" stroke="#f59e0b" stroke-width="1"/>
+      <text x="667" y="252" fill="#f59e0b" text-anchor="middle" font-size="9">1× pod</text>
+
+      <!-- Arrows from requests to nginx -->
+      <line x1="170" y1="46" x2="228" y2="100" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#a1)"/>
+      <line x1="170" y1="94" x2="228" y2="118" stroke="#10b981" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="170" y1="142" x2="228" y2="148" stroke="#ec4899" stroke-width="1.5" marker-end="url(#a3)"/>
+      <line x1="170" y1="190" x2="228" y2="180" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#a4)"/>
+
+      <!-- Nginx to services -->
+      <line x1="370" y1="100" x2="448" y2="52" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#a1)"/>
+      <line x1="370" y1="118" x2="448" y2="117" stroke="#10b981" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="370" y1="148" x2="448" y2="182" stroke="#ec4899" stroke-width="1.5" marker-end="url(#a3)"/>
+      <line x1="370" y1="180" x2="448" y2="247" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#a4)"/>
+
+      <!-- Services to pods -->
+      <line x1="570" y1="52" x2="638" y2="52" stroke="#00d4ff" stroke-width="1" marker-end="url(#a1)"/>
+      <line x1="570" y1="117" x2="638" y2="117" stroke="#10b981" stroke-width="1" marker-end="url(#a2)"/>
+      <line x1="570" y1="182" x2="638" y2="182" stroke="#ec4899" stroke-width="1" marker-end="url(#a3)"/>
+      <line x1="570" y1="247" x2="638" y2="247" stroke="#f59e0b" stroke-width="1" marker-end="url(#a4)"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ════════════ CLUSTER ARCHITECTURE ════════════ -->
+<section id="architecture">
+  <div class="section-label">05 // CLUSTER ARCHITECTURE</div>
+  <h2>Full Cluster Example: 3 Nodes, 2 Apps</h2>
+  <p style="color:var(--text2);max-width:800px;font-size:0.97rem;line-height:1.8;margin-bottom:1.5rem;">A real-world production cluster: <mark>3 worker nodes</mark>, <mark>App A (API service) ×3 replicas</mark>, <mark>App B (Frontend) ×3 replicas</mark>, Ingress Controller ×2 (HA), Redis ×1, PostgreSQL ×1. We'll show the before (no Ingress, no NetworkPolicy) vs after states.</p>
+
+  <!-- BEFORE/AFTER -->
+  <div class="before-after fade-in">
+    <div class="ba-card ba-before">
+      <h4>⚠️ BEFORE — No Ingress, No NetworkPolicy</h4>
+      <svg viewBox="0 0 380 300" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <!-- Cloud -->
+        <rect x="10" y="10" width="360" height="280" rx="12" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <text x="185" y="28" fill="#ef4444" text-anchor="middle" font-size="10">CLUSTER (unsecured)</text>
+
+        <!-- 3 LBs -->
+        <rect x="20" y="40" width="80" height="30" rx="6" fill="#1a0a0a" stroke="#ef4444" stroke-width="1"/>
+        <text x="60" y="60" fill="#ef4444" text-anchor="middle" font-size="9">LB #1 $$$</text>
+        <rect x="110" y="40" width="80" height="30" rx="6" fill="#1a0a0a" stroke="#ef4444" stroke-width="1"/>
+        <text x="150" y="60" fill="#ef4444" text-anchor="middle" font-size="9">LB #2 $$$</text>
+        <rect x="200" y="40" width="80" height="30" rx="6" fill="#1a0a0a" stroke="#ef4444" stroke-width="1"/>
+        <text x="240" y="60" fill="#ef4444" text-anchor="middle" font-size="9">LB #3 $$$</text>
+
+        <!-- App pods -->
+        <rect x="20" y="100" width="100" height="60" rx="8" fill="#0a1628" stroke="#4d6b8a" stroke-width="1"/>
+        <text x="70" y="118" fill="#8ba3c4" text-anchor="middle" font-size="9" font-weight="bold">App A ×3</text>
+        <text x="70" y="133" fill="#4d6b8a" text-anchor="middle" font-size="8">any pod can</text>
+        <text x="70" y="145" fill="#4d6b8a" text-anchor="middle" font-size="8">talk to anyone</text>
+
+        <rect x="140" y="100" width="100" height="60" rx="8" fill="#0a1628" stroke="#4d6b8a" stroke-width="1"/>
+        <text x="190" y="118" fill="#8ba3c4" text-anchor="middle" font-size="9" font-weight="bold">App B ×3</text>
+        <text x="190" y="133" fill="#4d6b8a" text-anchor="middle" font-size="8">exposed on</text>
+        <text x="190" y="145" fill="#4d6b8a" text-anchor="middle" font-size="8">NodePort 32XXX</text>
+
+        <rect x="260" y="100" width="90" height="60" rx="8" fill="#0a1628" stroke="#4d6b8a" stroke-width="1"/>
+        <text x="305" y="118" fill="#8ba3c4" text-anchor="middle" font-size="9" font-weight="bold">Redis</text>
+        <text x="305" y="133" fill="#ef4444" text-anchor="middle" font-size="8">⚠ reachable</text>
+        <text x="305" y="145" fill="#ef4444" text-anchor="middle" font-size="8">by all pods</text>
+
+        <!-- Chaos lines -->
+        <line x1="120" y1="130" x2="140" y2="130" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
+        <line x1="240" y1="130" x2="260" y2="130" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
+        <line x1="70" y1="160" x2="305" y2="160" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.3"/>
+
+        <!-- Problems list -->
+        <rect x="10" y="185" width="360" height="90" rx="8" fill="rgba(239,68,68,0.05)" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,2"/>
+        <text x="25" y="202" fill="#ef4444" font-size="9">❌  3 LoadBalancers = 3× cost</text>
+        <text x="25" y="218" fill="#ef4444" font-size="9">❌  No TLS — plain HTTP everywhere</text>
+        <text x="25" y="234" fill="#ef4444" font-size="9">❌  Any pod can reach Redis/Postgres</text>
+        <text x="25" y="250" fill="#ef4444" font-size="9">❌  No rate limiting or auth</text>
+        <text x="25" y="266" fill="#ef4444" font-size="9">❌  Lateral movement possible if pod is compromised</text>
+      </svg>
+    </div>
+
+    <div class="ba-card ba-after">
+      <h4>✅ AFTER — Ingress + NetworkPolicy</h4>
+      <svg viewBox="0 0 380 300" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="ga" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0, 6 2.5, 0 5" fill="#10b981"/></marker>
+        </defs>
+        <!-- Cluster -->
+        <rect x="10" y="10" width="360" height="280" rx="12" fill="none" stroke="#10b981" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <text x="185" y="28" fill="#10b981" text-anchor="middle" font-size="10">CLUSTER (secured)</text>
+
+        <!-- Single LB -->
+        <rect x="140" y="36" width="100" height="30" rx="6" fill="#0a1628" stroke="#10b981" stroke-width="1.5"/>
+        <text x="190" y="56" fill="#10b981" text-anchor="middle" font-size="9">1× LB (shared) ✓</text>
+
+        <!-- Ingress Controller -->
+        <rect x="110" y="82" width="160" height="30" rx="6" fill="#0d1f3c" stroke="#00d4ff" stroke-width="1.5"/>
+        <text x="190" y="102" fill="#00d4ff" text-anchor="middle" font-size="9" font-weight="bold">Ingress Controller ×2 (HA) + TLS</text>
+
+        <!-- App pods -->
+        <rect x="15" y="138" width="100" height="50" rx="8" fill="#0a1628" stroke="#10b981" stroke-width="1.5"/>
+        <text x="65" y="156" fill="#10b981" text-anchor="middle" font-size="9" font-weight="bold">App A ×3</text>
+        <text x="65" y="170" fill="#4d6b8a" text-anchor="middle" font-size="8">/api/* → port 8080</text>
+        <text x="65" y="182" fill="#4d6b8a" text-anchor="middle" font-size="8">NetworkPolicy ✓</text>
+
+        <rect x="140" y="138" width="100" height="50" rx="8" fill="#0a1628" stroke="#ec4899" stroke-width="1.5"/>
+        <text x="190" y="156" fill="#ec4899" text-anchor="middle" font-size="9" font-weight="bold">App B ×3</text>
+        <text x="190" y="170" fill="#4d6b8a" text-anchor="middle" font-size="8">/ → port 3000</text>
+        <text x="190" y="182" fill="#4d6b8a" text-anchor="middle" font-size="8">NetworkPolicy ✓</text>
+
+        <rect x="265" y="138" width="90" height="50" rx="8" fill="#0a1628" stroke="#7c3aed" stroke-width="1.5"/>
+        <text x="310" y="156" fill="#7c3aed" text-anchor="middle" font-size="9" font-weight="bold">Redis</text>
+        <text x="310" y="170" fill="#4d6b8a" text-anchor="middle" font-size="8">only App A</text>
+        <text x="310" y="182" fill="#4d6b8a" text-anchor="middle" font-size="8">can reach it</text>
+
+        <!-- Allowed arrows -->
+        <line x1="190" y1="112" x2="65" y2="136" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#ga)"/>
+        <line x1="190" y1="112" x2="190" y2="136" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#ga)"/>
+        <line x1="115" y1="163" x2="263" y2="163" stroke="#10b981" stroke-width="1" marker-end="url(#ga)"/>
+
+        <!-- Blocked arrow -->
+        <line x1="240" y1="163" x2="263" y2="163" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>
+        <text x="252" y="158" fill="#ef4444" font-size="8">✗</text>
+
+        <!-- Wins list -->
+        <rect x="10" y="210" width="360" height="76" rx="8" fill="rgba(16,185,129,0.05)" stroke="#10b981" stroke-width="1" stroke-dasharray="4,2"/>
+        <text x="25" y="228" fill="#10b981" font-size="9">✅  1 LoadBalancer = cost efficient</text>
+        <text x="25" y="244" fill="#10b981" font-size="9">✅  Auto TLS via cert-manager</text>
+        <text x="25" y="260" fill="#10b981" font-size="9">✅  App B CANNOT reach Redis (NetworkPolicy)</text>
+        <text x="25" y="276" fill="#10b981" font-size="9">✅  Rate limiting + auth at edge</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- FULL 3-NODE CLUSTER DIAGRAM -->
+  <div class="diagram-container fade-in" style="margin-top:2.5rem">
+    <div class="diagram-title">FULL CLUSTER — 3 NODES, 2 APPS, HA INGRESS, DATABASES</div>
+    <svg viewBox="0 0 960 560" width="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ca1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#00d4ff"/></marker>
+        <marker id="ca2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#10b981"/></marker>
+        <marker id="ca3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#ec4899"/></marker>
+        <marker id="ca4" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#7c3aed"/></marker>
+      </defs>
+
+      <!-- Cloud/Internet zone -->
+      <rect x="0" y="0" width="960" height="80" rx="0" fill="#050a14"/>
+      <text x="480" y="18" fill="#4d6b8a" text-anchor="middle" font-size="10" letter-spacing="3">INTERNET / CLOUD PROVIDER</text>
+      <circle cx="60" cy="45" r="22" fill="none" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="60" y="42" fill="#8ba3c4" text-anchor="middle" font-size="10">🌐</text>
+      <text x="60" y="58" fill="#4d6b8a" text-anchor="middle" font-size="9">users</text>
+
+      <!-- Cloud LB -->
+      <rect x="200" y="20" width="180" height="40" rx="8" fill="#0a1628" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="290" y="38" fill="#f59e0b" text-anchor="middle" font-size="10" font-weight="bold">Cloud LoadBalancer</text>
+      <text x="290" y="54" fill="#4d6b8a" text-anchor="middle" font-size="9">203.0.113.10 (external IP)</text>
+
+      <!-- DNS + cert-manager -->
+      <rect x="520" y="20" width="130" height="40" rx="8" fill="#0a1628" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="585" y="38" fill="#7c3aed" text-anchor="middle" font-size="10">cert-manager</text>
+      <text x="585" y="54" fill="#4d6b8a" text-anchor="middle" font-size="9">auto TLS certs</text>
+
+      <rect x="700" y="20" width="120" height="40" rx="8" fill="#0a1628" stroke="#4d6b8a" stroke-width="1"/>
+      <text x="760" y="38" fill="#8ba3c4" text-anchor="middle" font-size="10">DNS</text>
+      <text x="760" y="54" fill="#4d6b8a" text-anchor="middle" font-size="9">api.myapp.com →</text>
+
+      <!-- Internet → LB -->
+      <line x1="82" y1="45" x2="198" y2="40" stroke="#f59e0b" stroke-width="2" marker-end="url(#ca1)"/>
+
+      <!-- CLUSTER BORDER -->
+      <rect x="10" y="90" width="940" height="460" rx="16" fill="none" stroke="#1e3a5f" stroke-width="2" stroke-dasharray="10,5"/>
+      <text x="480" y="108" fill="#1e3a5f" text-anchor="middle" font-size="10" letter-spacing="2">KUBERNETES CLUSTER</text>
+
+      <!-- ingress-nginx NAMESPACE -->
+      <rect x="20" y="118" width="920" height="90" rx="10" fill="rgba(0,212,255,0.03)" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+      <text x="32" y="134" fill="rgba(0,212,255,0.5)" font-size="9">ns: ingress-nginx</text>
+
+      <!-- Ingress controller pods (on nodes 1 & 2) -->
+      <rect x="30" y="140" width="160" height="56" rx="8" fill="#0d1f3c" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="110" y="159" fill="#00d4ff" text-anchor="middle" font-size="10" font-weight="bold">nginx-controller-1</text>
+      <text x="110" y="175" fill="#4d6b8a" text-anchor="middle" font-size="9">Node 1 | :80 :443</text>
+      <text x="110" y="188" fill="#4d6b8a" text-anchor="middle" font-size="8">Leader</text>
+
+      <rect x="210" y="140" width="160" height="56" rx="8" fill="#0d1f3c" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="290" y="159" fill="#00d4ff" text-anchor="middle" font-size="10" font-weight="bold">nginx-controller-2</text>
+      <text x="290" y="175" fill="#4d6b8a" text-anchor="middle" font-size="9">Node 2 | :80 :443</text>
+      <text x="290" y="188" fill="#4d6b8a" text-anchor="middle" font-size="8">Standby</text>
+
+      <!-- LB → controllers -->
+      <line x1="290" y1="62" x2="110" y2="138" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ca1)"/>
+      <line x1="290" y1="62" x2="290" y2="138" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ca1)"/>
+
+      <!-- production NAMESPACE -->
+      <rect x="20" y="225" width="640" height="310" rx="10" fill="rgba(16,185,129,0.02)" stroke="rgba(16,185,129,0.2)" stroke-width="1"/>
+      <text x="32" y="241" fill="rgba(16,185,129,0.5)" font-size="9">ns: production</text>
+
+      <!-- NODE 1 -->
+      <rect x="30" y="250" width="190" height="275" rx="10" fill="rgba(0,212,255,0.03)" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="125" y="267" fill="#4d6b8a" text-anchor="middle" font-size="10" font-weight="bold">NODE 1</text>
+      <text x="125" y="280" fill="#2d4a6a" text-anchor="middle" font-size="8">4 CPU / 8GB RAM</text>
+
+      <rect x="40" y="290" width="170" height="50" rx="7" fill="#0a1628" stroke="#10b981" stroke-width="1.5"/>
+      <text x="125" y="311" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-1</text>
+      <text x="125" y="327" fill="#4d6b8a" text-anchor="middle" font-size="8">API Service v1.2 | :8080</text>
+
+      <rect x="40" y="356" width="170" height="50" rx="7" fill="#0a1628" stroke="#ec4899" stroke-width="1.5"/>
+      <text x="125" y="377" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-1</text>
+      <text x="125" y="393" fill="#4d6b8a" text-anchor="middle" font-size="8">Frontend v2.0 | :3000</text>
+
+      <rect x="40" y="422" width="170" height="40" rx="7" fill="#0a1628" stroke="#4d6b8a" stroke-width="1"/>
+      <text x="125" y="440" fill="#8ba3c4" text-anchor="middle" font-size="9">kube-proxy (iptables)</text>
+      <text x="125" y="454" fill="#2d4a6a" text-anchor="middle" font-size="8">service routing</text>
+
+      <!-- NODE 2 -->
+      <rect x="235" y="250" width="190" height="275" rx="10" fill="rgba(0,212,255,0.03)" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="330" y="267" fill="#4d6b8a" text-anchor="middle" font-size="10" font-weight="bold">NODE 2</text>
+      <text x="330" y="280" fill="#2d4a6a" text-anchor="middle" font-size="8">4 CPU / 8GB RAM</text>
+
+      <rect x="245" y="290" width="170" height="50" rx="7" fill="#0a1628" stroke="#10b981" stroke-width="1.5"/>
+      <text x="330" y="311" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-2</text>
+      <text x="330" y="327" fill="#4d6b8a" text-anchor="middle" font-size="8">API Service v1.2 | :8080</text>
+
+      <rect x="245" y="356" width="170" height="50" rx="7" fill="#0a1628" stroke="#ec4899" stroke-width="1.5"/>
+      <text x="330" y="377" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-2</text>
+      <text x="330" y="393" fill="#4d6b8a" text-anchor="middle" font-size="8">Frontend v2.0 | :3000</text>
+
+      <rect x="245" y="422" width="170" height="40" rx="7" fill="#0a1628" stroke="#4d6b8a" stroke-width="1"/>
+      <text x="330" y="440" fill="#8ba3c4" text-anchor="middle" font-size="9">kube-proxy (iptables)</text>
+      <text x="330" y="454" fill="#2d4a6a" text-anchor="middle" font-size="8">service routing</text>
+
+      <!-- NODE 3 -->
+      <rect x="440" y="250" width="205" height="275" rx="10" fill="rgba(0,212,255,0.03)" stroke="#1e3a5f" stroke-width="1.5"/>
+      <text x="542" y="267" fill="#4d6b8a" text-anchor="middle" font-size="10" font-weight="bold">NODE 3</text>
+      <text x="542" y="280" fill="#2d4a6a" text-anchor="middle" font-size="8">4 CPU / 8GB RAM</text>
+
+      <rect x="450" y="290" width="185" height="50" rx="7" fill="#0a1628" stroke="#10b981" stroke-width="1.5"/>
+      <text x="542" y="311" fill="#10b981" text-anchor="middle" font-size="10" font-weight="bold">app-a-pod-3</text>
+      <text x="542" y="327" fill="#4d6b8a" text-anchor="middle" font-size="8">API Service v1.2 | :8080</text>
+
+      <rect x="450" y="356" width="185" height="50" rx="7" fill="#0a1628" stroke="#ec4899" stroke-width="1.5"/>
+      <text x="542" y="377" fill="#ec4899" text-anchor="middle" font-size="10" font-weight="bold">app-b-pod-3</text>
+      <text x="542" y="393" fill="#4d6b8a" text-anchor="middle" font-size="8">Frontend v2.0 | :3000</text>
+
+      <rect x="450" y="422" width="185" height="50" rx="7" fill="#0a1628" stroke="#7c3aed" stroke-width="1"/>
+      <text x="542" y="441" fill="#7c3aed" text-anchor="middle" font-size="9">NetworkPolicy</text>
+      <text x="542" y="456" fill="#2d4a6a" text-anchor="middle" font-size="8">egress: DB only | ingress: nginx only</text>
+
+      <!-- Database namespace -->
+      <rect x="680" y="225" width="265" height="310" rx="10" fill="rgba(124,58,237,0.03)" stroke="rgba(124,58,237,0.3)" stroke-width="1"/>
+      <text x="692" y="241" fill="rgba(124,58,237,0.6)" font-size="9">ns: database</text>
+
+      <!-- Postgres -->
+      <rect x="690" y="255" width="240" height="80" rx="10" fill="#0a1628" stroke="#7c3aed" stroke-width="2"/>
+      <text x="810" y="282" fill="#7c3aed" text-anchor="middle" font-size="12" font-weight="bold">PostgreSQL</text>
+      <text x="810" y="300" fill="#4d6b8a" text-anchor="middle" font-size="9">port: 5432 | PVC: 100Gi</text>
+      <text x="810" y="316" fill="#4d6b8a" text-anchor="middle" font-size="8">Only reachable from app-a pods</text>
+      <text x="810" y="328" fill="#4d6b8a" text-anchor="middle" font-size="8">(NetworkPolicy enforced)</text>
+
+      <!-- Redis -->
+      <rect x="690" y="355" width="240" height="80" rx="10" fill="#0a1628" stroke="#f59e0b" stroke-width="2"/>
+      <text x="810" y="382" fill="#f59e0b" text-anchor="middle" font-size="12" font-weight="bold">Redis Cache</text>
+      <text x="810" y="400" fill="#4d6b8a" text-anchor="middle" font-size="9">port: 6379 | maxmemory: 2Gi</text>
+      <text x="810" y="416" fill="#4d6b8a" text-anchor="middle" font-size="8">Only reachable from app-a pods</text>
+
+      <!-- Services (shown as thin bars) -->
+      <rect x="30" y="470" width="610" height="24" rx="5" fill="#0a1628" stroke="#1e3a5f" stroke-width="1"/>
+      <text x="130" y="487" fill="#4d6b8a" font-size="9">app-a-service (ClusterIP 10.96.0.10:80)</text>
+      <text x="410" y="487" fill="#4d6b8a" font-size="9">app-b-service (ClusterIP 10.96.0.11:80)</text>
+
+      <!-- Controller → pods arrows -->
+      <line x1="110" y1="196" x2="110" y2="288" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#ca1)"/>
+      <line x1="180" y1="180" x2="310" y2="288" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#ca1)"/>
+      <line x1="290" y1="196" x2="510" y2="288" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#ca1)"/>
+
+      <!-- App-a egress → DB/Redis -->
+      <line x1="210" y1="310" x2="688" y2="295" stroke="#7c3aed" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#ca4)"/>
+      <line x1="415" y1="310" x2="688" y2="390" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" opacity="0.7"/>
+
+      <!-- Monitoring -->
+      <rect x="690" y="450" width="240" height="70" rx="10" fill="#0a1628" stroke="#4d6b8a" stroke-width="1"/>
+      <text x="810" y="474" fill="#8ba3c4" text-anchor="middle" font-size="10" font-weight="bold">Prometheus + Grafana</text>
+      <text x="810" y="490" fill="#4d6b8a" text-anchor="middle" font-size="8">ns: monitoring</text>
+      <text x="810" y="504" fill="#4d6b8a" text-anchor="middle" font-size="8">scrapes /metrics from all pods</text>
+    </svg>
+
+    <!-- LEGEND -->
+    <div class="legend">
+      <div class="legend-item"><div class="legend-box" style="background:#00d4ff"></div>Ingress Traffic</div>
+      <div class="legend-item"><div class="legend-box" style="background:#10b981"></div>App A (API)</div>
+      <div class="legend-item"><div class="legend-box" style="background:#ec4899"></div>App B (Frontend)</div>
+      <div class="legend-item"><div class="legend-box" style="background:#7c3aed"></div>Egress → PostgreSQL</div>
+      <div class="legend-item"><div class="legend-box" style="background:#f59e0b"></div>Egress → Redis</div>
+      <div class="legend-item"><div class="legend-box" style="background:#4d6b8a"></div>Internal Services</div>
+    </div>
+  </div>
+
+  <!-- NODE DISTRIBUTION TABLE -->
+  <div class="fade-in" style="margin-top:2rem">
+    <h3>Pod Distribution Across Nodes</h3>
+    <div style="overflow-x:auto">
+    <table class="compare-table">
+      <thead>
+        <tr><th>Component</th><th>Node 1</th><th>Node 2</th><th>Node 3</th><th>Replicas</th><th>Spread Strategy</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Ingress Controller</td><td>✓</td><td>✓</td><td>—</td><td>2</td><td>podAntiAffinity (required)</td></tr>
+        <tr><td>App A (API)</td><td>✓</td><td>✓</td><td>✓</td><td>3</td><td>topologySpreadConstraints</td></tr>
+        <tr><td>App B (Frontend)</td><td>✓</td><td>✓</td><td>✓</td><td>3</td><td>topologySpreadConstraints</td></tr>
+        <tr><td>PostgreSQL</td><td>—</td><td>—</td><td>✓</td><td>1</td><td>StatefulSet (dedicated node)</td></tr>
+        <tr><td>Redis</td><td>—</td><td>✓</td><td>—</td><td>1</td><td>nodeSelector: role=cache</td></tr>
+        <tr><td>Prometheus</td><td>—</td><td>—</td><td>✓</td><td>1</td><td>nodeSelector: role=monitoring</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ SRE PRINCIPLES ════════════ -->
+<section id="sre">
+  <div class="section-label">06 // SRE PRINCIPLES</div>
+  <h2>SRE Principles Around Ingress & Egress</h2>
+  <p style="color:var(--text2);max-width:800px;font-size:0.97rem;line-height:1.8;margin-bottom:2rem;">Site Reliability Engineering views Ingress and Egress not just as networking primitives — they are key <mark>reliability, observability, and security control planes</mark>. Here's how an SRE thinks about them.</p>
+
+  <div class="sre-grid fade-in">
+    <div class="sre-card">
+      <h4>📊 Golden Signals at the Ingress</h4>
+      <p>The Ingress Controller is the perfect place to measure all four SRE Golden Signals: <strong>Latency</strong> (P50/P95/P99 per route), <strong>Traffic</strong> (RPS per upstream), <strong>Errors</strong> (4xx/5xx rate per service), <strong>Saturation</strong> (connection queue depth). These feed directly into SLO dashboards.</p>
+      <span class="sre-tag">OBSERVABILITY</span>
+    </div>
+
+    <div class="sre-card green">
+      <h4>🎯 SLO Enforcement via Rate Limiting</h4>
+      <p>Define an SLO: "99.9% of requests complete in &lt;200ms." Ingress rate limiting prevents runaway clients from consuming all capacity and degrading SLOs for others. Set burst limits = (RPS × P99_latency). Excess requests get 429 Too Many Requests — graceful degradation, not outage.</p>
+      <span class="sre-tag">SLO / ERROR BUDGET</span>
+    </div>
+
+    <div class="sre-card red">
+      <h4>🔥 Blast Radius Reduction</h4>
+      <p>NetworkPolicy egress rules limit the blast radius of a compromised Pod. If App B is pwned, it cannot reach PostgreSQL (egress blocked). This contains the incident to one service. Without egress policies, a single compromised Pod could exfiltrate your entire database.</p>
+      <span class="sre-tag">INCIDENT RESPONSE</span>
+    </div>
+
+    <div class="sre-card purple">
+      <h4>🔄 Canary Deployments & Toil Reduction</h4>
+      <p>Using Ingress canary annotations, deployments shift from "big-bang" to gradual: 1% → 5% → 20% → 100%. SREs monitor error rate and latency at each stage. If the canary degrades, rollback is instant — change one annotation. This eliminates deployment toil and reduces MTTR.</p>
+      <span class="sre-tag">TOIL REDUCTION</span>
+    </div>
+
+    <div class="sre-card">
+      <h4>🛡️ Defense in Depth</h4>
+      <p>Layered security: Cloud firewall → Ingress IP allowlist → NetworkPolicy ingress → mTLS (Istio) → application auth. No single layer is the whole defense. Egress NetworkPolicies are the last line against data exfiltration even if the app layer is compromised. Zero-trust by default.</p>
+      <span class="sre-tag">SECURITY</span>
+    </div>
+
+    <div class="sre-card green">
+      <h4>⏱️ MTTR via Structured Logging</h4>
+      <p>Configure Ingress to emit structured JSON logs: <code>{"ts","method","host","path","status","latency_ms","upstream","bytes"}</code>. These flow into ELK/Loki. During incidents, you can instantly correlate "which upstream service caused this 502 spike?" — cutting Mean Time To Resolve significantly.</p>
+      <span class="sre-tag">MTTR REDUCTION</span>
+    </div>
+
+    <div class="sre-card red">
+      <h4>🚨 Circuit Breaking at Egress</h4>
+      <p>When App A calls PostgreSQL, an Egress Gateway (Istio) can detect that DB latency spiked above 1s and circuit-break further calls — returning cached data or errors immediately instead of piling up threads. This prevents cascading failures from propagating upstream to users.</p>
+      <span class="sre-tag">RESILIENCE</span>
+    </div>
+
+    <div class="sre-card purple">
+      <h4>📈 Capacity Planning</h4>
+      <p>Ingress metrics reveal true traffic patterns: daily peaks, weekly cycles, burst patterns. SREs use this to right-size the cluster (HPA triggers, node autoscaling). Egress metrics reveal database connection counts — if connections near the pool max, scale before the outage, not after.</p>
+      <span class="sre-tag">CAPACITY</span>
+    </div>
+
+    <div class="sre-card">
+      <h4>🔒 Certificate Expiry as an SLI</h4>
+      <p>An expired TLS cert causes 100% of user requests to fail — it's a P0 incident. SREs create an SLI: "TLS certificate must never expire." Alert at 30 days, 14 days, 7 days remaining. cert-manager automates renewal but the alert catches failures in the renewal process itself.</p>
+      <span class="sre-tag">RELIABILITY</span>
+    </div>
+
+    <div class="sre-card green">
+      <h4>🌍 Multi-Region Egress Consistency</h4>
+      <p>In multi-region clusters, egress policies must be consistent across regions. A policy that allows DB access in us-east but not eu-west causes asymmetric failures hard to debug. Use GitOps (ArgoCD/Flux) to ensure NetworkPolicy YAMLs are identical across regions — policy drift is an SRE failure mode.</p>
+      <span class="sre-tag">CONSISTENCY</span>
+    </div>
+
+    <div class="sre-card red">
+      <h4>⚠️ NetworkPolicy Testing in CI</h4>
+      <p>NetworkPolicies are silent — a misconfiguration doesn't crash a pod, it just blocks traffic. SREs write integration tests: "After deploy, can App A reach port 5432? Can App B NOT reach port 5432?" Run with tools like <code>netcat</code>, <code>curl</code>, or <code>network-policy-conformance</code> in CI pipelines.</p>
+      <span class="sre-tag">TESTING</span>
+    </div>
+
+    <div class="sre-card purple">
+      <h4>📋 Runbook: Ingress Down</h4>
+      <p>SREs pre-write runbooks: (1) Check controller pod logs. (2) Check cloud LB health. (3) Verify TLS secret exists. (4) Check Ingress resource for syntax errors. (5) Test with <code>kubectl port-forward</code> to bypass Ingress. (6) Check resource limits on controller pods. Runbooks = faster MTTR.</p>
+      <span class="sre-tag">RUNBOOKS</span>
+    </div>
+  </div>
+
+  <!-- METRICS TABLE -->
+  <div class="fade-in" style="margin-top:3rem">
+    <h3>Key Ingress/Egress Metrics for SRE Dashboards</h3>
+    <div style="overflow-x:auto">
+    <table class="compare-table">
+      <thead>
+        <tr><th>Metric</th><th>Source</th><th>Alert Threshold</th><th>SLO Impact</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>nginx_ingress_controller_requests (5xx rate)</td><td>Ingress Controller</td><td>&gt;1% over 5m</td><td>Error rate SLO</td></tr>
+        <tr><td>nginx_ingress_controller_request_duration_seconds (P99)</td><td>Ingress Controller</td><td>&gt;500ms for 5m</td><td>Latency SLO</td></tr>
+        <tr><td>nginx_ingress_controller_nginx_process_connections</td><td>Ingress Controller</td><td>&gt;80% max_connections</td><td>Saturation SLO</td></tr>
+        <tr><td>certmanager_certificate_expiry_seconds</td><td>cert-manager</td><td>&lt;14 days</td><td>Availability SLO</td></tr>
+        <tr><td>network_policy_dropped_packets_total</td><td>Cilium/Calico</td><td>Sudden spike</td><td>Security signal</td></tr>
+        <tr><td>container_network_transmit_bytes_total</td><td>cAdvisor</td><td>Unusual spike per pod</td><td>Data exfiltration detection</td></tr>
+        <tr><td>kube_ingress_info</td><td>kube-state-metrics</td><td>Ingress with no backend</td><td>Config drift detection</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="callout tip fade-in" style="margin-top:2rem">
+    <span class="callout-icon">💡</span>
+    <div><strong>SRE Golden Rule:</strong> Every Ingress route should have a corresponding SLO. Every NetworkPolicy egress rule should have a corresponding test in CI. If you can't measure it and test it, you don't own it — you're just hoping it works.</div>
+  </div>
+  <div class="callout warn fade-in">
+    <span class="callout-icon">⚠️</span>
+    <div><strong>Common SRE Trap:</strong> NetworkPolicies silently drop packets — there's no error, no crash, just a timeout. Always validate policies with <code>kubectl exec pod -- nc -zv target-ip 5432</code> and alert on unexpected packet drops from your CNI (Cilium/Calico metrics).</div>
+  </div>
+  <div class="callout info fade-in">
+    <span class="callout-icon">ℹ️</span>
+    <div><strong>Gateway API (future of Ingress):</strong> The Kubernetes community is moving from the Ingress resource to the <strong>Gateway API</strong> (GatewayClass, Gateway, HTTPRoute, TCPRoute). It's more expressive, multi-tenancy-safe, and supports all protocols. Start evaluating it for greenfield clusters today.</div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<footer>
+  <div style="color:var(--text2);font-size:0.8rem;font-family:'Rajdhani',sans-serif;margin-bottom:0.5rem">Kubernetes Ingress & Egress — Complete Reference Guide</div>
+  <div>k8s networking · network policies · sre principles · ingress controllers · cert-manager · canary deployments</div>
+</footer>
+
+<script>
+// ─── TAB SWITCHING ───
+function switchTab(btn, id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── YAML TABS ───
+function switchYaml(btn, id) {
+  document.querySelectorAll('.yaml-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.yaml-panel').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── SCROLL ANIMATIONS ───
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ─── TOC DOTS ───
+function scrollTo(sel) {
+  const el = document.querySelector(sel);
+  if(el) el.scrollIntoView({ behavior: 'smooth' });
+}
+
+const sections = ['#hero','#definitions','#why','#yaml','#workflow','#architecture','#sre'];
+const dots = document.querySelectorAll('.toc-dot');
+window.addEventListener('scroll', () => {
+  const y = window.scrollY + 200;
+  sections.forEach((s, i) => {
+    const el = document.querySelector(s);
+    if (el && el.offsetTop <= y) {
+      dots.forEach(d => d.classList.remove('active'));
+      if(dots[i]) dots[i].classList.add('active');
+    }
+  });
+});
+
+// ─── TRAFFIC SIMULATOR ───
+function updateSim() {
+  const rps = +document.getElementById('rps').value;
+  const ir = +document.getElementById('ireplicas').value;
+  const ar = +document.getElementById('areplicas').value;
+  const lat = +document.getElementById('latency').value;
+
+  document.getElementById('rps-val').textContent = rps + ' rps';
+  document.getElementById('ireplicas-val').textContent = ir;
+  document.getElementById('areplicas-val').textContent = ar;
+  document.getElementById('latency-val').textContent = lat + 'ms';
+
+  const rpsPerController = Math.round(rps / ir);
+  const rpsPerPod = Math.round(rps / ar);
+  const maxThroughput = Math.round(ar * (1000 / lat));
+  const utilization = Math.min(100, Math.round((rps / maxThroughput) * 100));
+  const p99 = Math.round(lat * (1 + (utilization / 100) * 3));
+  const isHealthy = utilization < 80;
+
+  document.getElementById('sim-stats').innerHTML = `
+    <span>RPS/Controller: <b style="color:var(--accent)">${rpsPerController}</b></span>
+    <span>RPS/Pod: <b style="color:var(--accent)">${rpsPerPod}</b></span>
+    <span>Max Throughput: <b style="color:var(--accent3)">${maxThroughput} rps</b></span>
+    <span>Pod Utilization: <b style="color:${utilization>80?'#ef4444':'#10b981'}">${utilization}%</b></span>
+    <span>Est. P99: <b style="color:${p99>200?'#ef4444':'#f59e0b'}">${p99}ms</b></span>
+    <span>Status: <b style="color:${isHealthy?'#10b981':'#ef4444'}">${isHealthy?'HEALTHY':'⚠ DEGRADED'}</b></span>
+  `;
+  drawVis(rps, ir, ar, lat, utilization);
+}
+
+function drawVis(rps, ir, ar, lat, util) {
+  const canvas = document.getElementById('traffic-vis');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const bg = '#0a1628';
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw bars for controllers
+  const cw = 80, ch_max = 120, gap = 20;
+  const startX = 40;
+  const baseY = 160;
+
+  for (let i = 0; i < ir; i++) {
+    const h = Math.min(ch_max, (rps / ir / 100) * ch_max);
+    const color = util > 80 ? '#ef4444' : '#00d4ff';
+    ctx.fillStyle = color + '33';
+    ctx.fillRect(startX + i*(cw+gap), baseY - ch_max, cw, ch_max);
+    ctx.fillStyle = color;
+    ctx.fillRect(startX + i*(cw+gap), baseY - h, cw, h);
+    ctx.fillStyle = '#8ba3c4';
+    ctx.font = '10px Share Tech Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('ctrl-' + (i+1), startX + i*(cw+gap) + cw/2, baseY + 16);
+    ctx.fillText(Math.round(rps/ir)+' rps', startX + i*(cw+gap) + cw/2, baseY + 28);
+  }
+
+  // Arrow
+  const arrowX = startX + ir*(cw+gap) + 10;
+  ctx.strokeStyle = '#00d4ff';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6,3]);
+  ctx.beginPath();
+  ctx.moveTo(arrowX, baseY - 60);
+  ctx.lineTo(arrowX + 60, baseY - 60);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // App pods
+  const podStartX = arrowX + 70;
+  for (let i = 0; i < ar; i++) {
+    const ph = Math.min(ch_max, (rps / ar / 50) * ch_max);
+    const pcolor = util > 80 ? '#f59e0b' : '#10b981';
+    ctx.fillStyle = pcolor + '33';
+    ctx.fillRect(podStartX + i*70, baseY - ch_max, 55, ch_max);
+    ctx.fillStyle = pcolor;
+    ctx.fillRect(podStartX + i*70, baseY - ph, 55, ph);
+    ctx.fillStyle = '#8ba3c4';
+    ctx.font = '10px Share Tech Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('pod-' + (i+1), podStartX + i*70 + 27, baseY + 16);
+    ctx.fillText(Math.round(rps/ar)+'rps', podStartX + i*70 + 27, baseY + 28);
+  }
+
+  // Utilization bar at top
+  ctx.fillStyle = '#1e3a5f';
+  ctx.fillRect(20, 10, W - 40, 12);
+  const barColor = util > 80 ? '#ef4444' : util > 60 ? '#f59e0b' : '#10b981';
+  ctx.fillStyle = barColor;
+  ctx.fillRect(20, 10, (W-40) * (util/100), 12);
+  ctx.fillStyle = '#8ba3c4';
+  ctx.font = '9px Share Tech Mono';
+  ctx.textAlign = 'left';
+  ctx.fillText('System utilization: ' + util + '%', 24, 19);
+}
+
+// init
+updateSim();
+
+// ─── NAV smooth scroll ───
+document.querySelectorAll('nav a').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if(target) target.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>
