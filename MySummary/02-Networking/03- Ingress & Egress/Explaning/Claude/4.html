@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Ingress — Interactive Journey</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════
+   DESIGN SYSTEM — Dark industrial + neon accent
+   Syne (display) + DM Sans (body) + DM Mono (code)
+════════════════════════════════════════════ */
+:root {
+  --ink: #080f1e;
+  --ink2: #0c1628;
+  --ink3: #111e38;
+  --glass: rgba(255,255,255,0.03);
+  --glassBorder: rgba(255,255,255,0.07);
+  --neon: #00f0ff;
+  --neonDim: rgba(0,240,255,0.12);
+  --neonGlow: 0 0 20px rgba(0,240,255,0.3);
+  --violet: #8b5cf6;
+  --violetDim: rgba(139,92,246,0.12);
+  --emerald: #10b981;
+  --emeraldDim: rgba(16,185,129,0.12);
+  --amber: #f59e0b;
+  --amberDim: rgba(245,158,11,0.12);
+  --rose: #f43f5e;
+  --roseDim: rgba(244,63,94,0.12);
+  --blue: #3b82f6;
+  --blueDim: rgba(59,130,246,0.12);
+  --muted: #3a4f6e;
+  --muted2: #2a3a56;
+  --text: #e8f0fc;
+  --text2: #7a9ac8;
+  --text3: #3e5577;
+  --r: 10px;
+  --r2: 16px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;font-size:15px}
+body{background:var(--ink);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;line-height:1.65}
+
+/* ── PAGE GRID ── */
+.page{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+@media(max-width:960px){.page{grid-template-columns:1fr}}
+
+/* ── SIDEBAR ── */
+.sidebar{position:sticky;top:0;height:100vh;background:var(--ink2);border-right:1px solid var(--glassBorder);display:flex;flex-direction:column;overflow-y:auto;padding:0}
+.sidebar-head{padding:1.6rem 1.4rem 1.2rem;border-bottom:1px solid var(--glassBorder)}
+.logo{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:var(--neon);letter-spacing:0.5px;display:flex;align-items:center;gap:0.5rem}
+.logo-sub{font-size:0.68rem;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px}
+.sidebar-nav{padding:0.8rem 0;flex:1}
+.nav-section{padding:0.6rem 1.4rem 0.3rem;font-size:0.6rem;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:2px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:0.6rem;padding:0.55rem 1.4rem;cursor:pointer;transition:all 0.2s;border-left:2px solid transparent;color:var(--text2);font-size:0.82rem}
+.nav-item:hover{background:var(--glass);color:var(--text);border-left-color:var(--muted)}
+.nav-item.active{background:var(--neonDim);color:var(--neon);border-left-color:var(--neon)}
+.nav-item .ni{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;flex-shrink:0}
+.nav-item .nb{font-size:0.66rem;font-family:'DM Mono',monospace;color:var(--text3);margin-left:auto;background:var(--ink3);padding:1px 5px;border-radius:3px}
+.sidebar-foot{padding:1rem 1.4rem;border-top:1px solid var(--glassBorder)}
+.sidebar-badge{background:var(--neonDim);border:1px solid rgba(0,240,255,0.2);border-radius:8px;padding:0.6rem;font-size:0.72rem;color:var(--neon);font-family:'DM Mono',monospace;text-align:center}
+@media(max-width:960px){.sidebar{position:fixed;bottom:0;left:0;right:0;height:52px;flex-direction:row;overflow-x:auto;overflow-y:hidden;z-index:1000;border-right:none;border-top:1px solid var(--glassBorder);}.sidebar-head,.sidebar-nav .nav-section,.sidebar-foot{display:none}.sidebar-nav{display:flex;flex-direction:row;padding:0;align-items:center}.nav-item{padding:0.5rem 0.8rem;border-left:none;border-bottom:2px solid transparent;white-space:nowrap}.nav-item.active{border-left-color:transparent;border-bottom-color:var(--neon)}}
+
+/* ── MAIN CONTENT ── */
+.main{overflow-y:auto}
+.chapter{padding:3rem 2.5rem;max-width:1100px}
+.chapter:not(.active-chapter){display:none}
+@media(max-width:700px){.chapter{padding:1.5rem 1rem}}
+
+/* ── TYPOGRAPHY ── */
+.eyebrow{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--neon);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.6rem}
+h1{font-family:'Syne',sans-serif;font-size:clamp(2rem,4vw,3rem);font-weight:800;line-height:1.1;margin-bottom:0.8rem}
+h2{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:0.6rem}
+h3{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;margin-bottom:0.5rem}
+h4{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.3rem}
+p.lead{color:var(--text2);font-size:0.95rem;line-height:1.75;margin-bottom:1rem}
+.c-neon{color:var(--neon)} .c-violet{color:var(--violet)} .c-emerald{color:var(--emerald)} .c-amber{color:var(--amber)} .c-rose{color:var(--rose)} .c-blue{color:var(--blue)}
+
+/* ── CARDS & PANELS ── */
+.card{background:var(--ink2);border:1px solid var(--glassBorder);border-radius:var(--r2);padding:1.5rem}
+.card.glow-neon{border-color:rgba(0,240,255,0.2);box-shadow:0 0 20px rgba(0,240,255,0.07)}
+.card.glow-rose{border-color:rgba(244,63,94,0.25);box-shadow:0 0 20px rgba(244,63,94,0.07)}
+.card.glow-emerald{border-color:rgba(16,185,129,0.25);box-shadow:0 0 20px rgba(16,185,129,0.07)}
+.pill{display:inline-flex;align-items:center;gap:0.35rem;font-family:'DM Mono',monospace;font-size:0.65rem;padding:4px 10px;border-radius:20px;border:1px solid;margin:2px}
+.pill-neon{color:var(--neon);border-color:rgba(0,240,255,0.25);background:var(--neonDim)}
+.pill-rose{color:var(--rose);border-color:rgba(244,63,94,0.25);background:var(--roseDim)}
+.pill-emerald{color:var(--emerald);border-color:rgba(16,185,129,0.25);background:var(--emeraldDim)}
+.pill-violet{color:var(--violet);border-color:rgba(139,92,246,0.25);background:var(--violetDim)}
+.pill-amber{color:var(--amber);border-color:rgba(245,158,11,0.25);background:var(--amberDim)}
+.pill-blue{color:var(--blue);border-color:rgba(59,130,246,0.25);background:var(--blueDim)}
+.note{border-radius:var(--r);padding:0.9rem 1.1rem;margin:0.8rem 0;font-size:0.85rem;display:flex;gap:0.6rem}
+.note-info{background:var(--neonDim);border:1px solid rgba(0,240,255,0.18);color:var(--text2)}
+.note-warn{background:var(--roseDim);border:1px solid rgba(244,63,94,0.22);color:var(--text2)}
+.note-ok{background:var(--emeraldDim);border:1px solid rgba(16,185,129,0.22);color:var(--text2)}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--glassBorder),transparent);margin:2rem 0}
+
+/* ── TABS ── */
+.tabs-bar{display:flex;gap:0.25rem;flex-wrap:wrap;margin-bottom:0}
+.tab-btn{padding:6px 13px;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3);background:var(--ink3);border:1px solid var(--glassBorder);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;transition:all 0.18s}
+.tab-btn:hover{color:var(--text2)}
+.tab-btn.active{background:var(--ink2);color:var(--neon);border-color:rgba(0,240,255,0.25)}
+.tab-pane{display:none;background:var(--ink2);border:1px solid rgba(0,240,255,0.12);border-radius:0 var(--r) var(--r) var(--r);padding:1.3rem;overflow-x:auto;max-height:480px;overflow-y:auto}
+.tab-pane.active{display:block}
+pre{font-family:'DM Mono',monospace;font-size:0.72rem;line-height:1.9;white-space:pre;color:var(--text)}
+.kw{color:#7dd3fc} .val{color:#86efac} .str{color:#fde68a} .cm{color:#3e5577;font-style:italic}
+
+/* ══════════════════════════════════
+   INTERACTIVE STEP ENGINE
+══════════════════════════════════ */
+.journey-shell{border-radius:var(--r2);overflow:hidden;background:var(--ink2);border:1px solid var(--glassBorder);margin:1.5rem 0;box-shadow:var(--shadow)}
+
+/* top bar */
+.journey-topbar{display:flex;align-items:center;gap:0.8rem;padding:1rem 1.4rem;background:var(--ink3);border-bottom:1px solid var(--glassBorder);flex-wrap:wrap}
+.journey-title{font-family:'Syne',sans-serif;font-weight:700;font-size:0.95rem}
+.journey-mode-btns{display:flex;gap:0.3rem;margin-left:auto}
+.mode-btn{padding:5px 12px;font-family:'DM Mono',monospace;font-size:0.62rem;border-radius:6px;border:1px solid var(--glassBorder);background:transparent;color:var(--text3);cursor:pointer;transition:all 0.2s}
+.mode-btn:hover{color:var(--text2);border-color:var(--muted)}
+.mode-btn.on{background:var(--neonDim);color:var(--neon);border-color:rgba(0,240,255,0.3)}
+.mode-btn.on-rose{background:var(--roseDim);color:var(--rose);border-color:rgba(244,63,94,0.3)}
+
+/* progress track */
+.progress-track{padding:1rem 1.4rem 0.4rem;background:var(--ink3);border-bottom:1px solid var(--glassBorder)}
+.progress-steps{display:flex;align-items:center;gap:0;position:relative}
+.ps-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--muted2);background:var(--ink);font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;z-index:2;flex-shrink:0}
+.ps-dot.done{border-color:var(--emerald);background:var(--emeraldDim);color:var(--emerald)}
+.ps-dot.current{border-color:var(--neon);background:var(--neonDim);color:var(--neon);box-shadow:0 0 10px rgba(0,240,255,0.35);transform:scale(1.1)}
+.ps-dot.current.rose{border-color:var(--rose);background:var(--roseDim);color:var(--rose);box-shadow:0 0 10px rgba(244,63,94,0.35)}
+.ps-line{flex:1;height:2px;background:var(--muted2);transition:background 0.4s}
+.ps-line.done{background:var(--emerald)}
+.progress-label{margin-top:0.5rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3);padding-bottom:0.4rem}
+.progress-label span{color:var(--neon)}
+
+/* diagram panel */
+.journey-diagram{padding:1.2rem 1.4rem;border-bottom:1px solid var(--glassBorder);background:var(--ink);overflow-x:auto}
+.journey-diagram svg{display:block;max-width:100%}
+
+/* step explanation */
+.journey-explain{padding:1.4rem}
+.explain-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:750px){.explain-grid{grid-template-columns:1fr}}
+.explain-what{background:var(--ink3);border:1px solid var(--glassBorder);border-radius:var(--r);padding:1rem}
+.explain-why{background:var(--neonDim);border:1px solid rgba(0,240,255,0.15);border-radius:var(--r);padding:1rem}
+.explain-why.rose-bg{background:var(--roseDim);border-color:rgba(244,63,94,0.15)}
+.explain-label{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:0.5rem;color:var(--text3)}
+.explain-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;margin-bottom:0.4rem}
+.explain-body{font-size:0.85rem;color:var(--text2);line-height:1.7}
+.explain-tags{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.6rem}
+.explain-warn{margin-top:0.5rem;background:rgba(244,63,94,0.07);border:1px solid rgba(244,63,94,0.2);border-radius:6px;padding:0.5rem 0.7rem;font-size:0.78rem;color:var(--rose);display:flex;gap:0.4rem}
+.explain-tip{margin-top:0.5rem;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:6px;padding:0.5rem 0.7rem;font-size:0.78rem;color:var(--emerald);display:flex;gap:0.4rem}
+
+/* controls bar */
+.journey-controls{display:flex;align-items:center;gap:0.6rem;padding:0.8rem 1.4rem;background:var(--ink3);border-top:1px solid var(--glassBorder);flex-wrap:wrap}
+.ctrl-btn{display:flex;align-items:center;gap:0.4rem;padding:8px 16px;font-family:'DM Mono',monospace;font-size:0.72rem;border-radius:8px;cursor:pointer;transition:all 0.2s;font-weight:500;border:1px solid}
+.ctrl-btn.back{background:transparent;border-color:var(--glassBorder);color:var(--text2)}
+.ctrl-btn.back:hover{border-color:var(--muted);color:var(--text)}
+.ctrl-btn.next{background:var(--neon);border-color:var(--neon);color:var(--ink);font-weight:700}
+.ctrl-btn.next:hover{box-shadow:0 0 16px rgba(0,240,255,0.4);transform:translateY(-1px)}
+.ctrl-btn.next:disabled{background:var(--muted2);border-color:var(--muted2);color:var(--text3);cursor:not-allowed;transform:none;box-shadow:none}
+.ctrl-btn.next.rose{background:var(--rose);border-color:var(--rose);color:#fff}
+.ctrl-btn.next.rose:hover{box-shadow:0 0 16px rgba(244,63,94,0.4)}
+.ctrl-btn.reset-btn{background:transparent;border-color:var(--glassBorder);color:var(--text3);margin-left:auto}
+.ctrl-btn.reset-btn:hover{border-color:var(--rose);color:var(--rose)}
+.step-counter{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text3);margin-left:0.3rem}
+
+/* ══════════════════════════════════
+   SCENARIO CARDS
+══════════════════════════════════ */
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.7rem;margin:1rem 0}
+.sc-btn{background:var(--ink3);border:1px solid var(--glassBorder);border-radius:var(--r);padding:1rem;cursor:pointer;transition:all 0.2s;text-align:left}
+.sc-btn:hover{border-color:var(--muted);background:var(--glass)}
+.sc-btn.on{border-color:rgba(0,240,255,0.35);background:var(--neonDim)}
+.sc-btn .sc-icon{font-size:1.4rem;margin-bottom:0.4rem}
+.sc-btn h4{font-size:0.85rem;color:var(--text);margin-bottom:0.2rem}
+.sc-btn p{font-size:0.75rem;color:var(--text3);line-height:1.5}
+.sc-btn.on h4{color:var(--neon)}
+.sc-display{background:var(--ink2);border:1px solid var(--glassBorder);border-radius:var(--r2);padding:1.4rem;margin-top:0.8rem}
+
+/* ══════════════════════════════════
+   URL BAR
+══════════════════════════════════ */
+.url-bar{display:flex;align-items:center;gap:0.5rem;background:var(--ink3);border:1px solid var(--glassBorder);border-radius:8px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:0.78rem;margin-bottom:0.8rem}
+.url-lock{color:var(--emerald);font-size:0.7rem}
+.url-lock.red{color:var(--rose)}
+.url-text{color:var(--text)}
+.url-badge{font-size:0.6rem;margin-left:auto;padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace}
+.url-badge.ok{background:var(--emeraldDim);color:var(--emerald);border:1px solid rgba(16,185,129,0.2)}
+.url-badge.bad{background:var(--roseDim);color:var(--rose);border:1px solid rgba(244,63,94,0.2)}
+
+/* ══════════════════════════════════
+   COMPARISON TABLE
+══════════════════════════════════ */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+@media(max-width:600px){.compare-grid{grid-template-columns:1fr}}
+.compare-col{border-radius:var(--r2);overflow:hidden}
+.compare-head{padding:0.8rem 1rem;font-family:'Syne',sans-serif;font-weight:700;font-size:0.88rem;border-bottom:1px solid var(--glassBorder)}
+.compare-head.red{background:var(--roseDim);border-color:rgba(244,63,94,0.2);color:var(--rose)}
+.compare-head.green{background:var(--emeraldDim);border-color:rgba(16,185,129,0.2);color:var(--emerald)}
+.compare-body{background:var(--ink2);border:1px solid var(--glassBorder);border-top:none;padding:0.8rem}
+.compare-item{display:flex;gap:0.4rem;align-items:flex-start;padding:4px 0;font-size:0.82rem;color:var(--text2)}
+.compare-item::before{content:attr(data-icon);flex-shrink:0;width:16px}
+
+/* hero gradient */
+.hero-chapter{background:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(0,240,255,0.07) 0%,transparent 70%),var(--ink)}
+.hero-tags{display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1.5rem}
+
+/* ══════════════════════════════════
+   ROUTING VISUALIZATION
+══════════════════════════════════ */
+.route-row{display:flex;align-items:center;gap:0;margin-bottom:0.6rem;flex-wrap:nowrap;overflow-x:auto}
+.route-url{font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--emerald);background:var(--emeraldDim);border:1px solid rgba(16,185,129,0.2);border-radius:6px;padding:5px 10px;white-space:nowrap}
+.route-arrow{padding:0 0.6rem;color:var(--text3);font-size:0.8rem;flex-shrink:0}
+.route-node{display:flex;align-items:center;gap:0.3rem;font-family:'DM Mono',monospace;font-size:0.72rem;padding:5px 10px;border-radius:6px;border:1px solid;white-space:nowrap}
+
+/* YAML side-by-side */
+.yaml-compare{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:800px){.yaml-compare{grid-template-columns:1fr}}
+.yaml-col{border-radius:var(--r);overflow:hidden;border:1px solid var(--glassBorder)}
+.yaml-col-head{padding:0.6rem 1rem;font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:1px;border-bottom:1px solid var(--glassBorder)}
+.yaml-col-head.red{background:var(--roseDim);color:var(--rose)}
+.yaml-col-head.green{background:var(--emeraldDim);color:var(--emerald)}
+.yaml-col-body{background:var(--ink2);padding:1rem;overflow-x:auto;max-height:380px;overflow-y:auto}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-head">
+    <div class="logo">⎈ K8s Ingress</div>
+    <div class="logo-sub">interactive deep dive</div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" data-ch="ch-intro" onclick="goCh('ch-intro',this)">
+      <div class="ni" style="background:rgba(0,240,255,0.1);color:var(--neon)">⎈</div> Introduction <span class="nb">01</span>
+    </div>
+    <div class="nav-section">Before Ingress</div>
+    <div class="nav-item" data-ch="ch-before-arch" onclick="goCh('ch-before-arch',this)">
+      <div class="ni" style="background:var(--roseDim);color:var(--rose)">🏗</div> Cluster Architecture <span class="nb">02</span>
+    </div>
+    <div class="nav-item" data-ch="ch-before-lc" onclick="goCh('ch-before-lc',this)">
+      <div class="ni" style="background:var(--roseDim);color:var(--rose)">👕</div> Wear Request Journey <span class="nb">03</span>
+    </div>
+    <div class="nav-item" data-ch="ch-before-video" onclick="goCh('ch-before-video',this)">
+      <div class="ni" style="background:var(--roseDim);color:var(--rose)">🎬</div> Video Request Journey <span class="nb">04</span>
+    </div>
+    <div class="nav-section">After Ingress</div>
+    <div class="nav-item" data-ch="ch-after-arch" onclick="goCh('ch-after-arch',this)">
+      <div class="ni" style="background:var(--emeraldDim);color:var(--emerald)">🏗</div> Cluster Architecture <span class="nb">05</span>
+    </div>
+    <div class="nav-item" data-ch="ch-after-wear" onclick="goCh('ch-after-wear',this)">
+      <div class="ni" style="background:var(--emeraldDim);color:var(--emerald)">👕</div> Wear Request Journey <span class="nb">06</span>
+    </div>
+    <div class="nav-item" data-ch="ch-after-video" onclick="goCh('ch-after-video',this)">
+      <div class="ni" style="background:var(--emeraldDim);color:var(--emerald)">🎬</div> Video Request Journey <span class="nb">07</span>
+    </div>
+    <div class="nav-section">Routing Patterns</div>
+    <div class="nav-item" data-ch="ch-routing" onclick="goCh('ch-routing',this)">
+      <div class="ni" style="background:var(--violetDim);color:var(--violet)">🛣</div> Path / Domain / Sub <span class="nb">08</span>
+    </div>
+    <div class="nav-section">Full YAMLs</div>
+    <div class="nav-item" data-ch="ch-yamls" onclick="goCh('ch-yamls',this)">
+      <div class="ni" style="background:var(--amberDim);color:var(--amber)">📄</div> All Manifests <span class="nb">09</span>
+    </div>
+  </div>
+  <div class="sidebar-foot">
+    <div class="sidebar-badge">wear-service + video-service<br>3 nodes · full lifecycle</div>
+  </div>
+</nav>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main class="main">
+
+<!-- ─── CHAPTER 01: INTRO ─── -->
+<div class="chapter active-chapter hero-chapter" id="ch-intro">
+  <div class="eyebrow">Kubernetes Networking · Interactive Guide</div>
+  <h1>Ingress <span class="c-neon">&</span><br>Egress<br>Deep Dive</h1>
+  <p class="lead">Step-by-step interactive walkthrough. Every click advances through the full request journey — from browser to pod and back. Includes the exact KodeKloud scenario: <strong>wear-service</strong> (port 38080) and <strong>video-service</strong> (port 38282).</p>
+  <div class="hero-tags">
+    <span class="pill pill-rose">⚠ Before: 2 LoadBalancers</span>
+    <span class="pill pill-emerald">✓ After: 1 Ingress Controller</span>
+    <span class="pill pill-neon">3 nodes · 6 pods</span>
+    <span class="pill pill-violet">Path + Domain + Subdomain</span>
+    <span class="pill pill-amber">Full YAMLs</span>
+  </div>
+  <div class="divider"></div>
+  <div class="compare-grid">
+    <div class="compare-col">
+      <div class="compare-head red">⚠ Before — No Ingress</div>
+      <div class="compare-body">
+        <div class="compare-item" data-icon="💸">2 dedicated GCP LoadBalancers = $150/month</div>
+        <div class="compare-item" data-icon="🔓">Plain HTTP — no TLS, credentials in cleartext</div>
+        <div class="compare-item" data-icon="🔢">Users must know port :38080 or :38282</div>
+        <div class="compare-item" data-icon="🌐">NodePort open on every node public IP</div>
+        <div class="compare-item" data-icon="🦠">No NetworkPolicy — any pod reaches any pod</div>
+        <div class="compare-item" data-icon="🔑">Hardcoded secrets in Deployment YAML</div>
+        <div class="compare-item" data-icon="📉">No per-route metrics or rate limiting</div>
+      </div>
+    </div>
+    <div class="compare-col">
+      <div class="compare-head green">✓ After — With Ingress</div>
+      <div class="compare-body">
+        <div class="compare-item" data-icon="✅">1 shared GCP LoadBalancer = $75/month</div>
+        <div class="compare-item" data-icon="✅">Auto TLS via cert-manager + Let's Encrypt</div>
+        <div class="compare-item" data-icon="✅">Clean URLs — /wear and /video, no ports</div>
+        <div class="compare-item" data-icon="✅">ClusterIP services only — no NodePort</div>
+        <div class="compare-item" data-icon="✅">Calico NetworkPolicy — zero-trust egress</div>
+        <div class="compare-item" data-icon="✅">Secrets from K8s Secret refs</div>
+        <div class="compare-item" data-icon="✅">Prometheus metrics per route, rate limiting</div>
+      </div>
+    </div>
+  </div>
+  <div class="note note-info"><span>💡</span><div>Use the <strong>sidebar</strong> to navigate chapters, or click <strong>Next →</strong> at the bottom of each step to advance through the interactive journey.</div></div>
+  <div style="margin-top:1.5rem">
+    <button class="ctrl-btn next" onclick="goCh('ch-before-arch',document.querySelector('[data-ch=ch-before-arch]'))">Start Journey →</button>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 02: BEFORE ARCH ─── -->
+<div class="chapter" id="ch-before-arch">
+  <div class="eyebrow">Chapter 02 · Before Ingress</div>
+  <h2>Full Cluster Architecture <span class="c-rose">— Before</span></h2>
+  <p class="lead">The original KodeKloud diagram, expanded to show every node, pod, service, and system component. Two dedicated cloud LoadBalancers, plain HTTP, NodePorts on every node.</p>
+  <div class="note note-warn"><span>🔥</span><div><strong>Problem:</strong> GCP LB#1 (34.120.1.10:38080) → wear-service → 3 wear pods. GCP LB#2 (34.120.1.11:38282) → video-service → 3 video pods. $150/month, no TLS, no isolation.</div></div>
+  <div class="card" style="padding:0;overflow:hidden;margin-top:1.2rem">
+    <div style="background:var(--ink3);padding:0.7rem 1.2rem;border-bottom:1px solid var(--glassBorder);font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--rose);display:flex;align-items:center;gap:0.4rem">
+      <span style="width:3px;height:14px;background:var(--rose);border-radius:2px;display:inline-block"></span>
+      BEFORE — Full 3-Node Cluster · 2 LoadBalancers · wear + video
+    </div>
+    <div style="padding:1rem;overflow-x:auto;background:var(--ink)">
+      <svg id="arch-before-svg" viewBox="0 0 1060 720" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <!-- filled by JS -->
+      </svg>
+    </div>
+    <div style="padding:0.6rem 1.2rem;background:var(--ink3);border-top:1px solid var(--glassBorder);display:flex;gap:1rem;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--blue)"></div>wear pods</div>
+      <div style="display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--violet)"></div>video pods</div>
+      <div style="display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--rose)"></div>problems</div>
+      <div style="display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--amber)"></div>cost</div>
+    </div>
+  </div>
+  <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
+    <button class="ctrl-btn next" onclick="goCh('ch-before-lc',document.querySelector('[data-ch=ch-before-lc]'))">Next: Wear Request Journey →</button>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 03: BEFORE WEAR JOURNEY ─── -->
+<div class="chapter" id="ch-before-lc">
+  <div class="eyebrow">Chapter 03 · Before Ingress</div>
+  <h2>Wear Request Journey <span class="c-rose">— Before</span></h2>
+  <p class="lead">Step through the full HTTP request from browser to pod. No TLS, dedicated LoadBalancer, NodePort on every node. Use <strong>← Back</strong> / <strong>Next →</strong> to step through each hop.</p>
+  <div class="url-bar">
+    <span class="url-lock red">🔓</span>
+    <span class="url-text">http://my-online-store.com<strong style="color:var(--rose)">:38080</strong>/products</span>
+    <span class="url-badge bad">⚠ HTTP · Port Exposed</span>
+  </div>
+  <!-- journey will be inserted here -->
+  <div id="journey-before-wear"></div>
+  <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
+    <button class="ctrl-btn next" onclick="goCh('ch-before-video',document.querySelector('[data-ch=ch-before-video]'))">Next: Video Journey →</button>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 04: BEFORE VIDEO JOURNEY ─── -->
+<div class="chapter" id="ch-before-video">
+  <div class="eyebrow">Chapter 04 · Before Ingress</div>
+  <h2>Video Request Journey <span class="c-rose">— Before</span></h2>
+  <p class="lead">The same store, but now for the Video service — routed through a <em>second</em> dedicated LoadBalancer on a different port. Users must know two different port numbers.</p>
+  <div class="url-bar">
+    <span class="url-lock red">🔓</span>
+    <span class="url-text">http://my-online-store.com<strong style="color:var(--rose)">:38282</strong>/watch/123</span>
+    <span class="url-badge bad">⚠ HTTP · Second LB · Port :38282</span>
+  </div>
+  <div id="journey-before-video"></div>
+  <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
+    <button class="ctrl-btn next" onclick="goCh('ch-after-arch',document.querySelector('[data-ch=ch-after-arch]'))">Next: After Architecture →</button>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 05: AFTER ARCH ─── -->
+<div class="chapter" id="ch-after-arch">
+  <div class="eyebrow">Chapter 05 · After Ingress</div>
+  <h2>Full Cluster Architecture <span class="c-emerald">— After</span></h2>
+  <p class="lead">Same three nodes. Same apps. But now: ONE shared LoadBalancer → nginx Ingress Controller (2 replicas, HA) routes by path. TLS at edge. ClusterIP services. Calico NetworkPolicy enforced.</p>
+  <div class="note note-ok"><span>✅</span><div><strong>Solved:</strong> www.my-online-store.com/wear → wear-service. .../video → video-service. One LB, HTTPS, no port numbers, NetworkPolicy isolating services.</div></div>
+  <div class="card" style="padding:0;overflow:hidden;margin-top:1.2rem">
+    <div style="background:var(--ink3);padding:0.7rem 1.2rem;border-bottom:1px solid var(--glassBorder);font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--emerald);display:flex;align-items:center;gap:0.4rem">
+      <span style="width:3px;height:14px;background:var(--emerald);border-radius:2px;display:inline-block"></span>
+      AFTER — Full 3-Node Cluster · 1 LoadBalancer · Ingress Controller · NetworkPolicy
+    </div>
+    <div style="padding:1rem;overflow-x:auto;background:var(--ink)">
+      <svg id="arch-after-svg" viewBox="0 0 1060 800" width="100%" xmlns="http://www.w3.org/2000/svg">
+      </svg>
+    </div>
+    <div style="padding:0.6rem 1.2rem;background:var(--ink3);border-top:1px solid var(--glassBorder);display:flex;gap:1rem;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--neon)"></div>Ingress Controller</div>
+      <div style="display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--blue)"></div>wear pods (secured)</div>
+      <div style="display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--violet)"></div>video pods (secured)</div>
+      <div style="display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--emerald)"></div>Calico NetworkPolicy</div>
+    </div>
+  </div>
+  <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
+    <button class="ctrl-btn next" onclick="goCh('ch-after-wear',document.querySelector('[data-ch=ch-after-wear]'))">Next: After Wear Journey →</button>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 06: AFTER WEAR ─── -->
+<div class="chapter" id="ch-after-wear">
+  <div class="eyebrow">Chapter 06 · After Ingress</div>
+  <h2>Wear Request Journey <span class="c-emerald">— After</span></h2>
+  <p class="lead">The same request — now through the Ingress Controller. TLS terminates at the edge. Path routing selects the backend. NetworkPolicy enforces egress. No port numbers.</p>
+  <div class="url-bar">
+    <span class="url-lock">🔒</span>
+    <span class="url-text">https://www.my-online-store.com<strong style="color:var(--emerald)">/wear</strong>/products</span>
+    <span class="url-badge ok">✓ HTTPS · Clean URL</span>
+  </div>
+  <div id="journey-after-wear"></div>
+  <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
+    <button class="ctrl-btn next" onclick="goCh('ch-after-video',document.querySelector('[data-ch=ch-after-video]'))">Next: After Video Journey →</button>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 07: AFTER VIDEO ─── -->
+<div class="chapter" id="ch-after-video">
+  <div class="eyebrow">Chapter 07 · After Ingress</div>
+  <h2>Video Request Journey <span class="c-emerald">— After</span></h2>
+  <p class="lead">Video now routes through the same Ingress Controller — same LoadBalancer, same IP, different path. Path rule <code>/video</code> routes to video-service pods.</p>
+  <div class="url-bar">
+    <span class="url-lock">🔒</span>
+    <span class="url-text">https://www.my-online-store.com<strong style="color:var(--violet)">/video</strong>/watch/123</span>
+    <span class="url-badge ok">✓ Same LB · Different Path</span>
+  </div>
+  <div id="journey-after-video"></div>
+  <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
+    <button class="ctrl-btn next" onclick="goCh('ch-routing',document.querySelector('[data-ch=ch-routing]'))">Next: Routing Patterns →</button>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 08: ROUTING ─── -->
+<div class="chapter" id="ch-routing">
+  <div class="eyebrow">Chapter 08 · Routing Patterns</div>
+  <h2>Path, Domain & Subdomain <span class="c-violet">Routing</span></h2>
+  <p class="lead">One Ingress Controller handles all of these simultaneously. Click each pattern to see the routing diagram and YAML.</p>
+  <div class="scenario-grid">
+    <div class="sc-btn on" id="sc0" onclick="showSc(0)"><div class="sc-icon">🛣️</div><h4>Path Routing</h4><p>Same domain, different paths → services</p></div>
+    <div class="sc-btn" id="sc1" onclick="showSc(1)"><div class="sc-icon">🌐</div><h4>Domains</h4><p>Different domains → services</p></div>
+    <div class="sc-btn" id="sc2" onclick="showSc(2)"><div class="sc-icon">📡</div><h4>Subdomains</h4><p>Subdomains → services</p></div>
+    <div class="sc-btn" id="sc3" onclick="showSc(3)"><div class="sc-icon">🔄</div><h4>Canary</h4><p>Weighted traffic split</p></div>
+  </div>
+  <div class="sc-display" id="sc-display"></div>
+  <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
+    <button class="ctrl-btn next" onclick="goCh('ch-yamls',document.querySelector('[data-ch=ch-yamls]'))">Next: Full YAMLs →</button>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 09: YAMLS ─── -->
+<div class="chapter" id="ch-yamls">
+  <div class="eyebrow">Chapter 09 · Full Manifests</div>
+  <h2>Complete Project <span class="c-amber">YAMLs</span></h2>
+  <p class="lead">Every manifest for before and after state. Tab through to see each resource.</p>
+
+  <h3 style="color:var(--rose);margin-top:1.5rem;margin-bottom:0.5rem">Before — Manifests</h3>
+  <div class="tabs-bar" id="byt">
+    <button class="tab-btn active" onclick="tab('byt','bp0')">Namespace</button>
+    <button class="tab-btn" onclick="tab('byt','bp1')">Wear Deploy</button>
+    <button class="tab-btn" onclick="tab('byt','bp2')">Wear LB Svc</button>
+    <button class="tab-btn" onclick="tab('byt','bp3')">Video Deploy</button>
+    <button class="tab-btn" onclick="tab('byt','bp4')">Video LB Svc</button>
+  </div>
+  <div id="bp0" class="tab-pane active"><pre><span class="cm"># NAMESPACE — BEFORE
+# No labels, no quotas, no isolation</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">production</span>
+  <span class="cm">  # ⚠ No labels — NetworkPolicy can't target this ns
+  # ⚠ No ResourceQuota — apps starve each other
+  # ⚠ No LimitRange — pods run unbounded
+  # ⚠ wear + video + DB all share one namespace</span></pre></div>
+  <div id="bp1" class="tab-pane"><pre><span class="cm"># WEAR DEPLOYMENT — BEFORE
+# :latest tag · hardcoded secrets · no limits</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-deployment</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">3</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+    <span class="kw">spec</span>:
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">wear</span>
+        <span class="kw">image</span>: <span class="str">myapp/wear:latest</span>     <span class="cm"># ⚠ floating tag</span>
+        <span class="kw">ports</span>:
+        - <span class="kw">containerPort</span>: <span class="val">8080</span>
+        <span class="kw">env</span>:
+        - { <span class="kw">name</span>: <span class="str">DB_PASSWORD</span>, <span class="kw">value</span>: <span class="str">"wear_pass_123"</span> }  <span class="cm"># ⚠ HARDCODED</span>
+        - { <span class="kw">name</span>: <span class="str">DB_HOST</span>, <span class="kw">value</span>: <span class="str">"mysql.production.svc"</span> }
+        <span class="cm">        # ⚠ no resources  → OOM possible
+        # ⚠ no securityContext → runs as root
+        # ⚠ no readinessProbe → dead pods get traffic
+        # ⚠ all 3 pods may land on same node</span></pre></div>
+  <div id="bp2" class="tab-pane"><pre><span class="cm"># WEAR SERVICE — BEFORE
+# Type: LoadBalancer = $75/month dedicated GCP LB</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-service</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">LoadBalancer</span>     <span class="cm"># ⚠ dedicated cloud LB</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+  <span class="kw">ports</span>:
+  - <span class="kw">port</span>: <span class="val">38080</span>
+    <span class="kw">targetPort</span>: <span class="val">8080</span>
+    <span class="kw">nodePort</span>: <span class="val">38080</span>       <span class="cm"># ⚠ open on ALL node IPs</span>
+  <span class="cm">  # externalIP: 34.120.1.10
+  # ⚠ no TLS — cleartext HTTP on port 38080
+  # ⚠ users must know :38080 port
+  # ⚠ no rate limiting, no auth headers</span></pre></div>
+  <div id="bp3" class="tab-pane"><pre><span class="cm"># VIDEO DEPLOYMENT — BEFORE</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-deployment</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">3</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">video</span> }
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">video</span> }
+    <span class="kw">spec</span>:
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">video</span>
+        <span class="kw">image</span>: <span class="str">myapp/video:latest</span>
+        <span class="kw">ports</span>:
+        - <span class="kw">containerPort</span>: <span class="val">8080</span>
+        <span class="kw">env</span>:
+        - { <span class="kw">name</span>: <span class="str">DB_PASSWORD</span>, <span class="kw">value</span>: <span class="str">"video_pass_456"</span> } <span class="cm"># ⚠</span>
+        - { <span class="kw">name</span>: <span class="str">S3_KEY</span>, <span class="kw">value</span>: <span class="str">"AKIAIOSFODNN7EXAMPLE"</span> } <span class="cm"># ⚠</span>
+        <span class="cm">        # ⚠ wear pods CAN call video DB directly
+        # ⚠ no NetworkPolicy anywhere in cluster</span></pre></div>
+  <div id="bp4" class="tab-pane"><pre><span class="cm"># VIDEO SERVICE — BEFORE
+# Second dedicated $75/month GCP LoadBalancer</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-service</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">LoadBalancer</span>     <span class="cm"># ⚠ second $75/month LB</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">video</span> }
+  <span class="kw">ports</span>:
+  - <span class="kw">port</span>: <span class="val">38282</span>
+    <span class="kw">targetPort</span>: <span class="val">8080</span>
+    <span class="kw">nodePort</span>: <span class="val">38282</span>       <span class="cm"># ⚠ open on ALL node IPs</span>
+  <span class="cm">  # externalIP: 34.120.1.11
+  # Two LBs + two NodePorts = 4 attack vectors
+  # ⚠ separate IP from wear service — confusing</span></pre></div>
+
+  <h3 style="color:var(--emerald);margin-top:2rem;margin-bottom:0.5rem">After — Manifests</h3>
+  <div class="tabs-bar" id="ayt">
+    <button class="tab-btn active" onclick="tab('ayt','ap0')">Namespaces</button>
+    <button class="tab-btn" onclick="tab('ayt','ap1')">Ingress Ctrl</button>
+    <button class="tab-btn" onclick="tab('ayt','ap2')">Ingress Resource</button>
+    <button class="tab-btn" onclick="tab('ayt','ap3')">cert-manager</button>
+    <button class="tab-btn" onclick="tab('ayt','ap4')">Wear Full</button>
+    <button class="tab-btn" onclick="tab('ayt','ap5')">Video Full</button>
+    <button class="tab-btn" onclick="tab('ayt','ap6')">NetworkPolicy</button>
+    <button class="tab-btn" onclick="tab('ayt','ap7')">HPA + PDB</button>
+    <button class="tab-btn" onclick="tab('ayt','ap8')">Secrets</button>
+    <button class="tab-btn" onclick="tab('ayt','ap9')">Domain Routing</button>
+    <button class="tab-btn" onclick="tab('ayt','ap10')">Subdomain</button>
+    <button class="tab-btn" onclick="tab('ayt','ap11')">Canary</button>
+  </div>
+  <div id="ap0" class="tab-pane active"><pre><span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">ingress-nginx</span>
+  <span class="kw">labels</span>: { <span class="kw">name</span>: <span class="str">ingress-nginx</span> }
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">production</span>
+  <span class="kw">labels</span>: { <span class="kw">name</span>: <span class="str">production</span>, <span class="kw">env</span>: <span class="str">prod</span> }
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Namespace</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">database</span>
+  <span class="kw">labels</span>: { <span class="kw">name</span>: <span class="str">database</span> }
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">ResourceQuota</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">prod-quota</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">hard</span>:
+    <span class="kw">requests.cpu</span>: <span class="str">"10"</span>
+    <span class="kw">requests.memory</span>: <span class="str">20Gi</span>
+    <span class="kw">limits.cpu</span>: <span class="str">"20"</span>
+    <span class="kw">limits.memory</span>: <span class="str">40Gi</span>
+    <span class="kw">pods</span>: <span class="str">"40"</span></pre></div>
+
+  <div id="ap1" class="tab-pane"><pre><span class="cm"># INGRESS CONTROLLER — HA 2 replicas, one shared LB</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">nginx-ingress-controller</span>
+  <span class="kw">namespace</span>: <span class="str">ingress-nginx</span>
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">2</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">ingress-nginx</span> }
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">ingress-nginx</span> }
+      <span class="kw">annotations</span>:
+        <span class="kw">prometheus.io/scrape</span>: <span class="str">"true"</span>
+        <span class="kw">prometheus.io/port</span>: <span class="str">"10254"</span>
+    <span class="kw">spec</span>:
+      <span class="kw">affinity</span>:
+        <span class="kw">podAntiAffinity</span>:
+          <span class="kw">requiredDuringSchedulingIgnoredDuringExecution</span>:
+          - <span class="kw">labelSelector</span>:
+              <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">ingress-nginx</span> }
+            <span class="kw">topologyKey</span>: <span class="str">kubernetes.io/hostname</span>
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">controller</span>
+        <span class="kw">image</span>: <span class="str">registry.k8s.io/ingress-nginx/controller:v1.9.4</span>
+        <span class="kw">args</span>:
+        - <span class="str">/nginx-ingress-controller</span>
+        - <span class="str">--publish-service=ingress-nginx/ingress-nginx-svc</span>
+        - <span class="str">--ingress-class=nginx</span>
+        - <span class="str">--enable-metrics=true</span>
+        <span class="kw">ports</span>:
+        - { <span class="kw">name</span>: <span class="str">http</span>,    <span class="kw">containerPort</span>: <span class="val">80</span>    }
+        - { <span class="kw">name</span>: <span class="str">https</span>,   <span class="kw">containerPort</span>: <span class="val">443</span>   }
+        - { <span class="kw">name</span>: <span class="str">metrics</span>, <span class="kw">containerPort</span>: <span class="val">10254</span> }
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: { <span class="kw">cpu</span>: <span class="str">100m</span>, <span class="kw">memory</span>: <span class="str">90Mi</span>  }
+          <span class="kw">limits</span>:   { <span class="kw">cpu</span>: <span class="str">500m</span>, <span class="kw">memory</span>: <span class="str">256Mi</span> }
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/healthz</span>, <span class="kw">port</span>: <span class="val">10254</span> }
+          <span class="kw">periodSeconds</span>: <span class="val">5</span>
+---
+<span class="cm"># THE ONE SHARED LoadBalancer</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">ingress-nginx-svc</span>
+  <span class="kw">namespace</span>: <span class="str">ingress-nginx</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">LoadBalancer</span>  <span class="cm"># ONE for entire cluster</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">ingress-nginx</span> }
+  <span class="kw">ports</span>:
+  - { <span class="kw">name</span>: <span class="str">http</span>,  <span class="kw">port</span>: <span class="val">80</span>,  <span class="kw">targetPort</span>: <span class="val">80</span>  }
+  - { <span class="kw">name</span>: <span class="str">https</span>, <span class="kw">port</span>: <span class="val">443</span>, <span class="kw">targetPort</span>: <span class="val">443</span> }</pre></div>
+
+  <div id="ap2" class="tab-pane"><pre><span class="cm"># INGRESS RESOURCE — path routing, TLS, rate-limit</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">store-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="kw">kubernetes.io/ingress.class</span>: <span class="str">"nginx"</span>
+    <span class="kw">cert-manager.io/cluster-issuer</span>: <span class="str">"letsencrypt-prod"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/ssl-redirect</span>: <span class="str">"true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/limit-rps</span>: <span class="str">"100"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/limit-connections</span>: <span class="str">"20"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/enable-cors</span>: <span class="str">"true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/rewrite-target</span>: <span class="str">/$2</span>
+    <span class="kw">nginx.ingress.kubernetes.io/use-regex</span>: <span class="str">"true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/configuration-snippet</span>: |
+      <span class="str">more_set_headers "X-Frame-Options: DENY";</span>
+      <span class="str">more_set_headers "X-Content-Type-Options: nosniff";</span>
+      <span class="str">more_set_headers "Strict-Transport-Security: max-age=31536000";</span>
+<span class="kw">spec</span>:
+  <span class="kw">tls</span>:
+  - <span class="kw">hosts</span>: [<span class="str">www.my-online-store.com</span>]
+    <span class="kw">secretName</span>: <span class="str">store-tls-secret</span>
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">www.my-online-store.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - <span class="kw">path</span>: <span class="str">/wear(/|$)(.*)</span>
+        <span class="kw">pathType</span>: <span class="val">ImplementationSpecific</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">wear-service</span>
+            <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> }
+      - <span class="kw">path</span>: <span class="str">/video(/|$)(.*)</span>
+        <span class="kw">pathType</span>: <span class="val">ImplementationSpecific</span>
+        <span class="kw">backend</span>:
+          <span class="kw">service</span>:
+            <span class="kw">name</span>: <span class="str">video-service</span>
+            <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> }</pre></div>
+
+  <div id="ap3" class="tab-pane"><pre><span class="cm"># CERT-MANAGER — auto TLS, auto-renew</span>
+<span class="kw">apiVersion</span>: <span class="val">cert-manager.io/v1</span>
+<span class="kw">kind</span>: <span class="val">ClusterIssuer</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">letsencrypt-prod</span>
+<span class="kw">spec</span>:
+  <span class="kw">acme</span>:
+    <span class="kw">server</span>: <span class="str">https://acme-v02.api.letsencrypt.org/directory</span>
+    <span class="kw">email</span>: <span class="str">ops@my-online-store.com</span>
+    <span class="kw">privateKeySecretRef</span>: { <span class="kw">name</span>: <span class="str">letsencrypt-prod-key</span> }
+    <span class="kw">solvers</span>:
+    - <span class="kw">http01</span>:
+        <span class="kw">ingress</span>: { <span class="kw">class</span>: <span class="str">nginx</span> }
+---
+<span class="kw">apiVersion</span>: <span class="val">cert-manager.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Certificate</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">store-tls</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">secretName</span>: <span class="str">store-tls-secret</span>
+  <span class="kw">duration</span>: <span class="str">2160h</span>    <span class="cm"># 90 days</span>
+  <span class="kw">renewBefore</span>: <span class="str">360h</span>  <span class="cm"># renew 15d before expiry</span>
+  <span class="kw">issuerRef</span>:
+    <span class="kw">name</span>: <span class="str">letsencrypt-prod</span>
+    <span class="kw">kind</span>: <span class="val">ClusterIssuer</span>
+  <span class="kw">dnsNames</span>:
+  - <span class="str">www.my-online-store.com</span>
+  - <span class="str">wear.my-online-store.com</span>
+  - <span class="str">video.my-online-store.com</span></pre></div>
+
+  <div id="ap4" class="tab-pane"><pre><span class="cm"># WEAR — FULL PRODUCTION DEPLOYMENT</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-deployment</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">wear</span>, <span class="kw">version</span>: <span class="str">v2.1</span> }
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">3</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+  <span class="kw">strategy</span>:
+    <span class="kw">type</span>: <span class="val">RollingUpdate</span>
+    <span class="kw">rollingUpdate</span>: { <span class="kw">maxSurge</span>: <span class="val">1</span>, <span class="kw">maxUnavailable</span>: <span class="val">0</span> }
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+      <span class="kw">annotations</span>:
+        <span class="kw">prometheus.io/scrape</span>: <span class="str">"true"</span>
+        <span class="kw">prometheus.io/port</span>: <span class="str">"9090"</span>
+    <span class="kw">spec</span>:
+      <span class="kw">topologySpreadConstraints</span>:
+      - <span class="kw">maxSkew</span>: <span class="val">1</span>
+        <span class="kw">topologyKey</span>: <span class="str">kubernetes.io/hostname</span>
+        <span class="kw">whenUnsatisfiable</span>: <span class="val">DoNotSchedule</span>
+        <span class="kw">labelSelector</span>:
+          <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+      <span class="kw">securityContext</span>: { <span class="kw">runAsNonRoot</span>: <span class="val">true</span>, <span class="kw">runAsUser</span>: <span class="val">1000</span> }
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">wear</span>
+        <span class="kw">image</span>: <span class="str">myapp/wear:v2.1.0</span>          <span class="cm"># pinned</span>
+        <span class="kw">ports</span>:
+        - { <span class="kw">name</span>: <span class="str">http</span>,    <span class="kw">containerPort</span>: <span class="val">8080</span> }
+        - { <span class="kw">name</span>: <span class="str">metrics</span>, <span class="kw">containerPort</span>: <span class="val">9090</span> }
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">DB_PASSWORD</span>
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: { <span class="kw">name</span>: <span class="str">wear-secrets</span>, <span class="kw">key</span>: <span class="str">db-password</span> }
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: { <span class="kw">cpu</span>: <span class="str">200m</span>, <span class="kw">memory</span>: <span class="str">256Mi</span>  }
+          <span class="kw">limits</span>:   { <span class="kw">cpu</span>: <span class="str">1000m</span>, <span class="kw">memory</span>: <span class="str">512Mi</span> }
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/health</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+          <span class="kw">periodSeconds</span>: <span class="val">5</span>
+        <span class="kw">livenessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/health</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+          <span class="kw">initialDelaySeconds</span>: <span class="val">10</span>
+        <span class="kw">securityContext</span>:
+          <span class="kw">allowPrivilegeEscalation</span>: <span class="val">false</span>
+          <span class="kw">readOnlyRootFilesystem</span>: <span class="val">true</span>
+          <span class="kw">capabilities</span>: { <span class="kw">drop</span>: [<span class="str">ALL</span>] }
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-service</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">ClusterIP</span>   <span class="cm"># NOT LoadBalancer</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+  <span class="kw">ports</span>:
+  - { <span class="kw">name</span>: <span class="str">http</span>, <span class="kw">port</span>: <span class="val">80</span>, <span class="kw">targetPort</span>: <span class="val">8080</span> }</pre></div>
+
+  <div id="ap5" class="tab-pane"><pre><span class="cm"># VIDEO — FULL PRODUCTION DEPLOYMENT</span>
+<span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+<span class="kw">kind</span>: <span class="val">Deployment</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-deployment</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">video</span>, <span class="kw">version</span>: <span class="str">v1.5</span> }
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: <span class="val">3</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">video</span> }
+  <span class="kw">strategy</span>:
+    <span class="kw">rollingUpdate</span>: { <span class="kw">maxSurge</span>: <span class="val">1</span>, <span class="kw">maxUnavailable</span>: <span class="val">0</span> }
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: { <span class="kw">app</span>: <span class="str">video</span> }
+    <span class="kw">spec</span>:
+      <span class="kw">topologySpreadConstraints</span>:
+      - <span class="kw">maxSkew</span>: <span class="val">1</span>
+        <span class="kw">topologyKey</span>: <span class="str">kubernetes.io/hostname</span>
+        <span class="kw">whenUnsatisfiable</span>: <span class="val">DoNotSchedule</span>
+        <span class="kw">labelSelector</span>:
+          <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">video</span> }
+      <span class="kw">securityContext</span>: { <span class="kw">runAsNonRoot</span>: <span class="val">true</span>, <span class="kw">runAsUser</span>: <span class="val">1000</span> }
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: <span class="str">video</span>
+        <span class="kw">image</span>: <span class="str">myapp/video:v1.5.0</span>
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: <span class="str">DB_PASSWORD</span>
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: { <span class="kw">name</span>: <span class="str">video-secrets</span>, <span class="kw">key</span>: <span class="str">db-password</span> }
+        - <span class="kw">name</span>: <span class="str">S3_KEY</span>
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: { <span class="kw">name</span>: <span class="str">video-secrets</span>, <span class="kw">key</span>: <span class="str">storage-key</span> }
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: { <span class="kw">cpu</span>: <span class="str">500m</span>, <span class="kw">memory</span>: <span class="str">512Mi</span> }
+          <span class="kw">limits</span>:   { <span class="kw">cpu</span>: <span class="str">2000m</span>, <span class="kw">memory</span>: <span class="str">2Gi</span>   }
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">httpGet</span>: { <span class="kw">path</span>: <span class="str">/health</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+        <span class="kw">securityContext</span>:
+          <span class="kw">allowPrivilegeEscalation</span>: <span class="val">false</span>
+          <span class="kw">readOnlyRootFilesystem</span>: <span class="val">true</span>
+          <span class="kw">capabilities</span>: { <span class="kw">drop</span>: [<span class="str">ALL</span>] }
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Service</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-service</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">type</span>: <span class="val">ClusterIP</span>
+  <span class="kw">selector</span>: { <span class="kw">app</span>: <span class="str">video</span> }
+  <span class="kw">ports</span>:
+  - { <span class="kw">port</span>: <span class="val">80</span>, <span class="kw">targetPort</span>: <span class="val">8080</span> }</pre></div>
+
+  <div id="ap6" class="tab-pane"><pre><span class="cm"># NETWORKPOLICIES — default deny + explicit allow</span>
+
+<span class="cm"># ① deny all ingress — production</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">default-deny-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>]
+---
+<span class="cm"># ② deny all egress — production</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">default-deny-egress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>: {}
+  <span class="kw">policyTypes</span>: [<span class="val">Egress</span>]
+---
+<span class="cm"># ③ allow nginx-controller → wear pods</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">allow-ingress-to-wear</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>]
+  <span class="kw">ingress</span>:
+  - <span class="kw">from</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">ingress-nginx</span> }
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">ingress-nginx</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+---
+<span class="cm"># ④ allow nginx-controller → video pods</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">allow-ingress-to-video</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">video</span> }
+  <span class="kw">policyTypes</span>: [<span class="val">Ingress</span>]
+  <span class="kw">ingress</span>:
+  - <span class="kw">from</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">ingress-nginx</span> }
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">ingress-nginx</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">8080</span> }
+---
+<span class="cm"># ⑤ wear egress: DNS + wear-mysql ONLY</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">NetworkPolicy</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-egress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">podSelector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+  <span class="kw">policyTypes</span>: [<span class="val">Egress</span>]
+  <span class="kw">egress</span>:
+  - <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">UDP</span>, <span class="kw">port</span>: <span class="val">53</span> }
+  - <span class="kw">to</span>:
+    - <span class="kw">namespaceSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">name</span>: <span class="str">database</span> }
+      <span class="kw">podSelector</span>:
+        <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">wear-mysql</span> }
+    <span class="kw">ports</span>:
+    - { <span class="kw">protocol</span>: <span class="val">TCP</span>, <span class="kw">port</span>: <span class="val">3306</span> }
+<span class="cm">  # video-db NOT listed = kernel-level block</span></pre></div>
+
+  <div id="ap7" class="tab-pane"><pre><span class="cm"># HPA + PDB — auto-scale + safe draining</span>
+<span class="kw">apiVersion</span>: <span class="val">autoscaling/v2</span>
+<span class="kw">kind</span>: <span class="val">HorizontalPodAutoscaler</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-hpa</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">scaleTargetRef</span>:
+    <span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+    <span class="kw">kind</span>: <span class="val">Deployment</span>
+    <span class="kw">name</span>: <span class="str">wear-deployment</span>
+  <span class="kw">minReplicas</span>: <span class="val">3</span>
+  <span class="kw">maxReplicas</span>: <span class="val">12</span>
+  <span class="kw">metrics</span>:
+  - <span class="kw">type</span>: <span class="val">Resource</span>
+    <span class="kw">resource</span>:
+      <span class="kw">name</span>: <span class="val">cpu</span>
+      <span class="kw">target</span>: { <span class="kw">type</span>: <span class="val">Utilization</span>, <span class="kw">averageUtilization</span>: <span class="val">70</span> }
+  <span class="kw">behavior</span>:
+    <span class="kw">scaleDown</span>: { <span class="kw">stabilizationWindowSeconds</span>: <span class="val">300</span> }
+    <span class="kw">scaleUp</span>:   { <span class="kw">stabilizationWindowSeconds</span>: <span class="val">30</span>  }
+---
+<span class="kw">apiVersion</span>: <span class="val">autoscaling/v2</span>
+<span class="kw">kind</span>: <span class="val">HorizontalPodAutoscaler</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-hpa</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">scaleTargetRef</span>:
+    <span class="kw">apiVersion</span>: <span class="val">apps/v1</span>
+    <span class="kw">kind</span>: <span class="val">Deployment</span>
+    <span class="kw">name</span>: <span class="str">video-deployment</span>
+  <span class="kw">minReplicas</span>: <span class="val">3</span>
+  <span class="kw">maxReplicas</span>: <span class="val">20</span>
+  <span class="kw">metrics</span>:
+  - <span class="kw">type</span>: <span class="val">Resource</span>
+    <span class="kw">resource</span>:
+      <span class="kw">name</span>: <span class="val">cpu</span>
+      <span class="kw">target</span>: { <span class="kw">type</span>: <span class="val">Utilization</span>, <span class="kw">averageUtilization</span>: <span class="val">65</span> }
+---
+<span class="kw">apiVersion</span>: <span class="val">policy/v1</span>
+<span class="kw">kind</span>: <span class="val">PodDisruptionBudget</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-pdb</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">minAvailable</span>: <span class="val">2</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">wear</span> }
+---
+<span class="kw">apiVersion</span>: <span class="val">policy/v1</span>
+<span class="kw">kind</span>: <span class="val">PodDisruptionBudget</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-pdb</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">minAvailable</span>: <span class="val">2</span>
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: { <span class="kw">app</span>: <span class="str">video</span> }</pre></div>
+
+  <div id="ap8" class="tab-pane"><pre><span class="cm"># SECRETS — K8s Secrets (never hardcoded)</span>
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Secret</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-secrets</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">type</span>: <span class="val">Opaque</span>
+<span class="kw">data</span>:
+  <span class="kw">db-password</span>: <span class="str">d2Vhcl9wYXNzXzEyMw==</span>
+---
+<span class="kw">apiVersion</span>: <span class="val">v1</span>
+<span class="kw">kind</span>: <span class="val">Secret</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-secrets</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">type</span>: <span class="val">Opaque</span>
+<span class="kw">data</span>:
+  <span class="kw">db-password</span>: <span class="str">dmlkZW9fcGFzc180NTY=</span>
+  <span class="kw">storage-key</span>: <span class="str">czNfc2VjcmV0X2tleQ==</span>
+---
+<span class="cm"># Production: External Secrets Operator → Vault</span>
+<span class="kw">apiVersion</span>: <span class="val">external-secrets.io/v1beta1</span>
+<span class="kw">kind</span>: <span class="val">ExternalSecret</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">wear-vault-sync</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+<span class="kw">spec</span>:
+  <span class="kw">refreshInterval</span>: <span class="str">1h</span>
+  <span class="kw">secretStoreRef</span>:
+    <span class="kw">name</span>: <span class="str">vault-backend</span>
+    <span class="kw">kind</span>: <span class="val">ClusterSecretStore</span>
+  <span class="kw">target</span>:
+    <span class="kw">name</span>: <span class="str">wear-secrets</span>
+  <span class="kw">data</span>:
+  - <span class="kw">secretKey</span>: <span class="str">db-password</span>
+    <span class="kw">remoteRef</span>: { <span class="kw">key</span>: <span class="str">production/wear</span>, <span class="kw">property</span>: <span class="str">db-password</span> }</pre></div>
+
+  <div id="ap9" class="tab-pane"><pre><span class="cm"># DIFFERENT DOMAINS — each domain → service</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">multi-domain-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="kw">kubernetes.io/ingress.class</span>: <span class="str">"nginx"</span>
+    <span class="kw">cert-manager.io/cluster-issuer</span>: <span class="str">"letsencrypt-prod"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/ssl-redirect</span>: <span class="str">"true"</span>
+<span class="kw">spec</span>:
+  <span class="kw">tls</span>:
+  - { <span class="kw">hosts</span>: [<span class="str">shop.example.com</span>],   <span class="kw">secretName</span>: <span class="str">shop-tls</span>   }
+  - { <span class="kw">hosts</span>: [<span class="str">stream.example.com</span>], <span class="kw">secretName</span>: <span class="str">stream-tls</span> }
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">shop.example.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - { <span class="kw">path</span>: <span class="str">/</span>, <span class="kw">pathType</span>: <span class="val">Prefix</span>,
+          <span class="kw">backend</span>: { <span class="kw">service</span>: { <span class="kw">name</span>: <span class="str">wear-service</span>,  <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> } } } }
+  - <span class="kw">host</span>: <span class="str">stream.example.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - { <span class="kw">path</span>: <span class="str">/</span>, <span class="kw">pathType</span>: <span class="val">Prefix</span>,
+          <span class="kw">backend</span>: { <span class="kw">service</span>: { <span class="kw">name</span>: <span class="str">video-service</span>, <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> } } } }</pre></div>
+
+  <div id="ap10" class="tab-pane"><pre><span class="cm"># SUBDOMAINS — each subdomain → service</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">subdomain-ingress</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="kw">kubernetes.io/ingress.class</span>: <span class="str">"nginx"</span>
+    <span class="kw">cert-manager.io/cluster-issuer</span>: <span class="str">"letsencrypt-prod"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/limit-rps</span>: <span class="str">"200"</span>
+<span class="kw">spec</span>:
+  <span class="kw">tls</span>:
+  - <span class="kw">hosts</span>:
+    - <span class="str">wear.my-online-store.com</span>
+    - <span class="str">video.my-online-store.com</span>
+    - <span class="str">api.my-online-store.com</span>
+    <span class="kw">secretName</span>: <span class="str">wildcard-store-tls</span>  <span class="cm"># *.my-online-store.com</span>
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">wear.my-online-store.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - { <span class="kw">path</span>: <span class="str">/</span>, <span class="kw">pathType</span>: <span class="val">Prefix</span>,
+          <span class="kw">backend</span>: { <span class="kw">service</span>: { <span class="kw">name</span>: <span class="str">wear-service</span>,  <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> } } } }
+  - <span class="kw">host</span>: <span class="str">video.my-online-store.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - { <span class="kw">path</span>: <span class="str">/</span>, <span class="kw">pathType</span>: <span class="val">Prefix</span>,
+          <span class="kw">backend</span>: { <span class="kw">service</span>: { <span class="kw">name</span>: <span class="str">video-service</span>, <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> } } } }
+  - <span class="kw">host</span>: <span class="str">api.my-online-store.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - { <span class="kw">path</span>: <span class="str">/</span>, <span class="kw">pathType</span>: <span class="val">Prefix</span>,
+          <span class="kw">backend</span>: { <span class="kw">service</span>: { <span class="kw">name</span>: <span class="str">api-service</span>,   <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> } } } }</pre></div>
+
+  <div id="ap11" class="tab-pane"><pre><span class="cm"># CANARY — 5% to v2, 95% to v1</span>
+
+<span class="cm"># Stable (95%)</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-stable</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="kw">kubernetes.io/ingress.class</span>: <span class="str">"nginx"</span>
+<span class="kw">spec</span>:
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">video.my-online-store.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - { <span class="kw">path</span>: <span class="str">/</span>, <span class="kw">pathType</span>: <span class="val">Prefix</span>,
+          <span class="kw">backend</span>: { <span class="kw">service</span>: { <span class="kw">name</span>: <span class="str">video-service</span>,    <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> } } } }
+---
+<span class="cm"># Canary (5%)</span>
+<span class="kw">apiVersion</span>: <span class="val">networking.k8s.io/v1</span>
+<span class="kw">kind</span>: <span class="val">Ingress</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-canary</span>
+  <span class="kw">namespace</span>: <span class="str">production</span>
+  <span class="kw">annotations</span>:
+    <span class="kw">kubernetes.io/ingress.class</span>: <span class="str">"nginx"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/canary</span>: <span class="str">"true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/canary-weight</span>: <span class="str">"5"</span>
+    <span class="cm">    # Or route by header:</span>
+    <span class="cm">    # canary-by-header: "X-Version"</span>
+    <span class="cm">    # canary-by-header-value: "v2"</span>
+<span class="kw">spec</span>:
+  <span class="kw">rules</span>:
+  - <span class="kw">host</span>: <span class="str">video.my-online-store.com</span>
+    <span class="kw">http</span>:
+      <span class="kw">paths</span>:
+      - { <span class="kw">path</span>: <span class="str">/</span>, <span class="kw">pathType</span>: <span class="val">Prefix</span>,
+          <span class="kw">backend</span>: { <span class="kw">service</span>: { <span class="kw">name</span>: <span class="str">video-service-v2</span>, <span class="kw">port</span>: { <span class="kw">number</span>: <span class="val">80</span> } } } }
+<span class="cm"># Rollback: change weight to "0" or delete canary Ingress</span></pre></div>
+</div>
+
+</main>
+</div>
+<script>
+// ═══════════════════════════════════════════════════════
+//  CHAPTER NAVIGATION
+// ═══════════════════════════════════════════════════════
+function goCh(id, navEl) {
+  document.querySelectorAll('.chapter').forEach(c => c.classList.remove('active-chapter'));
+  document.getElementById(id).classList.add('active-chapter');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (navEl) navEl.classList.add('active');
+  else {
+    const el = document.querySelector(`[data-ch="${id}"]`);
+    if (el) el.classList.add('active');
+  }
+  document.querySelector('.main').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════
+function tab(barId, paneId) {
+  const bar = document.getElementById(barId);
+  const prefix = paneId.slice(0, 2); // "bp" or "ap"
+  bar.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', b.getAttribute('onclick').includes(`'${paneId}'`));
+  });
+  document.querySelectorAll(`[id^="${prefix}"]`).forEach(p => {
+    if (p.classList.contains('tab-pane')) p.classList.remove('active');
+  });
+  document.getElementById(paneId).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════
+//  JOURNEY ENGINE — Step-by-step with Back/Next
+// ═══════════════════════════════════════════════════════
+const JOURNEYS = {};
+
+/* ─── BEFORE WEAR ─── */
+JOURNEYS['before-wear'] = {
+  color: '#f43f5e',
+  colorDim: 'rgba(244,63,94,0.12)',
+  steps: [
+    {
+      title: 'DNS Lookup',
+      what: 'The browser performs a DNS query for "my-online-store.com". The DNS server returns the IP of GCP LoadBalancer #1 (34.120.1.10). The user must already know they need port :38080 for wear products.',
+      why: 'Without Ingress, each service needs its own external IP. Users must know the correct port number for each service — poor UX and a security liability.',
+      tags: ['DNS','Port :38080','No TLS'],
+      warn: 'User must bookmark http://my-online-store.com:38080 — non-standard port confuses users and tools.',
+      highlight: 'browser',
+    },
+    {
+      title: 'Plain HTTP to GCP LoadBalancer #1',
+      what: 'The browser sends a plain HTTP GET request to 34.120.1.10:38080. No TLS handshake occurs. The request body, headers, and any session cookies travel in cleartext across the network.',
+      why: 'Without Ingress there is no central place to terminate TLS. Each service would need its own certificate management. Most teams skip it — leaving sensitive data exposed.',
+      tags: ['HTTP not HTTPS','Cleartext','$75/month LB'],
+      warn: 'Passwords, tokens, and personal data transmitted without encryption. Any network observer can read them.',
+      highlight: 'lb1',
+    },
+    {
+      title: 'LoadBalancer → NodePort on Random Node',
+      what: 'GCP LoadBalancer picks a healthy backend. Each node has NodePort 38080 open on its public IP. The LB routes to worker-node-2 (10.0.1.11:38080) this time. NodePorts are open on ALL three node public IPs.',
+      why: 'NodePort exposes a port on the public IP of every node in the cluster — even nodes that don\'t currently run the wear pods. This enlarges the attack surface.',
+      tags: ['NodePort 38080','All 3 nodes exposed','No auth'],
+      warn: 'An attacker can bypass the LoadBalancer entirely by hitting any node IP on port 38080 directly.',
+      highlight: 'node2',
+    },
+    {
+      title: 'kube-proxy iptables Routes to Pod',
+      what: 'On worker-node-2, kube-proxy has iptables rules that match incoming traffic on port 38080 → ClusterIP of wear-service → selects wear-pod-2 (10.244.2.2) via round-robin. The pod receives the request on port 8080.',
+      why: 'kube-proxy iptables works fine but requires NodePort exposure. IPVS mode (used in the After state) is more efficient at scale.',
+      tags: ['iptables','ClusterIP routing','Round-robin'],
+      highlight: 'kube-proxy',
+    },
+    {
+      title: 'wear-pod-2 Handles Request',
+      what: 'wear-pod-2 (10.244.2.2) processes the GET /products request. It connects to MySQL on mysql.production.svc.cluster.local. The DB password is read from the DB_PASSWORD env var — which was hardcoded in the Deployment YAML.',
+      why: 'No NetworkPolicy means any other pod (including video pods) can also connect to the wear MySQL database. A compromise of any pod = access to all databases.',
+      tags: ['Running as root','Hardcoded secret','No resource limits','No probes'],
+      warn: 'video-pod can directly call wear MySQL. If video pod is compromised, all wear customer data is at risk.',
+      highlight: 'wear-pod2',
+    },
+    {
+      title: 'Response Returns',
+      what: 'The response flows back: wear-pod-2 → kube-proxy → node-2 public IP → GCP LB → browser. The response has no security headers (no X-Frame-Options, no HSTS). No metrics were recorded for this request.',
+      why: 'Without Ingress there is no central place to add security headers, observe request rates, or enforce rate limits. Each pod would need to implement these individually.',
+      tags: ['No security headers','No Prometheus metrics','No rate limiting'],
+      highlight: 'response',
+    },
+    {
+      title: 'Summary of Problems',
+      what: 'This request exposed 7 critical issues: (1) $150/mo for 2 LBs, (2) cleartext HTTP, (3) port numbers in URLs, (4) NodePort on all nodes, (5) no NetworkPolicy isolation, (6) hardcoded secrets, (7) no observability.',
+      why: 'All of these are solved by adding a single Ingress Controller. The cost drops to $75/mo, TLS is automatic, URLs become clean, and isolation is enforced.',
+      tags: ['$150/month','No TLS','NodePort exposed','No NetworkPolicy','Hardcoded secrets'],
+      warn: 'All seven problems are fixed by deploying one nginx Ingress Controller. See the "After" sections.',
+      highlight: 'summary',
+    },
+  ]
+};
+
+/* ─── BEFORE VIDEO ─── */
+JOURNEYS['before-video'] = {
+  color: '#8b5cf6',
+  colorDim: 'rgba(139,92,246,0.12)',
+  steps: [
+    {
+      title: 'DNS Lookup — Different IP!',
+      what: 'Browser queries DNS for my-online-store.com. But this time the user is going to :38282 for video. DNS returns 34.120.1.11 — the IP of GCP LoadBalancer #2. A completely separate IP from the wear service.',
+      why: 'Two services = two LBs = two public IPs. Users and clients must manage two different base URLs. There is no unified entry point.',
+      tags: ['Port :38282','Second IP','No TLS'],
+      warn: 'Users must know :38282 = video and :38080 = wear. Non-standard ports are often blocked by corporate firewalls.',
+      highlight: 'browser',
+    },
+    {
+      title: 'Plain HTTP to GCP LoadBalancer #2',
+      what: 'HTTP GET to 34.120.1.11:38282/watch/123. This is a second dedicated cloud LoadBalancer — second $75/month charge. Video streams travel unencrypted. S3 storage keys in environment variables are visible in logs.',
+      why: 'A dedicated LB per service is the K8s anti-pattern Ingress was designed to replace. 10 microservices = $750/month just for load balancers.',
+      tags: ['HTTP','$75/month 2nd LB','Unencrypted video','S3 key exposed'],
+      warn: '4K video stream content travels unencrypted. Anyone on the same network segment can capture the video stream.',
+      highlight: 'lb2',
+    },
+    {
+      title: 'LB #2 → NodePort 38282 on Node',
+      what: 'LB routes to NodePort 38282. This port is open on ALL three node public IPs — the same as NodePort 38080. Now we have 6 open ports across 3 nodes (38080×3 + 38282×3).',
+      why: 'Every additional LoadBalancer service adds N more open NodePorts across all N nodes. The attack surface grows multiplicatively.',
+      tags: ['NodePort 38282','6 total open ports','All 3 nodes'],
+      warn: 'An attacker can scan any node IP on port 38282 to access video content directly without authentication.',
+      highlight: 'node3',
+    },
+    {
+      title: 'kube-proxy Routes to video-pod',
+      what: 'iptables rules route NodePort 38282 → video-service ClusterIP → video-pod-3 (10.244.3.3). No request body size limit — a client could upload a 10GB file causing the pod to OOM.',
+      why: 'No proxy-body-size annotation (requires Ingress). No rate limiting at the network layer. One malicious client can exhaust all three video pods.',
+      tags: ['iptables','No body limit','No rate limit'],
+      highlight: 'kube-proxy',
+    },
+    {
+      title: 'video-pod-3 Streams Content',
+      what: 'video-pod-3 handles the request. The S3_KEY (AWS credentials) is stored in the Deployment env var — visible via `kubectl describe pod`. Wear pods can also directly call the video MySQL database. No resource limit means OOM crashes the entire node.',
+      why: 'Zero lateral movement protection. If someone exploits a vulnerability in the video service, they can reach the wear database, the video database, the cache — everything.',
+      tags: ['S3 key in env','No resource limits','Lateral movement possible','Runs as root'],
+      warn: 'kubectl describe pod → env vars → AWS credentials leaked to anyone with kubectl access.',
+      highlight: 'video-pod3',
+    },
+    {
+      title: 'Response + No Observability',
+      what: 'Video stream returns via LB #2. There is no per-service metrics collection. If video starts returning 503s, you find out when users complain — not from a Grafana alert. Average MTTR measured in hours.',
+      why: 'Ingress Controller automatically exports Prometheus metrics per route: request rate, P99 latency, error rate. This enables SLO dashboards and automatic alerting.',
+      tags: ['No metrics','Manual monitoring','High MTTR'],
+      highlight: 'response',
+    },
+    {
+      title: 'The Cost Summary',
+      what: 'Two GCP LoadBalancers = $150/month. Scale to 10 microservices = $750/month just for load balancers. With one nginx Ingress Controller replacing both LBs = $75/month for all services, forever.',
+      why: 'This cost saving alone justifies Ingress. Plus: TLS automation, path routing, rate limiting, security headers, Prometheus metrics — all for the same single LB cost.',
+      tags: ['$150/month waste','10 services = $750/mo','Solution: 1 Ingress = $75/mo'],
+      highlight: 'summary',
+    },
+  ]
+};
+
+/* ─── AFTER WEAR ─── */
+JOURNEYS['after-wear'] = {
+  color: '#00f0ff',
+  colorDim: 'rgba(0,240,255,0.12)',
+  steps: [
+    {
+      title: 'DNS Lookup — Same IP as Video!',
+      what: 'Browser queries DNS for www.my-online-store.com. DNS returns 34.120.1.10 — the single shared GCP LoadBalancer. This same IP also handles all /video requests. One IP, one LB, all services.',
+      why: 'Ingress Controller acts as a single entry point. DNS returns one IP for the entire cluster. Users never need to know port numbers or different hostnames for different services.',
+      tags: ['Single shared IP','Clean URL','No port needed'],
+      tip: 'www.my-online-store.com/wear and .../video both resolve to the SAME IP 34.120.1.10.',
+      highlight: 'browser',
+    },
+    {
+      title: 'HTTPS — TLS Handshake at LB',
+      what: 'Browser sends HTTPS request. TLS handshake occurs at the GCP LoadBalancer (passthrough) → nginx controller terminates TLS using the cert in Secret "store-tls-secret". cert-manager auto-provisioned this cert from Let\'s Encrypt. Backend pods receive plain HTTP internally.',
+      why: 'TLS termination at the Ingress edge means backend pods don\'t need to handle TLS. Simpler code, faster pods. cert-manager auto-renews certs 15 days before expiry — zero manual work.',
+      tags: ['HTTPS :443','cert-manager','Auto-renew 90d cert','TLS 1.2/1.3 only'],
+      tip: 'TLS terminates at nginx-controller. Backends get plain HTTP. cert-manager handles renewal automatically.',
+      highlight: 'lb',
+    },
+    {
+      title: 'GCP LB → nginx-controller-1 (Leader)',
+      what: 'The single GCP LB health-checks both nginx-controller pods (HA). Routes to nginx-controller-1 on Node 1. If Node 1 fails, nginx-controller-2 on Node 2 takes over automatically via podAntiAffinity — zero downtime, zero intervention needed.',
+      why: 'Two controller replicas via podAntiAffinity ensures no single node failure takes down ingress. Leader election coordinates which controller actively processes events.',
+      tags: ['HA — 2 replicas','podAntiAffinity','Auto-failover','Leader election'],
+      tip: 'Controller-2 is always running and ready. Failover time < 5 seconds.',
+      highlight: 'nginx-ctrl',
+    },
+    {
+      title: 'Rate Limit + Security Middleware',
+      what: 'Nginx checks: (1) Rate limit: 100 rps per IP — returns 429 if exceeded. (2) Connection limit: 20 concurrent per IP. (3) Validates request body ≤ 50MB. (4) Injects security headers: X-Frame-Options, HSTS, X-Content-Type-Options.',
+      why: 'All these protections would require code in every backend service without Ingress. The annotation approach lets you add them cluster-wide with a single YAML annotation — no redeploys.',
+      tags: ['100 rps limit','20 conn limit','HSTS header','X-Frame: DENY'],
+      tip: 'A single DDoS source gets 429 responses. Wear and video pods never even see the abusive traffic.',
+      highlight: 'middleware',
+    },
+    {
+      title: 'Path Rule Match: /wear → wear-service',
+      what: 'Nginx matches the request path against the Ingress rules. Path /wear/* matches rule 1: forward to wear-service ClusterIP (10.96.0.10:80). The rewrite-target annotation strips /wear from the upstream URL so wear-pod receives GET /products not GET /wear/products.',
+      why: 'Path routing is the core Ingress feature. One controller handles all services. Adding a new microservice = adding one Ingress rule, no new LoadBalancer needed.',
+      tags: ['/wear → wear-service','Path rewrite','No new LB needed'],
+      tip: 'nginx.ingress.kubernetes.io/rewrite-target: /$2 strips the /wear prefix before forwarding.',
+      highlight: 'path-rule',
+    },
+    {
+      title: 'kube-proxy IPVS → wear-pod-2',
+      what: 'IPVS rules on the node select wear-pod-2 (10.244.2.2) from the 3 healthy endpoints. Calico checks the NetworkPolicy: allowed — ingress-nginx namespace pod → production/wear pod on port 8080. Packet delivered to pod.',
+      why: 'IPVS is faster than iptables at scale (O(1) vs O(n) lookup). Calico enforces NetworkPolicy at kernel level — the check happens before the packet reaches the pod.',
+      tags: ['IPVS O(1)','Calico NetworkPolicy','Kernel-level enforcement'],
+      tip: 'Only nginx-controller pods are allowed to reach wear pods on :8080. All other sources are dropped silently.',
+      highlight: 'ipvs',
+    },
+    {
+      title: 'wear-pod-2 Processes Request',
+      what: 'wear-pod-2 handles the request. DB_PASSWORD comes from a K8s Secret ref (not hardcoded). The pod runs as UID 1000 with readOnlyRootFilesystem. Resource limits (1 CPU / 512Mi) prevent OOM cascades. Readiness probe ensures only healthy pods receive traffic.',
+      why: 'Egress NetworkPolicy allows wear-pod → wear-mysql:3306 only. wear-pod CANNOT call video-mysql or any other unauthorized destination. Compromise of wear pod is contained.',
+      tags: ['Secret ref','runAsUser:1000','readOnlyRootFS','Resources: 1CPU/512Mi','PDB: min 2 up'],
+      tip: 'Egress policy allows ONLY: DNS:53 and wear-mysql:3306. video-db is unreachable even if wear is compromised.',
+      highlight: 'wear-pod',
+    },
+    {
+      title: 'Response + Prometheus Metrics',
+      what: 'Response: wear-pod-2 → IPVS → nginx-controller (adds X-Frame-Options, HSTS, Referrer-Policy) → GCP LB → browser. nginx simultaneously increments Prometheus counter: nginx_ingress_requests_total{service="wear-service", status="200"}. P99 histogram updated.',
+      why: 'Prometheus metrics per route power Grafana SLO dashboards. Alerts fire automatically when error rate > 1% or P99 > 200ms. MTTR drops from hours to minutes.',
+      tags: ['Security headers added','Prometheus metrics','SLO tracking','MTTR ↓ 90%'],
+      tip: 'Every request auto-updates Prometheus. No code change needed in wear or video services to get full observability.',
+      highlight: 'response',
+    },
+    {
+      title: 'Complete — All Problems Solved',
+      what: 'Single LB ($75/mo). HTTPS everywhere (auto cert). Clean URLs — no ports. ClusterIP services only. NetworkPolicy: wear ↔ video isolated at kernel. Secrets from K8s refs. Resource limits. HA controller. Prometheus metrics. Rate limiting.',
+      why: 'One nginx Ingress Controller deployment solved every problem from the "Before" state. The wear-service and video-service YAML needed only one change: type: LoadBalancer → type: ClusterIP.',
+      tags: ['$75/month (was $150)','HTTPS auto-TLS','NetworkPolicy isolated','Prometheus metrics','HA controller'],
+      tip: 'The only YAML change to the services: remove `type: LoadBalancer` and `nodePort:` lines. Add the Ingress resource. Done.',
+      highlight: 'complete',
+    },
+  ]
+};
+
+/* ─── AFTER VIDEO ─── */
+JOURNEYS['after-video'] = {
+  color: '#8b5cf6',
+  colorDim: 'rgba(139,92,246,0.12)',
+  steps: [
+    {
+      title: 'DNS — Same IP as Wear!',
+      what: 'Browser resolves www.my-online-store.com → 34.120.1.10. This is the EXACT same IP that handles /wear requests. One LoadBalancer. One IP. The Ingress Controller decides which backend to use based on the URL path.',
+      why: 'This is the key benefit of Ingress: every service shares one entry point. DNS admins manage one record. Security teams audit one IP. Billing: one LB.',
+      tags: ['Same IP as /wear','One LB shared','34.120.1.10'],
+      tip: 'From outside the cluster: /wear and /video are indistinguishable. Same host, same IP — only path differs.',
+      highlight: 'browser',
+    },
+    {
+      title: 'HTTPS — Same Cert Covers Both',
+      what: 'The TLS certificate covers www.my-online-store.com — same cert that protects /wear requests. cert-manager issued a single cert. Both paths are protected by the same 90-day auto-renewable TLS cert from Let\'s Encrypt.',
+      why: 'One cert for all paths on the same domain. No per-service cert management. cert-manager sends alerts if renewal fails, preventing the "expired cert = 100% outage" incident.',
+      tags: ['Same cert','Let\'s Encrypt','90d auto-renew','Alert at 14d expiry'],
+      tip: 'For subdomains (video.store.com), a wildcard cert *.my-online-store.com covers all of them.',
+      highlight: 'lb',
+    },
+    {
+      title: 'nginx-controller Receives /video Request',
+      what: 'The nginx controller receives the HTTPS request for /video/watch/123. This is the SAME controller process that handled /wear requests — it holds all Ingress rules in memory and processes them in microseconds.',
+      why: 'A single nginx process can handle tens of thousands of requests per second. Both wear and video traffic flows through it without interference. podAntiAffinity puts replicas on different nodes for HA.',
+      tags: ['Shared nginx instance','Microsecond routing','HA on 2 nodes'],
+      tip: 'The nginx_ingress_controller_requests metric shows ALL services. You can filter by ingress name or service.',
+      highlight: 'nginx-ctrl',
+    },
+    {
+      title: 'Middleware: Rate Limit for Video',
+      what: 'Same rate limit middleware runs: 100 rps per IP, 20 concurrent connections. But video has a higher proxy-body-size: 500m (for video uploads) vs wear\'s 50m. These can be set per-Ingress rule.',
+      why: 'Different services have different requirements. Video uploads need larger body limits. Video CDN traffic may need higher rate limits. Ingress annotations let you configure this per-path.',
+      tags: ['100 rps limit','500MB body for video','Per-path config'],
+      tip: 'Per-Ingress annotations override global defaults. video can have different limits than wear.',
+      highlight: 'middleware',
+    },
+    {
+      title: 'Path Rule Match: /video → video-service',
+      what: 'Nginx evaluates rules in order. /video/* matches rule 2: forward to video-service ClusterIP (10.96.0.11:80). Rewrite strips /video prefix. video-service receives GET /watch/123 — not GET /video/watch/123.',
+      why: 'Rules are evaluated in order. More specific paths should come first. /video/premium could route to a different premium video service if needed — Ingress supports this natively.',
+      tags: ['/video → video-service','Path rewrite','Separate ClusterIP'],
+      tip: 'Ingress path matching: Exact > Prefix. Use ImplementationSpecific for regex. Test with kubectl explain ingress.',
+      highlight: 'path-rule',
+    },
+    {
+      title: 'IPVS + Calico → video-pod-1',
+      what: 'IPVS selects video-pod-1 (10.244.1.3). Calico NetworkPolicy check: allowed — nginx-controller → video pods on :8080. The policy that allows wear pods to reach wear-mysql DOES NOT allow video pods to reach wear-mysql. Kernel-level block.',
+      why: 'NetworkPolicy for video pods: egress allows DNS:53, video-postgres:5432, S3:443. Cannot reach wear-mysql. Cannot reach wear pods. A compromised video pod cannot exfiltrate wear customer data.',
+      tags: ['IPVS routing','Calico enforce','video ↔ wear isolated'],
+      tip: 'Run `kubectl exec -n production video-pod-1 -- nc -zv wear-mysql 3306` — it will timeout. Calico drops the packet.',
+      highlight: 'ipvs',
+    },
+    {
+      title: 'video-pod-1 Streams Content',
+      what: 'video-pod-1 fetches video from S3 (storage-key from K8s Secret). Streams response back. Resource limits: 2 CPU / 2Gi RAM — higher than wear because video encoding is CPU-intensive. HPA scales video pods 3→20 replicas during peak hours.',
+      why: 'Different resource limits per service. HPA watches CPU — when traffic spikes for a video event, more replicas spin up automatically. PDB ensures ≥2 pods stay up during node drains.',
+      tags: ['S3 Secret ref','2 CPU/2Gi limit','HPA 3→20','PDB min 2'],
+      tip: 'Video service gets more resources than wear because the workload profile is different. Resources per Deployment.',
+      highlight: 'video-pod',
+    },
+    {
+      title: 'Response — NetworkPolicy Blocked Cross-Call',
+      what: 'video-pod-1 could NOT call wear-mysql — Calico blocked it at the kernel. The response video stream returns via the same nginx-controller, which adds security headers. Prometheus records nginx_ingress_requests_total{service="video-service"}.',
+      why: 'Zero-trust egress is the key security win of the After state. Every service can only reach its own database. Compromise of video = video data at risk, NOT wear customer credit cards.',
+      tags: ['Cross-call blocked','Security headers','Per-service metrics'],
+      tip: 'Calico drops unauthorized packets silently — no error in video pod logs. Run network policy tests in CI.',
+      highlight: 'response',
+    },
+    {
+      title: 'Complete — Video via Ingress',
+      what: 'HTTPS. Path routing. Rate limiting. TLS auto-cert. NetworkPolicy isolation. Prometheus metrics. HPA auto-scaling. PDB protection. All from one nginx-controller and a few YAML files.',
+      why: 'The video-service YAML change to make this work: remove type: LoadBalancer, remove nodePort: 38282. Add the Ingress rule /video → video-service. Two lines removed, five lines added. Done.',
+      tags: ['Same LB as wear','video ↔ wear isolated','Full observability','Auto-scale'],
+      tip: 'Total YAML change for video service migration: -2 lines (type:LB, nodePort), +5 lines (Ingress path rule). 7 lines to save $75/month and add all security features.',
+      highlight: 'complete',
+    },
+  ]
+};
+
+// ─── Render Journey ───
+function renderJourney(containerId, journeyKey) {
+  const j = JOURNEYS[journeyKey];
+  let step = 0;
+  const total = j.steps.length;
+
+  function render(s) {
+    const st = j.steps[s];
+    const isWarn = !!st.warn;
+    const isTip = !!st.tip;
+    const isRose = j.color === '#f43f5e' || j.color === '#8b5cf6' && journeyKey.startsWith('before');
+
+    // progress dots
+    let dots = '';
+    for (let i = 0; i < total; i++) {
+      let cls = 'ps-dot';
+      if (i < s) cls += ' done';
+      else if (i === s) cls += isRose ? ' current rose' : ' current';
+      dots += `<div class="${cls}" onclick="jumpStep(${i},'${containerId}','${journeyKey}')">${i+1}</div>`;
+      if (i < total-1) dots += `<div class="ps-line${i < s ? ' done' : ''}"></div>`;
+    }
+
+    // tags
+    const tags = (st.tags||[]).map(t => `<span class="pill" style="background:${j.colorDim};border-color:${j.color}44;color:${j.color}">${t}</span>`).join('');
+
+    // diagram
+    const diag = buildStepDiagram(journeyKey, s, j.color);
+
+    // extra box
+    const extra = st.warn
+      ? `<div class="explain-warn"><span>⚠</span><span>${st.warn}</span></div>`
+      : st.tip
+      ? `<div class="explain-tip"><span>💡</span><span>${st.tip}</span></div>`
+      : '';
+
+    const nextLabel = s < total-1 ? `Step ${s+2}: ${j.steps[s+1].title} →` : 'Journey Complete ✓';
+
+    document.getElementById(containerId).innerHTML = `
+      <div class="journey-shell">
+        <div class="journey-topbar">
+          <div class="journey-title" style="color:${j.color}">${st.title}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3);margin-left:auto">STEP ${s+1} OF ${total}</div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-steps">${dots}</div>
+          <div class="progress-label">Step <span>${s+1}</span> of ${total} — ${st.title}</div>
+        </div>
+        <div class="journey-diagram">${diag}</div>
+        <div class="journey-explain">
+          <div class="explain-grid">
+            <div class="explain-what">
+              <div class="explain-label">What happens</div>
+              <div class="explain-title">${st.title}</div>
+              <div class="explain-body">${st.what}</div>
+              ${extra}
+            </div>
+            <div class="explain-why ${isRose && !st.tip ? 'rose-bg' : ''}">
+              <div class="explain-label">Why it matters</div>
+              <div class="explain-title" style="color:${j.color}">Technical context</div>
+              <div class="explain-body">${st.why}</div>
+              <div class="explain-tags">${tags}</div>
+            </div>
+          </div>
+        </div>
+        <div class="journey-controls">
+          <button class="ctrl-btn back" onclick="stepJourney(-1,'${containerId}','${journeyKey}',${s})" ${s===0?'disabled':''}>← Back</button>
+          <button class="ctrl-btn next ${isRose?'rose':''}" onclick="stepJourney(1,'${containerId}','${journeyKey}',${s})" ${s===total-1?'disabled':''}>${nextLabel}</button>
+          <button class="ctrl-btn reset-btn" onclick="renderJourney('${containerId}','${journeyKey}')">↺ Reset</button>
+          <span class="step-counter">${s+1} / ${total}</span>
+        </div>
+      </div>`;
+  }
+
+  render(step);
+}
+
+function stepJourney(delta, containerId, key, current) {
+  const j = JOURNEYS[key];
+  const next = Math.max(0, Math.min(j.steps.length-1, current + delta));
+  renderJourneyAt(containerId, key, next);
+}
+
+function jumpStep(idx, containerId, key) {
+  renderJourneyAt(containerId, key, idx);
+}
+
+function renderJourneyAt(containerId, key, step) {
+  const j = JOURNEYS[key];
+  const total = j.steps.length;
+  const st = j.steps[step];
+  const isRose = j.color === '#f43f5e' || (j.color === '#8b5cf6' && key.startsWith('before'));
+
+  let dots = '';
+  for (let i = 0; i < total; i++) {
+    let cls = 'ps-dot';
+    if (i < step) cls += ' done';
+    else if (i === step) cls += isRose ? ' current rose' : ' current';
+    dots += `<div class="${cls}" onclick="jumpStep(${i},'${containerId}','${key}')">${i+1}</div>`;
+    if (i < total-1) dots += `<div class="ps-line${i < step ? ' done' : ''}"></div>`;
+  }
+
+  const tags = (st.tags||[]).map(t => `<span class="pill" style="background:${j.colorDim};border-color:${j.color}44;color:${j.color}">${t}</span>`).join('');
+  const diag = buildStepDiagram(key, step, j.color);
+  const extra = st.warn
+    ? `<div class="explain-warn"><span>⚠</span><span>${st.warn}</span></div>`
+    : st.tip
+    ? `<div class="explain-tip"><span>💡</span><span>${st.tip}</span></div>`
+    : '';
+  const nextLabel = step < total-1 ? `Step ${step+2}: ${j.steps[step+1].title} →` : 'Journey Complete ✓';
+
+  document.getElementById(containerId).innerHTML = `
+    <div class="journey-shell">
+      <div class="journey-topbar">
+        <div class="journey-title" style="color:${j.color}">${st.title}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3);margin-left:auto">STEP ${step+1} OF ${total}</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-steps">${dots}</div>
+        <div class="progress-label">Step <span>${step+1}</span> of ${total} — ${st.title}</div>
+      </div>
+      <div class="journey-diagram">${diag}</div>
+      <div class="journey-explain">
+        <div class="explain-grid">
+          <div class="explain-what">
+            <div class="explain-label">What happens</div>
+            <div class="explain-title">${st.title}</div>
+            <div class="explain-body">${st.what}</div>
+            ${extra}
+          </div>
+          <div class="explain-why ${isRose && !st.tip ? 'rose-bg' : ''}">
+            <div class="explain-label">Why it matters</div>
+            <div class="explain-title" style="color:${j.color}">Technical context</div>
+            <div class="explain-body">${st.why}</div>
+            <div class="explain-tags">${tags}</div>
+          </div>
+        </div>
+      </div>
+      <div class="journey-controls">
+        <button class="ctrl-btn back" onclick="stepJourney(-1,'${containerId}','${key}',${step})" ${step===0?'disabled':''}>← Back</button>
+        <button class="ctrl-btn next ${isRose?'rose':''}" onclick="stepJourney(1,'${containerId}','${key}',${step})" ${step===total-1?'disabled':''}>${nextLabel}</button>
+        <button class="ctrl-btn reset-btn" onclick="renderJourney('${containerId}','${key}')">↺ Reset</button>
+        <span class="step-counter">${step+1} / ${total}</span>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  SVG DIAGRAM BUILDER — per step
+// ═══════════════════════════════════════════════════════
+function buildStepDiagram(key, step, color) {
+  const isBefore = key.startsWith('before');
+  const isWear = key.includes('wear');
+
+  const svcColor = isWear ? '#3b82f6' : '#8b5cf6';
+  const svcLabel = isWear ? '👕 wear' : '🎬 video';
+  const podPort = ':8080';
+  const podIPs = isWear
+    ? ['10.244.1.2','10.244.2.2','10.244.3.2']
+    : ['10.244.1.3','10.244.2.3','10.244.3.3'];
+
+  // Active highlights per step
+  const highlights = getHighlights(key, step);
+  const hl = (id) => highlights.includes(id);
+  const glow = (id) => hl(id) ? `filter:drop-shadow(0 0 6px ${color});` : '';
+  const bright = (id, base) => hl(id) ? color : base;
+
+  let svg = `<svg viewBox="0 0 980 360" width="100%" xmlns="http://www.w3.org/2000/svg" style="background:#080f1e;border-radius:8px">
+  <defs>
+    <marker id="ah" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="${color}"/></marker>
+    <marker id="as" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#10b981"/></marker>
+    <marker id="ad" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#3a4f6e"/></marker>
+  </defs>
+  <text x="490" y="14" fill="#1e2d48" text-anchor="middle" font-size="8" font-family="DM Mono, monospace" letter-spacing="2">${isBefore ? 'BEFORE — ' : 'AFTER — '}${key.includes('wear') ? 'WEAR SERVICE' : 'VIDEO SERVICE'}</text>`;
+
+  // ── BROWSER ──
+  const bGlow = hl('browser');
+  svg += rect(20, 22, 140, 50, bGlow ? color + '20' : '#0c1628', bGlow ? color : '#2a3a56', bGlow ? 2 : 1, 8);
+  svg += text2(90, 40, '🌐 Browser', bGlow ? color : '#7a9ac8', 9);
+  svg += text2(90, 55, isBefore ? `http://...:${isWear?'38080':'38282'}` : 'https://.../' + (isWear?'wear':'video'), bGlow ? color : '#3a4f6e', 7.5);
+
+  if (isBefore) {
+    // ── LB 1 or LB 2 ──
+    const lbHL = hl('lb1') || hl('lb2');
+    const lbLabel = isWear ? 'GCP LB #1 :38080' : 'GCP LB #2 :38282';
+    const lbSub = isWear ? '34.120.1.10  $75/mo' : '34.120.1.11  $75/mo';
+    svg += rect(200, 22, 150, 50, lbHL ? '#2a0818' : '#0c1628', lbHL ? color : '#2a3a56', lbHL ? 2 : 1, 8);
+    svg += text2(275, 40, lbLabel, lbHL ? color : '#f43f5e', 9);
+    svg += text2(275, 55, lbSub, lbHL ? color : '#3a1428', 7.5);
+
+    // arrow browser → lb
+    const arrowCol = (hl('browser') || lbHL) ? color : '#2a3a56';
+    svg += arrow(160, 47, 200, 47, arrowCol, hl('browser') || lbHL);
+
+    // ── NODES ──
+    const nodes = [
+      { x: 20,  y: 100, id: 1, ip: '10.0.1.10', podId: 'node1' },
+      { x: 340, y: 100, id: 2, ip: '10.0.1.11', podId: 'node2' },
+      { x: 660, y: 100, id: 3, ip: '10.0.1.12', podId: 'node3' },
+    ];
+    nodes.forEach(n => {
+      const nhigh = hl(n.podId) || hl('kube-proxy') || hl(isWear?'wear-pod2':'video-pod3');
+      const isActive = nhigh;
+      svg += rect(n.x, n.y, 300, 250, isActive ? color+'08' : 'rgba(0,0,0,0.2)', isActive ? color+'44' : '#1e2d48', isActive ? 1.5 : 1, 10);
+      svg += text2(n.x+150, n.y+16, `NODE ${n.id}  (${n.ip})`, isActive ? color : '#3a4f6e', 8.5);
+      svg += text2(n.x+150, n.y+28, `NodePort ${isWear?'38080':'38282'} OPEN`, isActive ? '#f43f5e' : '#2a3a56', 7.5);
+
+      // pod
+      const phl = hl(isWear?'wear-pod2':'video-pod3') && n.id === 2;
+      svg += rect(n.x+10, n.y+40, 130, 90, phl ? svcColor+'20' : '#0c1828', phl ? svcColor : '#1e2d48', phl ? 2 : 1, 8);
+      svg += text2(n.x+75, n.y+60, svcLabel+'-pod-'+n.id, phl ? svcColor : '#3a5070', 9);
+      svg += text2(n.x+75, n.y+75, `${isWear?'myapp/wear':'myapp/video'}:latest`, phl ? svcColor : '#1e2d48', 7.5);
+      svg += text2(n.x+75, n.y+89, podPort+' · '+podIPs[n.id-1], phl ? svcColor : '#1e2d48', 7.5);
+      svg += text2(n.x+75, n.y+103, '⚠ no TLS · runs as root', '#f43f5e', 7.5);
+      svg += text2(n.x+75, n.y+117, '⚠ no limits · no probes', '#f43f5e', 7.5);
+
+      // service
+      const shl = hl('kube-proxy') && n.id === 2;
+      svg += rect(n.x+155, n.y+40, 130, 60, shl ? svcColor+'15' : '#0c1628', shl ? svcColor : '#1e2d48', shl ? 1.5 : 1, 8);
+      svg += text2(n.x+220, n.y+60, (isWear?'wear':'video')+'-service', shl ? svcColor : '#3a5070', 9);
+      svg += text2(n.x+220, n.y+75, 'LoadBalancer', '#f43f5e', 8);
+      svg += text2(n.x+220, n.y+90, `:${isWear?'38080':'38282'}`, '#f43f5e', 8);
+
+      // kube-proxy
+      const khl = hl('kube-proxy') && n.id === 2;
+      svg += rect(n.x+10, n.y+148, 276, 26, khl ? color+'12' : '#0c1628', khl ? color : '#1a2840', khl ? 1.5 : 1, 6);
+      svg += text2(n.x+148, n.y+165, 'kube-proxy (iptables)', khl ? color : '#2a3a56', 8);
+
+      // CNI
+      svg += rect(n.x+10, n.y+184, 276, 22, '#1a0808', '#2a1020', 1, 6);
+      svg += text2(n.x+148, n.y+199, '⚠ flannel — NO NetworkPolicy', '#f43f5e', 7.5);
+
+      // zone label
+      svg += rect(n.x+10, n.y+218, 276, 18, '#080f1e', '#1e2d48', 1, 5);
+      svg += text2(n.x+148, n.y+231, `zone=${String.fromCharCode(96+n.id)}`, '#1e2d48', 7.5);
+    });
+
+    // LB → nodes arrows
+    if (hl('node2') || hl('kube-proxy') || hl(isWear?'wear-pod2':'video-pod3')) {
+      svg += arrowLine(275, 72, 190, 100, color, true);
+      svg += arrowLine(275, 72, 490, 100, color, false, 0.3);
+      svg += arrowLine(275, 72, 810, 100, color, false, 0.2);
+    } else {
+      svg += arrowLine(275, 72, 490, 100, '#1e2d48', false, 0.6);
+    }
+
+    // cross-call chaos arrow (only on step 4/5)
+    if (hl('wear-pod2') || hl('video-pod3')) {
+      svg += arrowLine(350, 175, 500, 155, '#f43f5e', false, 0.5);
+      svg += text2(425, 168, '⚠ unrestricted', '#f43f5e', 7.5);
+    }
+
+  } else {
+    // ══ AFTER DIAGRAM ══
+    // LB
+    const lbHL = hl('lb');
+    svg += rect(200, 22, 140, 50, lbHL ? '#071a12' : '#0c1628', lbHL ? '#10b981' : '#1e2d48', lbHL ? 2 : 1, 8);
+    svg += text2(270, 40, '☁ GCP LB (shared)', lbHL ? '#10b981' : '#2a5a40', 9);
+    svg += text2(270, 55, '34.120.1.10  :443', lbHL ? '#10b981' : '#1e2d48', 7.5);
+    svg += arrow(160, 47, 200, 47, (hl('browser')||lbHL) ? color : '#1e2d48', hl('browser')||lbHL);
+
+    // nginx ctrl
+    const ctrlHL = hl('nginx-ctrl');
+    svg += rect(380, 22, 200, 50, ctrlHL ? color+'15' : '#0c1628', ctrlHL ? color : '#1e2d48', ctrlHL ? 2 : 1, 8);
+    svg += text2(480, 38, 'nginx-ingress-ctrl', ctrlHL ? color : '#2a3a56', 9);
+    svg += text2(480, 52, '/wear→wear-svc  /video→video-svc', ctrlHL ? color : '#1e2d48', 7.5);
+    svg += arrow(340, 47, 380, 47, (lbHL||ctrlHL) ? color : '#1e2d48', lbHL||ctrlHL);
+
+    // middleware
+    const mHL = hl('middleware') || hl('path-rule');
+    svg += rect(618, 22, 170, 50, mHL ? color+'12' : '#0c1628', mHL ? color : '#1e2d48', mHL ? 1.5 : 1, 8);
+    svg += text2(703, 38, 'rate-limit · TLS · headers', mHL ? color : '#2a3a56', 8);
+    svg += text2(703, 52, `path: /${isWear?'wear':'video'} → service`, mHL ? color : '#1e2d48', 7.5);
+    svg += arrow(580, 47, 618, 47, mHL ? color : '#1e2d48', mHL);
+
+    // 3 nodes
+    const ndata = [
+      { x: 20,  id: 1, ip: '10.0.1.10', pi: podIPs[0], highlight: false },
+      { x: 340, id: 2, ip: '10.0.1.11', pi: podIPs[1], highlight: hl('ipvs') || hl('wear-pod') || hl('video-pod') },
+      { x: 660, id: 3, ip: '10.0.1.12', pi: podIPs[2], highlight: false },
+    ];
+    ndata.forEach((n, ni) => {
+      const nh = n.highlight;
+      svg += rect(n.x, 100, 300, 248, nh ? color+'08' : '#0a0f20', nh ? color+'44' : '#1e2d48', nh ? 1.5 : 1, 10);
+      svg += text2(n.x+150, 116, `NODE ${n.id}  (${n.ip})`, nh ? color : '#2a3a56', 8.5);
+
+      // pod
+      const ph = nh && (hl('wear-pod') || hl('video-pod'));
+      svg += rect(n.x+10, 130, 130, 100, ph ? svcColor+'20' : '#0c1828', ph ? svcColor : '#1e2d48', ph ? 2 : 1, 8);
+      svg += text2(n.x+75, 150, svcLabel+'-pod-'+n.id, ph ? svcColor : '#2a4060', 9);
+      svg += text2(n.x+75, 165, `:8080 · ${n.pi}`, ph ? svcColor : '#1e2d48', 7.5);
+      svg += text2(n.x+75, 179, '✓ probes ✓ limits', ph ? '#10b981' : '#1e2d48', 7.5);
+      svg += text2(n.x+75, 193, '✓ runAsUser:1000', ph ? '#10b981' : '#1e2d48', 7.5);
+      svg += text2(n.x+75, 207, '✓ cap:drop ALL', ph ? '#10b981' : '#1e2d48', 7.5);
+      svg += text2(n.x+75, 221, '✓ readOnlyRootFS', ph ? '#10b981' : '#1e2d48', 7.5);
+
+      // service
+      const sh = nh;
+      svg += rect(n.x+155, 130, 130, 60, sh ? svcColor+'15' : '#0c1628', sh ? svcColor : '#1e2d48', sh ? 1.5 : 1, 8);
+      svg += text2(n.x+220, 153, (isWear?'wear':'video')+'-service', sh ? svcColor : '#2a4060', 9);
+      svg += text2(n.x+220, 167, 'ClusterIP ✓', sh ? '#10b981' : '#1e2d48', 8);
+      svg += text2(n.x+220, 181, ':80→:8080', sh ? svcColor : '#1e2d48', 8);
+
+      // IPVS
+      const iph = hl('ipvs') && n.id===2;
+      svg += rect(n.x+10, 248, 276, 26, iph ? color+'12' : '#0c1628', iph ? color : '#1a2840', iph ? 1.5 : 1, 6);
+      svg += text2(n.x+148, 265, 'kube-proxy (IPVS)', iph ? color : '#1e2d48', 8);
+
+      // Calico
+      svg += rect(n.x+10, 282, 276, 22, '#071a12', '#0d2d1a', 1, 6);
+      svg += text2(n.x+148, 297, '✓ CNI: Calico NetworkPolicy', '#10b981', 7.5);
+
+      // NetworkPolicy block indicator
+      if (n.id === 2 && (hl('wear-pod') || hl('video-pod') || hl('ipvs'))) {
+        svg += `<line x1="${n.x+150}" y1="185" x2="${n.x+155}" y2="185" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>`;
+        svg += text2(n.x+152, 181, '✗', '#f43f5e', 10);
+      }
+
+      // ctrl → node arrows
+      if (nh) {
+        svg += arrowLine(480, 72, n.x+150, 100, color, true);
+      }
+    });
+
+    // response arrow
+    if (hl('response') || hl('complete')) {
+      svg += `<line x1="480" y1="230" x2="480" y2="72" stroke="${color}" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ah)" opacity="0.7"/>`;
+      svg += text2(500, 155, '↑ response', color, 8);
+    }
+  }
+
+  svg += '</svg>';
+  return svg;
+}
+
+function getHighlights(key, step) {
+  const maps = {
+    'before-wear': [
+      ['browser'],
+      ['browser','lb1'],
+      ['lb1','node2'],
+      ['node2','kube-proxy'],
+      ['kube-proxy','wear-pod2'],
+      ['wear-pod2','response'],
+      ['summary'],
+    ],
+    'before-video': [
+      ['browser'],
+      ['browser','lb2'],
+      ['lb2','node3'],
+      ['node3','kube-proxy'],
+      ['kube-proxy','video-pod3'],
+      ['video-pod3','response'],
+      ['summary'],
+    ],
+    'after-wear': [
+      ['browser'],
+      ['browser','lb'],
+      ['lb','nginx-ctrl'],
+      ['nginx-ctrl','middleware'],
+      ['middleware','path-rule'],
+      ['path-rule','ipvs'],
+      ['ipvs','wear-pod'],
+      ['wear-pod','response'],
+      ['complete'],
+    ],
+    'after-video': [
+      ['browser'],
+      ['browser','lb'],
+      ['lb','nginx-ctrl'],
+      ['nginx-ctrl','middleware'],
+      ['middleware','path-rule'],
+      ['path-rule','ipvs'],
+      ['ipvs','video-pod'],
+      ['video-pod','response'],
+      ['complete'],
+    ],
+  };
+  return maps[key]?.[step] || [];
+}
+
+// SVG helpers
+function rect(x,y,w,h,fill,stroke,sw=1,r=8) {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+}
+function text2(x,y,t,color,size=9) {
+  return `<text x="${x}" y="${y}" fill="${color}" text-anchor="middle" font-size="${size}" font-family="DM Mono, monospace">${t}</text>`;
+}
+function arrow(x1,y1,x2,y2,col,bright=false) {
+  const w = bright ? 2 : 1.2;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}" marker-end="url(#ah)"/>`;
+}
+function arrowLine(x1,y1,x2,y2,col,bright=false,opacity=1) {
+  const w = bright ? 2 : 1.2;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}" marker-end="url(#ah)" opacity="${opacity}"/>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ARCHITECTURE SVGs (static)
+// ═══════════════════════════════════════════════════════
+function buildBeforeArch() {
+  const el = document.getElementById('arch-before-svg');
+  if (!el) return;
+  el.innerHTML = `
+  <defs>
+    <marker id="bah" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f43f5e"/></marker>
+  </defs>
+  <!-- Browser -->
+  ${rect(20,10,280,55,'#0c1628','#2a3a56',1.5,8)}
+  ${text2(160,30,'🌐 Browser — User',  '#7a9ac8',10)}
+  ${text2(160,46,'http://my-online-store.com:38080  or  :38282','#f43f5e',8)}
+  <!-- LB1 -->
+  ${rect(30,82,200,65,'#1a0818','#f43f5e',2,10)}
+  ${text2(130,99,'GCP LB #1','#f43f5e',11)}
+  ${text2(130,113,'34.120.1.10','#f43f5e',8.5)}
+  ${text2(130,126,':38080  →  wear','#f43f5e',8.5)}
+  ${text2(130,138,'$75/month',  '#5a2030',8)}
+  <!-- LB2 -->
+  ${rect(280,82,200,65,'#1a0818','#f43f5e',2,10)}
+  ${text2(380,99,'GCP LB #2','#f43f5e',11)}
+  ${text2(380,113,'34.120.1.11','#f43f5e',8.5)}
+  ${text2(380,126,':38282  →  video','#f43f5e',8.5)}
+  ${text2(380,138,'$75/month',  '#5a2030',8)}
+  <!-- cost box -->
+  ${rect(545,82,200,65,'#1a1000','#f59e0b',1.5,10)}
+  ${text2(645,99,'💸 Total Cost','#f59e0b',10)}
+  ${text2(645,113,'$150/month (2 LBs)','#f59e0b',8.5)}
+  ${text2(645,126,'10 services = $750/mo','#f59e0b',8.5)}
+  ${text2(645,138,'1 Ingress = $75/mo','#4a3000',8)}
+  <!-- browser arrows -->
+  <line x1="160" y1="65" x2="130" y2="82" stroke="#f43f5e" stroke-width="1.5" marker-end="url(#bah)"/>
+  <line x1="230" y1="65" x2="380" y2="82" stroke="#f43f5e" stroke-width="1.5" marker-end="url(#bah)"/>
+  <!-- cluster -->
+  <rect x="10" y="164" width="1040" height="545" rx="12" fill="none" stroke="#2a1820" stroke-width="1.5" stroke-dasharray="8,4"/>
+  ${text2(530,178,'KUBERNETES CLUSTER — flannel CNI — NO NetworkPolicy — NodePort on all nodes','#2a1820',8)}
+  <!-- Nodes -->
+  ${buildBeforeNode(18,185,1,'10.0.1.10','10.244.1.2','10.244.1.3')}
+  ${buildBeforeNode(370,185,2,'10.0.1.11','10.244.2.2','10.244.2.3')}
+  ${buildBeforeNode(722,185,3,'10.0.1.12','10.244.3.2','10.244.3.3')}
+  <!-- LB arrows to nodes -->
+  <line x1="130" y1="147" x2="168" y2="185" stroke="#f43f5e" stroke-width="1.5" marker-end="url(#bah)"/>
+  <line x1="130" y1="147" x2="520" y2="185" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,2" opacity="0.5" marker-end="url(#bah)"/>
+  <line x1="380" y1="147" x2="872" y2="185" stroke="#f43f5e" stroke-width="1.5" marker-end="url(#bah)"/>
+  `;
+}
+
+function buildBeforeNode(x,y,n,ip,wip,vip) {
+  const w = 332, h = 516;
+  return `
+  ${rect(x,y,w,h,'rgba(244,63,94,0.015)','#2a1828',1.5,12)}
+  ${text2(x+w/2,y+16,`NODE ${n} — worker-node-${n}  (${ip})`, '#4a2030',10)}
+  ${text2(x+w/2,y+28,'4 vCPU  8GB  |  NodePort 38080+38282 OPEN on public IP','#2a1020',8)}
+  <!-- wear pod -->
+  ${rect(x+10,y+38,148,105,'#0c1828','#3b82f6',1.5,8)}
+  ${text2(x+84,y+58,'👕 wear-pod-'+n,'#3b82f6',10)}
+  ${text2(x+84,y+73,'myapp/wear:latest','#3a5070',8)}
+  ${text2(x+84,y+87,':8080 · '+wip,'#3a5070',8)}
+  ${text2(x+84,y+101,'⚠ no TLS','#f43f5e',8)}
+  ${text2(x+84,y+115,'⚠ no limits · root','#f43f5e',8)}
+  <!-- video pod -->
+  ${rect(x+170,y+38,148,105,'#120818','#8b5cf6',1.5,8)}
+  ${text2(x+244,y+58,'🎬 video-pod-'+n,'#8b5cf6',10)}
+  ${text2(x+244,y+73,'myapp/video:latest','#3a5070',8)}
+  ${text2(x+244,y+87,':8080 · '+vip,'#3a5070',8)}
+  ${text2(x+244,y+101,'⚠ no TLS','#f43f5e',8)}
+  ${text2(x+244,y+115,'⚠ S3 key hardcoded','#f43f5e',8)}
+  <!-- wear svc -->
+  ${rect(x+10,y+156,148,50,'#0a0f20','#3b82f6',1.5,8)}
+  ${text2(x+84,y+174,'wear-service','#3b82f6',9)}
+  ${text2(x+84,y+188,'LoadBalancer :38080','#f43f5e',8)}
+  ${text2(x+84,y+200,'⚠ $75/mo own LB','#2a1020',7.5)}
+  <!-- video svc -->
+  ${rect(x+170,y+156,148,50,'#0a0f20','#8b5cf6',1.5,8)}
+  ${text2(x+244,y+174,'video-service','#8b5cf6',9)}
+  ${text2(x+244,y+188,'LoadBalancer :38282','#f43f5e',8)}
+  ${text2(x+244,y+200,'⚠ $75/mo own LB','#2a1020',7.5)}
+  <!-- kube-proxy -->
+  ${rect(x+10,y+218,310,28,'#0a0f20','#1e2d48',1,7)}
+  ${text2(x+165,y+236,'kube-proxy (iptables) — NodePort → pods','#2a3a56',8.5)}
+  <!-- CNI -->
+  ${rect(x+10,y+254,310,26,'#1a0810','#f43f5e',1,7)}
+  ${text2(x+165,y+271,'CNI: flannel — NO NetworkPolicy','#f43f5e',8.5)}
+  <!-- problems -->
+  ${rect(x+10,y+288,310,100,'#100808','#3a1020',1,7)}
+  ${text2(x+165,y+306,'⚠ PROBLEMS','#f43f5e',9)}
+  ${text2(x+24,y+322,'• Any pod → any DB (no restriction)','#4a2030',8)}
+  ${text2(x+24,y+336,'• Secrets hardcoded in Deployment YAML','#4a2030',8)}
+  ${text2(x+24,y+350,'• No resource limits → OOM crashes node','#4a2030',8)}
+  ${text2(x+24,y+364,'• No readinessProbe → dead pods get traffic','#4a2030',8)}
+  ${text2(x+24,y+378,'• Runs as root → full node access if exploited','#4a2030',8)}`;
+}
+
+function buildAfterArch() {
+  const el = document.getElementById('arch-after-svg');
+  if (!el) return;
+  el.innerHTML = `
+  <defs>
+    <marker id="aah" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#00f0ff"/></marker>
+    <marker id="aag" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#10b981"/></marker>
+  </defs>
+  <!-- Browser layer -->
+  ${rect(20,10,230,55,'#0c1628','#00f0ff',1.5,8)}
+  ${text2(135,30,'🌐 Browser','#00f0ff',10)}
+  ${text2(135,46,'https://.../ wear or /video','#10b981',8)}
+  ${rect(270,10,180,55,'#0a0f20','#4a5a70',1,8)}
+  ${text2(360,30,'DNS','#4a5a70',9)}
+  ${text2(360,46,'www.store.com → 34.120.1.10','#2a3a56',8)}
+  ${rect(468,10,200,55,'#071a12','#10b981',2,8)}
+  ${text2(568,30,'☁ GCP LB  SHARED ✓','#10b981',10)}
+  ${text2(568,46,'34.120.1.10  :443/:80','#10b981',8)}
+  ${rect(686,10,180,55,'#0a0820','#8b5cf6',1.5,8)}
+  ${text2(776,30,'cert-manager ✓','#8b5cf6',9)}
+  ${text2(776,46,'Auto TLS 90d · Let\'s Encrypt','#4a3a70',8)}
+  ${rect(880,10,155,55,'#0a0f1a','#f59e0b',1.5,8)}
+  ${text2(957,30,'Prometheus ✓','#f59e0b',9)}
+  ${text2(957,46,'scrape /metrics :9090','#4a3a00',8)}
+  <!-- arrows top -->
+  <line x1="250" y1="37" x2="270" y2="37" stroke="#2a3a56" stroke-width="1.2" marker-end="url(#aah)"/>
+  <line x1="450" y1="37" x2="468" y2="37" stroke="#00f0ff" stroke-width="1.5" marker-end="url(#aah)"/>
+  <line x1="668" y1="37" x2="686" y2="37" stroke="#8b5cf6" stroke-width="1.2" marker-end="url(#aah)"/>
+  <!-- ingress-nginx ns -->
+  <rect x="10" y="75" width="1040" height="100" rx="8" fill="rgba(0,240,255,0.02)" stroke="rgba(0,240,255,0.1)" stroke-width="1"/>
+  ${text2(30,88,'namespace: ingress-nginx','rgba(0,240,255,0.3)',8)}
+  <!-- ctrl 1 -->
+  ${rect(22,92,260,72,'#0d1f3c','#00f0ff',2,10)}
+  ${text2(152,112,'nginx-ctrl-1 (LEADER)','#00f0ff',10)}
+  ${text2(152,127,'Node 1  ·  :80 :443 :10254','#3a5a7a',8.5)}
+  ${text2(152,141,'/wear→wear-svc  /video→video-svc','#2a4a6a',8)}
+  ${text2(152,155,'TLS terminate · rate-limit · CORS ✓','#00f0ff',7.5)}
+  <!-- ctrl 2 -->
+  ${rect(298,92,260,72,'#0d1f3c','#00f0ff',2,10)}
+  ${text2(428,112,'nginx-ctrl-2 (STANDBY)','#00f0ff',10)}
+  ${text2(428,127,'Node 2  ·  podAntiAffinity','#3a5a7a',8.5)}
+  ${text2(428,141,'Prometheus metrics :10254 ✓','#3a5a7a',8)}
+  ${text2(428,155,'HA failover < 5s ✓','#3a5a7a',7.5)}
+  <!-- LB → ctrls -->
+  <line x1="568" y1="65" x2="152" y2="92" stroke="#00f0ff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#aah)"/>
+  <line x1="568" y1="65" x2="428" y2="92" stroke="#00f0ff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#aah)"/>
+  <!-- production ns -->
+  <rect x="10" y="184" width="1040" height="605" rx="12" fill="rgba(16,185,129,0.015)" stroke="rgba(16,185,129,0.1)" stroke-width="1"/>
+  ${text2(30,197,'namespace: production  +  database  +  monitoring','rgba(16,185,129,0.3)',8)}
+  ${buildAfterNode(18,202,1,'10.0.1.10','10.244.1.2','10.244.1.3')}
+  ${buildAfterNode(372,202,2,'10.0.1.11','10.244.2.2','10.244.2.3')}
+  ${buildAfterNode(726,202,3,'10.0.1.12','10.244.3.2','10.244.3.3')}
+  <!-- ctrl → node arrows -->
+  <line x1="152" y1="164" x2="168" y2="202" stroke="#00f0ff" stroke-width="1.5" marker-end="url(#aah)"/>
+  <line x1="428" y1="164" x2="548" y2="202" stroke="#00f0ff" stroke-width="1.5" marker-end="url(#aah)"/>
+  <line x1="428" y1="164" x2="902" y2="202" stroke="#00f0ff" stroke-width="1" stroke-dasharray="4,2" opacity="0.4" marker-end="url(#aah)"/>`;
+}
+
+function buildAfterNode(x,y,n,ip,wip,vip) {
+  const w=340, h=578;
+  return `
+  ${rect(x,y,w,h,'rgba(0,240,255,0.015)','#1e2d48',1.5,12)}
+  ${text2(x+w/2,y+16,`NODE ${n} — worker-node-${n}  (${ip})`, '#2a4a6a',10)}
+  ${text2(x+w/2,y+28,'4 vCPU 8GB · zone='+(String.fromCharCode(96+n)),'#1e2d48',8)}
+  <!-- wear pod -->
+  ${rect(x+10,y+38,152,120,'#071a12','#3b82f6',2,8)}
+  ${text2(x+86,y+58,'👕 wear-pod-'+n,'#3b82f6',10)}
+  ${text2(x+86,y+73,'v2.1.0  ·  :8080 :9090','#3a5070',8)}
+  ${text2(x+86,y+87,wip,'#3a5070',8)}
+  ${text2(x+86,y+101,'✓ probes ✓ limits','#10b981',8)}
+  ${text2(x+86,y+115,'✓ runAsUser:1000','#10b981',8)}
+  ${text2(x+86,y+129,'✓ cap:drop ALL','#10b981',8)}
+  ${text2(x+86,y+143,'✓ Secret ref','#10b981',8)}
+  <!-- video pod -->
+  ${rect(x+178,y+38,152,120,'#120818','#8b5cf6',2,8)}
+  ${text2(x+254,y+58,'🎬 video-pod-'+n,'#8b5cf6',10)}
+  ${text2(x+254,y+73,'v1.5.0  ·  :8080 :9090','#3a5070',8)}
+  ${text2(x+254,y+87,vip,'#3a5070',8)}
+  ${text2(x+254,y+101,'✓ probes ✓ limits','#10b981',8)}
+  ${text2(x+254,y+115,'✓ HPA 3→20','#10b981',8)}
+  ${text2(x+254,y+129,'✓ PDB min 2','#10b981',8)}
+  ${text2(x+254,y+143,'✓ Secret ref','#10b981',8)}
+  <!-- cross-block -->
+  <line x1="${x+165}" y1="${y+98}" x2="${x+178}" y2="${y+98}" stroke="#f43f5e" stroke-width="1" stroke-dasharray="2,2" opacity="0.5"/>
+  ${text2(x+171,y+93,'✗','#f43f5e',10)}
+  <!-- wear svc -->
+  ${rect(x+10,y+170,152,52,'#050a14','#3b82f6',1.5,8)}
+  ${text2(x+86,y+188,'wear-service','#3b82f6',9)}
+  ${text2(x+86,y+202,'ClusterIP ✓','#10b981',8)}
+  ${text2(x+86,y+215,':80→:8080','#3a5070',8)}
+  <!-- video svc -->
+  ${rect(x+178,y+170,152,52,'#050a14','#8b5cf6',1.5,8)}
+  ${text2(x+254,y+188,'video-service','#8b5cf6',9)}
+  ${text2(x+254,y+202,'ClusterIP ✓','#10b981',8)}
+  ${text2(x+254,y+215,':80→:8080','#3a5070',8)}
+  <!-- IPVS -->
+  ${rect(x+10,y+234,320,28,'#050a14','#1e2d48',1,7)}
+  ${text2(x+170,y+252,'kube-proxy  IPVS  ·  ClusterIP routing','#2a3a56',8.5)}
+  <!-- Calico -->
+  ${rect(x+10,y+270,320,26,'#071a12','#10b981',1.5,7)}
+  ${text2(x+170,y+287,'CNI: Calico (eBPF + NetworkPolicy) ✓','#10b981',8.5)}
+  <!-- gains -->
+  ${rect(x+10,y+304,320,120,'#050f14','#0d2d1a',1,7)}
+  ${text2(x+170,y+320,'✓ SECURITY GAINS','#10b981',9)}
+  ${text2(x+24,y+336,'• NetworkPolicy: each service isolated','#10b981',8)}
+  ${text2(x+24,y+350,'• wear ↔ video cross-call BLOCKED','#10b981',8)}
+  ${text2(x+24,y+364,'• topologySpread: 1 pod per node','#10b981',8)}
+  ${text2(x+24,y+378,'• PDB: minAvailable 2 during drain','#10b981',8)}
+  ${text2(x+24,y+392,'• Prometheus scrape :9090','#10b981',8)}
+  ${text2(x+24,y+406,'• No NodePort exposed externally','#10b981',8)}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ROUTING SCENARIOS
+// ═══════════════════════════════════════════════════════
+const SCENARIOS = [
+  {
+    title: 'Path Routing — One Domain',
+    desc: 'Same hostname, different URL paths route to different backend services. Most common pattern. Rewrite-target strips the path prefix.',
+    yaml: `<span class="kw">rules</span>:
+- <span class="kw">host</span>: <span class="str">www.my-online-store.com</span>
+  <span class="kw">http</span>:
+    <span class="kw">paths</span>:
+    - <span class="kw">path</span>: <span class="str">/wear(/|$)(.*)</span>   <span class="cm"># → wear-service</span>
+    - <span class="kw">path</span>: <span class="str">/video(/|$)(.*)</span>  <span class="cm"># → video-service</span>
+    - <span class="kw">path</span>: <span class="str">/api(/|$)(.*)</span>    <span class="cm"># → api-service</span>
+    - <span class="kw">path</span>: <span class="str">/</span>               <span class="cm"># → frontend-service</span>`,
+    routes: [
+      { url: 'https://www.my-online-store.com/wear', svc: 'wear-service', color: '#3b82f6' },
+      { url: 'https://www.my-online-store.com/video', svc: 'video-service', color: '#8b5cf6' },
+      { url: 'https://www.my-online-store.com/api', svc: 'api-service', color: '#10b981' },
+      { url: 'https://www.my-online-store.com/', svc: 'frontend-service', color: '#f59e0b' },
+    ],
+    tip: 'Use rewrite-target: /$2 to strip the path prefix. wear pods receive /products not /wear/products.',
+  },
+  {
+    title: 'Different Domains → Services',
+    desc: 'Different hostnames, each mapping to a different backend service. Each can have its own TLS cert.',
+    yaml: `<span class="kw">tls</span>:
+- { <span class="kw">hosts</span>: [<span class="str">shop.example.com</span>],   <span class="kw">secretName</span>: <span class="str">shop-tls</span>   }
+- { <span class="kw">hosts</span>: [<span class="str">stream.example.com</span>], <span class="kw">secretName</span>: <span class="str">stream-tls</span> }
+<span class="kw">rules</span>:
+- <span class="kw">host</span>: <span class="str">shop.example.com</span>     <span class="cm"># → wear-service</span>
+- <span class="kw">host</span>: <span class="str">stream.example.com</span>   <span class="cm"># → video-service</span>
+- <span class="kw">host</span>: <span class="str">api.example.com</span>      <span class="cm"># → api-service</span>`,
+    routes: [
+      { url: 'https://shop.example.com', svc: 'wear-service', color: '#3b82f6' },
+      { url: 'https://stream.example.com', svc: 'video-service', color: '#8b5cf6' },
+      { url: 'https://api.example.com', svc: 'api-service', color: '#10b981' },
+      { url: 'https://admin.example.com', svc: 'admin-service', color: '#f43f5e' },
+    ],
+    tip: 'Each domain gets its own TLS cert auto-managed by cert-manager. All still share ONE LoadBalancer.',
+  },
+  {
+    title: 'Subdomain Routing',
+    desc: 'Each subdomain routes to a different service. Use a wildcard TLS cert (*.my-online-store.com) to cover all.',
+    yaml: `<span class="kw">tls</span>:
+- <span class="kw">hosts</span>: [<span class="str">wear.my-online-store.com</span>,
+         <span class="str">video.my-online-store.com</span>,
+         <span class="str">api.my-online-store.com</span>]
+  <span class="kw">secretName</span>: <span class="str">wildcard-store-tls</span>
+<span class="kw">rules</span>:
+- <span class="kw">host</span>: <span class="str">wear.my-online-store.com</span>
+- <span class="kw">host</span>: <span class="str">video.my-online-store.com</span>
+- <span class="kw">host</span>: <span class="str">api.my-online-store.com</span>`,
+    routes: [
+      { url: 'https://wear.my-online-store.com', svc: 'wear-service', color: '#3b82f6' },
+      { url: 'https://video.my-online-store.com', svc: 'video-service', color: '#8b5cf6' },
+      { url: 'https://api.my-online-store.com', svc: 'api-service', color: '#10b981' },
+      { url: 'https://admin.my-online-store.com', svc: 'admin-service', color: '#ec4899' },
+    ],
+    tip: 'Wildcard cert *.my-online-store.com covers all subdomains. DNS wildcard A record *.my-online-store.com → LB IP.',
+  },
+  {
+    title: 'Canary Routing — Weighted Traffic Split',
+    desc: 'Route a percentage of traffic to a new version. Monitor error rates. Increase weight gradually. Roll back by setting weight to 0.',
+    yaml: `<span class="cm"># Stable Ingress (95% of traffic)</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-stable</span>
+<span class="cm"># Canary Ingress (5% of traffic)</span>
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: <span class="str">video-canary</span>
+  <span class="kw">annotations</span>:
+    <span class="kw">nginx.ingress.kubernetes.io/canary</span>: <span class="str">"true"</span>
+    <span class="kw">nginx.ingress.kubernetes.io/canary-weight</span>: <span class="str">"5"</span>`,
+    routes: [
+      { url: '95% → video-service v1.5.0', svc: 'video-service', color: '#8b5cf6', pct: 95 },
+      { url: '5% → video-service-v2 v2.0.0', svc: 'video-service-v2', color: '#10b981', pct: 5 },
+    ],
+    tip: 'Rollback = change canary-weight to "0". Full release = update stable to v2, delete canary Ingress. Zero redeploy.',
+  },
+];
+
+function showSc(idx) {
+  document.querySelectorAll('.sc-btn').forEach((c,i) => c.classList.toggle('on', i===idx));
+  const sc = SCENARIOS[idx];
+  const rows = sc.routes.map(r => `
+    <div class="route-row">
+      <span class="route-url">${r.url}</span>
+      <span class="route-arrow">→</span>
+      <span class="route-node" style="color:${r.color};background:${r.color}12;border-color:${r.color}44">${r.svc}${r.pct?' ('+r.pct+'%)':''}</span>
+    </div>`).join('');
+
+  document.getElementById('sc-display').innerHTML = `
+    <h3 style="color:var(--neon);margin-bottom:0.4rem">${sc.title}</h3>
+    <p style="color:var(--text2);font-size:0.84rem;margin-bottom:1rem">${sc.desc}</p>
+    ${rows}
+    <div style="margin-top:1rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3);letter-spacing:2px;margin-bottom:0.4rem">INGRESS YAML SNIPPET</div>
+        <div style="background:var(--ink);border:1px solid var(--glassBorder);border-radius:var(--r);padding:0.9rem;overflow-x:auto">
+          <pre style="font-size:0.7rem">${sc.yaml}</pre>
+        </div>
+      </div>
+      <div style="background:var(--neonDim);border:1px solid rgba(0,240,255,0.15);border-radius:var(--r);padding:1rem">
+        <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text3);letter-spacing:2px;margin-bottom:0.4rem">💡 KEY INSIGHT</div>
+        <div style="font-size:0.85rem;color:var(--text2);line-height:1.7">${sc.tip}</div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  buildBeforeArch();
+  buildAfterArch();
+  renderJourney('journey-before-wear', 'before-wear');
+  renderJourney('journey-before-video', 'before-video');
+  renderJourney('journey-after-wear', 'after-wear');
+  renderJourney('journey-after-video', 'after-video');
+  showSc(0);
+});
+</script>
+</body>
+</html>
