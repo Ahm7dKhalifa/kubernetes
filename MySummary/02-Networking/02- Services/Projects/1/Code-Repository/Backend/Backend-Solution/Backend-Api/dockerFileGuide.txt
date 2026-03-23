@@ -10,3 +10,7 @@ http://localhost:8080/WeatherForecast
 # Publish to a registry (requires login first)
 docker tag backend-api yourregistry/backend-api:latest
 docker push yourregistry/backend-api:latest
+
+# Example with version tag
+docker tag backend-api ahm7dkhalifa/backend-api:v1
+docker push ahm7dkhalifa/backend-api:v1
