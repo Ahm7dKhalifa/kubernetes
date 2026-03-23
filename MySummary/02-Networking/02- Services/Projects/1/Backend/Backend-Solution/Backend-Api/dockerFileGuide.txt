@@ -1,0 +1,9 @@
+# Build the image
+docker build -t backend-api .
+
+# Run the container
+docker run -d -p 8080:8080 --name backend-api backend-api
+
+# Publish to a registry (requires login first)
+docker tag backend-api yourregistry/backend-api:latest
+docker push yourregistry/backend-api:latest
