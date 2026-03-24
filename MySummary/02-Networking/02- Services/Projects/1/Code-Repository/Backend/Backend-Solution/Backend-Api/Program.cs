@@ -19,6 +19,7 @@ namespace Backend_Api
                           .AllowAnyHeader();
                 });
             });
+            builder.Services.AddHealthChecks();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -37,8 +38,9 @@ namespace Backend_Api
 
             app.UseAuthorization();
 
-
             app.MapControllers();
+            app.MapHealthChecks("/healthz");
+            app.MapHealthChecks("/ready");
 
             app.Run();
         }
