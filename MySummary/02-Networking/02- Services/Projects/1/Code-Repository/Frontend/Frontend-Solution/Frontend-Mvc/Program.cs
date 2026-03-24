@@ -18,6 +18,7 @@ namespace Frontend_Mvc
                           .AllowAnyHeader();
                 });
             });
+            builder.Services.AddHealthChecks();
 
             var app = builder.Build();
 
@@ -40,6 +41,9 @@ namespace Frontend_Mvc
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
+
+            app.MapHealthChecks("/healthz");
+            app.MapHealthChecks("/ready");
 
             app.Run();
         }

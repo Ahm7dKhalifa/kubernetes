@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-mvc
+  namespace: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend-mvc
+  template:
+    metadata:
+      labels:
+        app: frontend-mvc
+    spec:
+      containers:
+        - name: frontend-mvc
+          image: ahm7dkhalifa/frontend-mvc:v4
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BackendServiceUrl
+              value: http://backend-api-svc:80/WeatherForecast
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
