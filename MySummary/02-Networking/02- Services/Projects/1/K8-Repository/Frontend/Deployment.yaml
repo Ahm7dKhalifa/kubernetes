@@ -20,7 +20,7 @@ spec:
             - containerPort: 8080
           env:
             - name: BackendServiceUrl
-              value: http://backend-api-svc:80/WeatherForecast
+              value: http://backend-api-svc.production.svc.cluster.local:80/WeatherForecast
           resources:
             requests:
               cpu: 50m
