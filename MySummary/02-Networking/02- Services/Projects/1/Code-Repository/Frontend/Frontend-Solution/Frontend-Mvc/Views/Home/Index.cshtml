@@ -1,8 +1,77 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model Frontend_Mvc.Models.WeatherViewModel
+@{
+    ViewData["Title"] = "Weather Forecast";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<style>
+    .weather-list {
+        list-style: none;
+        padding: 0;
+        max-width: 600px;
+        margin: 20px auto;
+    }
+    .weather-item {
+        background: white;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .date {
+        font-weight: bold;
+        color: #2196F3;
+    }
+    .temp {
+        font-size: 1.2em;
+    }
+    .summary {
+        color: #666;
+        font-style: italic;
+    }
+    .error {
+        color: red;
+        text-align: center;
+        padding: 20px;
+        background: #ffebee;
+        border-radius: 8px;
+        max-width: 600px;
+        margin: 20px auto;
+    }
+    h1 {
+        text-align: center;
+    }
+</style>
+
+<h1>Weather Forecast</h1>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="error">
+        <p>@Model.ErrorMessage</p>
+    </div>
+}
+else if (Model.Forecasts != null && Model.Forecasts.Any())
+{
+    <ul class="weather-list">
+        @foreach (var forecast in Model.Forecasts)
+        {
+            <li class="weather-item">
+                <div>
+                    <span class="date">@forecast.Date</span>
+                    <span class="summary"> - @forecast.Summary</span>
+                </div>
+                <div class="temp">
+                    <span>@forecast.TemperatureC°C</span>
+                    <span style="color:#999; margin-left:10px;">(@forecast.TemperatureF°F)</span>
+                </div>
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <p style="text-align: center;">No weather data available</p>
+}

@@ -8,6 +8,7 @@ namespace Frontend_Mvc
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddHttpClient();
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
