@@ -9,7 +9,7 @@ http://localhost:5000
 
 # Backend Service URL configuration
 # Edit appsettings.json to configure: "BackendServiceUrl"
-# For Docker: http://host.docker.internal:5000/WeatherForecast
+# For Docker: http://host.docker.internal:5001/WeatherForecast
 # For K8s: http://backend-api-service:8080/WeatherForecast
 
 # Publish to a registry (requires login first)

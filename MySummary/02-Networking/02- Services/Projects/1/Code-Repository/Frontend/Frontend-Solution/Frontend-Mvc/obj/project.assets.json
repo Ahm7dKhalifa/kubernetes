@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\_My\\Tutorials\\Github\\kubernetes\\MySummary\\02-Networking\\02- Services\\Projects\\1\\Backend\\Frontend-Solution\\Frontend-Mvc\\Frontend-Mvc.csproj",
+      "projectUniqueName": "C:\\_My\\Tutorials\\Github\\kubernetes\\MySummary\\02-Networking\\02- Services\\Projects\\1\\Code-Repository\\Frontend\\Frontend-Solution\\Frontend-Mvc\\Frontend-Mvc.csproj",
       "projectName": "Frontend-Mvc",
-      "projectPath": "C:\\_My\\Tutorials\\Github\\kubernetes\\MySummary\\02-Networking\\02- Services\\Projects\\1\\Backend\\Frontend-Solution\\Frontend-Mvc\\Frontend-Mvc.csproj",
+      "projectPath": "C:\\_My\\Tutorials\\Github\\kubernetes\\MySummary\\02-Networking\\02- Services\\Projects\\1\\Code-Repository\\Frontend\\Frontend-Solution\\Frontend-Mvc\\Frontend-Mvc.csproj",
       "packagesPath": "C:\\Users\\ahm7d\\.nuget\\packages\\",
-      "outputPath": "C:\\_My\\Tutorials\\Github\\kubernetes\\MySummary\\02-Networking\\02- Services\\Projects\\1\\Backend\\Frontend-Solution\\Frontend-Mvc\\obj\\",
+      "outputPath": "C:\\_My\\Tutorials\\Github\\kubernetes\\MySummary\\02-Networking\\02- Services\\Projects\\1\\Code-Repository\\Frontend\\Frontend-Solution\\Frontend-Mvc\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
