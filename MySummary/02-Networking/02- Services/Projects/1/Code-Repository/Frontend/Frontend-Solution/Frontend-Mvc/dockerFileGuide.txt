@@ -1,0 +1,17 @@
+# Build the image
+docker build -t frontend-mvc .
+
+# Run the container
+docker run -d -p 8081:8080 --name frontend-mvc frontend-mvc
+
+# Access the frontend
+http://localhost:8081
+
+
+# Publish to a registry (requires login first)
+docker tag frontend-mvc yourregistry/frontend-mvc:latest
+docker push yourregistry/frontend-mvc:latest
+
+# Example with version tag
+docker tag frontend-mvc ahm7dkhalifa/frontend-mvc:v1
+docker push ahm7dkhalifa/frontend-mvc:v1

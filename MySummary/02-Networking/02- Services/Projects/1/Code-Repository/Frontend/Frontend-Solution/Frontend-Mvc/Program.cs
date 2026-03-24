@@ -8,6 +8,15 @@ namespace Frontend_Mvc
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
 
             var app = builder.Build();
 
@@ -20,6 +29,7 @@ namespace Frontend_Mvc
             }
 
             app.UseHttpsRedirection();
+            app.UseCors("AllowAll");
             app.UseStaticFiles();
 
             app.UseRouting();
