@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASP.NET Core + PostgreSQL StatefulSet — Dual Repo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg-deep:#06070d;--bg-surface:#0a0b14;--bg-code:#080a12;--bg-hover:rgba(255,255,255,0.025);--border:rgba(255,255,255,0.06);--text-primary:#e2e8f0;--text-secondary:#94a3b8;--text-dim:#475569;--text-muted:#334155;--accent-indigo:#6366f1;--accent-cyan:#0ea5e9;--accent-emerald:#10b981;--accent-amber:#f59e0b;--accent-csharp:#68217a}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg-deep);color:var(--text-primary);font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;min-height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
+.header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;background:linear-gradient(180deg,rgba(99,102,241,0.03) 0%,transparent 100%)}
+.header-left{flex:1}.header-tag{font-size:9px;letter-spacing:3px;color:var(--accent-csharp);font-weight:700;text-transform:uppercase;margin-bottom:4px}
+.header h1{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent-csharp),var(--accent-cyan),var(--accent-emerald));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-badges{display:flex;gap:8px}.badge{font-size:10px;padding:4px 10px;border-radius:6px;font-weight:600;border:1px solid}
+.badge-k8s{background:rgba(14,165,233,0.1);color:var(--accent-cyan);border-color:rgba(14,165,233,0.25)}
+.badge-app{background:rgba(104,33,122,0.15);color:#b668d4;border-color:rgba(104,33,122,0.3)}
+.layout{display:flex;height:calc(100vh - 58px)}
+.sidebar{width:310px;min-width:310px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg-surface)}
+.repo-tabs{display:flex;border-bottom:1px solid var(--border)}
+.repo-tab{flex:1;padding:10px 12px;font-size:11px;font-weight:600;font-family:inherit;border:none;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;justify-content:center;border-bottom:2px solid transparent}
+.repo-tab.k8s{background:rgba(14,165,233,0.06);color:var(--text-dim)}.repo-tab.app{background:rgba(104,33,122,0.06);color:var(--text-dim)}
+.repo-tab.k8s.active{background:rgba(14,165,233,0.15);color:var(--accent-cyan);border-bottom-color:var(--accent-cyan)}
+.repo-tab.app.active{background:rgba(104,33,122,0.15);color:#b668d4;border-bottom-color:#b668d4}
+.tree-container{flex:1;overflow-y:auto;padding:8px 0}
+.tree-item{display:flex;align-items:center;gap:6px;padding:5px 12px;cursor:pointer;transition:background .1s;font-size:12px;color:var(--text-secondary);user-select:none;border-left:2px solid transparent}
+.tree-item:hover{background:var(--bg-hover)}.tree-item.active{background:rgba(99,102,241,0.1);color:#e0e7ff;border-left-color:var(--accent-indigo)}
+.tree-item.folder{color:var(--text-primary);font-weight:600}
+.tree-indent{display:inline-block;width:16px;flex-shrink:0}.tree-icon{font-size:13px;flex-shrink:0;width:18px;text-align:center}
+.tree-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-chevron{font-size:10px;color:var(--text-dim);transition:transform .15s;width:12px;text-align:center;flex-shrink:0}
+.tree-chevron.open{transform:rotate(90deg)}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.file-tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg-surface);overflow-x:auto;min-height:34px;scrollbar-width:none}
+.file-tab-bar::-webkit-scrollbar{display:none}
+.file-tab{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:11px;font-family:inherit;color:var(--text-dim);border:none;border-right:1px solid var(--border);cursor:pointer;background:transparent;white-space:nowrap;transition:all .1s}
+.file-tab:hover{background:rgba(255,255,255,0.02);color:var(--text-secondary)}
+.file-tab.active{background:var(--bg-deep);color:var(--text-primary);border-bottom:1px solid var(--bg-deep);margin-bottom:-1px}
+.file-tab .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.content-area{flex:1;overflow-y:auto}
+.file-content{padding:20px 24px;max-width:860px}
+.file-path{font-size:11px;color:var(--text-dim);margin-bottom:12px;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:6px;border:1px solid var(--border);display:inline-block}
+.file-path b{color:var(--accent-cyan)}
+.sec-header{margin-bottom:16px}.sec-title{font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:6px}
+.sec-desc{font-size:12.5px;color:var(--text-secondary);line-height:1.7}
+.code-block{border-radius:8px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px}
+.code-head{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:rgba(255,255,255,0.025);border-bottom:1px solid var(--border)}
+.code-head-left{display:flex;align-items:center;gap:8px}
+.code-dot{width:7px;height:7px;border-radius:50%}.code-fname{font-size:11.5px;color:#c4b5fd;font-weight:600}
+.code-lang{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px}
+.copy-btn{font-size:10px;padding:3px 9px;border-radius:4px;background:rgba(255,255,255,0.04);color:var(--text-secondary);border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:all .12s}
+.copy-btn:hover{background:rgba(255,255,255,0.08)}.copy-btn.copied{background:rgba(16,185,129,0.12);color:var(--accent-emerald);border-color:rgba(16,185,129,0.25)}
+.code-body{padding:12px 14px;overflow-x:auto;font-size:11.5px;line-height:1.7;color:#cbd5e1;white-space:pre;tab-size:2;background:var(--bg-code)}
+.info-note{padding:12px 16px;border-radius:8px;font-size:12px;line-height:1.75;margin-bottom:14px}
+.info-note.purple{background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);color:#c4b5fd}
+.info-note.cyan{background:rgba(14,165,233,0.07);border:1px solid rgba(14,165,233,0.15);color:#7dd3fc}
+.info-note.emerald{background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.15);color:#6ee7b7}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:12px;padding:40px}
+.empty-state .es-icon{font-size:48px;opacity:0.3}.empty-state p{font-size:13px;text-align:center;line-height:1.6}
+@media(max-width:700px){.layout{flex-direction:column}.sidebar{width:100%;min-width:100%;max-height:45vh;border-right:none;border-bottom:1px solid var(--border)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <div class="header-tag">Dual Repository Architecture</div>
+    <h1>ASP.NET Core + PostgreSQL StatefulSet on K8s</h1>
+  </div>
+  <div class="header-badges">
+    <span class="badge badge-k8s">&#9784;&#65039; K8s Infra</span>
+    <span class="badge badge-app">&#128309; .NET App</span>
+  </div>
+</div>
+<div class="layout">
+  <div class="sidebar">
+    <div class="repo-tabs">
+      <button class="repo-tab k8s active" onclick="switchRepo('k8s')">&#9784;&#65039; K8s Infrastructure</button>
+      <button class="repo-tab app" onclick="switchRepo('app')">&#128309; Application</button>
+    </div>
+    <div class="tree-container" id="tree-container"></div>
+  </div>
+  <div class="main">
+    <div class="file-tab-bar" id="file-tab-bar"></div>
+    <div class="content-area" id="content-area">
+      <div class="empty-state"><div class="es-icon">&#128194;</div><p>Select a file from the tree to view its contents.<br>Switch between K8s and Application repos using the tabs.</p></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+
+var LANG_COLORS = {yaml:"#f59e0b",csharp:"#68217a",bash:"#10b981",json:"#0ea5e9",xml:"#ef4444",dockerfile:"#2496ed",text:"#64748b",md:"#94a3b8"};
+
+// === CODE STORAGE (plain strings, no template literals) ===
+var CODE = {};
+CODE["k8s-ns"] = [
+"apiVersion: v1",
+"kind: Namespace",
+"metadata:",
+"  name: myapp",
+"  labels:",
+"    app: myapp-project",
+"    environment: production",
+"    managed-by: kubectl"
+].join("\n");
+
+CODE["k8s-secret"] = [
+"apiVersion: v1",
+"kind: Secret",
+"metadata:",
+"  name: postgres-secret",
+"  namespace: myapp",
+"type: Opaque",
+"stringData:",
+"  POSTGRES_USER: \"appuser\"",
+"  POSTGRES_PASSWORD: \"S3cur3P@ssw0rd!\"",
+"  POSTGRES_DB: \"appdb\"",
+"",
+"  # Write Connection -> Primary (pg-0)",
+"  CONNECTION_STRING: >-",
+"    Host=postgres-0.postgres-headless.myapp.svc.cluster.local;",
+"    Port=5432;",
+"    Database=appdb;",
+"    Username=appuser;",
+"    Password=S3cur3P@ssw0rd!;",
+"    Pooling=true;",
+"    Minimum Pool Size=5;",
+"    Maximum Pool Size=20;",
+"    Connection Idle Lifetime=300;",
+"    Keepalive=30;",
+"    Tcp Keepalive=true;",
+"",
+"  # Read Connection -> Replicas (pg-1, pg-2)",
+"  CONNECTION_STRING_READONLY: >-",
+"    Host=postgres-1.postgres-headless.myapp.svc.cluster.local,",
+"    postgres-2.postgres-headless.myapp.svc.cluster.local;",
+"    Port=5432;",
+"    Database=appdb;",
+"    Username=appuser;",
+"    Password=S3cur3P@ssw0rd!;",
+"    Pooling=true;",
+"    Minimum Pool Size=5;",
+"    Maximum Pool Size=30;",
+"    Load Balance Hosts=true;",
+"    Target Session Attrs=prefer-standby;",
+"    Keepalive=30;",
+"    Tcp Keepalive=true;"
+].join("\n");
+
+CODE["k8s-cm"] = [
+"apiVersion: v1",
+"kind: ConfigMap",
+"metadata:",
+"  name: postgres-config",
+"  namespace: myapp",
+"data:",
+"  postgresql.conf: |",
+"    listen_addresses = '*'",
+"    max_connections = 200",
+"    shared_buffers = 256MB",
+"    effective_cache_size = 768MB",
+"    work_mem = 4MB",
+"    maintenance_work_mem = 64MB",
+"    wal_level = replica",
+"    max_wal_senders = 5",
+"    max_replication_slots = 5",
+"    hot_standby = on",
+"    hot_standby_feedback = on",
+"    synchronous_commit = on",
+"    log_min_duration_statement = 200",
+"",
+"  pg_hba.conf: |",
+"    # TYPE  DATABASE  USER       ADDRESS     METHOD",
+"    local   all       all                    trust",
+"    host    all       all        0.0.0.0/0   md5",
+"    host    replication all      0.0.0.0/0   md5",
+"",
+"  init-primary.sh: |",
+"    #!/bin/bash",
+"    set -e",
+"    echo \"=== Initializing PostgreSQL Primary ===\"",
+"    cp /config/postgresql.conf /var/lib/postgresql/data/postgresql.conf",
+"    cp /config/pg_hba.conf /var/lib/postgresql/data/pg_hba.conf",
+"    psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" <<-SQL",
+"      CREATE TABLE IF NOT EXISTS products (",
+"        id          SERIAL PRIMARY KEY,",
+"        name        VARCHAR(200) NOT NULL,",
+"        description TEXT,",
+"        price       DECIMAL(10,2) NOT NULL,",
+"        stock       INT DEFAULT 0,",
+"        category    VARCHAR(100),",
+"        is_active   BOOLEAN DEFAULT true,",
+"        created_at  TIMESTAMPTZ DEFAULT NOW(),",
+"        updated_at  TIMESTAMPTZ DEFAULT NOW()",
+"      );",
+"      CREATE TABLE IF NOT EXISTS orders (",
+"        id            SERIAL PRIMARY KEY,",
+"        product_id    INT REFERENCES products(id),",
+"        quantity      INT NOT NULL CHECK (quantity > 0),",
+"        total_price   DECIMAL(10,2) NOT NULL,",
+"        status        VARCHAR(50) DEFAULT 'pending',",
+"        customer_name VARCHAR(200),",
+"        created_at    TIMESTAMPTZ DEFAULT NOW()",
+"      );",
+"      CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);",
+"      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);",
+"      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);",
+"    SQL",
+"    echo \"=== Primary ready ===\""
+].join("\n");
+
+CODE["k8s-sc"] = [
+"# AWS EKS",
+"apiVersion: storage.k8s.io/v1",
+"kind: StorageClass",
+"metadata:",
+"  name: fast-ssd",
+"provisioner: ebs.csi.aws.com",
+"parameters:",
+"  type: gp3",
+"  iops: \"3000\"",
+"  throughput: \"125\"",
+"  encrypted: \"true\"",
+"volumeBindingMode: WaitForFirstConsumer",
+"reclaimPolicy: Retain",
+"allowVolumeExpansion: true",
+"",
+"---",
+"# Azure AKS",
+"apiVersion: storage.k8s.io/v1",
+"kind: StorageClass",
+"metadata:",
+"  name: fast-ssd",
+"provisioner: disk.csi.azure.com",
+"parameters:",
+"  skuName: Premium_LRS",
+"volumeBindingMode: WaitForFirstConsumer",
+"reclaimPolicy: Retain"
+].join("\n");
+
+CODE["k8s-hl"] = [
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: postgres-headless",
+"  namespace: myapp",
+"  labels:",
+"    app: postgres",
+"spec:",
+"  clusterIP: None",
+"  selector:",
+"    app: postgres",
+"  ports:",
+"    - name: postgresql",
+"      port: 5432",
+"      targetPort: 5432",
+"  publishNotReadyAddresses: true"
+].join("\n");
+
+CODE["k8s-ws"] = [
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: postgres-write",
+"  namespace: myapp",
+"spec:",
+"  type: ClusterIP",
+"  selector:",
+"    app: postgres",
+"    role: primary        # Only matches primary pod",
+"  ports:",
+"    - name: postgresql",
+"      port: 5432",
+"      targetPort: 5432"
+].join("\n");
+
+CODE["k8s-rs"] = [
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: postgres-read",
+"  namespace: myapp",
+"spec:",
+"  type: ClusterIP",
+"  selector:",
+"    app: postgres",
+"    role: replica        # Only matches replica pods",
+"  ports:",
+"    - name: postgresql",
+"      port: 5432",
+"      targetPort: 5432"
+].join("\n");
+
+CODE["k8s-ss"] = [
+"apiVersion: apps/v1",
+"kind: StatefulSet",
+"metadata:",
+"  name: postgres",
+"  namespace: myapp",
+"spec:",
+"  serviceName: postgres-headless",
+"  replicas: 3",
+"  selector:",
+"    matchLabels:",
+"      app: postgres",
+"  template:",
+"    metadata:",
+"      labels:",
+"        app: postgres",
+"    spec:",
+"      terminationGracePeriodSeconds: 30",
+"      initContainers:",
+"        - name: init-role",
+"          image: busybox:1.36",
+"          command: ['sh', '-c']",
+"          args:",
+"            - |",
+"              ORDINAL=${HOSTNAME##*-}",
+"              if [ \"$ORDINAL\" = \"0\" ]; then",
+"                echo \"primary\" > /role/role.txt",
+"              else",
+"                echo \"replica\" > /role/role.txt",
+"              fi",
+"          volumeMounts:",
+"            - name: role",
+"              mountPath: /role",
+"      containers:",
+"        - name: postgres",
+"          image: postgres:16-alpine",
+"          ports:",
+"            - containerPort: 5432",
+"              name: postgresql",
+"          envFrom:",
+"            - secretRef:",
+"                name: postgres-secret",
+"          env:",
+"            - name: PGDATA",
+"              value: /var/lib/postgresql/data/pgdata",
+"          resources:",
+"            requests: { cpu: \"250m\", memory: \"512Mi\" }",
+"            limits:   { cpu: \"1000m\", memory: \"1Gi\" }",
+"          livenessProbe:",
+"            exec:",
+"              command: [pg_isready, -U, appuser, -d, appdb]",
+"            initialDelaySeconds: 30",
+"            periodSeconds: 10",
+"          readinessProbe:",
+"            exec:",
+"              command: [pg_isready, -U, appuser, -d, appdb]",
+"            initialDelaySeconds: 5",
+"            periodSeconds: 5",
+"          volumeMounts:",
+"            - name: pg-data",
+"              mountPath: /var/lib/postgresql/data",
+"            - name: config",
+"              mountPath: /config",
+"            - name: role",
+"              mountPath: /role",
+"        - name: metrics",
+"          image: prometheuscommunity/postgres-exporter:v0.15.0",
+"          ports:",
+"            - containerPort: 9187",
+"          env:",
+"            - name: DATA_SOURCE_URI",
+"              value: \"localhost:5432/appdb?sslmode=disable\"",
+"            - name: DATA_SOURCE_USER",
+"              value: \"appuser\"",
+"            - name: DATA_SOURCE_PASS",
+"              valueFrom:",
+"                secretKeyRef:",
+"                  name: postgres-secret",
+"                  key: POSTGRES_PASSWORD",
+"          resources:",
+"            requests: { cpu: \"50m\", memory: \"64Mi\" }",
+"      volumes:",
+"        - name: config",
+"          configMap: { name: postgres-config }",
+"        - name: role",
+"          emptyDir: {}",
+"  volumeClaimTemplates:",
+"    - metadata:",
+"        name: pg-data",
+"      spec:",
+"        accessModes: [\"ReadWriteOnce\"]",
+"        storageClassName: fast-ssd",
+"        resources:",
+"          requests:",
+"            storage: 10Gi"
+].join("\n");
+
+CODE["k8s-dep"] = [
+"apiVersion: apps/v1",
+"kind: Deployment",
+"metadata:",
+"  name: myapp-api",
+"  namespace: myapp",
+"spec:",
+"  replicas: 3",
+"  selector:",
+"    matchLabels:",
+"      app: myapp-api",
+"  template:",
+"    metadata:",
+"      labels:",
+"        app: myapp-api",
+"    spec:",
+"      containers:",
+"        - name: api",
+"          image: myregistry.azurecr.io/myapp-api:1.0.0",
+"          ports:",
+"            - containerPort: 8080",
+"          env:",
+"            - name: CONNECTION_STRING",
+"              valueFrom:",
+"                secretKeyRef:",
+"                  name: postgres-secret",
+"                  key: CONNECTION_STRING",
+"            - name: CONNECTION_STRING_READONLY",
+"              valueFrom:",
+"                secretKeyRef:",
+"                  name: postgres-secret",
+"                  key: CONNECTION_STRING_READONLY",
+"            - name: ASPNETCORE_ENVIRONMENT",
+"              value: \"Production\"",
+"          resources:",
+"            requests: { cpu: \"100m\", memory: \"128Mi\" }",
+"            limits:   { cpu: \"500m\", memory: \"512Mi\" }",
+"          livenessProbe:",
+"            httpGet: { path: /healthz, port: 8080 }",
+"            initialDelaySeconds: 15",
+"          readinessProbe:",
+"            httpGet: { path: /healthz, port: 8080 }",
+"            initialDelaySeconds: 5"
+].join("\n");
+
+CODE["k8s-svc"] = [
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: myapp-api-svc",
+"  namespace: myapp",
+"spec:",
+"  type: ClusterIP",
+"  selector:",
+"    app: myapp-api",
+"  ports:",
+"    - port: 80",
+"      targetPort: 8080"
+].join("\n");
+
+CODE["k8s-ing"] = [
+"apiVersion: networking.k8s.io/v1",
+"kind: Ingress",
+"metadata:",
+"  name: myapp-ingress",
+"  namespace: myapp",
+"  annotations:",
+"    cert-manager.io/cluster-issuer: letsencrypt-prod",
+"spec:",
+"  ingressClassName: nginx",
+"  tls:",
+"    - hosts: [api.myapp.com]",
+"      secretName: myapp-tls",
+"  rules:",
+"    - host: api.myapp.com",
+"      http:",
+"        paths:",
+"          - path: /",
+"            pathType: Prefix",
+"            backend:",
+"              service:",
+"                name: myapp-api-svc",
+"                port: { number: 80 }"
+].join("\n");
+
+CODE["k8s-deploy-sh"] = [
+"#!/bin/bash",
+"set -e",
+"echo \"=== Deploying K8s Infrastructure ===\"",
+"",
+"echo \"-> 1. Namespace & Secrets\"",
+"kubectl apply -f namespace/namespace.yaml",
+"kubectl apply -f secrets/postgres-secret.yaml",
+"",
+"echo \"-> 2. PostgreSQL Config & Storage\"",
+"kubectl apply -f postgres/configmap.yaml",
+"kubectl apply -f postgres/storageclass.yaml",
+"",
+"echo \"-> 3. PostgreSQL Services\"",
+"kubectl apply -f postgres/headless-service.yaml",
+"kubectl apply -f postgres/write-service.yaml",
+"kubectl apply -f postgres/read-service.yaml",
+"",
+"echo \"-> 4. PostgreSQL StatefulSet\"",
+"kubectl apply -f postgres/statefulset.yaml",
+"kubectl -n myapp rollout status statefulset/postgres --timeout=180s",
+"",
+"echo \"-> 5. ASP.NET Core\"",
+"kubectl apply -f app/deployment.yaml",
+"kubectl apply -f app/service.yaml",
+"kubectl apply -f app/ingress.yaml",
+"kubectl -n myapp rollout status deployment/myapp-api --timeout=120s",
+"",
+"echo \"=== All deployed! ===\"",
+"kubectl -n myapp get all"
+].join("\n");
+
+CODE["k8s-verify-sh"] = [
+"#!/bin/bash",
+"echo \"=== Verification ===\"",
+"",
+"echo \"-> All Resources:\"",
+"kubectl -n myapp get all",
+"",
+"echo \"-> PostgreSQL Pods:\"",
+"kubectl -n myapp get pods -l app=postgres -o wide",
+"# postgres-0  2/2  Running  <- Primary",
+"# postgres-1  2/2  Running  <- Replica",
+"# postgres-2  2/2  Running  <- Replica",
+"",
+"echo \"-> PVCs:\"",
+"kubectl -n myapp get pvc",
+"",
+"echo \"-> DNS Test:\"",
+"kubectl -n myapp run dns-test --rm -it \\",
+"  --image=busybox --restart=Never -- \\",
+"  nslookup postgres-headless.myapp.svc.cluster.local",
+"",
+"echo \"-> Health Check:\"",
+"kubectl -n myapp port-forward svc/myapp-api-svc 8080:80 &",
+"sleep 2 && curl -s http://localhost:8080/healthz",
+"kill %1 2>/dev/null"
+].join("\n");
+
+CODE["k8s-test-sh"] = [
+"#!/bin/bash",
+"echo \"=== Testing R/W Operations ===\"",
+"kubectl -n myapp port-forward svc/myapp-api-svc 8080:80 &",
+"sleep 2",
+"",
+"echo \"=== WRITE: Create product (-> PRIMARY) ===\"",
+"curl -s -X POST http://localhost:8080/api/products \\",
+"  -H \"Content-Type: application/json\" \\",
+"  -d '{\"name\":\"K8s in Action\",\"price\":59.99,\"stock\":200}' | jq .",
+"",
+"echo \"=== READ: List products (-> REPLICA) ===\"",
+"curl -s http://localhost:8080/api/products | jq .",
+"",
+"echo \"=== WRITE: Place order (-> PRIMARY) ===\"",
+"curl -s -X POST http://localhost:8080/api/products/1/orders \\",
+"  -H \"Content-Type: application/json\" \\",
+"  -d '{\"quantity\":3,\"customerName\":\"Ahmed\"}' | jq .",
+"",
+"echo \"=== READ: Get orders (-> REPLICA) ===\"",
+"curl -s http://localhost:8080/api/products/1/orders | jq .",
+"",
+"echo \"=== Verify R/W logs ===\"",
+"kubectl -n myapp logs -l app=myapp-api --tail=20 | grep -E 'WRITE|READ'",
+"kill %1 2>/dev/null"
+].join("\n");
+
+CODE["app-csproj"] = [
+"<Project Sdk=\"Microsoft.NET.Sdk.Web\">",
+"  <PropertyGroup>",
+"    <TargetFramework>net8.0</TargetFramework>",
+"    <Nullable>enable</Nullable>",
+"    <ImplicitUsings>enable</ImplicitUsings>",
+"  </PropertyGroup>",
+"  <ItemGroup>",
+"    <PackageReference Include=\"Npgsql.EntityFrameworkCore.PostgreSQL\"",
+"                      Version=\"8.0.4\" />",
+"    <PackageReference Include=\"Microsoft.EntityFrameworkCore.Design\"",
+"                      Version=\"8.0.8\" />",
+"    <PackageReference Include=\"AspNetCore.HealthChecks.NpgSql\"",
+"                      Version=\"8.0.1\" />",
+"    <PackageReference Include=\"Serilog.AspNetCore\"",
+"                      Version=\"8.0.2\" />",
+"  </ItemGroup>",
+"</Project>"
+].join("\n");
+
+CODE["app-program"] = [
+"using Microsoft.EntityFrameworkCore;",
+"using MyApp.Api.Data;",
+"using MyApp.Api.Services;",
+"using Serilog;",
+"",
+"var builder = WebApplication.CreateBuilder(args);",
+"",
+"// --- Serilog ---",
+"builder.Host.UseSerilog((ctx, lc) => lc",
+"    .ReadFrom.Configuration(ctx.Configuration)",
+"    .Enrich.FromLogContext()",
+"    .WriteTo.Console());",
+"",
+"// --- Settings ---",
+"var dbCfg = builder.Configuration.GetSection(\"DatabaseSettings\");",
+"var maxRetry = dbCfg.GetValue<int>(\"MaxRetryCount\", 5);",
+"var retryDelay = dbCfg.GetValue<int>(\"MaxRetryDelay\", 10);",
+"var cmdTimeout = dbCfg.GetValue<int>(\"CommandTimeout\", 30);",
+"var readTimeout = dbCfg.GetValue<int>(\"ReadCommandTimeout\", 15);",
+"var sensitive = dbCfg.GetValue<bool>(\"EnableSensitiveDataLogging\");",
+"",
+"// --- Connection Strings (K8s env vars override appsettings) ---",
+"var writeConn = Environment.GetEnvironmentVariable(\"CONNECTION_STRING\")",
+"    ?? builder.Configuration.GetConnectionString(\"WriteDb\")",
+"    ?? throw new InvalidOperationException(\"WriteDb required\");",
+"",
+"var readConn = Environment.GetEnvironmentVariable(\"CONNECTION_STRING_READONLY\")",
+"    ?? builder.Configuration.GetConnectionString(\"ReadDb\")",
+"    ?? throw new InvalidOperationException(\"ReadDb required\");",
+"",
+"// --- WRITE DbContext -> Primary (pg-0) ---",
+"builder.Services.AddDbContext<AppDbContext>(opt =>",
+"{",
+"    opt.UseNpgsql(writeConn, npgsql =>",
+"    {",
+"        npgsql.EnableRetryOnFailure(maxRetry,",
+"            TimeSpan.FromSeconds(retryDelay), null);",
+"        npgsql.CommandTimeout(cmdTimeout);",
+"    });",
+"    if (sensitive) opt.EnableSensitiveDataLogging();",
+"});",
+"",
+"// --- READ DbContext -> Replicas (pg-1, pg-2) ---",
+"builder.Services.AddDbContext<ReadOnlyDbContext>(opt =>",
+"{",
+"    opt.UseNpgsql(readConn, npgsql =>",
+"    {",
+"        npgsql.EnableRetryOnFailure(3,",
+"            TimeSpan.FromSeconds(5), null);",
+"        npgsql.CommandTimeout(readTimeout);",
+"    })",
+"    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);",
+"});",
+"",
+"// --- Services ---",
+"builder.Services.AddScoped<IProductService, ProductService>();",
+"builder.Services.AddControllers();",
+"builder.Services.AddSwaggerGen();",
+"",
+"// --- Health Checks ---",
+"builder.Services.AddHealthChecks()",
+"    .AddNpgSql(writeConn, name: \"postgres-write\")",
+"    .AddNpgSql(readConn, name: \"postgres-read\");",
+"",
+"var app = builder.Build();",
+"",
+"// Auto-migrate",
+"using (var scope = app.Services.CreateScope())",
+"{",
+"    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();",
+"    await db.Database.MigrateAsync();",
+"}",
+"",
+"app.UseSerilogRequestLogging();",
+"app.UseSwagger();",
+"app.UseSwaggerUI();",
+"app.MapControllers();",
+"app.MapHealthChecks(\"/healthz\");",
+"app.Run();"
+].join("\n");
+
+CODE["app-dockerfile"] = [
+"# Build",
+"FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build",
+"WORKDIR /src",
+"COPY *.csproj ./",
+"RUN dotnet restore",
+"COPY . ./",
+"RUN dotnet publish -c Release -o /app/publish --no-restore",
+"",
+"# Runtime",
+"FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime",
+"WORKDIR /app",
+"RUN adduser --disabled-password --gecos \"\" appuser",
+"USER appuser",
+"COPY --from=build /app/publish .",
+"",
+"ENV ASPNETCORE_URLS=http://+:8080",
+"ENV ASPNETCORE_ENVIRONMENT=Production",
+"EXPOSE 8080",
+"",
+"HEALTHCHECK --interval=30s --timeout=3s \\",
+"  CMD curl -sf http://localhost:8080/healthz || exit 1",
+"",
+"ENTRYPOINT [\"dotnet\", \"MyApp.Api.dll\"]"
+].join("\n");
+
+CODE["app-settings-base"] = [
+"{",
+"  \"Logging\": {",
+"    \"LogLevel\": {",
+"      \"Default\": \"Information\",",
+"      \"Microsoft.AspNetCore\": \"Warning\",",
+"      \"Microsoft.EntityFrameworkCore\": \"Warning\",",
+"      \"Npgsql\": \"Warning\"",
+"    }",
+"  },",
+"  \"AllowedHosts\": \"*\",",
+"",
+"  \"DatabaseSettings\": {",
+"    \"MaxRetryCount\": 5,",
+"    \"MaxRetryDelay\": 10,",
+"    \"CommandTimeout\": 30,",
+"    \"ReadCommandTimeout\": 15,",
+"    \"EnableSensitiveDataLogging\": false,",
+"    \"EnableDetailedErrors\": false",
+"  },",
+"",
+"  \"HealthCheckSettings\": {",
+"    \"PostgresWriteTimeout\": 5,",
+"    \"PostgresReadTimeout\": 3",
+"  }",
+"}"
+].join("\n");
+
+CODE["app-settings-dev"] = [
+"{",
+"  \"Logging\": {",
+"    \"LogLevel\": {",
+"      \"Default\": \"Debug\",",
+"      \"Microsoft.EntityFrameworkCore.Database.Command\": \"Information\"",
+"    }",
+"  },",
+"",
+"  \"ConnectionStrings\": {",
+"    \"WriteDb\": \"Host=localhost;Port=5432;Database=appdb;Username=appuser;Password=devpass123;Pooling=true;Minimum Pool Size=2;Maximum Pool Size=10;Include Error Detail=true;\",",
+"    \"ReadDb\":  \"Host=localhost;Port=5432;Database=appdb;Username=appuser;Password=devpass123;Pooling=true;Minimum Pool Size=2;Maximum Pool Size=10;Include Error Detail=true;\"",
+"  },",
+"",
+"  \"DatabaseSettings\": {",
+"    \"MaxRetryCount\": 3,",
+"    \"MaxRetryDelay\": 5,",
+"    \"CommandTimeout\": 60,",
+"    \"EnableSensitiveDataLogging\": true,",
+"    \"EnableDetailedErrors\": true",
+"  }",
+"}"
+].join("\n");
+
+CODE["app-settings-stg"] = [
+"{",
+"  \"ConnectionStrings\": {",
+"    \"WriteDb\": \"Host=postgres-write.myapp.svc.cluster.local;Port=5432;Database=appdb;Username=appuser;Password=INJECT_FROM_SECRET;Pooling=true;Min Pool Size=3;Max Pool Size=15;SSL Mode=Require;\",",
+"    \"ReadDb\":  \"Host=postgres-read.myapp.svc.cluster.local;Port=5432;Database=appdb;Username=appuser;Password=INJECT_FROM_SECRET;Pooling=true;Min Pool Size=3;Max Pool Size=20;Load Balance Hosts=true;Target Session Attrs=prefer-standby;SSL Mode=Require;\"",
+"  },",
+"",
+"  \"DatabaseSettings\": {",
+"    \"MaxRetryCount\": 5,",
+"    \"EnableDetailedErrors\": true",
+"  }",
+"}"
+].join("\n");
+
+CODE["app-settings-prod"] = [
+"{",
+"  \"Logging\": {",
+"    \"LogLevel\": {",
+"      \"Default\": \"Warning\",",
+"      \"Microsoft.AspNetCore.Hosting\": \"Information\"",
+"    }",
+"  },",
+"",
+"  \"ConnectionStrings\": {",
+"    \"WriteDb\": \"Host=postgres-0.postgres-headless.myapp.svc.cluster.local;Port=5432;Database=appdb;Username=appuser;Password=REPLACED_BY_K8S_SECRET;Pooling=true;Min Pool Size=5;Max Pool Size=20;Connection Idle Lifetime=300;Keepalive=30;Tcp Keepalive=true;\",",
+"",
+"    \"ReadDb\": \"Host=postgres-1.postgres-headless.myapp.svc.cluster.local,postgres-2.postgres-headless.myapp.svc.cluster.local;Port=5432;Database=appdb;Username=appuser;Password=REPLACED_BY_K8S_SECRET;Pooling=true;Min Pool Size=5;Max Pool Size=30;Load Balance Hosts=true;Target Session Attrs=prefer-standby;Connection Idle Lifetime=300;Keepalive=30;Tcp Keepalive=true;\"",
+"  },",
+"",
+"  \"DatabaseSettings\": {",
+"    \"MaxRetryCount\": 5,",
+"    \"CommandTimeout\": 30,",
+"    \"ReadCommandTimeout\": 15,",
+"    \"EnableSensitiveDataLogging\": false",
+"  }",
+"}"
+].join("\n");
+
+CODE["app-product"] = [
+"using System.ComponentModel.DataAnnotations;",
+"using System.ComponentModel.DataAnnotations.Schema;",
+"",
+"namespace MyApp.Api.Models;",
+"",
+"[Table(\"products\")]",
+"public class Product",
+"{",
+"    [Key]",
+"    [Column(\"id\")]",
+"    public int Id { get; set; }",
+"",
+"    [Required, MaxLength(200)]",
+"    [Column(\"name\")]",
+"    public string Name { get; set; } = string.Empty;",
+"",
+"    [Column(\"description\")]",
+"    public string? Description { get; set; }",
+"",
+"    [Column(\"price\", TypeName = \"decimal(10,2)\")]",
+"    public decimal Price { get; set; }",
+"",
+"    [Column(\"stock\")]",
+"    public int Stock { get; set; }",
+"",
+"    [MaxLength(100)]",
+"    [Column(\"category\")]",
+"    public string? Category { get; set; }",
+"",
+"    [Column(\"is_active\")]",
+"    public bool IsActive { get; set; } = true;",
+"",
+"    [Column(\"created_at\")]",
+"    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;",
+"",
+"    [Column(\"updated_at\")]",
+"    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;",
+"",
+"    public ICollection<Order> Orders { get; set; } = [];",
+"}"
+].join("\n");
+
+CODE["app-order"] = [
+"using System.ComponentModel.DataAnnotations;",
+"using System.ComponentModel.DataAnnotations.Schema;",
+"",
+"namespace MyApp.Api.Models;",
+"",
+"[Table(\"orders\")]",
+"public class Order",
+"{",
+"    [Key]",
+"    [Column(\"id\")]",
+"    public int Id { get; set; }",
+"",
+"    [Column(\"product_id\")]",
+"    public int ProductId { get; set; }",
+"",
+"    [Column(\"quantity\")]",
+"    public int Quantity { get; set; }",
+"",
+"    [Column(\"total_price\", TypeName = \"decimal(10,2)\")]",
+"    public decimal TotalPrice { get; set; }",
+"",
+"    [MaxLength(50)]",
+"    [Column(\"status\")]",
+"    public string Status { get; set; } = \"pending\";",
+"",
+"    [MaxLength(200)]",
+"    [Column(\"customer_name\")]",
+"    public string? CustomerName { get; set; }",
+"",
+"    [Column(\"created_at\")]",
+"    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;",
+"",
+"    [ForeignKey(\"ProductId\")]",
+"    public Product? Product { get; set; }",
+"}"
+].join("\n");
+
+CODE["app-writedb"] = [
+"using Microsoft.EntityFrameworkCore;",
+"using MyApp.Api.Models;",
+"",
+"namespace MyApp.Api.Data;",
+"",
+"/// <summary>",
+"/// WRITE context -> PostgreSQL Primary (pg-0).",
+"/// </summary>",
+"public class AppDbContext : DbContext",
+"{",
+"    public AppDbContext(DbContextOptions<AppDbContext> opt)",
+"        : base(opt) { }",
+"",
+"    public DbSet<Product> Products => Set<Product>();",
+"    public DbSet<Order> Orders => Set<Order>();",
+"",
+"    protected override void OnModelCreating(ModelBuilder mb)",
+"    {",
+"        mb.Entity<Product>(e =>",
+"        {",
+"            e.HasIndex(p => p.Name);",
+"            e.HasIndex(p => p.Category);",
+"            e.HasIndex(p => p.IsActive);",
+"            e.Property(p => p.CreatedAt).HasDefaultValueSql(\"NOW()\");",
+"            e.Property(p => p.UpdatedAt).HasDefaultValueSql(\"NOW()\");",
+"        });",
+"        mb.Entity<Order>(e =>",
+"        {",
+"            e.HasIndex(o => o.Status);",
+"            e.HasIndex(o => o.CreatedAt);",
+"            e.HasOne(o => o.Product)",
+"             .WithMany(p => p.Orders)",
+"             .HasForeignKey(o => o.ProductId)",
+"             .OnDelete(DeleteBehavior.Restrict);",
+"        });",
+"    }",
+"",
+"    public override Task<int> SaveChangesAsync(",
+"        CancellationToken ct = default)",
+"    {",
+"        foreach (var e in ChangeTracker.Entries<Product>()",
+"            .Where(e => e.State == EntityState.Modified))",
+"            e.Entity.UpdatedAt = DateTime.UtcNow;",
+"        return base.SaveChangesAsync(ct);",
+"    }",
+"}"
+].join("\n");
+
+CODE["app-readdb"] = [
+"using Microsoft.EntityFrameworkCore;",
+"using MyApp.Api.Models;",
+"",
+"namespace MyApp.Api.Data;",
+"",
+"/// <summary>",
+"/// READ-ONLY context -> PostgreSQL Replicas (pg-1, pg-2).",
+"/// NoTracking. Throws on writes.",
+"/// </summary>",
+"public class ReadOnlyDbContext : DbContext",
+"{",
+"    public ReadOnlyDbContext(",
+"        DbContextOptions<ReadOnlyDbContext> opt)",
+"        : base(opt) { }",
+"",
+"    public DbSet<Product> Products => Set<Product>();",
+"    public DbSet<Order> Orders => Set<Order>();",
+"",
+"    protected override void OnModelCreating(ModelBuilder mb)",
+"    {",
+"        mb.Entity<Product>(e => { e.HasIndex(p => p.Name); });",
+"        mb.Entity<Order>(e =>",
+"        {",
+"            e.HasIndex(o => o.Status);",
+"            e.HasOne(o => o.Product)",
+"             .WithMany(p => p.Orders)",
+"             .HasForeignKey(o => o.ProductId);",
+"        });",
+"    }",
+"",
+"    public override int SaveChanges() =>",
+"        throw new InvalidOperationException(",
+"            \"Read-only context. Use AppDbContext.\");",
+"",
+"    public override Task<int> SaveChangesAsync(",
+"        CancellationToken ct = default) =>",
+"        throw new InvalidOperationException(",
+"            \"Read-only context. Use AppDbContext.\");",
+"}"
+].join("\n");
+
+CODE["app-isvc"] = [
+"using MyApp.Api.Models;",
+"",
+"namespace MyApp.Api.Services;",
+"",
+"public interface IProductService",
+"{",
+"    // READS -> Replicas",
+"    Task<List<Product>> GetAllAsync(string? category);",
+"    Task<Product?> GetByIdAsync(int id);",
+"    Task<List<Product>> SearchAsync(string term);",
+"    Task<List<Order>> GetOrdersAsync(int productId);",
+"    Task<DashboardStats> GetStatsAsync();",
+"",
+"    // WRITES -> Primary",
+"    Task<Product> CreateAsync(Product product);",
+"    Task<Product?> UpdateAsync(int id, Product product);",
+"    Task<bool> DeleteAsync(int id);",
+"    Task<Order> PlaceOrderAsync(",
+"        int productId, int qty, string? customer);",
+"}",
+"",
+"public record DashboardStats(",
+"    int TotalProducts, int TotalOrders, decimal Revenue);"
+].join("\n");
+
+CODE["app-svc"] = [
+"using Microsoft.EntityFrameworkCore;",
+"using MyApp.Api.Data;",
+"using MyApp.Api.Models;",
+"",
+"namespace MyApp.Api.Services;",
+"",
+"public class ProductService(",
+"    AppDbContext write,",
+"    ReadOnlyDbContext read,",
+"    ILogger<ProductService> log) : IProductService",
+"{",
+"    // ====== READS -> Replicas ======",
+"",
+"    public async Task<List<Product>> GetAllAsync(string? cat)",
+"    {",
+"        log.LogDebug(\"READ: GetAll -> REPLICA\");",
+"        var q = read.Products.Where(p => p.IsActive);",
+"        if (!string.IsNullOrEmpty(cat))",
+"            q = q.Where(p => p.Category == cat);",
+"        return await q.OrderByDescending(p => p.CreatedAt)",
+"                      .ToListAsync();",
+"    }",
+"",
+"    public async Task<Product?> GetByIdAsync(int id) =>",
+"        await read.Products",
+"            .Include(p => p.Orders.OrderByDescending(o => o.CreatedAt).Take(10))",
+"            .FirstOrDefaultAsync(p => p.Id == id);",
+"",
+"    public async Task<List<Product>> SearchAsync(string term) =>",
+"        await read.Products",
+"            .Where(p => p.IsActive",
+"                && EF.Functions.ILike(p.Name, \"%\" + term + \"%\"))",
+"            .Take(50).ToListAsync();",
+"",
+"    public async Task<List<Order>> GetOrdersAsync(int pid) =>",
+"        await read.Orders.Where(o => o.ProductId == pid)",
+"            .OrderByDescending(o => o.CreatedAt).Take(100).ToListAsync();",
+"",
+"    public async Task<DashboardStats> GetStatsAsync()",
+"    {",
+"        var prods = await read.Products.CountAsync(p => p.IsActive);",
+"        var ords  = await read.Orders.CountAsync();",
+"        var rev   = await read.Orders",
+"            .Where(o => o.Status == \"confirmed\")",
+"            .SumAsync(o => o.TotalPrice);",
+"        return new(prods, ords, rev);",
+"    }",
+"",
+"    // ====== WRITES -> Primary ======",
+"",
+"    public async Task<Product> CreateAsync(Product p)",
+"    {",
+"        log.LogInformation(\"WRITE: Create -> PRIMARY\");",
+"        write.Products.Add(p);",
+"        await write.SaveChangesAsync();",
+"        return p;",
+"    }",
+"",
+"    public async Task<Product?> UpdateAsync(int id, Product u)",
+"    {",
+"        var p = await write.Products.FindAsync(id);",
+"        if (p is null) return null;",
+"        p.Name = u.Name; p.Description = u.Description;",
+"        p.Price = u.Price; p.Stock = u.Stock;",
+"        p.Category = u.Category; p.IsActive = u.IsActive;",
+"        await write.SaveChangesAsync();",
+"        return p;",
+"    }",
+"",
+"    public async Task<bool> DeleteAsync(int id)",
+"    {",
+"        var p = await write.Products.FindAsync(id);",
+"        if (p is null) return false;",
+"        p.IsActive = false;",
+"        await write.SaveChangesAsync();",
+"        return true;",
+"    }",
+"",
+"    public async Task<Order> PlaceOrderAsync(",
+"        int pid, int qty, string? customer)",
+"    {",
+"        await using var tx = await write.Database",
+"            .BeginTransactionAsync();",
+"        try",
+"        {",
+"            var p = await write.Products.FindAsync(pid)",
+"                ?? throw new KeyNotFoundException(",
+"                    \"Product not found: \" + pid);",
+"            if (p.Stock < qty)",
+"                throw new InvalidOperationException(",
+"                    \"Insufficient stock\");",
+"",
+"            p.Stock -= qty;",
+"            var order = new Order",
+"            {",
+"                ProductId = pid, Quantity = qty,",
+"                TotalPrice = p.Price * qty,",
+"                CustomerName = customer, Status = \"confirmed\"",
+"            };",
+"            write.Orders.Add(order);",
+"            await write.SaveChangesAsync();",
+"            await tx.CommitAsync();",
+"            log.LogInformation(\"WRITE: Order {Id} -> PRIMARY\",",
+"                order.Id);",
+"            return order;",
+"        }",
+"        catch { await tx.RollbackAsync(); throw; }",
+"    }",
+"}"
+].join("\n");
+
+CODE["app-ctrl"] = [
+"using Microsoft.AspNetCore.Mvc;",
+"using MyApp.Api.Models;",
+"using MyApp.Api.Services;",
+"",
+"namespace MyApp.Api.Controllers;",
+"",
+"[ApiController]",
+"[Route(\"api/[controller]\")]",
+"public class ProductsController(IProductService svc)",
+"    : ControllerBase",
+"{",
+"    // -- READS -> Replicas --",
+"",
+"    [HttpGet]",
+"    public async Task<ActionResult<List<Product>>>",
+"        GetAll([FromQuery] string? category)",
+"        => Ok(await svc.GetAllAsync(category));",
+"",
+"    [HttpGet(\"{id:int}\")]",
+"    public async Task<ActionResult<Product>> GetById(int id)",
+"    {",
+"        var p = await svc.GetByIdAsync(id);",
+"        return p is null ? NotFound() : Ok(p);",
+"    }",
+"",
+"    [HttpGet(\"search\")]",
+"    public async Task<ActionResult<List<Product>>>",
+"        Search([FromQuery] string q)",
+"        => Ok(await svc.SearchAsync(q));",
+"",
+"    [HttpGet(\"{id:int}/orders\")]",
+"    public async Task<ActionResult<List<Order>>>",
+"        GetOrders(int id)",
+"        => Ok(await svc.GetOrdersAsync(id));",
+"",
+"    [HttpGet(\"stats\")]",
+"    public async Task<ActionResult<DashboardStats>>",
+"        Stats() => Ok(await svc.GetStatsAsync());",
+"",
+"    // -- WRITES -> Primary --",
+"",
+"    [HttpPost]",
+"    public async Task<ActionResult<Product>>",
+"        Create(Product product)",
+"    {",
+"        var c = await svc.CreateAsync(product);",
+"        return CreatedAtAction(",
+"            nameof(GetById), new { id = c.Id }, c);",
+"    }",
+"",
+"    [HttpPut(\"{id:int}\")]",
+"    public async Task<ActionResult<Product>>",
+"        Update(int id, Product product)",
+"    {",
+"        var u = await svc.UpdateAsync(id, product);",
+"        return u is null ? NotFound() : Ok(u);",
+"    }",
+"",
+"    [HttpDelete(\"{id:int}\")]",
+"    public async Task<IActionResult> Delete(int id)",
+"        => await svc.DeleteAsync(id) ? NoContent() : NotFound();",
+"",
+"    [HttpPost(\"{id:int}/orders\")]",
+"    public async Task<ActionResult<Order>>",
+"        PlaceOrder(int id, [FromBody] OrderReq req)",
+"    {",
+"        try {",
+"            var o = await svc.PlaceOrderAsync(",
+"                id, req.Quantity, req.CustomerName);",
+"            return CreatedAtAction(",
+"                nameof(GetOrders), new { id }, o);",
+"        }",
+"        catch (KeyNotFoundException) { return NotFound(); }",
+"        catch (InvalidOperationException ex)",
+"            { return BadRequest(new { error = ex.Message }); }",
+"    }",
+"}",
+"",
+"public record OrderReq(int Quantity, string? CustomerName);"
+].join("\n");
+
+// === TREE DATA ===
+var TREE = {
+k8s: [
+  {t:"f",n:"k8s-infrastructure/",d:0},
+  {t:"f",n:"namespace/",d:1},
+  {t:"i",n:"namespace.yaml",d:2,id:"k8s-ns",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"secrets/",d:1},
+  {t:"i",n:"postgres-secret.yaml",d:2,id:"k8s-secret",x:"yaml",ic:"\uD83D\uDD10"},
+  {t:"f",n:"postgres/",d:1},
+  {t:"i",n:"configmap.yaml",d:2,id:"k8s-cm",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"storageclass.yaml",d:2,id:"k8s-sc",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"headless-service.yaml",d:2,id:"k8s-hl",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"write-service.yaml",d:2,id:"k8s-ws",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"read-service.yaml",d:2,id:"k8s-rs",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"statefulset.yaml",d:2,id:"k8s-ss",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"app/",d:1},
+  {t:"i",n:"deployment.yaml",d:2,id:"k8s-dep",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"service.yaml",d:2,id:"k8s-svc",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"ingress.yaml",d:2,id:"k8s-ing",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"scripts/",d:1},
+  {t:"i",n:"deploy-all.sh",d:2,id:"k8s-deploy-sh",x:"bash",ic:"\u26A1"},
+  {t:"i",n:"verify.sh",d:2,id:"k8s-verify-sh",x:"bash",ic:"\u26A1"},
+  {t:"i",n:"test-endpoints.sh",d:2,id:"k8s-test-sh",x:"bash",ic:"\u26A1"}
+],
+app: [
+  {t:"f",n:"MyApp.Api/",d:0},
+  {t:"i",n:"MyApp.Api.csproj",d:1,id:"app-csproj",x:"xml",ic:"\uD83D\uDCE6"},
+  {t:"i",n:"Program.cs",d:1,id:"app-program",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"i",n:"Dockerfile",d:1,id:"app-dockerfile",x:"dockerfile",ic:"\uD83D\uDC33"},
+  {t:"i",n:"appsettings.json",d:1,id:"app-settings-base",x:"json",ic:"\u2699\uFE0F"},
+  {t:"i",n:"appsettings.Development.json",d:1,id:"app-settings-dev",x:"json",ic:"\u2699\uFE0F"},
+  {t:"i",n:"appsettings.Staging.json",d:1,id:"app-settings-stg",x:"json",ic:"\u2699\uFE0F"},
+  {t:"i",n:"appsettings.Production.json",d:1,id:"app-settings-prod",x:"json",ic:"\u2699\uFE0F"},
+  {t:"f",n:"Models/",d:1},
+  {t:"i",n:"Product.cs",d:2,id:"app-product",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"i",n:"Order.cs",d:2,id:"app-order",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"f",n:"Data/",d:1},
+  {t:"i",n:"AppDbContext.cs",d:2,id:"app-writedb",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"i",n:"ReadOnlyDbContext.cs",d:2,id:"app-readdb",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"f",n:"Services/",d:1},
+  {t:"i",n:"IProductService.cs",d:2,id:"app-isvc",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"i",n:"ProductService.cs",d:2,id:"app-svc",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"f",n:"Controllers/",d:1},
+  {t:"i",n:"ProductsController.cs",d:2,id:"app-ctrl",x:"csharp",ic:"\uD83D\uDD35"}
+]
+};
+
+var FILE_META = {
+  "k8s-ns":{t:"Namespace",d:"Isolated namespace for the project.",l:"yaml",f:"namespace.yaml"},
+  "k8s-secret":{t:"PostgreSQL Secrets",d:"Credentials and connection strings injected as env vars.",l:"yaml",f:"postgres-secret.yaml",notes:[{c:"emerald",h:"In production, use <b>External Secrets Operator</b> or <b>Sealed Secrets</b>."}]},
+  "k8s-cm":{t:"ConfigMap & Init Script",d:"PostgreSQL config, HBA rules, and schema init.",l:"yaml",f:"configmap.yaml"},
+  "k8s-sc":{t:"StorageClass",d:"SSD-backed persistent storage for PostgreSQL.",l:"yaml",f:"storageclass.yaml"},
+  "k8s-hl":{t:"Headless Service",d:"clusterIP: None for stable per-pod DNS.",l:"yaml",f:"headless-service.yaml",notes:[{c:"cyan",h:"<b>DNS:</b><br>postgres-0.postgres-headless.myapp.svc.cluster.local \u2192 Primary<br>postgres-1... \u2192 Replica 1<br>postgres-2... \u2192 Replica 2"}]},
+  "k8s-ws":{t:"Write Service",d:"ClusterIP routing only to primary pod.",l:"yaml",f:"write-service.yaml"},
+  "k8s-rs":{t:"Read Service",d:"ClusterIP load-balancing across replicas.",l:"yaml",f:"read-service.yaml"},
+  "k8s-ss":{t:"PostgreSQL StatefulSet",d:"3 pods, init role detection, health probes, PVC per pod.",l:"yaml",f:"statefulset.yaml"},
+  "k8s-dep":{t:"ASP.NET Deployment",d:"3 API replicas with secrets injected as env vars.",l:"yaml",f:"deployment.yaml"},
+  "k8s-svc":{t:"API Service",d:"ClusterIP service for ASP.NET pods.",l:"yaml",f:"service.yaml"},
+  "k8s-ing":{t:"Ingress",d:"External HTTPS with TLS termination.",l:"yaml",f:"ingress.yaml"},
+  "k8s-deploy-sh":{t:"Deploy Script",d:"Deploys all resources in correct order.",l:"bash",f:"deploy-all.sh"},
+  "k8s-verify-sh":{t:"Verify Script",d:"Checks all resources are running.",l:"bash",f:"verify.sh"},
+  "k8s-test-sh":{t:"Test Endpoints",d:"Tests read/write operations end to end.",l:"bash",f:"test-endpoints.sh"},
+  "app-csproj":{t:"Project File",d:".NET 8 with Npgsql, EF Core, Serilog.",l:"xml",f:"MyApp.Api.csproj"},
+  "app-program":{t:"Program.cs",d:"DI, dual DbContext, retry policies, health checks.",l:"csharp",f:"Program.cs",notes:[{c:"purple",h:"<b>Priority:</b> Env var (K8s Secret) \u2192 appsettings.{Env}.json \u2192 appsettings.json"}]},
+  "app-dockerfile":{t:"Dockerfile",d:"Multi-stage build for production.",l:"dockerfile",f:"Dockerfile"},
+  "app-settings-base":{t:"appsettings.json",d:"Base config: logging, retry policies, timeouts.",l:"json",f:"appsettings.json"},
+  "app-settings-dev":{t:"appsettings.Development.json",d:"Local dev: localhost, debug logging.",l:"json",f:"appsettings.Development.json",notes:[{c:"emerald",h:"Both WriteDb and ReadDb point to localhost. R/W split only activates in K8s."}]},
+  "app-settings-stg":{t:"appsettings.Staging.json",d:"Staging: ClusterIP DNS, SSL, moderate pooling.",l:"json",f:"appsettings.Staging.json"},
+  "app-settings-prod":{t:"appsettings.Production.json",d:"Production: Headless DNS, aggressive pooling, keepalive.",l:"json",f:"appsettings.Production.json",notes:[{c:"purple",h:"<b>In K8s:</b> env vars CONNECTION_STRING and CONNECTION_STRING_READONLY override these."}]},
+  "app-product":{t:"Product Entity",d:"Maps to products table.",l:"csharp",f:"Product.cs"},
+  "app-order":{t:"Order Entity",d:"Maps to orders table.",l:"csharp",f:"Order.cs"},
+  "app-writedb":{t:"AppDbContext (Write)",d:"All writes go to pg-0 primary.",l:"csharp",f:"AppDbContext.cs"},
+  "app-readdb":{t:"ReadOnlyDbContext (Read)",d:"All reads go to pg-1/pg-2 replicas.",l:"csharp",f:"ReadOnlyDbContext.cs"},
+  "app-isvc":{t:"IProductService",d:"Contract: reads \u2192 replicas, writes \u2192 primary.",l:"csharp",f:"IProductService.cs"},
+  "app-svc":{t:"ProductService",d:"Implementation with explicit R/W split.",l:"csharp",f:"ProductService.cs"},
+  "app-ctrl":{t:"ProductsController",d:"REST API: GET \u2192 replicas, POST/PUT/DELETE \u2192 primary.",l:"csharp",f:"ProductsController.cs"}
+};
+
+// === STATE ===
+var activeRepo = "k8s";
+var activeFile = null;
+var openTabs = [];
+
+function switchRepo(repo) {
+  activeRepo = repo;
+  document.querySelectorAll(".repo-tab").forEach(function(t){ t.classList.remove("active"); });
+  document.querySelector(".repo-tab." + repo).classList.add("active");
+  renderTree();
+}
+
+function renderTree() {
+  var tree = TREE[activeRepo];
+  var c = document.getElementById("tree-container");
+  var h = "";
+  for (var i = 0; i < tree.length; i++) {
+    var item = tree[i];
+    var indent = "";
+    for (var j = 0; j < item.d; j++) indent += "<span class=\"tree-indent\"></span>";
+    if (item.t === "f") {
+      h += "<div class=\"tree-item folder\" onclick=\"toggleFolder(this)\">" + indent + "<span class=\"tree-chevron open\">\u25B6</span><span class=\"tree-icon\">\uD83D\uDCC1</span><span class=\"tree-name\">" + item.n + "</span></div>";
+    } else {
+      var act = activeFile === item.id ? " active" : "";
+      h += "<div class=\"tree-item" + act + "\" onclick=\"selectFile('" + item.id + "')\">" + indent + "<span class=\"tree-icon\">" + item.ic + "</span><span class=\"tree-name\">" + item.n + "</span></div>";
+    }
+  }
+  c.innerHTML = h;
+}
+window.toggleFolder = function(el) {
+  var ch = el.querySelector(".tree-chevron");
+  var isOpen = ch.classList.toggle("open");
+  var myD = el.querySelectorAll(".tree-indent").length;
+  var sib = el.nextElementSibling;
+  while (sib) {
+    var sd = sib.querySelectorAll(".tree-indent").length;
+    if (sd <= myD) break;
+    sib.style.display = isOpen ? "" : "none";
+    sib = sib.nextElementSibling;
+  }
+};
+window.selectFile = function(id) {
+  activeFile = id;
+  if (openTabs.indexOf(id) === -1) openTabs.push(id);
+  renderTree(); renderTabs(); renderFile(id);
+};
+window.closeTab = function(id, ev) {
+  ev.stopPropagation();
+  openTabs = openTabs.filter(function(t){ return t !== id; });
+  if (activeFile === id) activeFile = openTabs.length ? openTabs[openTabs.length-1] : null;
+  renderTabs();
+  if (activeFile) renderFile(activeFile); else renderEmpty();
+  renderTree();
+};
+window.switchRepo = switchRepo;
+
+function renderTabs() {
+  var bar = document.getElementById("file-tab-bar");
+  var h = "";
+  for (var i = 0; i < openTabs.length; i++) {
+    var id = openTabs[i];
+    var m = FILE_META[id];
+    if (!m) continue;
+    var col = LANG_COLORS[m.l] || "#6366f1";
+    var act = activeFile === id ? " active" : "";
+    h += "<button class=\"file-tab" + act + "\" onclick=\"selectFile('" + id + "')\"><span class=\"dot\" style=\"background:" + col + "\"></span>" + m.f + "<span style=\"cursor:pointer;margin-left:6px;color:var(--text-dim);font-size:13px\" onclick=\"closeTab('" + id + "',event)\">\u00D7</span></button>";
+  }
+  bar.innerHTML = h;
+}
+
+function renderEmpty() {
+  document.getElementById("content-area").innerHTML = "<div class=\"empty-state\"><div class=\"es-icon\">\uD83D\uDCC2</div><p>Select a file from the tree.</p></div>";
+}
+
+function esc(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function renderFile(id) {
+  var m = FILE_META[id];
+  var code = CODE[id];
+  if (!m || !code) return;
+  var area = document.getElementById("content-area");
+  var isK8s = TREE.k8s.some(function(t){ return t.id === id; });
+  var repo = isK8s ? "k8s-infrastructure" : "MyApp.Api";
+  var col = LANG_COLORS[m.l] || "#6366f1";
+
+  var h = "<div class=\"file-content\">";
+  h += "<div class=\"file-path\"><b>" + repo + "/</b>" + m.f + "</div>";
+  h += "<div class=\"sec-header\"><div class=\"sec-title\">" + m.t + "</div><div class=\"sec-desc\">" + m.d + "</div></div>";
+
+  if (m.notes) {
+    for (var i = 0; i < m.notes.length; i++) {
+      h += "<div class=\"info-note " + m.notes[i].c + "\">" + m.notes[i].h + "</div>";
+    }
+  }
+
+  h += "<div class=\"code-block\"><div class=\"code-head\"><div class=\"code-head-left\"><div class=\"code-dot\" style=\"background:" + col + ";box-shadow:0 0 5px " + col + "55\"></div><span class=\"code-fname\">" + m.f + "</span><span class=\"code-lang\">" + m.l.toUpperCase() + "</span></div><button class=\"copy-btn\" onclick=\"doCopy(this,'" + id + "')\">Copy</button></div><pre class=\"code-body\">" + esc(code) + "</pre></div>";
+  h += "</div>";
+  area.innerHTML = h;
+  area.scrollTop = 0;
+}
+
+window.doCopy = function(btn, id) {
+  var code = CODE[id];
+  if (!code) return;
+  navigator.clipboard.writeText(code).then(function(){
+    btn.textContent = "\u2713 Copied";
+    btn.classList.add("copied");
+    setTimeout(function(){ btn.textContent = "Copy"; btn.classList.remove("copied"); }, 1500);
+  });
+};
+
+renderTree();
+})();
+</script>
+</body>
+</html>

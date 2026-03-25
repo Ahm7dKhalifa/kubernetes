@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASP.NET Core + PostgreSQL StatefulSet — Full K8s Project</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #06070d;
+    --bg-surface: #0c0d16;
+    --bg-card: #10111c;
+    --bg-code: #080a12;
+    --border: rgba(255,255,255,0.06);
+    --border-active: rgba(99,102,241,0.4);
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-dim: #475569;
+    --text-muted: #334155;
+    --accent-indigo: #6366f1;
+    --accent-violet: #8b5cf6;
+    --accent-cyan: #0ea5e9;
+    --accent-emerald: #10b981;
+    --accent-amber: #f59e0b;
+    --accent-rose: #ec4899;
+    --accent-purple: #a855f7;
+    --accent-dotnet: #512bd4;
+    --accent-csharp: #68217a;
+    --glow-indigo: rgba(99,102,241,0.15);
+    --glow-cyan: rgba(14,165,233,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+  /* ── Header ── */
+  .header {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    background: linear-gradient(180deg, rgba(99,102,241,0.04) 0%, transparent 100%);
+  }
+  .header-tag {
+    font-size: 10px;
+    letter-spacing: 3.5px;
+    color: var(--accent-csharp);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .header h1 {
+    font-size: 24px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent-csharp), var(--accent-cyan), var(--accent-emerald));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+    line-height: 1.3;
+  }
+  .header-sub {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Layout ── */
+  .layout {
+    display: flex;
+    height: calc(100vh - 100px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 270px;
+    min-width: 270px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 12px 8px;
+    background: rgba(255,255,255,0.008);
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: none;
+    border-left: 2px solid transparent;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 400;
+    transition: all 0.15s ease;
+    margin-bottom: 1px;
+    line-height: 1.35;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.03); color: var(--text-secondary); }
+  .nav-btn.active {
+    background: linear-gradient(135deg, var(--glow-indigo), var(--glow-cyan));
+    color: #e0e7ff;
+    font-weight: 600;
+    border-left-color: var(--accent-indigo);
+  }
+  .nav-icon { font-size: 15px; flex-shrink: 0; width: 22px; text-align: center; }
+  .nav-label { flex: 1; }
+
+  /* ── Main Content ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+  }
+  .content-wrap { max-width: 820px; }
+
+  /* Section header */
+  .section-header { margin-bottom: 20px; }
+  .section-icon-title { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .section-icon-title span.icon { font-size: 26px; }
+  .section-icon-title h2 { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+  .section-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+
+  /* ── Architecture Diagram ── */
+  .arch-layer {
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 6px;
+  }
+  .arch-layer-name {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+  .arch-items { display: flex; flex-wrap: wrap; gap: 6px; }
+  .arch-item {
+    font-size: 11.5px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    color: var(--text-primary);
+  }
+  .arch-arrow { text-align: center; color: var(--text-dim); font-size: 18px; line-height: 1; padding: 2px 0; }
+  .arch-note {
+    padding: 14px 18px;
+    border-radius: 10px;
+    background: rgba(99,102,241,0.07);
+    border: 1px solid rgba(99,102,241,0.15);
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: #c4b5fd;
+    margin: 16px 0;
+  }
+
+  /* ── Code Blocks ── */
+  .code-block {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin-bottom: 14px;
+    background: var(--bg-code);
+  }
+  .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-header-left { display: flex; align-items: center; gap: 8px; }
+  .code-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .code-filename { font-size: 12px; color: #c4b5fd; font-weight: 600; }
+  .code-lang { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .copy-btn {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,0.1); }
+  .copy-btn.copied { background: rgba(16,185,129,0.15); color: var(--accent-emerald); border-color: rgba(16,185,129,0.3); }
+  .code-body {
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #cbd5e1;
+    white-space: pre;
+    tab-size: 2;
+  }
+
+  /* ── Animated Flow Diagram ── */
+  .flow-container {
+    background: rgba(255,255,255,0.02);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    margin: 16px 0;
+  }
+  .flow-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #c4b5fd;
+    margin-bottom: 20px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .flow-steps { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .flow-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px; border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    transition: all 0.4s ease;
+    min-width: 300px; justify-content: center;
+  }
+  .flow-step.active {
+    background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.15));
+    border-color: #818cf8;
+    transform: scale(1.04);
+  }
+  .flow-step.passed {
+    background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.08));
+    border-color: rgba(99,102,241,0.3);
+  }
+  .flow-step-icon { font-size: 20px; }
+  .flow-step-label { font-size: 13px; font-weight: 400; color: var(--text-dim); transition: all 0.3s; }
+  .flow-step.active .flow-step-label,
+  .flow-step.passed .flow-step-label { color: #e0e7ff; font-weight: 600; }
+  .flow-connector { width: 2px; height: 12px; background: rgba(255,255,255,0.06); transition: background 0.3s; }
+  .flow-connector.active { background: linear-gradient(180deg, #818cf8, #6366f1); }
+
+  /* ── Comparison Table ── */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 16px 0; }
+  .compare-table th {
+    padding: 10px 8px; text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: #a5b4fc; font-weight: 600;
+  }
+  .compare-table td {
+    padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: var(--text-secondary); font-weight: 400;
+  }
+  .compare-table td:first-child { color: var(--text-primary); font-weight: 600; }
+
+  /* ── Step Navigation ── */
+  .step-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 28px; padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .step-btn {
+    padding: 8px 18px; border-radius: 8px; font-size: 12px;
+    font-family: inherit; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .step-btn.prev {
+    background: rgba(99,102,241,0.12); color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.25);
+  }
+  .step-btn.prev:disabled { background: rgba(255,255,255,0.02); color: var(--text-muted); border-color: rgba(255,255,255,0.04); cursor: default; }
+  .step-btn.next {
+    background: linear-gradient(135deg, #6366f1, #0ea5e9); color: #fff; font-weight: 600;
+  }
+  .step-btn.next:disabled { background: rgba(255,255,255,0.02); color: var(--text-muted); cursor: default; }
+  .step-counter { font-size: 11px; color: var(--text-dim); }
+
+  /* ── Info Card ── */
+  .info-card {
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .info-card:hover { border-color: rgba(255,255,255,0.12); }
+  .info-card.expanded { border-color: rgba(99,102,241,0.3); background: rgba(255,255,255,0.03); }
+  .info-card-head { display: flex; align-items: center; gap: 10px; }
+  .info-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .info-name { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
+  .info-arrow { font-size: 14px; color: var(--text-dim); transition: transform 0.2s; }
+  .info-card.expanded .info-arrow { transform: rotate(180deg); }
+  .info-details {
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    font-size: 12.5px; line-height: 1.75; color: var(--text-secondary);
+    display: none;
+  }
+  .info-card.expanded .info-details { display: block; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .layout { flex-direction: column; height: auto; }
+    .sidebar { width: 100%; min-width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; flex-wrap: nowrap; display: flex; overflow-x: auto; overflow-y: hidden; padding: 8px; gap: 4px; }
+    .nav-btn { white-space: nowrap; min-width: fit-content; border-left: none; border-bottom: 2px solid transparent; padding: 8px 12px; }
+    .nav-btn.active { border-left: none; border-bottom-color: var(--accent-indigo); }
+    .main { padding: 16px; }
+    .flow-step { min-width: 220px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-tag">Full Project Guide — Interactive</div>
+  <h1>ASP.NET Core + PostgreSQL StatefulSet</h1>
+  <div class="header-sub">Read/Write Splitting · Headless Service · Entity Framework Core · Kubernetes · AppSettings</div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="main" id="main-content"></main>
+</div>
+
+<script>
+const LANG_COLORS = {
+  yaml: '#f59e0b', csharp: '#68217a', bash: '#10b981', json: '#0ea5e9',
+  xml: '#ef4444', dockerfile: '#2496ed', text: '#64748b', plaintext: '#64748b'
+};
+
+const SECTIONS = [
+  {
+    id: 'architecture', icon: '🏗️', title: 'Architecture Overview',
+    desc: 'How ASP.NET Core connects to PostgreSQL StatefulSet in Kubernetes with read/write separation.',
+    type: 'architecture',
+    layers: [
+      { name: 'External Traffic', color: '#f59e0b', items: ['Client / Browser', 'Ingress Controller / LoadBalancer'] },
+      { name: 'Application Layer', color: '#0ea5e9', items: ['ASP.NET Core Deployment (Replicas: 3)', 'Entity Framework Core + Npgsql', 'Read/Write DbContext Splitting'] },
+      { name: 'Data Layer — StatefulSet', color: '#10b981', items: ['PostgreSQL Primary (pg-0) — R/W', 'PostgreSQL Replica (pg-1) — RO', 'PostgreSQL Replica (pg-2) — RO'] },
+      { name: 'Persistent Storage', color: '#8b5cf6', items: ['PVC per Pod (10Gi SSD)', 'StorageClass: gp3 / ssd'] },
+    ],
+    note: 'PostgreSQL runs as a StatefulSet with a Headless Service for stable DNS. ASP.NET Core uses two DbContexts: AppDbContext (writes → primary pg-0) and ReadOnlyDbContext (reads → replicas pg-1, pg-2) with Npgsql connection pooling and load balancing.',
+    components: [
+      { name: 'Headless Service DNS', color: '#6366f1', details: 'postgres-0.postgres-headless.myapp.svc.cluster.local → Primary (R/W)\\npostgres-1.postgres-headless.myapp.svc.cluster.local → Replica (RO)\\npostgres-2.postgres-headless.myapp.svc.cluster.local → Replica (RO)' },
+      { name: 'Write Path', color: '#ec4899', details: 'ASP.NET Controller → ProductService → AppDbContext → Npgsql → postgres-write Service (ClusterIP) → pg-0 Primary. All INSERT/UPDATE/DELETE go here.' },
+      { name: 'Read Path', color: '#0ea5e9', details: 'ASP.NET Controller → ProductService → ReadOnlyDbContext → Npgsql (Load Balance Hosts=true) → postgres-read Service → pg-1 or pg-2. All SELECT queries go here.' },
+      { name: 'Connection Strings', color: '#10b981', details: 'Stored as Kubernetes Secrets, injected as environment variables into the ASP.NET pods. Program.cs reads CONNECTION_STRING and CONNECTION_STRING_READONLY from env vars, falling back to appsettings.json for local dev.' },
+    ],
+    flow: {
+      title: 'Write Request Flow (POST /api/products)',
+      steps: [
+        { label: 'Client sends POST request', icon: '🌐' },
+        { label: 'Ingress → ASP.NET Pod', icon: '🚦' },
+        { label: 'Controller → ProductService', icon: '⚡' },
+        { label: 'AppDbContext (Write)', icon: '🔵' },
+        { label: 'Npgsql → postgres-write svc', icon: '🔌' },
+        { label: 'pg-0 Primary — INSERT', icon: '🗄️' },
+        { label: 'Replication → pg-1, pg-2', icon: '🔄' },
+      ]
+    }
+  },
+  {
+    id: 'namespace', icon: '📁', title: 'Step 1: Namespace & Secrets',
+    desc: 'Create the Kubernetes namespace and store PostgreSQL credentials + connection strings as Secrets.',
+    type: 'code',
+    files: [
+      { name: 'namespace.yaml', lang: 'yaml', code: `apiVersion: v1
+kind: Namespace
+metadata:
+  name: myapp
+  labels:
+    app: myapp-project
+    environment: production` },
+      { name: 'postgres-secret.yaml', lang: 'yaml', code: `apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: myapp
+type: Opaque
+stringData:
+  POSTGRES_USER: "appuser"
+  POSTGRES_PASSWORD: "S3cur3P@ssw0rd!"
+  POSTGRES_DB: "appdb"
+
+  # Write connection → Primary (pg-0) via headless DNS
+  CONNECTION_STRING: >-
+    Host=postgres-0.postgres-headless.myapp.svc.cluster.local;
+    Port=5432;
+    Database=appdb;
+    Username=appuser;
+    Password=S3cur3P@ssw0rd!;
+    Pooling=true;
+    Minimum Pool Size=5;
+    Maximum Pool Size=20;
+    Connection Idle Lifetime=300;
+    Connection Pruning Interval=10;
+
+  # Read connection → Replicas (pg-1, pg-2) with load balancing
+  CONNECTION_STRING_READONLY: >-
+    Host=postgres-1.postgres-headless.myapp.svc.cluster.local,
+    postgres-2.postgres-headless.myapp.svc.cluster.local;
+    Port=5432;
+    Database=appdb;
+    Username=appuser;
+    Password=S3cur3P@ssw0rd!;
+    Pooling=true;
+    Minimum Pool Size=3;
+    Maximum Pool Size=30;
+    Load Balance Hosts=true;
+    Target Session Attrs=prefer-standby;` },
+      { name: 'Apply Commands', lang: 'bash', code: `kubectl apply -f namespace.yaml
+kubectl apply -f postgres-secret.yaml
+
+# Verify secrets created
+kubectl get secrets -n myapp
+kubectl describe secret postgres-secret -n myapp` }
+    ]
+  },
+  {
+    id: 'configmap', icon: '⚙️', title: 'Step 2: ConfigMap & Init Scripts',
+    desc: 'PostgreSQL server configuration, HBA rules for replication, and database initialization scripts.',
+    type: 'code',
+    files: [
+      { name: 'postgres-configmap.yaml', lang: 'yaml', code: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: myapp
+data:
+  postgresql.conf: |
+    listen_addresses = '*'
+    max_connections = 200
+    shared_buffers = 256MB
+    effective_cache_size = 768MB
+    work_mem = 4MB
+    maintenance_work_mem = 64MB
+    wal_level = replica
+    max_wal_senders = 5
+    max_replication_slots = 5
+    hot_standby = on
+    hot_standby_feedback = on
+    synchronous_commit = on
+    checkpoint_completion_target = 0.9
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+    log_min_duration_statement = 200
+
+  pg_hba.conf: |
+    # TYPE  DATABASE  USER       ADDRESS     METHOD
+    local   all       all                    trust
+    host    all       all        0.0.0.0/0   md5
+    host    replication all      0.0.0.0/0   md5
+
+  init-primary.sh: |
+    #!/bin/bash
+    set -e
+    echo "=== Configuring PostgreSQL Primary ==="
+    cp /config/postgresql.conf /var/lib/postgresql/data/postgresql.conf
+    cp /config/pg_hba.conf /var/lib/postgresql/data/pg_hba.conf
+
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<-SQL
+      -- Create replication user
+      DO \\$\\$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'replicator') THEN
+          CREATE USER replicator WITH REPLICATION ENCRYPTED PASSWORD 'replpass123';
+        END IF;
+      END
+      \\$\\$;
+
+      -- Create application schema
+      CREATE TABLE IF NOT EXISTS products (
+        id            SERIAL PRIMARY KEY,
+        name          VARCHAR(200) NOT NULL,
+        description   TEXT,
+        price         DECIMAL(10,2) NOT NULL,
+        stock         INT DEFAULT 0,
+        category      VARCHAR(100),
+        is_active     BOOLEAN DEFAULT true,
+        created_at    TIMESTAMPTZ DEFAULT NOW(),
+        updated_at    TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS orders (
+        id            SERIAL PRIMARY KEY,
+        product_id    INT REFERENCES products(id),
+        quantity      INT NOT NULL CHECK (quantity > 0),
+        total_price   DECIMAL(10,2) NOT NULL,
+        status        VARCHAR(50) DEFAULT 'pending',
+        customer_name VARCHAR(200),
+        created_at    TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      -- Indexes for read performance
+      CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+      CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+      CREATE INDEX IF NOT EXISTS idx_orders_product ON orders(product_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
+    SQL
+    echo "=== Primary initialization complete ==="` }
+    ]
+  },
+  {
+    id: 'storage', icon: '💾', title: 'Step 3: StorageClass',
+    desc: 'Persistent storage class for PostgreSQL data volumes that survive pod restarts.',
+    type: 'code',
+    files: [
+      { name: 'storageclass.yaml', lang: 'yaml', code: `# AWS EKS — gp3 SSD
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+
+---
+# Azure AKS — Premium SSD
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+provisioner: disk.csi.azure.com
+parameters:
+  skuName: Premium_LRS
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain` },
+      { name: 'How PVCs map to StatefulSet pods', lang: 'plaintext', code: `StatefulSet volumeClaimTemplates auto-create PVCs:
+
+  Pod postgres-0  →  PVC: pg-data-postgres-0  (10Gi SSD)  [Primary]
+  Pod postgres-1  →  PVC: pg-data-postgres-1  (10Gi SSD)  [Replica]
+  Pod postgres-2  →  PVC: pg-data-postgres-2  (10Gi SSD)  [Replica]
+
+Key behaviors:
+  • PVCs persist even when pods are deleted or rescheduled
+  • Data survives node failures and pod restarts
+  • Each pod always rebinds to its own PVC by ordinal index
+  • ReclaimPolicy: Retain prevents accidental data loss` }
+    ]
+  },
+  {
+    id: 'headless', icon: '🔗', title: 'Step 4: Headless + R/W Services',
+    desc: 'Headless Service for stable per-pod DNS, plus separate ClusterIP services for write (primary) and read (replicas).',
+    type: 'code',
+    files: [
+      { name: 'postgres-services.yaml', lang: 'yaml', code: `# ─── Headless Service (stable per-pod DNS) ───
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: myapp
+  labels:
+    app: postgres
+spec:
+  clusterIP: None          # ← Makes it headless
+  selector:
+    app: postgres
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+
+---
+# ─── Write Service (routes to primary only) ───
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-write
+  namespace: myapp
+spec:
+  selector:
+    app: postgres
+    role: primary             # ← Only primary pod
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+
+---
+# ─── Read Service (routes to replicas, load balanced) ───
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-read
+  namespace: myapp
+spec:
+  selector:
+    app: postgres
+    role: replica             # ← Only replica pods
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432` },
+      { name: 'DNS entries created', lang: 'plaintext', code: `Headless Service creates per-pod DNS:
+
+  postgres-0.postgres-headless.myapp.svc.cluster.local  →  Primary (R/W)
+  postgres-1.postgres-headless.myapp.svc.cluster.local  →  Replica (RO)
+  postgres-2.postgres-headless.myapp.svc.cluster.local  →  Replica (RO)
+
+ClusterIP services for app-level routing:
+
+  postgres-write.myapp.svc.cluster.local   →  pg-0 only (writes)
+  postgres-read.myapp.svc.cluster.local    →  pg-1, pg-2 (reads, load balanced)
+
+ASP.NET Core uses these DNS names in connection strings.
+No hardcoded IPs — Kubernetes DNS handles everything.` }
+    ]
+  },
+  {
+    id: 'statefulset', icon: '🗄️', title: 'Step 5: PostgreSQL StatefulSet',
+    desc: 'StatefulSet with 3 replicas, init container for role detection, health probes, and PVC templates.',
+    type: 'code',
+    files: [
+      { name: 'postgres-statefulset.yaml', lang: 'yaml', code: `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: myapp
+spec:
+  serviceName: postgres-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      terminationGracePeriodSeconds: 30
+
+      initContainers:
+        - name: init-role
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              ORDINAL=\${HOSTNAME##*-}
+              if [ "$ORDINAL" = "0" ]; then
+                echo "primary" > /role/role.txt
+                echo "Setting role: PRIMARY"
+              else
+                echo "replica" > /role/role.txt
+                echo "Setting role: REPLICA"
+              fi
+          volumeMounts:
+            - name: role
+              mountPath: /role
+
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgresql
+
+          envFrom:
+            - secretRef:
+                name: postgres-secret
+
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+          livenessProbe:
+            exec:
+              command: [pg_isready, -U, appuser, -d, appdb]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, appuser, -d, appdb]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: pg-data
+              mountPath: /var/lib/postgresql/data
+            - name: config
+              mountPath: /config
+            - name: role
+              mountPath: /role
+
+        # Sidecar: Prometheus metrics exporter
+        - name: metrics
+          image: prometheuscommunity/postgres-exporter:v0.15.0
+          ports:
+            - containerPort: 9187
+              name: metrics
+          env:
+            - name: DATA_SOURCE_URI
+              value: "localhost:5432/appdb?sslmode=disable"
+            - name: DATA_SOURCE_USER
+              value: "appuser"
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+
+      volumes:
+        - name: config
+          configMap:
+            name: postgres-config
+        - name: role
+          emptyDir: {}
+
+  volumeClaimTemplates:
+    - metadata:
+        name: pg-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 10Gi` }
+    ]
+  },
+  {
+    id: 'dotnet-project', icon: '🔵', title: 'Step 6: ASP.NET Core Project Setup',
+    desc: 'Create the .NET 8 Web API project with Npgsql and Entity Framework Core packages.',
+    type: 'code',
+    files: [
+      { name: 'Terminal — Create Project', lang: 'bash', code: `# Create solution and project
+dotnet new webapi -n MyApp.Api --use-controllers
+cd MyApp.Api
+
+# Add NuGet packages
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL --version 8.0.4
+dotnet add package Microsoft.EntityFrameworkCore.Design --version 8.0.8
+dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.8
+dotnet add package AspNetCore.HealthChecks.NpgSql --version 8.0.1
+dotnet add package Serilog.AspNetCore --version 8.0.2` },
+      { name: 'Project Structure', lang: 'plaintext', code: `MyApp.Api/
+├── Controllers/
+│   └── ProductsController.cs       ← REST API endpoints
+├── Models/
+│   ├── Product.cs                   ← Product entity
+│   └── Order.cs                     ← Order entity
+├── Data/
+│   ├── AppDbContext.cs               ← WRITE context (→ primary)
+│   └── ReadOnlyDbContext.cs          ← READ context (→ replicas)
+├── Services/
+│   ├── IProductService.cs            ← Service interface
+│   └── ProductService.cs             ← Read/Write logic
+├── Program.cs                        ← DI, DbContext registration
+├── appsettings.json                  ← Local dev config
+├── appsettings.Development.json      ← Dev overrides
+├── appsettings.Production.json       ← Prod overrides (K8s)
+├── Dockerfile                        ← Multi-stage build
+└── MyApp.Api.csproj` },
+      { name: 'MyApp.Api.csproj', lang: 'xml', code: `<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
+  </ItemGroup>
+</Project>` }
+    ]
+  },
+  {
+    id: 'appsettings', icon: '📋', title: 'Step 7: AppSettings (All Environments)',
+    desc: 'Configuration files for local development, staging, and production (Kubernetes). Connection strings, logging, retry policies, and health check settings.',
+    type: 'code',
+    files: [
+      { name: 'appsettings.json (Base / Shared)', lang: 'json', code: `{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Warning",
+      "Npgsql": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+
+  "DatabaseSettings": {
+    "MaxRetryCount": 5,
+    "MaxRetryDelay": 10,
+    "CommandTimeout": 30,
+    "ReadCommandTimeout": 15,
+    "EnableSensitiveDataLogging": false,
+    "EnableDetailedErrors": false
+  },
+
+  "HealthCheckSettings": {
+    "PostgresWriteTimeout": 5,
+    "PostgresReadTimeout": 3
+  }
+}` },
+      { name: 'appsettings.Development.json (Local Dev)', lang: 'json', code: `{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
+    }
+  },
+
+  "ConnectionStrings": {
+    "WriteDb": "Host=localhost;Port=5432;Database=appdb;Username=appuser;Password=devpass123;Pooling=true;Minimum Pool Size=2;Maximum Pool Size=10;Include Error Detail=true;",
+    "ReadDb": "Host=localhost;Port=5432;Database=appdb;Username=appuser;Password=devpass123;Pooling=true;Minimum Pool Size=2;Maximum Pool Size=10;Include Error Detail=true;"
+  },
+
+  "DatabaseSettings": {
+    "MaxRetryCount": 3,
+    "MaxRetryDelay": 5,
+    "CommandTimeout": 60,
+    "EnableSensitiveDataLogging": true,
+    "EnableDetailedErrors": true
+  }
+}` },
+      { name: 'appsettings.Staging.json', lang: 'json', code: `{
+  "ConnectionStrings": {
+    "WriteDb": "Host=postgres-write.myapp.svc.cluster.local;Port=5432;Database=appdb;Username=appuser;Password=INJECT_FROM_SECRET;Pooling=true;Minimum Pool Size=3;Maximum Pool Size=15;SSL Mode=Require;Trust Server Certificate=true;",
+    "ReadDb": "Host=postgres-read.myapp.svc.cluster.local;Port=5432;Database=appdb;Username=appuser;Password=INJECT_FROM_SECRET;Pooling=true;Minimum Pool Size=3;Maximum Pool Size=20;Load Balance Hosts=true;Target Session Attrs=prefer-standby;SSL Mode=Require;Trust Server Certificate=true;"
+  },
+
+  "DatabaseSettings": {
+    "MaxRetryCount": 5,
+    "MaxRetryDelay": 10,
+    "CommandTimeout": 30,
+    "EnableSensitiveDataLogging": false,
+    "EnableDetailedErrors": true
+  }
+}` },
+      { name: 'appsettings.Production.json (Kubernetes)', lang: 'json', code: `{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "Microsoft.AspNetCore.Hosting": "Information",
+      "Microsoft.AspNetCore.Routing": "Warning"
+    }
+  },
+
+  "ConnectionStrings": {
+    "_comment_write": "Overridden by env var CONNECTION_STRING from K8s Secret",
+    "WriteDb": "Host=postgres-0.postgres-headless.myapp.svc.cluster.local;Port=5432;Database=appdb;Username=appuser;Password=REPLACED_BY_K8S_SECRET;Pooling=true;Minimum Pool Size=5;Maximum Pool Size=20;Connection Idle Lifetime=300;Connection Pruning Interval=10;Keepalive=30;Tcp Keepalive=true;",
+
+    "_comment_read": "Overridden by env var CONNECTION_STRING_READONLY from K8s Secret",
+    "ReadDb": "Host=postgres-1.postgres-headless.myapp.svc.cluster.local,postgres-2.postgres-headless.myapp.svc.cluster.local;Port=5432;Database=appdb;Username=appuser;Password=REPLACED_BY_K8S_SECRET;Pooling=true;Minimum Pool Size=5;Maximum Pool Size=30;Load Balance Hosts=true;Target Session Attrs=prefer-standby;Connection Idle Lifetime=300;Keepalive=30;Tcp Keepalive=true;"
+  },
+
+  "DatabaseSettings": {
+    "MaxRetryCount": 5,
+    "MaxRetryDelay": 10,
+    "CommandTimeout": 30,
+    "ReadCommandTimeout": 15,
+    "EnableSensitiveDataLogging": false,
+    "EnableDetailedErrors": false
+  }
+}` },
+      { name: 'Npgsql Connection String Parameters Explained', lang: 'plaintext', code: `Key Npgsql connection string parameters:
+
+WRITE connection (→ Primary pg-0):
+  Host           = postgres-0.postgres-headless.myapp.svc.cluster.local
+  Pooling        = true             ← Enable connection pooling
+  Min Pool Size  = 5                ← Pre-warm 5 connections
+  Max Pool Size  = 20               ← Limit concurrent connections
+  Idle Lifetime  = 300              ← Close idle connections after 5 min
+  Pruning        = 10               ← Check for idle every 10 sec
+  Keepalive      = 30               ← TCP keepalive every 30 sec
+  Tcp Keepalive  = true             ← OS-level keepalive
+
+READ connection (→ Replicas pg-1, pg-2):
+  Host           = pg-1...,pg-2...  ← Multiple hosts (comma-separated)
+  Load Balance   = true             ← Round-robin across replicas
+  Target Session = prefer-standby   ← Prefer replicas, fallback to primary
+  Max Pool Size  = 30               ← Higher limit for read-heavy workloads
+
+In Kubernetes, the env vars CONNECTION_STRING and CONNECTION_STRING_READONLY
+from the Secret override these appsettings values at runtime.` }
+    ]
+  },
+  {
+    id: 'models', icon: '📐', title: 'Step 8: Entity Models',
+    desc: 'C# entity classes mapped to PostgreSQL tables with data annotations.',
+    type: 'code',
+    files: [
+      { name: 'Models/Product.cs', lang: 'csharp', code: `using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace MyApp.Api.Models;
+
+[Table("products")]
+public class Product
+{
+    [Key]
+    [Column("id")]
+    public int Id { get; set; }
+
+    [Required, MaxLength(200)]
+    [Column("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Column("description")]
+    public string? Description { get; set; }
+
+    [Column("price", TypeName = "decimal(10,2)")]
+    public decimal Price { get; set; }
+
+    [Column("stock")]
+    public int Stock { get; set; }
+
+    [MaxLength(100)]
+    [Column("category")]
+    public string? Category { get; set; }
+
+    [Column("is_active")]
+    public bool IsActive { get; set; } = true;
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    public ICollection<Order> Orders { get; set; } = [];
+}` },
+      { name: 'Models/Order.cs', lang: 'csharp', code: `using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace MyApp.Api.Models;
+
+[Table("orders")]
+public class Order
+{
+    [Key]
+    [Column("id")]
+    public int Id { get; set; }
+
+    [Column("product_id")]
+    public int ProductId { get; set; }
+
+    [Column("quantity")]
+    public int Quantity { get; set; }
+
+    [Column("total_price", TypeName = "decimal(10,2)")]
+    public decimal TotalPrice { get; set; }
+
+    [MaxLength(50)]
+    [Column("status")]
+    public string Status { get; set; } = "pending";
+
+    [MaxLength(200)]
+    [Column("customer_name")]
+    public string? CustomerName { get; set; }
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [ForeignKey("ProductId")]
+    public Product? Product { get; set; }
+}` }
+    ]
+  },
+  {
+    id: 'dbcontext', icon: '🔌', title: 'Step 9: DbContext — Read/Write Split',
+    desc: 'Two DbContexts: AppDbContext for writes (→ primary), ReadOnlyDbContext for reads (→ replicas).',
+    type: 'code',
+    files: [
+      { name: 'Data/AppDbContext.cs — WRITE (Primary)', lang: 'csharp', code: `using Microsoft.EntityFrameworkCore;
+using MyApp.Api.Models;
+
+namespace MyApp.Api.Data;
+
+/// <summary>
+/// Write DbContext — connects to PostgreSQL PRIMARY (pg-0).
+/// Used for all INSERT, UPDATE, DELETE operations.
+/// </summary>
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options) { }
+
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Order> Orders => Set<Order>();
+
+    protected override void OnModelCreating(ModelBuilder mb)
+    {
+        mb.Entity<Product>(e =>
+        {
+            e.HasIndex(p => p.Name);
+            e.HasIndex(p => p.Category);
+            e.HasIndex(p => p.IsActive);
+            e.Property(p => p.CreatedAt).HasDefaultValueSql("NOW()");
+            e.Property(p => p.UpdatedAt).HasDefaultValueSql("NOW()");
+        });
+
+        mb.Entity<Order>(e =>
+        {
+            e.HasIndex(o => o.Status);
+            e.HasIndex(o => o.CreatedAt);
+            e.HasOne(o => o.Product)
+             .WithMany(p => p.Orders)
+             .HasForeignKey(o => o.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        // Auto-update timestamps on modified entities
+        foreach (var entry in ChangeTracker.Entries<Product>()
+            .Where(e => e.State == EntityState.Modified))
+        {
+            entry.Entity.UpdatedAt = DateTime.UtcNow;
+        }
+        return base.SaveChangesAsync(ct);
+    }
+}` },
+      { name: 'Data/ReadOnlyDbContext.cs — READ (Replicas)', lang: 'csharp', code: `using Microsoft.EntityFrameworkCore;
+using MyApp.Api.Models;
+
+namespace MyApp.Api.Data;
+
+/// <summary>
+/// Read-only DbContext — connects to PostgreSQL REPLICAS (pg-1, pg-2).
+/// Used for all SELECT/query operations.
+/// NoTracking by default for better read performance.
+/// Throws on any SaveChanges attempt.
+/// </summary>
+public class ReadOnlyDbContext : DbContext
+{
+    public ReadOnlyDbContext(DbContextOptions<ReadOnlyDbContext> options)
+        : base(options) { }
+
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Order> Orders => Set<Order>();
+
+    protected override void OnModelCreating(ModelBuilder mb)
+    {
+        mb.Entity<Product>(e =>
+        {
+            e.HasIndex(p => p.Name);
+            e.HasIndex(p => p.Category);
+        });
+        mb.Entity<Order>(e =>
+        {
+            e.HasIndex(o => o.Status);
+            e.HasIndex(o => o.CreatedAt);
+            e.HasOne(o => o.Product)
+             .WithMany(p => p.Orders)
+             .HasForeignKey(o => o.ProductId);
+        });
+    }
+
+    // Block writes on the read-only context
+    public override int SaveChanges()
+        => throw new InvalidOperationException(
+            "This is a read-only context. Use AppDbContext for writes.");
+
+    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+        => throw new InvalidOperationException(
+            "This is a read-only context. Use AppDbContext for writes.");
+}` }
+    ]
+  },
+  {
+    id: 'program', icon: '🚀', title: 'Step 10: Program.cs — Full Setup',
+    desc: 'Dependency injection, DbContext registration with retry policies, health checks, and middleware pipeline.',
+    type: 'code',
+    files: [
+      { name: 'Program.cs', lang: 'csharp', code: `using Microsoft.EntityFrameworkCore;
+using MyApp.Api.Data;
+using MyApp.Api.Services;
+using Serilog;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ─── Serilog ────────────────────────────────────
+builder.Host.UseSerilog((ctx, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console());
+
+// ─── Read settings ──────────────────────────────
+var dbSettings = builder.Configuration.GetSection("DatabaseSettings");
+var maxRetry = dbSettings.GetValue<int>("MaxRetryCount", 5);
+var retryDelay = dbSettings.GetValue<int>("MaxRetryDelay", 10);
+var cmdTimeout = dbSettings.GetValue<int>("CommandTimeout", 30);
+var readCmdTimeout = dbSettings.GetValue<int>("ReadCommandTimeout", 15);
+var sensitiveLog = dbSettings.GetValue<bool>("EnableSensitiveDataLogging");
+var detailedErrors = dbSettings.GetValue<bool>("EnableDetailedErrors");
+
+// ─── Connection Strings ─────────────────────────
+// Priority: Env var (K8s Secret) > appsettings.{Environment}.json
+var writeConn = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+    ?? builder.Configuration.GetConnectionString("WriteDb")
+    ?? throw new InvalidOperationException("Write connection string is required.");
+
+var readConn = Environment.GetEnvironmentVariable("CONNECTION_STRING_READONLY")
+    ?? builder.Configuration.GetConnectionString("ReadDb")
+    ?? throw new InvalidOperationException("Read connection string is required.");
+
+Log.Information("Write DB target: {Host}", ExtractHost(writeConn));
+Log.Information("Read DB target:  {Host}", ExtractHost(readConn));
+
+// ─── WRITE DbContext → Primary (pg-0) ───────────
+builder.Services.AddDbContext<AppDbContext>(opt =>
+{
+    opt.UseNpgsql(writeConn, npgsql =>
+    {
+        npgsql.EnableRetryOnFailure(maxRetry, TimeSpan.FromSeconds(retryDelay), null);
+        npgsql.CommandTimeout(cmdTimeout);
+        npgsql.MigrationsHistoryTable("__ef_migrations", "public");
+    });
+    if (sensitiveLog) opt.EnableSensitiveDataLogging();
+    if (detailedErrors) opt.EnableDetailedErrors();
+});
+
+// ─── READ DbContext → Replicas (pg-1, pg-2) ─────
+builder.Services.AddDbContext<ReadOnlyDbContext>(opt =>
+{
+    opt.UseNpgsql(readConn, npgsql =>
+    {
+        npgsql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null);
+        npgsql.CommandTimeout(readCmdTimeout);
+    })
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    if (sensitiveLog) opt.EnableSensitiveDataLogging();
+});
+
+// ─── Services ───────────────────────────────────
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// ─── Health Checks ──────────────────────────────
+var hcSettings = builder.Configuration.GetSection("HealthCheckSettings");
+builder.Services.AddHealthChecks()
+    .AddNpgSql(writeConn, name: "postgres-write",
+        timeout: TimeSpan.FromSeconds(hcSettings.GetValue<int>("PostgresWriteTimeout", 5)))
+    .AddNpgSql(readConn, name: "postgres-read",
+        timeout: TimeSpan.FromSeconds(hcSettings.GetValue<int>("PostgresReadTimeout", 3)));
+
+// ─── Build App ──────────────────────────────────
+var app = builder.Build();
+
+// Auto-migrate on startup (write context only)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var pending = await db.Database.GetPendingMigrationsAsync();
+    if (pending.Any())
+    {
+        Log.Information("Applying {Count} pending migrations...", pending.Count());
+        await db.Database.MigrateAsync();
+    }
+}
+
+app.UseSerilogRequestLogging();
+app.UseSwagger();
+app.UseSwaggerUI();
+app.MapControllers();
+app.MapHealthChecks("/healthz");
+app.MapGet("/", () => Results.Redirect("/swagger"));
+
+Log.Information("MyApp.Api started successfully");
+app.Run();
+
+// Helper to extract host for logging (don't log password)
+static string ExtractHost(string conn) =>
+    conn.Split(';').FirstOrDefault(s => s.Trim()
+        .StartsWith("Host", StringComparison.OrdinalIgnoreCase)) ?? "unknown";` }
+    ]
+  },
+  {
+    id: 'service', icon: '⚡', title: 'Step 11: Service Layer (R/W Split)',
+    desc: 'Business logic explicitly routing reads to replicas and writes to the primary.',
+    type: 'code',
+    files: [
+      { name: 'Services/IProductService.cs', lang: 'csharp', code: `using MyApp.Api.Models;
+
+namespace MyApp.Api.Services;
+
+public interface IProductService
+{
+    // ── READS → Replicas ──
+    Task<List<Product>> GetAllAsync(string? category = null);
+    Task<Product?> GetByIdAsync(int id);
+    Task<List<Product>> SearchAsync(string term);
+    Task<List<Order>> GetOrdersByProductAsync(int productId);
+    Task<DashboardStats> GetStatsAsync();
+
+    // ── WRITES → Primary ──
+    Task<Product> CreateAsync(Product product);
+    Task<Product?> UpdateAsync(int id, Product product);
+    Task<bool> DeleteAsync(int id);
+    Task<Order> PlaceOrderAsync(int productId, int qty, string? customer);
+}
+
+public record DashboardStats(int TotalProducts, int TotalOrders, decimal Revenue);` },
+      { name: 'Services/ProductService.cs', lang: 'csharp', code: `using Microsoft.EntityFrameworkCore;
+using MyApp.Api.Data;
+using MyApp.Api.Models;
+
+namespace MyApp.Api.Services;
+
+public class ProductService : IProductService
+{
+    private readonly AppDbContext _write;        // → Primary (pg-0)
+    private readonly ReadOnlyDbContext _read;    // → Replicas (pg-1, pg-2)
+    private readonly ILogger<ProductService> _log;
+
+    public ProductService(AppDbContext write, ReadOnlyDbContext read,
+        ILogger<ProductService> log)
+    { _write = write; _read = read; _log = log; }
+
+    // ══════════════════════════════════════════════
+    //  READS → ReadOnlyDbContext → Replicas
+    // ══════════════════════════════════════════════
+
+    public async Task<List<Product>> GetAllAsync(string? category = null)
+    {
+        _log.LogDebug("READ: GetAll from REPLICA");
+        var q = _read.Products.Where(p => p.IsActive);
+        if (!string.IsNullOrEmpty(category))
+            q = q.Where(p => p.Category == category);
+        return await q.OrderByDescending(p => p.CreatedAt).ToListAsync();
+    }
+
+    public async Task<Product?> GetByIdAsync(int id)
+        => await _read.Products.Include(p => p.Orders.OrderByDescending(o => o.CreatedAt).Take(10))
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+    public async Task<List<Product>> SearchAsync(string term)
+        => await _read.Products
+            .Where(p => p.IsActive && EF.Functions.ILike(p.Name, $"%{term}%"))
+            .Take(50).ToListAsync();
+
+    public async Task<List<Order>> GetOrdersByProductAsync(int productId)
+        => await _read.Orders.Where(o => o.ProductId == productId)
+            .OrderByDescending(o => o.CreatedAt).Take(100).ToListAsync();
+
+    public async Task<DashboardStats> GetStatsAsync()
+    {
+        var products = await _read.Products.CountAsync(p => p.IsActive);
+        var orders = await _read.Orders.CountAsync();
+        var revenue = await _read.Orders
+            .Where(o => o.Status == "confirmed")
+            .SumAsync(o => o.TotalPrice);
+        return new DashboardStats(products, orders, revenue);
+    }
+
+    // ══════════════════════════════════════════════
+    //  WRITES → AppDbContext → Primary
+    // ══════════════════════════════════════════════
+
+    public async Task<Product> CreateAsync(Product product)
+    {
+        _log.LogInformation("WRITE: Creating product on PRIMARY");
+        _write.Products.Add(product);
+        await _write.SaveChangesAsync();
+        return product;
+    }
+
+    public async Task<Product?> UpdateAsync(int id, Product updated)
+    {
+        var p = await _write.Products.FindAsync(id);
+        if (p is null) return null;
+        p.Name = updated.Name;
+        p.Description = updated.Description;
+        p.Price = updated.Price;
+        p.Stock = updated.Stock;
+        p.Category = updated.Category;
+        p.IsActive = updated.IsActive;
+        await _write.SaveChangesAsync();
+        _log.LogInformation("WRITE: Updated product {Id} on PRIMARY", id);
+        return p;
+    }
+
+    public async Task<bool> DeleteAsync(int id)
+    {
+        var p = await _write.Products.FindAsync(id);
+        if (p is null) return false;
+        p.IsActive = false; // Soft delete
+        await _write.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<Order> PlaceOrderAsync(int productId, int qty, string? customer)
+    {
+        await using var tx = await _write.Database.BeginTransactionAsync();
+        try
+        {
+            var product = await _write.Products.FindAsync(productId)
+                ?? throw new KeyNotFoundException($"Product {productId} not found");
+            if (product.Stock < qty)
+                throw new InvalidOperationException(
+                    $"Insufficient stock: {product.Stock} < {qty}");
+
+            product.Stock -= qty;
+            var order = new Order
+            {
+                ProductId = productId, Quantity = qty,
+                TotalPrice = product.Price * qty,
+                CustomerName = customer, Status = "confirmed"
+            };
+            _write.Orders.Add(order);
+            await _write.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            _log.LogInformation("WRITE: Order {Id} placed on PRIMARY (total: {Total})",
+                order.Id, order.TotalPrice);
+            return order;
+        }
+        catch { await tx.RollbackAsync(); throw; }
+    }
+}` }
+    ]
+  },
+  {
+    id: 'controller', icon: '🎮', title: 'Step 12: API Controller',
+    desc: 'RESTful endpoints — GET routes hit replicas, POST/PUT/DELETE hit primary.',
+    type: 'code',
+    files: [
+      { name: 'Controllers/ProductsController.cs', lang: 'csharp', code: `using Microsoft.AspNetCore.Mvc;
+using MyApp.Api.Models;
+using MyApp.Api.Services;
+
+namespace MyApp.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController(IProductService svc) : ControllerBase
+{
+    // ── READS → Replicas ─────────────────
+
+    [HttpGet]
+    public async Task<ActionResult<List<Product>>> GetAll([FromQuery] string? category)
+        => Ok(await svc.GetAllAsync(category));
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<Product>> GetById(int id)
+    {
+        var p = await svc.GetByIdAsync(id);
+        return p is null ? NotFound() : Ok(p);
+    }
+
+    [HttpGet("search")]
+    public async Task<ActionResult<List<Product>>> Search([FromQuery] string q)
+        => Ok(await svc.SearchAsync(q));
+
+    [HttpGet("{id:int}/orders")]
+    public async Task<ActionResult<List<Order>>> GetOrders(int id)
+        => Ok(await svc.GetOrdersByProductAsync(id));
+
+    [HttpGet("stats")]
+    public async Task<ActionResult<DashboardStats>> GetStats()
+        => Ok(await svc.GetStatsAsync());
+
+    // ── WRITES → Primary ─────────────────
+
+    [HttpPost]
+    public async Task<ActionResult<Product>> Create(Product product)
+    {
+        var created = await svc.CreateAsync(product);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<Product>> Update(int id, Product product)
+    {
+        var updated = await svc.UpdateAsync(id, product);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+        => await svc.DeleteAsync(id) ? NoContent() : NotFound();
+
+    [HttpPost("{id:int}/orders")]
+    public async Task<ActionResult<Order>> PlaceOrder(int id, [FromBody] OrderRequest req)
+    {
+        try
+        {
+            var order = await svc.PlaceOrderAsync(id, req.Quantity, req.CustomerName);
+            return CreatedAtAction(nameof(GetOrders), new { id }, order);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+}
+
+public record OrderRequest(int Quantity, string? CustomerName);` }
+    ]
+  },
+  {
+    id: 'dockerfile', icon: '🐳', title: 'Step 13: Dockerfile',
+    desc: 'Multi-stage Docker build for production-optimized ASP.NET Core image.',
+    type: 'code',
+    files: [
+      { name: 'Dockerfile', lang: 'dockerfile', code: `# ── Build Stage ──
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY *.csproj ./
+RUN dotnet restore
+COPY . ./
+RUN dotnet publish -c Release -o /app/publish --no-restore
+
+# ── Runtime Stage ──
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_EnableDiagnostics=0
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \\
+  CMD curl -sf http://localhost:8080/healthz || exit 1
+
+ENTRYPOINT ["dotnet", "MyApp.Api.dll"]` },
+      { name: 'Build & Push', lang: 'bash', code: `# Build
+docker build -t myregistry.azurecr.io/myapp-api:1.0.0 .
+
+# Push
+docker push myregistry.azurecr.io/myapp-api:1.0.0
+
+# Local minikube
+eval $(minikube docker-env)
+docker build -t myapp-api:1.0.0 .` }
+    ]
+  },
+  {
+    id: 'k8s-deploy', icon: '☸️', title: 'Step 14: K8s Deployment + Ingress',
+    desc: 'Deploy ASP.NET Core to Kubernetes with connection strings injected from Secrets.',
+    type: 'code',
+    files: [
+      { name: 'aspnet-deployment.yaml', lang: 'yaml', code: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-api
+  namespace: myapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp-api
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: myapp-api
+    spec:
+      containers:
+        - name: api
+          image: myregistry.azurecr.io/myapp-api:1.0.0
+          ports:
+            - containerPort: 8080
+
+          env:
+            # Connection strings from K8s Secret
+            - name: CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: CONNECTION_STRING
+            - name: CONNECTION_STRING_READONLY
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: CONNECTION_STRING_READONLY
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "512Mi" }
+
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-api-svc
+  namespace: myapp
+spec:
+  type: ClusterIP
+  selector:
+    app: myapp-api
+  ports:
+    - port: 80
+      targetPort: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp-ingress
+  namespace: myapp
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [api.myapp.com]
+      secretName: myapp-tls
+  rules:
+    - host: api.myapp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp-api-svc
+                port: { number: 80 }` }
+    ]
+  },
+  {
+    id: 'verify', icon: '✅', title: 'Step 15: Deploy & Verify',
+    desc: 'Apply all resources, verify pods, and test read/write operations end to end.',
+    type: 'code',
+    files: [
+      { name: 'Deploy Everything', lang: 'bash', code: `# 1. Infrastructure
+kubectl apply -f namespace.yaml
+kubectl apply -f postgres-secret.yaml
+kubectl apply -f postgres-configmap.yaml
+kubectl apply -f storageclass.yaml
+
+# 2. PostgreSQL
+kubectl apply -f postgres-services.yaml
+kubectl apply -f postgres-statefulset.yaml
+kubectl -n myapp rollout status statefulset/postgres --timeout=120s
+
+# 3. ASP.NET Core
+kubectl apply -f aspnet-deployment.yaml
+kubectl -n myapp rollout status deployment/myapp-api --timeout=60s` },
+      { name: 'Verify All Resources', lang: 'bash', code: `# All resources
+kubectl -n myapp get all
+
+# PostgreSQL pods
+kubectl -n myapp get pods -l app=postgres -o wide
+#  postgres-0   2/2  Running  ← Primary (R/W)
+#  postgres-1   2/2  Running  ← Replica (RO)
+#  postgres-2   2/2  Running  ← Replica (RO)
+
+# API pods
+kubectl -n myapp get pods -l app=myapp-api
+#  myapp-api-xxx  1/1  Running
+#  myapp-api-yyy  1/1  Running
+#  myapp-api-zzz  1/1  Running
+
+# PVCs
+kubectl -n myapp get pvc
+#  pg-data-postgres-0  Bound  10Gi  fast-ssd
+#  pg-data-postgres-1  Bound  10Gi  fast-ssd
+#  pg-data-postgres-2  Bound  10Gi  fast-ssd
+
+# DNS test
+kubectl -n myapp run dns-test --rm -it --image=busybox -- \\
+  nslookup postgres-headless.myapp.svc.cluster.local
+
+# Health check
+kubectl -n myapp port-forward svc/myapp-api-svc 8080:80
+curl http://localhost:8080/healthz` },
+      { name: 'Test Read & Write Operations', lang: 'bash', code: `# Port-forward
+kubectl -n myapp port-forward svc/myapp-api-svc 8080:80 &
+
+# ═══ WRITE: Create product (→ PRIMARY pg-0) ═══
+curl -s -X POST http://localhost:8080/api/products \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "Kubernetes in Action",
+    "description": "Comprehensive K8s guide",
+    "price": 59.99,
+    "stock": 200,
+    "category": "Books"
+  }' | jq .
+
+# ═══ READ: List products (→ REPLICA pg-1 or pg-2) ═══
+curl -s http://localhost:8080/api/products | jq .
+
+# ═══ READ: Search (→ REPLICA) ═══
+curl -s "http://localhost:8080/api/products/search?q=kubernetes" | jq .
+
+# ═══ READ: Dashboard stats (→ REPLICA) ═══
+curl -s http://localhost:8080/api/products/stats | jq .
+
+# ═══ WRITE: Place order (→ PRIMARY pg-0, with transaction) ═══
+curl -s -X POST http://localhost:8080/api/products/1/orders \\
+  -H "Content-Type: application/json" \\
+  -d '{"quantity": 3, "customerName": "Ahmed"}' | jq .
+
+# ═══ READ: Get orders (→ REPLICA) ═══
+curl -s http://localhost:8080/api/products/1/orders | jq .
+
+# ═══ Verify logs show R/W routing ═══
+kubectl -n myapp logs -l app=myapp-api --tail=30 | grep -E "READ|WRITE|PRIMARY|REPLICA"
+#  WRITE: Creating product on PRIMARY
+#  READ: GetAll from REPLICA
+#  WRITE: Order 1 placed on PRIMARY` }
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════
+//  Rendering Engine
+// ═══════════════════════════════════════════════
+
+let currentSection = 0;
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = SECTIONS.map((s, i) => `
+    <button class="nav-btn ${i === currentSection ? 'active' : ''}" onclick="goTo(${i})">
+      <span class="nav-icon">${s.icon}</span>
+      <span class="nav-label">${s.title}</span>
+    </button>
+  `).join('');
+}
+
+function renderContent() {
+  const main = document.getElementById('main-content');
+  const s = SECTIONS[currentSection];
+  let html = `<div class="content-wrap">`;
+
+  // Header
+  html += `<div class="section-header">
+    <div class="section-icon-title"><span class="icon">${s.icon}</span><h2>${s.title}</h2></div>
+    <p class="section-desc">${s.desc}</p>
+  </div>`;
+
+  // Architecture diagram
+  if (s.type === 'architecture') {
+    // Layers
+    s.layers.forEach((layer, i) => {
+      html += `<div class="arch-layer" style="background:${layer.color}12;border:1px solid ${layer.color}30">
+        <div class="arch-layer-name" style="color:${layer.color}">${layer.name}</div>
+        <div class="arch-items">${layer.items.map(item =>
+          `<div class="arch-item" style="background:${layer.color}10;border:1px solid ${layer.color}20">${item}</div>`
+        ).join('')}</div>
+      </div>`;
+      if (i < s.layers.length - 1) html += `<div class="arch-arrow">↓</div>`;
+    });
+    // Note
+    html += `<div class="arch-note">${s.note}</div>`;
+    // Expandable info cards
+    s.components.forEach((c, i) => {
+      html += `<div class="info-card" onclick="this.classList.toggle('expanded')">
+        <div class="info-card-head">
+          <div class="info-dot" style="background:${c.color};box-shadow:0 0 8px ${c.color}66"></div>
+          <div class="info-name">${c.name}</div>
+          <div class="info-arrow">▾</div>
+        </div>
+        <div class="info-details">${c.details.replace(/\\n/g, '<br>')}</div>
+      </div>`;
+    });
+    // Animated flow
+    if (s.flow) {
+      html += `<div class="flow-container">
+        <div class="flow-title">▶ ${s.flow.title}</div>
+        <div class="flow-steps" id="flow-steps">
+          ${s.flow.steps.map((step, i) => `
+            ${i > 0 ? `<div class="flow-connector" id="fc-${i}"></div>` : ''}
+            <div class="flow-step" id="fs-${i}">
+              <span class="flow-step-icon">${step.icon}</span>
+              <span class="flow-step-label">${step.label}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+      setTimeout(() => startFlowAnimation(s.flow.steps.length), 100);
+    }
+  }
+
+  // Code files
+  if (s.files) {
+    s.files.forEach((f, i) => {
+      const dotColor = LANG_COLORS[f.lang] || '#6366f1';
+      const escapedCode = f.code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += `<div class="code-block">
+        <div class="code-header">
+          <div class="code-header-left">
+            <div class="code-dot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}66"></div>
+            <span class="code-filename">${f.name}</span>
+            <span class="code-lang">${f.lang}</span>
+          </div>
+          <button class="copy-btn" onclick="copyCode(this, ${currentSection}, ${i})">Copy</button>
+        </div>
+        <pre class="code-body">${escapedCode}</pre>
+      </div>`;
+    });
+  }
+
+  // Navigation
+  html += `<div class="step-nav">
+    <button class="step-btn prev" ${currentSection === 0 ? 'disabled' : ''} onclick="goTo(${currentSection - 1})">← Previous</button>
+    <span class="step-counter">${currentSection + 1} / ${SECTIONS.length}</span>
+    <button class="step-btn next" ${currentSection === SECTIONS.length - 1 ? 'disabled' : ''} onclick="goTo(${currentSection + 1})">Next Step →</button>
+  </div>`;
+
+  html += `</div>`;
+  main.innerHTML = html;
+  main.scrollTop = 0;
+}
+
+function goTo(i) {
+  if (i < 0 || i >= SECTIONS.length) return;
+  stopFlowAnimation();
+  currentSection = i;
+  renderSidebar();
+  renderContent();
+}
+
+// ── Copy ──
+function copyCode(btn, secIdx, fileIdx) {
+  const code = SECTIONS[secIdx].files[fileIdx].code;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ── Flow Animation ──
+let flowInterval = null;
+function startFlowAnimation(count) {
+  let step = -1;
+  flowInterval = setInterval(() => {
+    step++;
+    if (step >= count) {
+      // Reset
+      for (let j = 0; j < count; j++) {
+        const el = document.getElementById('fs-' + j);
+        if (el) { el.classList.remove('active', 'passed'); }
+        const fc = document.getElementById('fc-' + j);
+        if (fc) fc.classList.remove('active');
+      }
+      step = -1;
+      return;
+    }
+    for (let j = 0; j < count; j++) {
+      const el = document.getElementById('fs-' + j);
+      if (!el) continue;
+      el.classList.remove('active', 'passed');
+      if (j < step) el.classList.add('passed');
+      if (j === step) el.classList.add('active');
+      const fc = document.getElementById('fc-' + j);
+      if (fc) { fc.classList.toggle('active', j <= step); }
+    }
+  }, 750);
+}
+function stopFlowAnimation() {
+  if (flowInterval) { clearInterval(flowInterval); flowInterval = null; }
+}
+
+// ── Init ──
+renderSidebar();
+renderContent();
+</script>
+</body>
+</html>
