@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASP.NET Core + PostgreSQL on Minikube — Dual Solution</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg-deep:#06070d;--bg-surface:#0a0b14;--bg-code:#080a12;--bg-hover:rgba(255,255,255,0.025);--border:rgba(255,255,255,0.06);--text-primary:#e2e8f0;--text-secondary:#94a3b8;--text-dim:#475569;--text-muted:#334155;--accent-indigo:#6366f1;--accent-cyan:#0ea5e9;--accent-emerald:#10b981;--accent-amber:#f59e0b;--accent-csharp:#68217a;--accent-mk:#f97316;--accent-a:#0ea5e9;--accent-b:#a855f7}
+*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg-deep);color:var(--text-primary);font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;min-height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
+.header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;background:linear-gradient(180deg,rgba(249,115,22,0.04) 0%,transparent 100%)}
+.header-left{flex:1}.header-tag{font-size:9px;letter-spacing:3px;color:var(--accent-mk);font-weight:700;text-transform:uppercase;margin-bottom:3px}
+.header h1{font-size:17px;font-weight:800;background:linear-gradient(135deg,var(--accent-mk),var(--accent-cyan),var(--accent-emerald));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-badges{display:flex;gap:6px}.badge{font-size:9px;padding:3px 8px;border-radius:5px;font-weight:600;border:1px solid}
+.badge-a{background:rgba(14,165,233,0.1);color:var(--accent-a);border-color:rgba(14,165,233,0.25)}
+.badge-b{background:rgba(168,85,247,0.1);color:var(--accent-b);border-color:rgba(168,85,247,0.25)}
+.badge-app{background:rgba(104,33,122,0.12);color:#b668d4;border-color:rgba(104,33,122,0.25)}
+.layout{display:flex;height:calc(100vh - 54px)}
+.sidebar{width:300px;min-width:300px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg-surface)}
+.repo-tabs{display:flex;border-bottom:1px solid var(--border)}
+.repo-tab{flex:1;padding:9px 8px;font-size:10px;font-weight:600;font-family:inherit;border:none;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:4px;justify-content:center;border-bottom:2px solid transparent;color:var(--text-dim)}
+.repo-tab.sa{background:rgba(14,165,233,0.04)}.repo-tab.sb{background:rgba(168,85,247,0.04)}.repo-tab.app{background:rgba(104,33,122,0.04)}
+.repo-tab.sa.active{background:rgba(14,165,233,0.12);color:var(--accent-a);border-bottom-color:var(--accent-a)}
+.repo-tab.sb.active{background:rgba(168,85,247,0.12);color:var(--accent-b);border-bottom-color:var(--accent-b)}
+.repo-tab.app.active{background:rgba(104,33,122,0.12);color:#b668d4;border-bottom-color:#b668d4}
+.tree-container{flex:1;overflow-y:auto;padding:6px 0}
+.tree-item{display:flex;align-items:center;gap:5px;padding:4px 10px;cursor:pointer;transition:background .1s;font-size:11.5px;color:var(--text-secondary);user-select:none;border-left:2px solid transparent}
+.tree-item:hover{background:var(--bg-hover)}.tree-item.active{background:rgba(99,102,241,0.1);color:#e0e7ff;border-left-color:var(--accent-indigo)}
+.tree-item.folder{color:var(--text-primary);font-weight:600}
+.tree-indent{display:inline-block;width:14px;flex-shrink:0}.tree-icon{font-size:12px;flex-shrink:0;width:16px;text-align:center}
+.tree-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-chevron{font-size:9px;color:var(--text-dim);transition:transform .15s;width:11px;text-align:center;flex-shrink:0}
+.tree-chevron.open{transform:rotate(90deg)}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.file-tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg-surface);overflow-x:auto;min-height:32px;scrollbar-width:none}
+.file-tab-bar::-webkit-scrollbar{display:none}
+.file-tab{display:flex;align-items:center;gap:5px;padding:7px 12px;font-size:10.5px;font-family:inherit;color:var(--text-dim);border:none;border-right:1px solid var(--border);cursor:pointer;background:transparent;white-space:nowrap;transition:all .1s}
+.file-tab:hover{background:rgba(255,255,255,0.02);color:var(--text-secondary)}
+.file-tab.active{background:var(--bg-deep);color:var(--text-primary);border-bottom:1px solid var(--bg-deep);margin-bottom:-1px}
+.file-tab .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.content-area{flex:1;overflow-y:auto}
+.file-content{padding:18px 22px;max-width:860px}
+.file-path{font-size:10.5px;color:var(--text-dim);margin-bottom:10px;padding:5px 9px;background:rgba(255,255,255,0.02);border-radius:5px;border:1px solid var(--border);display:inline-block}
+.file-path b{color:var(--accent-mk)}
+.sec-header{margin-bottom:14px}.sec-title{font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:5px}
+.sec-desc{font-size:12px;color:var(--text-secondary);line-height:1.7}
+.code-block{border-radius:7px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px}
+.code-head{display:flex;justify-content:space-between;align-items:center;padding:6px 11px;background:rgba(255,255,255,0.025);border-bottom:1px solid var(--border)}
+.code-head-left{display:flex;align-items:center;gap:7px}
+.code-dot{width:6px;height:6px;border-radius:50%}.code-fname{font-size:11px;color:#c4b5fd;font-weight:600}
+.code-lang{font-size:8.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px}
+.copy-btn{font-size:9.5px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.04);color:var(--text-secondary);border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:all .12s}
+.copy-btn:hover{background:rgba(255,255,255,0.08)}.copy-btn.copied{background:rgba(16,185,129,0.12);color:var(--accent-emerald);border-color:rgba(16,185,129,0.25)}
+.code-body{padding:11px 13px;overflow-x:auto;font-size:11px;line-height:1.7;color:#cbd5e1;white-space:pre;tab-size:2;background:var(--bg-code)}
+.info-note{padding:11px 14px;border-radius:7px;font-size:11.5px;line-height:1.75;margin-bottom:12px}
+.info-note.purple{background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);color:#c4b5fd}
+.info-note.cyan{background:rgba(14,165,233,0.07);border:1px solid rgba(14,165,233,0.15);color:#7dd3fc}
+.info-note.emerald{background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.15);color:#6ee7b7}
+.info-note.orange{background:rgba(249,115,22,0.07);border:1px solid rgba(249,115,22,0.15);color:#fdba74}
+.info-note.violet{background:rgba(168,85,247,0.07);border:1px solid rgba(168,85,247,0.15);color:#c4b5fd}
+.info-note.red{background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.15);color:#fca5a5}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:10px;padding:40px}
+.empty-state .es-icon{font-size:44px;opacity:0.3}.empty-state p{font-size:12px;text-align:center;line-height:1.6}
+@media(max-width:700px){.layout{flex-direction:column}.sidebar{width:100%;min-width:100%;max-height:40vh;border-right:none;border-bottom:1px solid var(--border)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <div class="header-tag">Minikube Local Dev &#8212; Two Solutions Compared</div>
+    <h1>ASP.NET Core + PostgreSQL StatefulSet (3 Replicas)</h1>
+  </div>
+  <div class="header-badges">
+    <span class="badge badge-a">A: Static Primary</span>
+    <span class="badge badge-b">B: Patroni HA</span>
+    <span class="badge badge-app">App Code</span>
+  </div>
+</div>
+<div class="layout">
+  <div class="sidebar">
+    <div class="repo-tabs">
+      <button class="repo-tab sa active" onclick="switchRepo('sa')">A: Static</button>
+      <button class="repo-tab sb" onclick="switchRepo('sb')">B: Patroni</button>
+      <button class="repo-tab app" onclick="switchRepo('app')">App Code</button>
+    </div>
+    <div class="tree-container" id="tree-container"></div>
+  </div>
+  <div class="main">
+    <div class="file-tab-bar" id="file-tab-bar"></div>
+    <div class="content-area" id="content-area">
+      <div class="empty-state"><div class="es-icon">&#128194;</div><p>Select a file from the tree.<br><b>Solution A:</b> Static primary (pg-0 always primary)<br><b>Solution B:</b> Patroni (automatic failover)</p></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+var LC={yaml:"#f59e0b",csharp:"#68217a",bash:"#10b981",json:"#0ea5e9",xml:"#ef4444",dockerfile:"#2496ed",text:"#64748b",md:"#94a3b8"};
+var CODE={};
+
+// ══════════════════════════════════════════════
+//  SHARED (same in both solutions)
+// ══════════════════════════════════════════════
+
+CODE["sa-setup"] = [
+"#!/bin/bash",
+"# Start Minikube with enough resources for 3 PG pods + API",
+"minikube start --cpus=4 --memory=6144 --disk-size=30g --driver=docker",
+"minikube addons enable ingress",
+"minikube addons enable metrics-server",
+"minikube addons enable storage-provisioner",
+"eval $(minikube docker-env)",
+"echo \"Ready! 4 CPUs, 6GB RAM, 30GB disk\""
+].join("\n");
+
+CODE["sa-ns"] = [
+"apiVersion: v1",
+"kind: Namespace",
+"metadata:",
+"  name: myapp",
+"  labels:",
+"    environment: local"
+].join("\n");
+
+// ══════════════════════════════════════════════
+//  SOLUTION A: STATIC PRIMARY
+// ══════════════════════════════════════════════
+
+CODE["sa-readme"] = [
+"# Solution A: Static Primary (Simple)",
+"",
+"## How it works",
+"- pg-0 is ALWAYS the primary (read-write)",
+"- pg-1, pg-2 are ALWAYS replicas (read-only)",
+"- Role is determined by pod ordinal index in the init container",
+"- PostgreSQL streaming replication syncs data from primary to replicas",
+"",
+"## How replication works",
+"1. Primary (pg-0) writes WAL (Write-Ahead Log) records",
+"2. Replicas connect to primary via 'replicator' user",
+"3. Replicas stream WAL records in real-time",
+"4. Replicas replay WAL records to stay in sync",
+"5. hot_standby=on allows read queries on replicas",
+"",
+"## What happens if primary (pg-0) fails?",
+"- Kubernetes restarts the pod automatically",
+"- The PVC data persists, so pg-0 comes back with all data",
+"- During downtime: WRITES FAIL, reads from replicas still work",
+"- NO automatic failover - pg-1/pg-2 do NOT become primary",
+"- Typically recovers in 10-30 seconds (pod restart)",
+"",
+"## When to use",
+"- Local development and testing",
+"- Simple setups where brief write downtime is acceptable",
+"- Learning Kubernetes StatefulSet patterns",
+"",
+"## Limitations",
+"- Single point of failure for writes",
+"- No automatic promotion of replicas",
+"- Manual intervention needed if pg-0's PVC is corrupted"
+].join("\n");
+
+CODE["sa-secret"] = [
+"apiVersion: v1",
+"kind: Secret",
+"metadata:",
+"  name: postgres-secret",
+"  namespace: myapp",
+"type: Opaque",
+"stringData:",
+"  POSTGRES_USER: \"appuser\"",
+"  POSTGRES_PASSWORD: \"localpass123\"",
+"  POSTGRES_DB: \"appdb\"",
+"",
+"  # Write -> Primary (pg-0) via headless DNS",
+"  CONNECTION_STRING: >-",
+"    Host=postgres-0.postgres-headless.myapp.svc.cluster.local;",
+"    Port=5432;Database=appdb;Username=appuser;Password=localpass123;",
+"    Pooling=true;Minimum Pool Size=2;Maximum Pool Size=10;",
+"    Include Error Detail=true;",
+"",
+"  # Read -> Replicas (pg-1, pg-2) load balanced",
+"  CONNECTION_STRING_READONLY: >-",
+"    Host=postgres-1.postgres-headless.myapp.svc.cluster.local,",
+"    postgres-2.postgres-headless.myapp.svc.cluster.local;",
+"    Port=5432;Database=appdb;Username=appuser;Password=localpass123;",
+"    Pooling=true;Minimum Pool Size=2;Maximum Pool Size=10;",
+"    Load Balance Hosts=true;Target Session Attrs=prefer-standby;",
+"    Include Error Detail=true;"
+].join("\n");
+
+CODE["sa-cm"] = [
+"apiVersion: v1",
+"kind: ConfigMap",
+"metadata:",
+"  name: postgres-config",
+"  namespace: myapp",
+"data:",
+"  postgresql.conf: |",
+"    listen_addresses = '*'",
+"    max_connections = 100",
+"    shared_buffers = 128MB",
+"    wal_level = replica",
+"    max_wal_senders = 5",
+"    max_replication_slots = 5",
+"    hot_standby = on",
+"    hot_standby_feedback = on",
+"    log_statement = 'all'",
+"",
+"  pg_hba.conf: |",
+"    local   all       all                    trust",
+"    host    all       all        0.0.0.0/0   md5",
+"    host    replication all      0.0.0.0/0   md5",
+"",
+"  init-primary.sh: |",
+"    #!/bin/bash",
+"    set -e",
+"    # Only runs on pg-0 (primary)",
+"    ORDINAL=${HOSTNAME##*-}",
+"    if [ \"$ORDINAL\" != \"0\" ]; then",
+"      echo \"Replica: skipping init, will stream from primary\"",
+"      exit 0",
+"    fi",
+"    echo \"=== Initializing PRIMARY ===\"",
+"    psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" <<-SQL",
+"      DO $$ BEGIN",
+"        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='replicator') THEN",
+"          CREATE USER replicator REPLICATION ENCRYPTED PASSWORD 'replpass';",
+"        END IF;",
+"      END $$;",
+"      CREATE TABLE IF NOT EXISTS products (",
+"        id SERIAL PRIMARY KEY, name VARCHAR(200) NOT NULL,",
+"        description TEXT, price DECIMAL(10,2) NOT NULL,",
+"        stock INT DEFAULT 0, category VARCHAR(100),",
+"        is_active BOOLEAN DEFAULT true,",
+"        created_at TIMESTAMPTZ DEFAULT NOW(),",
+"        updated_at TIMESTAMPTZ DEFAULT NOW());",
+"      CREATE TABLE IF NOT EXISTS orders (",
+"        id SERIAL PRIMARY KEY, product_id INT REFERENCES products(id),",
+"        quantity INT NOT NULL CHECK(quantity>0),",
+"        total_price DECIMAL(10,2) NOT NULL,",
+"        status VARCHAR(50) DEFAULT 'pending',",
+"        customer_name VARCHAR(200), created_at TIMESTAMPTZ DEFAULT NOW());",
+"      CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);",
+"      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);",
+"      INSERT INTO products(name,price,stock,category) VALUES",
+"        ('Kubernetes in Action',59.99,100,'Books'),",
+"        ('Docker Deep Dive',39.99,50,'Books'),",
+"        ('Mech Keyboard',149.99,25,'Hardware')",
+"      ON CONFLICT DO NOTHING;",
+"    SQL",
+"    echo \"=== PRIMARY ready ===\"",
+"",
+"  setup-replica.sh: |",
+"    #!/bin/bash",
+"    set -e",
+"    ORDINAL=${HOSTNAME##*-}",
+"    if [ \"$ORDINAL\" = \"0\" ]; then exit 0; fi",
+"    echo \"=== Setting up REPLICA from primary ===\"",
+"    # Wait for primary to be ready",
+"    until pg_isready -h postgres-0.postgres-headless -U appuser; do",
+"      echo \"Waiting for primary...\"; sleep 2",
+"    done",
+"    # If data dir is empty, do base backup from primary",
+"    if [ ! -s \"$PGDATA/PG_VERSION\" ]; then",
+"      rm -rf $PGDATA/*",
+"      pg_basebackup -h postgres-0.postgres-headless \\",
+"        -U replicator -D $PGDATA -Fp -Xs -P -R",
+"      echo \"primary_conninfo = 'host=postgres-0.postgres-headless user=replicator password=replpass'\" >> $PGDATA/postgresql.auto.conf",
+"      touch $PGDATA/standby.signal",
+"    fi",
+"    echo \"=== REPLICA ready ===\""
+].join("\n");
+
+CODE["sa-headless"] = [
+"# Headless Service: per-pod DNS for StatefulSet",
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: postgres-headless",
+"  namespace: myapp",
+"spec:",
+"  clusterIP: None",
+"  selector:",
+"    app: postgres",
+"  ports:",
+"    - name: postgresql",
+"      port: 5432",
+"      targetPort: 5432",
+"  publishNotReadyAddresses: true"
+].join("\n");
+
+CODE["sa-write-svc"] = [
+"# Write Service: routes ONLY to primary (role=primary label)",
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: postgres-write",
+"  namespace: myapp",
+"spec:",
+"  type: ClusterIP",
+"  selector:",
+"    app: postgres",
+"    role: primary",
+"  ports:",
+"    - name: postgresql",
+"      port: 5432",
+"      targetPort: 5432"
+].join("\n");
+
+CODE["sa-read-svc"] = [
+"# Read Service: routes to replicas (role=replica label)",
+"# Load-balanced across pg-1 and pg-2",
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: postgres-read",
+"  namespace: myapp",
+"spec:",
+"  type: ClusterIP",
+"  selector:",
+"    app: postgres",
+"    role: replica",
+"  ports:",
+"    - name: postgresql",
+"      port: 5432",
+"      targetPort: 5432"
+].join("\n");
+
+CODE["sa-ss"] = [
+"apiVersion: apps/v1",
+"kind: StatefulSet",
+"metadata:",
+"  name: postgres",
+"  namespace: myapp",
+"spec:",
+"  serviceName: postgres-headless",
+"  replicas: 3",
+"  selector:",
+"    matchLabels:",
+"      app: postgres",
+"  template:",
+"    metadata:",
+"      labels:",
+"        app: postgres",
+"        # role label set by init container is NOT automatic",
+"        # in static solution - we rely on ordinal-based DNS",
+"    spec:",
+"      terminationGracePeriodSeconds: 10",
+"",
+"      initContainers:",
+"        # Detect role by ordinal and run setup",
+"        - name: init-role",
+"          image: postgres:16-alpine",
+"          command: ['bash', '-c']",
+"          args:",
+"            - |",
+"              ORDINAL=${HOSTNAME##*-}",
+"              if [ \"$ORDINAL\" = \"0\" ]; then",
+"                echo \"primary\" > /role/role.txt",
+"                echo \"I am PRIMARY\"",
+"              else",
+"                echo \"replica\" > /role/role.txt",
+"                echo \"I am REPLICA - will stream from pg-0\"",
+"                # Run replica setup (pg_basebackup)",
+"                bash /config/setup-replica.sh",
+"              fi",
+"          envFrom:",
+"            - secretRef: { name: postgres-secret }",
+"          env:",
+"            - name: PGDATA",
+"              value: /var/lib/postgresql/data/pgdata",
+"          volumeMounts:",
+"            - name: pg-data",
+"              mountPath: /var/lib/postgresql/data",
+"            - name: config",
+"              mountPath: /config",
+"            - name: role",
+"              mountPath: /role",
+"",
+"      containers:",
+"        - name: postgres",
+"          image: postgres:16-alpine",
+"          ports:",
+"            - containerPort: 5432",
+"              name: postgresql",
+"          envFrom:",
+"            - secretRef: { name: postgres-secret }",
+"          env:",
+"            - name: PGDATA",
+"              value: /var/lib/postgresql/data/pgdata",
+"          resources:",
+"            requests: { cpu: \"100m\", memory: \"256Mi\" }",
+"            limits:   { cpu: \"500m\", memory: \"512Mi\" }",
+"          livenessProbe:",
+"            exec:",
+"              command: [pg_isready, -U, appuser, -d, appdb]",
+"            initialDelaySeconds: 30",
+"            periodSeconds: 10",
+"          readinessProbe:",
+"            exec:",
+"              command: [pg_isready, -U, appuser, -d, appdb]",
+"            initialDelaySeconds: 5",
+"            periodSeconds: 5",
+"          volumeMounts:",
+"            - name: pg-data",
+"              mountPath: /var/lib/postgresql/data",
+"            - name: config",
+"              mountPath: /config",
+"            - name: init-scripts",
+"              mountPath: /docker-entrypoint-initdb.d",
+"            - name: role",
+"              mountPath: /role",
+"",
+"      volumes:",
+"        - name: config",
+"          configMap: { name: postgres-config }",
+"        - name: init-scripts",
+"          configMap:",
+"            name: postgres-config",
+"            items:",
+"              - key: init-primary.sh",
+"                path: init-primary.sh",
+"        - name: role",
+"          emptyDir: {}",
+"",
+"  volumeClaimTemplates:",
+"    - metadata: { name: pg-data }",
+"      spec:",
+"        accessModes: [\"ReadWriteOnce\"]",
+"        resources:",
+"          requests: { storage: 1Gi }"
+].join("\n");
+
+CODE["sa-app-dep"] = [
+"apiVersion: apps/v1",
+"kind: Deployment",
+"metadata:",
+"  name: myapp-api",
+"  namespace: myapp",
+"spec:",
+"  replicas: 1",
+"  selector:",
+"    matchLabels: { app: myapp-api }",
+"  template:",
+"    metadata:",
+"      labels: { app: myapp-api }",
+"    spec:",
+"      containers:",
+"        - name: api",
+"          image: myapp-api:local",
+"          imagePullPolicy: Never",
+"          ports:",
+"            - containerPort: 8080",
+"          env:",
+"            - name: CONNECTION_STRING",
+"              valueFrom:",
+"                secretKeyRef: { name: postgres-secret, key: CONNECTION_STRING }",
+"            - name: CONNECTION_STRING_READONLY",
+"              valueFrom:",
+"                secretKeyRef: { name: postgres-secret, key: CONNECTION_STRING_READONLY }",
+"            - name: ASPNETCORE_ENVIRONMENT",
+"              value: \"Development\"",
+"          resources:",
+"            requests: { cpu: \"50m\", memory: \"128Mi\" }",
+"            limits:   { cpu: \"300m\", memory: \"256Mi\" }",
+"          readinessProbe:",
+"            httpGet: { path: /healthz, port: 8080 }",
+"            initialDelaySeconds: 10"
+].join("\n");
+
+CODE["sa-app-svc"] = [
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: myapp-api-svc",
+"  namespace: myapp",
+"spec:",
+"  type: NodePort",
+"  selector: { app: myapp-api }",
+"  ports:",
+"    - port: 80",
+"      targetPort: 8080",
+"      nodePort: 30080"
+].join("\n");
+
+CODE["sa-deploy"] = [
+"#!/bin/bash",
+"set -e",
+"echo \"=== Solution A: Static Primary ===\"",
+"eval $(minikube docker-env)",
+"cd ../myapp-api && docker build -t myapp-api:local . && cd -",
+"",
+"kubectl apply -f namespace/namespace.yaml",
+"kubectl apply -f secrets/postgres-secret.yaml",
+"kubectl apply -f postgres/configmap.yaml",
+"kubectl apply -f postgres/headless-service.yaml",
+"kubectl apply -f postgres/write-service.yaml",
+"kubectl apply -f postgres/read-service.yaml",
+"kubectl apply -f postgres/statefulset.yaml",
+"echo \"Waiting for 3 PostgreSQL pods...\"",
+"kubectl -n myapp rollout status statefulset/postgres --timeout=180s",
+"",
+"kubectl apply -f app/deployment.yaml",
+"kubectl apply -f app/service.yaml",
+"kubectl -n myapp wait --for=condition=ready pod -l app=myapp-api --timeout=60s",
+"",
+"echo \"\"",
+"echo \"=== Deployed! ===\"",
+"API=$(minikube service myapp-api-svc -n myapp --url)",
+"echo \"API:     $API\"",
+"echo \"Swagger: $API/swagger\"",
+"kubectl -n myapp get pods -o wide"
+].join("\n");
+
+CODE["sa-test"] = [
+"#!/bin/bash",
+"API=$(minikube service myapp-api-svc -n myapp --url)",
+"echo \"API: $API\"",
+"",
+"echo \"\\n=== Verify 3 PG pods ===\"",
+"kubectl -n myapp get pods -l app=postgres",
+"",
+"echo \"\\n=== Check replication status (from primary) ===\"",
+"kubectl -n myapp exec postgres-0 -- psql -U appuser -d appdb \\",
+"  -c \"SELECT client_addr, state, sync_state FROM pg_stat_replication;\"",
+"",
+"echo \"\\n=== WRITE: Create product (-> primary pg-0) ===\"",
+"curl -s -X POST $API/api/products \\",
+"  -H 'Content-Type: application/json' \\",
+"  -d '{\"name\":\"Test\",\"price\":9.99,\"stock\":10}' | jq .",
+"",
+"echo \"\\n=== READ: List from replicas ===\"",
+"curl -s $API/api/products | jq .",
+"",
+"echo \"\\n=== Simulate primary failure ===\"",
+"echo \"Deleting pg-0 pod...\"",
+"kubectl -n myapp delete pod postgres-0",
+"echo \"Pod deleted. K8s will restart it...\"",
+"kubectl -n myapp wait --for=condition=ready pod/postgres-0 --timeout=60s",
+"echo \"pg-0 is back! Writes resume.\""
+].join("\n");
+
+// ══════════════════════════════════════════════
+//  SOLUTION B: PATRONI (HA)
+// ══════════════════════════════════════════════
+
+CODE["sb-readme"] = [
+"# Solution B: Patroni (High Availability)",
+"",
+"## How it works",
+"- Patroni runs as a sidecar/wrapper around PostgreSQL",
+"- ANY pod can become primary (leader election via K8s API)",
+"- Patroni continuously monitors health and promotes replicas",
+"- Uses Kubernetes Endpoints/ConfigMaps for leader election (DCS)",
+"",
+"## How replication works",
+"1. Patroni configures streaming replication automatically",
+"2. Leader (primary) streams WAL to replicas via replication slots",
+"3. Patroni manages replication slots lifecycle",
+"4. Synchronous/asynchronous replication configurable",
+"5. Patroni handles pg_basebackup for new/restarting replicas",
+"",
+"## What happens if primary fails?",
+"1. Patroni detects primary is down (health check fails)",
+"2. Leader lock in K8s expires (ttl: 30s default)",
+"3. Patroni on remaining replicas initiates leader election",
+"4. Most up-to-date replica wins election",
+"5. Winner promotes itself: pg_promote() -> becomes new primary",
+"6. Other replicas repoint to new primary automatically",
+"7. K8s Endpoint for 'postgres-write' service updates",
+"8. Total failover time: ~10-30 seconds",
+"",
+"## Patroni components",
+"- patroni.yaml: configuration (bootstrap, pg, replication)",
+"- DCS (Distributed Config Store): K8s API (Endpoints)",
+"- REST API on port 8008: health, switchover, failover",
+"- ServiceAccount + RBAC: for Patroni to update K8s Endpoints",
+"",
+"## When to use",
+"- Production environments",
+"- When zero/minimal write downtime is critical",
+"- Multi-node clusters",
+"- Automated operations (no manual intervention)"
+].join("\n");
+
+CODE["sb-setup"] = CODE["sa-setup"];
+CODE["sb-ns"] = CODE["sa-ns"];
+
+CODE["sb-rbac"] = [
+"# Patroni needs RBAC to manage Endpoints for leader election",
+"apiVersion: v1",
+"kind: ServiceAccount",
+"metadata:",
+"  name: patroni",
+"  namespace: myapp",
+"---",
+"apiVersion: rbac.authorization.k8s.io/v1",
+"kind: Role",
+"metadata:",
+"  name: patroni",
+"  namespace: myapp",
+"rules:",
+"  - apiGroups: [\"\"]",
+"    resources: [endpoints, pods, configmaps]",
+"    verbs: [get, list, watch, create, update, patch, delete]",
+"---",
+"apiVersion: rbac.authorization.k8s.io/v1",
+"kind: RoleBinding",
+"metadata:",
+"  name: patroni",
+"  namespace: myapp",
+"subjects:",
+"  - kind: ServiceAccount",
+"    name: patroni",
+"roleRef:",
+"  kind: Role",
+"  name: patroni",
+"  apiGroup: rbac.authorization.k8s.io"
+].join("\n");
+
+CODE["sb-secret"] = [
+"apiVersion: v1",
+"kind: Secret",
+"metadata:",
+"  name: postgres-secret",
+"  namespace: myapp",
+"type: Opaque",
+"stringData:",
+"  POSTGRES_USER: \"appuser\"",
+"  POSTGRES_PASSWORD: \"localpass123\"",
+"  POSTGRES_DB: \"appdb\"",
+"  REPLICATION_PASSWORD: \"replpass\"",
+"  PATRONI_SUPERUSER_PASSWORD: \"superpass\"",
+"",
+"  # Write -> postgres-write service (Patroni updates endpoint)",
+"  CONNECTION_STRING: >-",
+"    Host=postgres-write.myapp.svc.cluster.local;",
+"    Port=5432;Database=appdb;Username=appuser;Password=localpass123;",
+"    Pooling=true;Minimum Pool Size=2;Maximum Pool Size=10;",
+"    Include Error Detail=true;",
+"",
+"  # Read -> postgres-read service (replicas)",
+"  CONNECTION_STRING_READONLY: >-",
+"    Host=postgres-read.myapp.svc.cluster.local;",
+"    Port=5432;Database=appdb;Username=appuser;Password=localpass123;",
+"    Pooling=true;Minimum Pool Size=2;Maximum Pool Size=10;",
+"    Target Session Attrs=prefer-standby;",
+"    Include Error Detail=true;"
+].join("\n");
+
+CODE["sb-patroni-cm"] = [
+"apiVersion: v1",
+"kind: ConfigMap",
+"metadata:",
+"  name: patroni-config",
+"  namespace: myapp",
+"data:",
+"  patroni.yaml: |",
+"    scope: postgres-cluster",
+"    namespace: myapp",
+"    name: ${HOSTNAME}",
+"",
+"    kubernetes:",
+"      use_endpoints: true",
+"      labels:",
+"        app: postgres",
+"",
+"    restapi:",
+"      listen: 0.0.0.0:8008",
+"      connect_address: ${HOSTNAME}.postgres-headless:8008",
+"",
+"    bootstrap:",
+"      dcs:",
+"        ttl: 30",
+"        loop_wait: 10",
+"        retry_timeout: 10",
+"        maximum_lag_on_failover: 1048576  # 1MB",
+"      initdb:",
+"        - encoding: UTF8",
+"        - data-checksums",
+"      pg_hba:",
+"        - local all all trust",
+"        - host all all 0.0.0.0/0 md5",
+"        - host replication all 0.0.0.0/0 md5",
+"      users:",
+"        appuser:",
+"          password: localpass123",
+"          options:",
+"            - createdb",
+"        replicator:",
+"          password: replpass",
+"          options:",
+"            - replication",
+"",
+"    postgresql:",
+"      listen: 0.0.0.0:5432",
+"      connect_address: ${HOSTNAME}.postgres-headless:5432",
+"      data_dir: /var/lib/postgresql/data/pgdata",
+"      authentication:",
+"        superuser:",
+"          username: postgres",
+"          password: superpass",
+"        replication:",
+"          username: replicator",
+"          password: replpass",
+"      parameters:",
+"        max_connections: 100",
+"        shared_buffers: 128MB",
+"        wal_level: replica",
+"        max_wal_senders: 5",
+"        max_replication_slots: 5",
+"        hot_standby: 'on'",
+"        log_statement: 'all'"
+].join("\n");
+
+CODE["sb-headless"] = CODE["sa-headless"];
+
+CODE["sb-write-svc"] = [
+"# Patroni automatically updates this service's Endpoints",
+"# to point to the current leader (primary) pod.",
+"# If leader changes, the Endpoint updates within seconds.",
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: postgres-write",
+"  namespace: myapp",
+"  labels:",
+"    app: postgres",
+"spec:",
+"  type: ClusterIP",
+"  # NO selector - Patroni manages the Endpoints directly",
+"  ports:",
+"    - name: postgresql",
+"      port: 5432",
+"      targetPort: 5432"
+].join("\n");
+
+CODE["sb-read-svc"] = [
+"# Read service: routes to all non-leader (replica) pods",
+"# Patroni REST API on 8008 reports role; we use label selector",
+"apiVersion: v1",
+"kind: Service",
+"metadata:",
+"  name: postgres-read",
+"  namespace: myapp",
+"spec:",
+"  type: ClusterIP",
+"  selector:",
+"    app: postgres",
+"    role: replica",
+"  ports:",
+"    - name: postgresql",
+"      port: 5432",
+"      targetPort: 5432"
+].join("\n");
+
+CODE["sb-ss"] = [
+"apiVersion: apps/v1",
+"kind: StatefulSet",
+"metadata:",
+"  name: postgres",
+"  namespace: myapp",
+"spec:",
+"  serviceName: postgres-headless",
+"  replicas: 3",
+"  selector:",
+"    matchLabels: { app: postgres }",
+"  template:",
+"    metadata:",
+"      labels: { app: postgres }",
+"    spec:",
+"      serviceAccountName: patroni   # RBAC for leader election",
+"      terminationGracePeriodSeconds: 10",
+"      containers:",
+"        # Patroni wraps PostgreSQL and manages everything",
+"        - name: patroni",
+"          image: patroni/patroni:latest  # or custom image",
+"          ports:",
+"            - containerPort: 5432",
+"              name: postgresql",
+"            - containerPort: 8008",
+"              name: patroni-api",
+"          env:",
+"            - name: PATRONI_NAME",
+"              valueFrom:",
+"                fieldRef: { fieldPath: metadata.name }",
+"            - name: PATRONI_KUBERNETES_NAMESPACE",
+"              value: myapp",
+"            - name: PATRONI_KUBERNETES_LABELS",
+"              value: \"{app: postgres}\"",
+"            - name: PATRONI_SCOPE",
+"              value: postgres-cluster",
+"            - name: PATRONI_POSTGRESQL_DATA_DIR",
+"              value: /var/lib/postgresql/data/pgdata",
+"            - name: PATRONI_SUPERUSER_PASSWORD",
+"              valueFrom:",
+"                secretKeyRef: { name: postgres-secret, key: PATRONI_SUPERUSER_PASSWORD }",
+"            - name: PATRONI_REPLICATION_PASSWORD",
+"              valueFrom:",
+"                secretKeyRef: { name: postgres-secret, key: REPLICATION_PASSWORD }",
+"          volumeMounts:",
+"            - name: pg-data",
+"              mountPath: /var/lib/postgresql/data",
+"            - name: patroni-config",
+"              mountPath: /etc/patroni",
+"          resources:",
+"            requests: { cpu: \"100m\", memory: \"256Mi\" }",
+"            limits:   { cpu: \"500m\", memory: \"512Mi\" }",
+"          readinessProbe:",
+"            httpGet: { path: /readiness, port: 8008 }",
+"            initialDelaySeconds: 10",
+"          livenessProbe:",
+"            httpGet: { path: /liveness, port: 8008 }",
+"            initialDelaySeconds: 30",
+"      volumes:",
+"        - name: patroni-config",
+"          configMap: { name: patroni-config }",
+"  volumeClaimTemplates:",
+"    - metadata: { name: pg-data }",
+"      spec:",
+"        accessModes: [\"ReadWriteOnce\"]",
+"        resources:",
+"          requests: { storage: 1Gi }"
+].join("\n");
+
+CODE["sb-app-dep"] = CODE["sa-app-dep"];
+CODE["sb-app-svc"] = CODE["sa-app-svc"];
+
+CODE["sb-deploy"] = [
+"#!/bin/bash",
+"set -e",
+"echo \"=== Solution B: Patroni HA ===\"",
+"eval $(minikube docker-env)",
+"cd ../myapp-api && docker build -t myapp-api:local . && cd -",
+"",
+"kubectl apply -f namespace/namespace.yaml",
+"kubectl apply -f secrets/postgres-secret.yaml",
+"kubectl apply -f patroni/rbac.yaml",
+"kubectl apply -f patroni/patroni-config.yaml",
+"kubectl apply -f patroni/headless-service.yaml",
+"kubectl apply -f patroni/write-service.yaml",
+"kubectl apply -f patroni/read-service.yaml",
+"kubectl apply -f patroni/statefulset.yaml",
+"echo \"Waiting for 3 Patroni pods...\"",
+"kubectl -n myapp rollout status statefulset/postgres --timeout=180s",
+"",
+"kubectl apply -f app/deployment.yaml",
+"kubectl apply -f app/service.yaml",
+"kubectl -n myapp wait --for=condition=ready pod -l app=myapp-api --timeout=60s",
+"",
+"echo \"\"",
+"echo \"=== Deployed with Patroni HA! ===\"",
+"echo \"\"",
+"echo \"Check cluster status:\"",
+"kubectl -n myapp exec postgres-0 -- patronictl list",
+"echo \"\"",
+"API=$(minikube service myapp-api-svc -n myapp --url)",
+"echo \"API: $API/swagger\""
+].join("\n");
+
+CODE["sb-test"] = [
+"#!/bin/bash",
+"API=$(minikube service myapp-api-svc -n myapp --url)",
+"",
+"echo \"=== Patroni cluster status ===\"",
+"kubectl -n myapp exec postgres-0 -- patronictl list",
+"",
+"echo \"\\n=== Test write ===\"",
+"curl -s -X POST $API/api/products \\",
+"  -H 'Content-Type: application/json' \\",
+"  -d '{\"name\":\"HA Test\",\"price\":19.99,\"stock\":5}' | jq .",
+"",
+"echo \"\\n=== Test read ===\"",
+"curl -s $API/api/products | jq .",
+"",
+"echo \"\\n=== Simulate failover ===\"",
+"LEADER=$(kubectl -n myapp exec postgres-0 -- patronictl list -f json | jq -r '.[] | select(.Role==\"Leader\") | .Member')",
+"echo \"Current leader: $LEADER\"",
+"echo \"Deleting leader pod...\"",
+"kubectl -n myapp delete pod $LEADER",
+"echo \"Waiting for failover...\"",
+"sleep 15",
+"echo \"\\n=== New cluster status ===\"",
+"kubectl -n myapp exec postgres-0 -- patronictl list 2>/dev/null || kubectl -n myapp exec postgres-1 -- patronictl list",
+"echo \"\\nFailover complete! Writes continued on new leader.\""
+].join("\n");
+
+CODE["sb-switchover"] = [
+"#!/bin/bash",
+"# Manual switchover (graceful, planned)",
+"echo \"=== Planned Switchover ===\"",
+"echo \"Current status:\"",
+"kubectl -n myapp exec postgres-0 -- patronictl list",
+"",
+"echo \"\"",
+"echo \"Performing switchover to next replica...\"",
+"kubectl -n myapp exec postgres-0 -- patronictl switchover --force",
+"",
+"sleep 10",
+"echo \"\"",
+"echo \"New status:\"",
+"kubectl -n myapp exec postgres-0 -- patronictl list 2>/dev/null || kubectl -n myapp exec postgres-1 -- patronictl list",
+"",
+"echo \"\"",
+"echo \"Switchover complete!\"",
+"echo \"The postgres-write service Endpoint auto-updated to new leader.\""
+].join("\n");
+
+// ══════════════════════════════════════════════
+//  APPLICATION (shared by both solutions)
+// ══════════════════════════════════════════════
+
+CODE["app-csproj"] = ["<Project Sdk=\"Microsoft.NET.Sdk.Web\">","  <PropertyGroup>","    <TargetFramework>net8.0</TargetFramework>","    <Nullable>enable</Nullable>","    <ImplicitUsings>enable</ImplicitUsings>","  </PropertyGroup>","  <ItemGroup>","    <PackageReference Include=\"Npgsql.EntityFrameworkCore.PostgreSQL\" Version=\"8.0.4\" />","    <PackageReference Include=\"Microsoft.EntityFrameworkCore.Design\" Version=\"8.0.8\" />","    <PackageReference Include=\"AspNetCore.HealthChecks.NpgSql\" Version=\"8.0.1\" />","  </ItemGroup>","</Project>"].join("\n");
+
+CODE["app-program"] = ["using Microsoft.EntityFrameworkCore;","using MyApp.Api.Data;","using MyApp.Api.Services;","","var builder = WebApplication.CreateBuilder(args);","","var writeConn = Environment.GetEnvironmentVariable(\"CONNECTION_STRING\")","    ?? builder.Configuration.GetConnectionString(\"WriteDb\")","    ?? throw new InvalidOperationException(\"WriteDb required\");","var readConn = Environment.GetEnvironmentVariable(\"CONNECTION_STRING_READONLY\")","    ?? builder.Configuration.GetConnectionString(\"ReadDb\") ?? writeConn;","","builder.Services.AddDbContext<AppDbContext>(opt =>","    opt.UseNpgsql(writeConn, n => n.EnableRetryOnFailure(3))","       .EnableDetailedErrors().EnableSensitiveDataLogging());","builder.Services.AddDbContext<ReadOnlyDbContext>(opt =>","    opt.UseNpgsql(readConn, n => n.EnableRetryOnFailure(3))","       .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)","       .EnableDetailedErrors());","","builder.Services.AddScoped<IProductService, ProductService>();","builder.Services.AddControllers();","builder.Services.AddSwaggerGen();","builder.Services.AddHealthChecks().AddNpgSql(writeConn, name: \"postgres\");","","var app = builder.Build();","using (var s = app.Services.CreateScope())","    await s.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();","","app.UseSwagger(); app.UseSwaggerUI();","app.MapControllers(); app.MapHealthChecks(\"/healthz\");","app.MapGet(\"/\", () => Results.Redirect(\"/swagger\"));","app.Run();"].join("\n");
+
+CODE["app-dockerfile"] = ["FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build","WORKDIR /src","COPY *.csproj ./","RUN dotnet restore","COPY . ./","RUN dotnet publish -c Release -o /app/publish --no-restore","","FROM mcr.microsoft.com/dotnet/aspnet:8.0","WORKDIR /app","COPY --from=build /app/publish .","ENV ASPNETCORE_URLS=http://+:8080","EXPOSE 8080","ENTRYPOINT [\"dotnet\", \"MyApp.Api.dll\"]"].join("\n");
+
+CODE["app-settings"] = ["{","  \"Logging\": { \"LogLevel\": { \"Default\": \"Debug\" } },","  \"ConnectionStrings\": {","    \"WriteDb\": \"Host=localhost;Port=5432;Database=appdb;Username=appuser;Password=localpass123;Include Error Detail=true;\",","    \"ReadDb\":  \"Host=localhost;Port=5432;Database=appdb;Username=appuser;Password=localpass123;Include Error Detail=true;\"","  }","}"].join("\n");
+
+CODE["app-product"] = ["using System.ComponentModel.DataAnnotations;","using System.ComponentModel.DataAnnotations.Schema;","","namespace MyApp.Api.Models;","","[Table(\"products\")]","public class Product","{","    [Key][Column(\"id\")] public int Id { get; set; }","    [Required,MaxLength(200)][Column(\"name\")] public string Name { get; set; } = \"\";","    [Column(\"description\")] public string? Description { get; set; }","    [Column(\"price\",TypeName=\"decimal(10,2)\")] public decimal Price { get; set; }","    [Column(\"stock\")] public int Stock { get; set; }","    [MaxLength(100)][Column(\"category\")] public string? Category { get; set; }","    [Column(\"is_active\")] public bool IsActive { get; set; } = true;","    [Column(\"created_at\")] public DateTime CreatedAt { get; set; } = DateTime.UtcNow;","    [Column(\"updated_at\")] public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;","    public ICollection<Order> Orders { get; set; } = [];","}"].join("\n");
+
+CODE["app-order"] = ["using System.ComponentModel.DataAnnotations;","using System.ComponentModel.DataAnnotations.Schema;","","namespace MyApp.Api.Models;","","[Table(\"orders\")]","public class Order","{","    [Key][Column(\"id\")] public int Id { get; set; }","    [Column(\"product_id\")] public int ProductId { get; set; }","    [Column(\"quantity\")] public int Quantity { get; set; }","    [Column(\"total_price\",TypeName=\"decimal(10,2)\")] public decimal TotalPrice { get; set; }","    [MaxLength(50)][Column(\"status\")] public string Status { get; set; } = \"pending\";","    [MaxLength(200)][Column(\"customer_name\")] public string? CustomerName { get; set; }","    [Column(\"created_at\")] public DateTime CreatedAt { get; set; } = DateTime.UtcNow;","    [ForeignKey(\"ProductId\")] public Product? Product { get; set; }","}"].join("\n");
+
+CODE["app-writedb"] = ["using Microsoft.EntityFrameworkCore;","using MyApp.Api.Models;","","namespace MyApp.Api.Data;","","public class AppDbContext : DbContext","{","    public AppDbContext(DbContextOptions<AppDbContext> o) : base(o) {}","    public DbSet<Product> Products => Set<Product>();","    public DbSet<Order> Orders => Set<Order>();","    protected override void OnModelCreating(ModelBuilder mb)","    {","        mb.Entity<Product>(e => { e.HasIndex(p=>p.Name); e.HasIndex(p=>p.Category);","            e.Property(p=>p.CreatedAt).HasDefaultValueSql(\"NOW()\");","            e.Property(p=>p.UpdatedAt).HasDefaultValueSql(\"NOW()\"); });","        mb.Entity<Order>(e => { e.HasIndex(o=>o.Status);","            e.HasOne(o=>o.Product).WithMany(p=>p.Orders)","             .HasForeignKey(o=>o.ProductId).OnDelete(DeleteBehavior.Restrict); });","    }","    public override Task<int> SaveChangesAsync(CancellationToken ct=default)","    {","        foreach(var e in ChangeTracker.Entries<Product>()","            .Where(e=>e.State==EntityState.Modified)) e.Entity.UpdatedAt=DateTime.UtcNow;","        return base.SaveChangesAsync(ct);","    }","}"].join("\n");
+
+CODE["app-readdb"] = ["using Microsoft.EntityFrameworkCore;","using MyApp.Api.Models;","","namespace MyApp.Api.Data;","","public class ReadOnlyDbContext : DbContext","{","    public ReadOnlyDbContext(DbContextOptions<ReadOnlyDbContext> o) : base(o) {}","    public DbSet<Product> Products => Set<Product>();","    public DbSet<Order> Orders => Set<Order>();","    protected override void OnModelCreating(ModelBuilder mb)","    {","        mb.Entity<Product>(e => { e.HasIndex(p=>p.Name); });","        mb.Entity<Order>(e => { e.HasIndex(o=>o.Status);","            e.HasOne(o=>o.Product).WithMany(p=>p.Orders).HasForeignKey(o=>o.ProductId); });","    }","    public override int SaveChanges() => throw new InvalidOperationException(\"Read-only\");","    public override Task<int> SaveChangesAsync(CancellationToken ct=default)","        => throw new InvalidOperationException(\"Read-only\");","}"].join("\n");
+
+CODE["app-isvc"] = ["using MyApp.Api.Models;","namespace MyApp.Api.Services;","public interface IProductService","{","    Task<List<Product>> GetAllAsync(string? cat);","    Task<Product?> GetByIdAsync(int id);","    Task<List<Product>> SearchAsync(string q);","    Task<List<Order>> GetOrdersAsync(int pid);","    Task<DashboardStats> GetStatsAsync();","    Task<Product> CreateAsync(Product p);","    Task<Product?> UpdateAsync(int id, Product p);","    Task<bool> DeleteAsync(int id);","    Task<Order> PlaceOrderAsync(int pid,int qty,string? cust);","}","public record DashboardStats(int TotalProducts,int TotalOrders,decimal Revenue);"].join("\n");
+
+CODE["app-svc"] = ["using Microsoft.EntityFrameworkCore;","using MyApp.Api.Data; using MyApp.Api.Models;","namespace MyApp.Api.Services;","public class ProductService(AppDbContext w,ReadOnlyDbContext r,ILogger<ProductService> log):IProductService","{","    public async Task<List<Product>> GetAllAsync(string? cat){","        var q=r.Products.Where(p=>p.IsActive);","        if(!string.IsNullOrEmpty(cat)) q=q.Where(p=>p.Category==cat);","        return await q.OrderByDescending(p=>p.CreatedAt).ToListAsync(); }","    public async Task<Product?> GetByIdAsync(int id)=>","        await r.Products.Include(p=>p.Orders.OrderByDescending(o=>o.CreatedAt).Take(10))","            .FirstOrDefaultAsync(p=>p.Id==id);","    public async Task<List<Product>> SearchAsync(string q)=>","        await r.Products.Where(p=>p.IsActive&&EF.Functions.ILike(p.Name,\"%\"+q+\"%\")).Take(50).ToListAsync();","    public async Task<List<Order>> GetOrdersAsync(int pid)=>","        await r.Orders.Where(o=>o.ProductId==pid).OrderByDescending(o=>o.CreatedAt).Take(100).ToListAsync();","    public async Task<DashboardStats> GetStatsAsync(){","        return new(await r.Products.CountAsync(p=>p.IsActive),await r.Orders.CountAsync(),","            await r.Orders.Where(o=>o.Status==\"confirmed\").SumAsync(o=>o.TotalPrice)); }","    public async Task<Product> CreateAsync(Product p){","        log.LogInformation(\"WRITE: Create\"); w.Products.Add(p); await w.SaveChangesAsync(); return p; }","    public async Task<Product?> UpdateAsync(int id,Product u){","        var p=await w.Products.FindAsync(id); if(p is null) return null;","        p.Name=u.Name;p.Price=u.Price;p.Stock=u.Stock;p.Category=u.Category;","        await w.SaveChangesAsync(); return p; }","    public async Task<bool> DeleteAsync(int id){","        var p=await w.Products.FindAsync(id); if(p is null) return false;","        p.IsActive=false; await w.SaveChangesAsync(); return true; }","    public async Task<Order> PlaceOrderAsync(int pid,int qty,string? cust){","        await using var tx=await w.Database.BeginTransactionAsync();","        try{","            var p=await w.Products.FindAsync(pid)??throw new KeyNotFoundException(\"Not found\");","            if(p.Stock<qty) throw new InvalidOperationException(\"Insufficient stock\");","            p.Stock-=qty;","            var o=new Order{ProductId=pid,Quantity=qty,TotalPrice=p.Price*qty,CustomerName=cust,Status=\"confirmed\"};","            w.Orders.Add(o); await w.SaveChangesAsync(); await tx.CommitAsync();","            log.LogInformation(\"WRITE: Order {Id}\",o.Id); return o;","        }catch{ await tx.RollbackAsync(); throw; } }","}"].join("\n");
+
+CODE["app-ctrl"] = ["using Microsoft.AspNetCore.Mvc;","using MyApp.Api.Models; using MyApp.Api.Services;","namespace MyApp.Api.Controllers;","[ApiController][Route(\"api/[controller]\")]","public class ProductsController(IProductService svc):ControllerBase","{","    [HttpGet] public async Task<ActionResult<List<Product>>>","        GetAll([FromQuery]string? category)=>Ok(await svc.GetAllAsync(category));","    [HttpGet(\"{id:int}\")] public async Task<ActionResult<Product>>","        GetById(int id){ var p=await svc.GetByIdAsync(id); return p is null?NotFound():Ok(p); }","    [HttpGet(\"search\")] public async Task<ActionResult<List<Product>>>","        Search([FromQuery]string q)=>Ok(await svc.SearchAsync(q));","    [HttpGet(\"{id:int}/orders\")] public async Task<ActionResult<List<Order>>>","        GetOrders(int id)=>Ok(await svc.GetOrdersAsync(id));","    [HttpGet(\"stats\")] public async Task<ActionResult<DashboardStats>>","        Stats()=>Ok(await svc.GetStatsAsync());","    [HttpPost] public async Task<ActionResult<Product>> Create(Product p)","        { var c=await svc.CreateAsync(p); return CreatedAtAction(nameof(GetById),new{id=c.Id},c); }","    [HttpPut(\"{id:int}\")] public async Task<ActionResult<Product>>","        Update(int id,Product p){ var u=await svc.UpdateAsync(id,p); return u is null?NotFound():Ok(u); }","    [HttpDelete(\"{id:int}\")] public async Task<IActionResult>","        Delete(int id)=>await svc.DeleteAsync(id)?NoContent():NotFound();","    [HttpPost(\"{id:int}/orders\")] public async Task<ActionResult<Order>>","        PlaceOrder(int id,[FromBody]OrderReq req){","        try{ var o=await svc.PlaceOrderAsync(id,req.Quantity,req.CustomerName);","            return CreatedAtAction(nameof(GetOrders),new{id},o); }","        catch(KeyNotFoundException){return NotFound();}","        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});} }","}","public record OrderReq(int Quantity,string? CustomerName);"].join("\n");
+
+// === TREES (with folders) ===
+var TREE={
+sa:[
+  {t:"f",n:"solution-a-static/",d:0},
+  {t:"i",n:"README.md",d:1,id:"sa-readme",x:"md",ic:"\uD83D\uDCD6"},
+  {t:"f",n:"namespace/",d:1},
+  {t:"i",n:"namespace.yaml",d:2,id:"sa-ns",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"secrets/",d:1},
+  {t:"i",n:"postgres-secret.yaml",d:2,id:"sa-secret",x:"yaml",ic:"\uD83D\uDD10"},
+  {t:"f",n:"postgres/",d:1},
+  {t:"i",n:"configmap.yaml",d:2,id:"sa-cm",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"headless-service.yaml",d:2,id:"sa-headless",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"write-service.yaml",d:2,id:"sa-write-svc",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"read-service.yaml",d:2,id:"sa-read-svc",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"statefulset.yaml",d:2,id:"sa-ss",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"app/",d:1},
+  {t:"i",n:"deployment.yaml",d:2,id:"sa-app-dep",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"service.yaml",d:2,id:"sa-app-svc",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"scripts/",d:1},
+  {t:"i",n:"minikube-setup.sh",d:2,id:"sa-setup",x:"bash",ic:"\u26A1"},
+  {t:"i",n:"deploy.sh",d:2,id:"sa-deploy",x:"bash",ic:"\u26A1"},
+  {t:"i",n:"test.sh",d:2,id:"sa-test",x:"bash",ic:"\u26A1"}
+],
+sb:[
+  {t:"f",n:"solution-b-patroni/",d:0},
+  {t:"i",n:"README.md",d:1,id:"sb-readme",x:"md",ic:"\uD83D\uDCD6"},
+  {t:"f",n:"namespace/",d:1},
+  {t:"i",n:"namespace.yaml",d:2,id:"sb-ns",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"secrets/",d:1},
+  {t:"i",n:"postgres-secret.yaml",d:2,id:"sb-secret",x:"yaml",ic:"\uD83D\uDD10"},
+  {t:"f",n:"patroni/",d:1},
+  {t:"i",n:"rbac.yaml",d:2,id:"sb-rbac",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"patroni-config.yaml",d:2,id:"sb-patroni-cm",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"headless-service.yaml",d:2,id:"sb-headless",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"write-service.yaml",d:2,id:"sb-write-svc",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"read-service.yaml",d:2,id:"sb-read-svc",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"statefulset.yaml",d:2,id:"sb-ss",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"app/",d:1},
+  {t:"i",n:"deployment.yaml",d:2,id:"sb-app-dep",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"i",n:"service.yaml",d:2,id:"sb-app-svc",x:"yaml",ic:"\uD83D\uDCDC"},
+  {t:"f",n:"scripts/",d:1},
+  {t:"i",n:"minikube-setup.sh",d:2,id:"sb-setup",x:"bash",ic:"\u26A1"},
+  {t:"i",n:"deploy.sh",d:2,id:"sb-deploy",x:"bash",ic:"\u26A1"},
+  {t:"i",n:"test-failover.sh",d:2,id:"sb-test",x:"bash",ic:"\u26A1"},
+  {t:"i",n:"switchover.sh",d:2,id:"sb-switchover",x:"bash",ic:"\u26A1"}
+],
+app:[
+  {t:"f",n:"MyApp.Api/",d:0},
+  {t:"i",n:"MyApp.Api.csproj",d:1,id:"app-csproj",x:"xml",ic:"\uD83D\uDCE6"},
+  {t:"i",n:"Program.cs",d:1,id:"app-program",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"i",n:"Dockerfile",d:1,id:"app-dockerfile",x:"dockerfile",ic:"\uD83D\uDC33"},
+  {t:"i",n:"appsettings.Development.json",d:1,id:"app-settings",x:"json",ic:"\u2699\uFE0F"},
+  {t:"f",n:"Models/",d:1},
+  {t:"i",n:"Product.cs",d:2,id:"app-product",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"i",n:"Order.cs",d:2,id:"app-order",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"f",n:"Data/",d:1},
+  {t:"i",n:"AppDbContext.cs",d:2,id:"app-writedb",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"i",n:"ReadOnlyDbContext.cs",d:2,id:"app-readdb",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"f",n:"Services/",d:1},
+  {t:"i",n:"IProductService.cs",d:2,id:"app-isvc",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"i",n:"ProductService.cs",d:2,id:"app-svc",x:"csharp",ic:"\uD83D\uDD35"},
+  {t:"f",n:"Controllers/",d:1},
+  {t:"i",n:"ProductsController.cs",d:2,id:"app-ctrl",x:"csharp",ic:"\uD83D\uDD35"}
+]};
+
+var FM={
+"sa-readme":{t:"Solution A: Static Primary",d:"pg-0 is always primary. Simple, no external tools. Manual recovery on failure.",l:"md",f:"README.md",notes:[{c:"cyan",h:"<b>Replication:</b> pg-0 streams WAL to pg-1/pg-2 via PostgreSQL streaming replication. <b>Failover:</b> If pg-0 dies, K8s restarts it. Writes fail during restart (~10-30s). No auto-promotion."},{c:"red",h:"<b>Limitation:</b> If pg-0 dies, writes are DOWN until K8s restarts it. Replicas do NOT auto-promote. This is acceptable for local dev."}]},
+"sa-setup":{t:"Minikube Setup",d:"6GB RAM, 30GB disk for 3 PG pods.",l:"bash",f:"minikube-setup.sh"},
+"sa-ns":{t:"Namespace",d:"Isolated namespace.",l:"yaml",f:"namespace.yaml"},
+"sa-secret":{t:"Secrets",d:"Write -> pg-0 (primary), Read -> pg-1,pg-2 (replicas) via headless DNS.",l:"yaml",f:"postgres-secret.yaml",notes:[{c:"emerald",h:"<b>Write:</b> postgres-0.postgres-headless (always primary)<br><b>Read:</b> postgres-1, postgres-2 with Load Balance Hosts=true"}]},
+"sa-cm":{t:"ConfigMap + Replication",d:"PostgreSQL config with WAL replication, HBA rules, init script with schema + seed + replication user, and replica setup script.",l:"yaml",f:"configmap.yaml",notes:[{c:"cyan",h:"<b>init-primary.sh:</b> Runs on pg-0 only - creates schema, replicator user, seed data.<br><b>setup-replica.sh:</b> Runs on pg-1/pg-2 - does pg_basebackup from primary, configures standby.signal."}]},
+"sa-headless":{t:"Headless Service",d:"Per-pod DNS: postgres-{0,1,2}.postgres-headless.myapp.svc.cluster.local",l:"yaml",f:"headless-service.yaml"},
+"sa-write-svc":{t:"Write Service",d:"ClusterIP routing only to pods with role=primary label.",l:"yaml",f:"write-service.yaml",notes:[{c:"orange",h:"Selects pods with <b>role: primary</b> label. In static solution, only pg-0 has this label (set by init container)."}]},
+"sa-read-svc":{t:"Read Service",d:"ClusterIP load-balancing across pods with role=replica label.",l:"yaml",f:"read-service.yaml",notes:[{c:"orange",h:"Selects pods with <b>role: replica</b>. Traffic distributed across pg-1 and pg-2."}]},
+"sa-ss":{t:"StatefulSet (3 Replicas)",d:"3 pods with init container: pg-0 runs init-primary.sh, pg-1/pg-2 run pg_basebackup from primary.",l:"yaml",f:"statefulset.yaml",notes:[{c:"emerald",h:"<b>Init container flow:</b><br>pg-0: echo 'primary' -> run normally, init-primary.sh creates schema<br>pg-1/pg-2: echo 'replica' -> pg_basebackup from pg-0 -> start as hot_standby"}]},
+"sa-app-dep":{t:"API Deployment",d:"Single replica, local image, Development env.",l:"yaml",f:"deployment.yaml"},
+"sa-app-svc":{t:"API Service (NodePort:30080)",d:"NodePort for easy local access.",l:"yaml",f:"service.yaml"},
+"sa-deploy":{t:"Deploy Script",d:"Full deploy: build image, apply all manifests in order.",l:"bash",f:"deploy.sh"},
+"sa-test":{t:"Test Script",d:"Test R/W, check replication status, simulate primary failure.",l:"bash",f:"test.sh",notes:[{c:"orange",h:"Includes <b>pg_stat_replication</b> query to verify streaming is active, and <b>kubectl delete pod postgres-0</b> to simulate failure."}]},
+
+"sb-readme":{t:"Solution B: Patroni HA",d:"Automatic failover via Patroni. Any pod can become primary. Leader election via K8s API.",l:"md",f:"README.md",notes:[{c:"violet",h:"<b>Failover flow:</b> Patroni detects leader down -> lock expires (30s) -> replica with least lag wins election -> pg_promote() -> Endpoint updates -> writes resume on new leader."},{c:"emerald",h:"<b>Key advantage:</b> Automatic promotion. No manual intervention. Total failover: ~10-30 seconds. Writes resume on new primary automatically."}]},
+"sb-setup":{t:"Minikube Setup",d:"Same as Solution A.",l:"bash",f:"minikube-setup.sh"},
+"sb-ns":{t:"Namespace",d:"Same namespace.",l:"yaml",f:"namespace.yaml"},
+"sb-rbac":{t:"Patroni RBAC",d:"ServiceAccount, Role, RoleBinding - Patroni needs to manage K8s Endpoints for leader election.",l:"yaml",f:"rbac.yaml",notes:[{c:"violet",h:"Patroni uses <b>K8s Endpoints</b> as its Distributed Configuration Store (DCS). It needs permissions to create/update/delete Endpoints in the namespace."}]},
+"sb-secret":{t:"Secrets",d:"Write -> postgres-write service (Patroni manages endpoint), Read -> postgres-read service.",l:"yaml",f:"postgres-secret.yaml",notes:[{c:"violet",h:"<b>Key difference from A:</b> Write connection uses <b>postgres-write</b> service (not pg-0 directly). Patroni updates this service's Endpoint to point to current leader, so failover is transparent to the app."}]},
+"sb-patroni-cm":{t:"Patroni Config",d:"patroni.yaml: bootstrap, DCS settings, replication config, PostgreSQL parameters.",l:"yaml",f:"patroni-config.yaml",notes:[{c:"violet",h:"<b>ttl: 30</b> = leader lock timeout. <b>loop_wait: 10</b> = health check interval. <b>maximum_lag_on_failover: 1MB</b> = max replication lag allowed for promotion."}]},
+"sb-headless":{t:"Headless Service",d:"Same per-pod DNS as Solution A.",l:"yaml",f:"headless-service.yaml"},
+"sb-write-svc":{t:"Write Service (Patroni-managed)",d:"NO selector! Patroni manages the Endpoint directly, pointing to current leader.",l:"yaml",f:"write-service.yaml",notes:[{c:"violet",h:"<b>No selector!</b> Unlike Solution A, this service has no pod selector. Patroni directly manages the Endpoints object, updating it whenever a new leader is elected."}]},
+"sb-read-svc":{t:"Read Service",d:"Routes to replica pods.",l:"yaml",f:"read-service.yaml"},
+"sb-ss":{t:"StatefulSet (Patroni)",d:"3 pods running Patroni container. Patroni handles all PostgreSQL lifecycle, replication, and failover.",l:"yaml",f:"statefulset.yaml",notes:[{c:"violet",h:"<b>No init container needed!</b> Patroni handles everything: bootstrap, pg_basebackup for replicas, streaming replication, health monitoring, leader election, and promotion."}]},
+"sb-app-dep":{t:"API Deployment",d:"Same as Solution A.",l:"yaml",f:"deployment.yaml"},
+"sb-app-svc":{t:"API Service",d:"Same NodePort.",l:"yaml",f:"service.yaml"},
+"sb-deploy":{t:"Deploy Script",d:"Deploys Patroni stack + API.",l:"bash",f:"deploy.sh"},
+"sb-test":{t:"Test Failover",d:"Test writes, then kill leader and watch Patroni auto-promote a replica.",l:"bash",f:"test-failover.sh",notes:[{c:"emerald",h:"Uses <b>patronictl list</b> to show cluster status before/after failover. Kills the leader pod and watches automatic promotion."}]},
+"sb-switchover":{t:"Planned Switchover",d:"Graceful leader switch using patronictl switchover.",l:"bash",f:"switchover.sh",notes:[{c:"violet",h:"Unlike failover (unplanned), <b>switchover</b> is graceful: syncs WAL, demotes old leader, promotes new leader, zero data loss."}]},
+
+"app-csproj":{t:"Project File",d:".NET 8 with Npgsql + EF Core.",l:"xml",f:"MyApp.Api.csproj"},
+"app-program":{t:"Program.cs",d:"Works with both solutions - reads CONNECTION_STRING from env.",l:"csharp",f:"Program.cs"},
+"app-dockerfile":{t:"Dockerfile",d:"Multi-stage build.",l:"dockerfile",f:"Dockerfile"},
+"app-settings":{t:"appsettings.Development.json",d:"For local dotnet run (outside K8s).",l:"json",f:"appsettings.Development.json"},
+"app-product":{t:"Product Entity",d:"Same for both solutions.",l:"csharp",f:"Product.cs"},
+"app-order":{t:"Order Entity",d:"Same for both solutions.",l:"csharp",f:"Order.cs"},
+"app-writedb":{t:"AppDbContext (Write)",d:"Write context -> primary.",l:"csharp",f:"AppDbContext.cs"},
+"app-readdb":{t:"ReadOnlyDbContext (Read)",d:"Read context -> replicas.",l:"csharp",f:"ReadOnlyDbContext.cs"},
+"app-isvc":{t:"IProductService",d:"Service interface.",l:"csharp",f:"IProductService.cs"},
+"app-svc":{t:"ProductService",d:"R/W split implementation.",l:"csharp",f:"ProductService.cs"},
+"app-ctrl":{t:"ProductsController",d:"REST API.",l:"csharp",f:"ProductsController.cs"}
+};
+
+// === ENGINE ===
+var aR="sa",aF=null,oT=[];
+function switchRepo(r){aR=r;document.querySelectorAll(".repo-tab").forEach(function(t){t.classList.remove("active")});document.querySelector(".repo-tab."+r).classList.add("active");renderTree()}
+function renderTree(){var t=TREE[aR],c=document.getElementById("tree-container"),h="";for(var i=0;i<t.length;i++){var it=t[i],ind="";for(var j=0;j<it.d;j++)ind+="<span class=\"tree-indent\"></span>";if(it.t==="f")h+="<div class=\"tree-item folder\" onclick=\"toggleFolder(this)\">"+ind+"<span class=\"tree-chevron open\">\u25B6</span><span class=\"tree-icon\">\uD83D\uDCC1</span><span class=\"tree-name\">"+it.n+"</span></div>";else{var ac=aF===it.id?" active":"";h+="<div class=\"tree-item"+ac+"\" onclick=\"selectFile('"+it.id+"')\">"+ind+"<span class=\"tree-icon\">"+it.ic+"</span><span class=\"tree-name\">"+it.n+"</span></div>"}}c.innerHTML=h}
+window.toggleFolder=function(el){var ch=el.querySelector(".tree-chevron"),o=ch.classList.toggle("open"),d=el.querySelectorAll(".tree-indent").length,s=el.nextElementSibling;while(s){if(s.querySelectorAll(".tree-indent").length<=d)break;s.style.display=o?"":"none";s=s.nextElementSibling}};
+window.selectFile=function(id){aF=id;if(oT.indexOf(id)===-1)oT.push(id);renderTree();renderTabs();renderFile(id)};
+window.closeTab=function(id,ev){ev.stopPropagation();oT=oT.filter(function(t){return t!==id});if(aF===id)aF=oT.length?oT[oT.length-1]:null;renderTabs();if(aF)renderFile(aF);else rE();renderTree()};
+window.switchRepo=switchRepo;
+function renderTabs(){var b=document.getElementById("file-tab-bar"),h="";for(var i=0;i<oT.length;i++){var id=oT[i],m=FM[id];if(!m)continue;var cl=LC[m.l]||"#6366f1",ac=aF===id?" active":"";h+="<button class=\"file-tab"+ac+"\" onclick=\"selectFile('"+id+"')\"><span class=\"dot\" style=\"background:"+cl+"\"></span>"+m.f+"<span style=\"cursor:pointer;margin-left:5px;color:var(--text-dim);font-size:12px\" onclick=\"closeTab('"+id+"',event)\">\u00D7</span></button>"}b.innerHTML=h}
+function rE(){document.getElementById("content-area").innerHTML="<div class=\"empty-state\"><div class=\"es-icon\">\uD83D\uDCC2</div><p>Select a file from the tree.</p></div>"}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function renderFile(id){var m=FM[id],code=CODE[id];if(!m||!code)return;var a=document.getElementById("content-area");var rn=TREE.sa.some(function(t){return t.id===id})?"solution-a-static":TREE.sb.some(function(t){return t.id===id})?"solution-b-patroni":"MyApp.Api";var cl=LC[m.l]||"#6366f1";var h="<div class=\"file-content\"><div class=\"file-path\"><b>"+rn+"/</b>"+m.f+"</div><div class=\"sec-header\"><div class=\"sec-title\">"+m.t+"</div><div class=\"sec-desc\">"+m.d+"</div></div>";if(m.notes)for(var i=0;i<m.notes.length;i++)h+="<div class=\"info-note "+m.notes[i].c+"\">"+m.notes[i].h+"</div>";h+="<div class=\"code-block\"><div class=\"code-head\"><div class=\"code-head-left\"><div class=\"code-dot\" style=\"background:"+cl+";box-shadow:0 0 4px "+cl+"55\"></div><span class=\"code-fname\">"+m.f+"</span><span class=\"code-lang\">"+m.l.toUpperCase()+"</span></div><button class=\"copy-btn\" onclick=\"doCopy(this,'"+id+"')\">Copy</button></div><pre class=\"code-body\">"+esc(code)+"</pre></div></div>";a.innerHTML=h;a.scrollTop=0}
+window.doCopy=function(b,id){var c=CODE[id];if(!c)return;navigator.clipboard.writeText(c).then(function(){b.textContent="\u2713 Copied";b.classList.add("copied");setTimeout(function(){b.textContent="Copy";b.classList.remove("copied")},1500)})};
+renderTree();
+})();
+</script>
+</body>
+</html>
