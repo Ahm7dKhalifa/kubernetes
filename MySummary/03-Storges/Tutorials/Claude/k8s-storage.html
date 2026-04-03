@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Storage — Complete Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--surface:#1e2535;--surface2:#21262d;
+  --border:#21262d;--border2:#30363d;
+  --blue:#388bfd;--blue-light:#58a6ff;
+  --cyan:#39d5e0;--cyan-light:#79c0ff;
+  --green:#3fb950;--green-light:#56d364;
+  --yellow:#d29922;--yellow-text:#e3b341;
+  --red:#f85149;--red-light:#ff7b72;
+  --purple:#a371f7;--purple-light:#bc8cff;
+  --teal:#2ea043;
+  --text-primary:#f0f6fc;
+  --text-secondary:#e6edf3;
+  --text-muted:#c9d1d9;
+  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-mono:'JetBrains Mono','Fira Code',Consolas,monospace;
+  --font-head:'Inter',Georgia,serif;
+  --sidebar-w:260px;--topbar-h:56px
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth;background:#0d1117 !important}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d1117 !important;color:#e6edf3 !important;line-height:1.7;font-size:15px;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.topbar{display:none;position:fixed;top:0;left:0;right:0;height:56px;background:#161b22;border-bottom:1px solid #21262d;align-items:center;justify-content:space-between;padding:0 16px;z-index:200}
+.topbar-logo{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#58a6ff}
+.burger{background:none;border:1px solid #30363d;border-radius:6px;padding:6px 10px;cursor:pointer;color:#e6edf3;display:flex;flex-direction:column;gap:4px}
+.burger span{display:block;width:18px;height:2px;background:#e6edf3;border-radius:2px}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:260px;background:#161b22 !important;border-right:1px solid #21262d;display:flex;flex-direction:column;overflow-y:auto;z-index:150;transition:transform .3s ease}
+.sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid #21262d;flex-shrink:0}
+.sidebar-brand-tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:#c9d1d9;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.sidebar-brand-name{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:#58a6ff}
+.sidebar-nav{padding:12px 0;flex:1}
+.nav-group{margin-bottom:4px}
+.nav-group-label{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9ba8b5;padding:10px 20px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 20px;color:#ced4da;text-decoration:none;font-size:13.5px;font-weight:500;border-left:3px solid transparent;transition:all .18s;cursor:pointer}
+.nav-item:hover{background:#1e2535;color:#f8f9fa;border-left-color:#30363d}
+.nav-item.active{background:rgba(13,110,253,0.18);color:#93c5fd;border-left-color:#388bfd}.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;padding:1px 6px;border-radius:10px;background:#21262d;color:#c9d1d9}
+.sidebar-footer{padding:14px 20px;border-top:1px solid #21262d;font-family:'JetBrains Mono',monospace;font-size:11px;color:#c9d1d9;flex-shrink:0}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:140}
+.main{margin-left:260px;min-height:100vh;background:#0d1117 !important}
+.hero{padding:72px 52px 64px;border-bottom:1px solid #21262d;background:#0d1117 !important;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-60px;right:-60px;width:400px;height:400px;background:radial-gradient(circle,rgba(13,110,253,0.08) 0%,transparent 70%);pointer-events:none}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:#39d5e0;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.hero-eyebrow::before{content:'';display:block;width:24px;height:1px;background:#39d5e0}
+.hero h1{font-family:'Inter',Georgia,serif;font-size:clamp(36px,5vw,58px);font-weight:700;line-height:1.1;color:#f0f6fc;margin-bottom:16px}
+.hero h1 em{font-style:normal;color:#58a6ff}
+.hero-sub{font-size:16px;color:#c9d1d9;max-width:580px;margin-bottom:36px;line-height:1.7}
+.hero-chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 12px;border-radius:4px;border:1px solid #30363d;background:#1e2535;color:#e6edf3}
+.section{padding:64px 48px;border-bottom:1px solid #21262d}
+.section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#9ba8b5;margin-bottom:10px}
+.section h2{font-family:'Inter',Georgia,serif;font-size:clamp(24px,3vw,34px);font-weight:700;color:#f8f9fa;margin-bottom:14px;line-height:1.2}
+.section h3{font-size:17px;font-weight:600;color:#f8f9fa;margin-bottom:10px}
+p{color:#c9d1d9;margin-bottom:14px;line-height:1.7}
+p strong{color:#f8f9fa;font-weight:600}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:32px}
+.card-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px}
+.card{background:#1e2535;border:1px solid #21262d;border-radius:8px;padding:24px;transition:border-color .2s,transform .2s}
+.card:hover{border-color:#30363d;transform:translateY(-2px)}
+.card p{color:#c9d1d9}
+.card h3{color:#f8f9fa}
+.card-icon{font-size:22px;margin-bottom:12px;display:block}
+.card.c-blue{border-top:3px solid #388bfd}.card.c-cyan{border-top:3px solid #39d5e0}.card.c-green{border-top:3px solid #3fb950}.card.c-yellow{border-top:3px solid #d29922}.card.c-red{border-top:3px solid #f85149}.card.c-purple{border-top:3px solid #a371f7}.card.c-teal{border-top:3px solid #2ea043}
+.alert{display:flex;gap:14px;padding:16px 20px;border-radius:6px;border:1px solid;margin:24px 0;font-size:14px;line-height:1.7;color:#e6edf3}
+.alert-icon{font-size:16px;flex-shrink:0;margin-top:1px}.alert-body{flex:1;color:#e6edf3}
+.alert-label{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.alert-info{background:#0c2044;border-color:#388bfd}.alert-info .alert-label,.alert-info .alert-icon{color:#58a6ff}
+.alert-success{background:#0a2e1a;border-color:#3fb950}.alert-success .alert-label,.alert-success .alert-icon{color:#56d364}
+.alert-warning{background:#2e1f00;border-color:#d29922}.alert-warning .alert-label,.alert-warning .alert-icon{color:#e3b341}
+.alert-danger{background:#2c0b0e;border-color:#f85149}.alert-danger .alert-label,.alert-danger .alert-icon{color:#ff7b72}
+.alert-purple{background:#1f0a3c;border-color:#a371f7}.alert-purple .alert-label,.alert-purple .alert-icon{color:#bc8cff}
+.code-block{background:#0a0d14;border:1px solid #21262d;border-radius:8px;overflow:hidden;margin:20px 0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#1e2535;border-bottom:1px solid #21262d}
+.code-dots{display:flex;gap:6px}.code-dots span{width:11px;height:11px;border-radius:50%}
+.d1{background:#ff5f57}.d2{background:#febc2e}.d3{background:#28c840}
+.code-filename{font-family:'JetBrains Mono',monospace;font-size:12px;color:#c9d1d9}
+pre{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.85;color:#ced4da}
+.yk{color:#79c0ff}.ys{color:#a5d6a7}.yc{color:#9ba8b5;font-style:italic}.yn{color:#ffa657}
+.table-wrap{overflow-x:auto;border-radius:8px;border:1px solid #21262d;margin:24px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead{background:#21262d}
+th{padding:12px 16px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#c9d1d9;border-bottom:1px solid #21262d;white-space:nowrap}
+td{padding:12px 16px;color:#c9d1d9;border-bottom:1px solid #21262d;vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.04);color:#f1f5f9}
+td:first-child{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#79c0ff;white-space:nowrap}
+.badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.badge-blue{background:rgba(13,110,253,0.2);color:#6ea8fe;border:1px solid rgba(13,110,253,0.4)}
+.badge-green{background:rgba(25,135,84,0.2);color:#75b798;border:1px solid rgba(25,135,84,0.4)}
+.badge-red{background:rgba(220,53,69,0.2);color:#ea868f;border:1px solid rgba(220,53,69,0.4)}
+.badge-yellow{background:rgba(255,193,7,0.15);color:#ffda6a;border:1px solid rgba(255,193,7,0.4)}
+.badge-purple{background:rgba(111,66,193,0.2);color:#a98eda;border:1px solid rgba(111,66,193,0.4)}
+.badge-cyan{background:rgba(13,202,240,0.15);color:#6edff6;border:1px solid rgba(13,202,240,0.4)}
+.badge-teal{background:rgba(32,201,151,0.15);color:#79dfc1;border:1px solid rgba(32,201,151,0.4)}
+.flow{display:flex;flex-direction:column;margin:32px 0}
+.flow-step{display:flex;gap:16px;padding:20px 0;position:relative}
+.flow-step:not(:last-child)::after{content:'';position:absolute;left:19px;top:52px;bottom:0;width:2px;background:#21262d}
+.flow-num{width:40px;height:40px;border-radius:50%;background:#1e2535;border:2px solid #388bfd;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#58a6ff;flex-shrink:0;position:relative;z-index:1}
+.flow-body{padding-top:8px}.flow-body h3{margin-bottom:4px;font-size:15px;font-weight:600;color:#f8f9fa}.flow-body p{margin:0;font-size:14px;color:#c9d1d9}
+.tab-wrap{background:#1e2535;border:1px solid #21262d;border-radius:8px;overflow:hidden;margin:28px 0}
+.tab-header{display:flex;overflow-x:auto;border-bottom:1px solid #21262d;background:#161b22;scrollbar-width:none}
+.tab-header::-webkit-scrollbar{display:none}
+.tab-btn{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:11px 18px;border:none;background:none;color:#9ba8b5;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all .18s}
+.tab-btn:hover{color:#ced4da;background:#1e2535}
+.tab-btn.active{color:#93c5fd;border-bottom-color:#388bfd;background:#1e2535}
+.tab-body{padding:24px;background:#161b22}.tab-pane{display:none;animation:fadeUp .25s ease}.tab-pane.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.diagram{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:28px;margin:28px 0;overflow-x:auto}
+.checklist{list-style:none;margin:12px 0}
+.checklist li{padding:8px 0 8px 26px;position:relative;color:#c9d1d9;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'▸';position:absolute;left:0;color:#58a6ff;font-size:11px;top:9px}
+.checklist li strong{color:#f8f9fa}
+.section-divider{display:flex;align-items:center;gap:16px;padding:0 48px}
+.sdl{flex:1;height:1px;background:#21262d}
+.sdlabel{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#c9d1d9;white-space:nowrap}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#21262d;border:1px solid #21262d;border-radius:3px;padding:1px 5px;color:#79c0ff}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:#0d1117}::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#388bfd}
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .5s ease,transform .5s ease}.reveal.visible{opacity:1;transform:none}
+.footer{padding:40px 48px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:#c9d1d9;border-top:1px solid #21262d;background:#161b22}
+@media(max-width:900px){
+  .topbar{display:flex}
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay.open{display:block}
+  .main{margin-left:0;padding-top:56px;background:#0d1117 !important}
+  .hero{padding:40px 20px 48px}
+  .section{padding:48px 20px}
+  .section-divider{padding:0 20px}
+  .card-grid,.card-grid-2{grid-template-columns:1fr}
+  .diagram{padding:16px}
+  .tab-body{padding:16px}
+}
+@media(min-width:901px){.topbar{display:none}}
+
+.idia-wrap{background:#161b22;border:1px solid #21262d;border-radius:10px;overflow:hidden;margin:28px 0}
+.idia-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#0d1117;border-bottom:1px solid #21262d;flex-wrap:wrap;gap:10px}
+.idia-title{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:600;color:#c9d1d9}
+.idia-controls{display:flex;align-items:center;gap:10px}
+.idia-btn{font-family:"JetBrains Mono",monospace;font-size:12px;padding:6px 14px;background:#1e2535;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;cursor:pointer;transition:all .15s}
+.idia-btn:hover{background:#388bfd;border-color:#388bfd;color:#fff}
+.idia-counter{font-family:"JetBrains Mono",monospace;font-size:11px;color:#8b949e;min-width:44px;text-align:center}
+.idia-body{padding:20px;background:#161b22}
+.idia-slide{display:none;animation:fadeUp .25s ease}
+.idia-slide.active{display:block}
+.idia-label{font-family:"JetBrains Mono",monospace;font-size:11px;color:#58a6ff;margin-bottom:14px;padding:6px 12px;background:#0c2044;border-radius:5px;border-left:3px solid #388bfd;display:block}
+
+/* ═══ DUAL-MODE TOGGLE ═══ */
+.mode-toggle-bar{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 52px;
+  background:#0d1117;
+  border-bottom:1px solid #21262d;
+  position:sticky;
+  top:0;
+  z-index:100;
+  flex-wrap:wrap;
+}
+.mode-toggle-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:#8b949e;
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+.mode-btn{
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  font-weight:500;
+  padding:7px 18px;
+  border-radius:6px;
+  border:1px solid #30363d;
+  background:#161b22;
+  color:#8b949e;
+  cursor:pointer;
+  transition:all .18s;
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.mode-btn:hover{ border-color:#388bfd; color:#c9d1d9; }
+.mode-btn.active-mode{
+  background:rgba(56,139,253,0.15);
+  border-color:#388bfd;
+  color:#58a6ff;
+}
+.mode-btn .mode-dot{
+  width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;
+}
+.mode-divider{ width:1px; height:20px; background:#21262d; }
+.mode-badge{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  padding:2px 8px;
+  border-radius:4px;
+  background:#0c2044;
+  color:#58a6ff;
+  border:1px solid rgba(56,139,253,0.3);
+}
+
+/* Simple view: hide technical blocks */
+body.mode-simple .tech-block { display:none !important; }
+body.mode-simple .simple-block { display:block !important; }
+
+/* Technical view: hide simple blocks */
+body.mode-technical .simple-block { display:none !important; }
+body.mode-technical .tech-block { display:block !important; }
+
+/* Both view: show everything */
+body.mode-both .simple-block,
+body.mode-both .tech-block { display:block !important; }
+
+/* Default show both */
+.simple-block, .tech-block { display:block; }
+
+/* Technical block styling */
+.tech-block {
+  border-left: 3px solid #388bfd;
+  background: #0c1526;
+  border-radius: 0 8px 8px 0;
+  padding: 18px 22px;
+  margin: 16px 0;
+}
+.tech-block-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:#388bfd;
+  margin-bottom:8px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.tech-block-label::before{
+  content:'📖';
+  font-size:12px;
+}
+.tech-block p{
+  color:#c9d1d9;
+  font-size:14px;
+  line-height:1.75;
+  margin-bottom:8px;
+}
+.tech-block p:last-child{ margin-bottom:0; }
+.tech-block strong{ color:#f0f6fc; }
+.tech-block code{
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  background:#161b22;
+  border:1px solid #30363d;
+  border-radius:3px;
+  padding:1px 5px;
+  color:#79c0ff;
+}
+
+/* Simple block styling */
+.simple-block {
+  border-left: 3px solid #3fb950;
+  background: #061510;
+  border-radius: 0 8px 8px 0;
+  padding: 18px 22px;
+  margin: 16px 0;
+}
+.simple-block-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:#3fb950;
+  margin-bottom:8px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.simple-block-label::before{
+  content:'💡';
+  font-size:12px;
+}
+.simple-block p{
+  color:#c9d1d9;
+  font-size:14px;
+  line-height:1.75;
+  margin-bottom:8px;
+}
+.simple-block p:last-child{ margin-bottom:0; }
+.simple-block strong{ color:#f0f6fc; }
+
+/* dual-explain wrapper */
+.dual-explain{
+  margin: 20px 0;
+}
+.dual-explain-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:4px;
+}
+
+@media(max-width:900px){
+  .mode-toggle-bar{ padding:10px 16px; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">K8s / Storage</div>
+  <button class="burger" id="burger"><span></span><span></span><span></span></button>
+</div>
+
+<div class="sidebar-overlay" id="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-tag">Complete Guide</div>
+    <div class="sidebar-brand-name">K8s Storage</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">Fundamentals</div>
+      <a class="nav-item active" href="#volumes"><span class="nav-icon">📦</span> What are Volumes?</a>
+      <a class="nav-item" href="#why"><span class="nav-icon">❓</span> Why Volumes?</a>
+      <a class="nav-item" href="#how"><span class="nav-icon">⚙️</span> How Volumes Work</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Volume Types</div>
+      <a class="nav-item" href="#types"><span class="nav-icon">🗂️</span> All Volume Types <span class="nav-badge">8</span></a>
+      <a class="nav-item" href="#access-modes"><span class="nav-icon">🔒</span> Access Modes</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Persistent Storage</div>
+      <a class="nav-item" href="#pv"><span class="nav-icon">💾</span> PersistentVolume</a>
+      <a class="nav-item" href="#pvc"><span class="nav-icon">📋</span> PVC</a>
+      <a class="nav-item" href="#storageclass"><span class="nav-icon">⚡</span> StorageClass</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Workflows</div>
+      <a class="nav-item" href="#lifecycle"><span class="nav-icon">🔄</span> Lifecycle &amp; Reclaim</a>
+      <a class="nav-item" href="#statefulset"><span class="nav-icon">🏗️</span> StatefulSet Storage</a>
+      <a class="nav-item" href="#snapshots"><span class="nav-icon">📸</span> Snapshots &amp; Cloning</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Advanced</div>
+      <a class="nav-item" href="#csi"><span class="nav-icon">🔌</span> CSI Drivers</a>
+      <a class="nav-item" href="#projects"><span class="nav-icon">🚀</span> Real Projects <span class="nav-badge">2</span></a>
+      <a class="nav-item" href="#bestpractices"><span class="nav-icon">✅</span> Best Practices</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">K8s v1.29+ · Inter · Dark</div>
+</aside>
+
+<main class="main">
+
+<!-- HERO -->
+<div class="hero" id="top">
+  <div class="hero-eyebrow">Kubernetes Deep Dive</div>
+  <h1>Storage in <em>Kubernetes</em></h1>
+  <p class="hero-sub">A complete reference covering volumes, persistent storage, dynamic provisioning, CSI drivers, and production-grade YAML patterns — from first principles to real projects.</p>
+  <div class="hero-chips">
+    <span class="chip">Volumes</span><span class="chip">PV &amp; PVC</span><span class="chip">StorageClass</span><span class="chip">CSI Drivers</span><span class="chip">StatefulSets</span><span class="chip">Snapshots</span><span class="chip">Access Modes</span><span class="chip">Dynamic Provisioning</span>
+  </div>
+</div>
+
+
+<!-- MODE TOGGLE BAR -->
+<div class="mode-toggle-bar" id="mode-bar">
+  <span class="mode-toggle-label">Explanation Style:</span>
+  <button class="mode-btn active-mode" data-mode="both" onclick="setMode('both')">
+    <span class="mode-dot"></span> Both Modes
+  </button>
+  <button class="mode-btn" data-mode="simple" onclick="setMode('simple')">
+    <span class="mode-dot"></span> Simple
+  </button>
+  <button class="mode-btn" data-mode="technical" onclick="setMode('technical')">
+    <span class="mode-dot"></span> Technical / Official
+  </button>
+  <div class="mode-divider"></div>
+  <span class="mode-badge">&#128214; Based on kubernetes.io/docs/concepts/storage</span>
+</div>
+
+<!-- §01 WHAT ARE VOLUMES -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 01 — What are Volumes?</div><div class="sdl"></div></div>
+<section class="section reveal" id="volumes">
+  <span class="section-eyebrow">Definition</span>
+  <h2>What are Kubernetes Volumes?</h2>
+  <div class="dual-explain">
+    <div class="simple-block">
+      <div class="simple-block-label">Simple Explanation</div>
+      <p>Every container gets its own <strong>ephemeral writable layer</strong> on top of its image. The moment Kubernetes kills or restarts that container — crash, OOM, probe failure — the layer is destroyed and every write inside it is gone.</p>
+      <p>A <strong>Volume solves this</strong>: it is a directory attached to the <em>Pod</em>, not the container. It persists across individual container restarts — and when using a PVC, it persists even when the whole Pod is deleted.</p>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-label">Official / Technical Definition</div>
+      <p>On-disk files in a container are ephemeral, which presents problems for non-trivial applications when running in containers. One problem occurs when a container crashes or is stopped. The container state is not saved so all of the files that were created or modified during the lifetime of the container are lost. During a crash, the kubelet restarts the container with a clean state.</p>
+      <p>A second problem occurs when multiple containers are running in a Pod and need to share files. It can be challenging to set up and access a shared filesystem across all of the containers.</p>
+      <p>The Kubernetes volume abstraction solves both of these problems. A <strong>Volume</strong> is a directory, possibly with some data in it, which is accessible to the containers in a Pod. How that directory comes to be, the medium that backs it, and the contents of it are determined by the particular volume type used.</p>
+      <p>To use a volume, specify the volumes to provide for the Pod in <code>.spec.volumes</code> and declare where to mount those volumes into containers in <code>.spec.containers[*].volumeMounts</code>. A volume cannot be mounted within another volume. Also, a volume cannot contain a hard link to anything in a different volume.</p>
+    </div>
+  </div>
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ</span>
+    <div class="alert-body">
+      <span class="alert-label">Mental Model</span>
+      Think of a Volume as a <strong>USB drive attached to the Pod</strong>. Any container in the Pod can plug into it at any path it chooses. The drive stays intact if one container crashes. Only removing the entire Pod ejects the drive (for emptyDir) — or the drive stays permanently in the cloud (for PVCs).
+    </div>
+  </div>
+
+  <!-- INTERACTIVE: Volume Anatomy -->
+  <div class="idia-wrap">
+    <div class="idia-header">
+      <span class="idia-title">Interactive — Volume Anatomy: How It Actually Works</span>
+      <div class="idia-controls">
+        <button class="idia-btn" onclick="idiaStep('va',-1)">&#8592; Back</button>
+        <span class="idia-counter" id="va-counter">1 / 5</span>
+        <button class="idia-btn" onclick="idiaStep('va',1)">Next &#8594;</button>
+      </div>
+    </div>
+    <div class="idia-body">
+
+      <div class="idia-slide active" id="va-0">
+        <span class="idia-label">Step 1 — The Problem: Container Writes Are Ephemeral</span>
+        <svg width="100%" viewBox="0 0 700 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="232" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">KUBERNETES NODE — POD</text>
+          <rect x="100" y="42" width="500" height="130" rx="8" fill="#161b22" stroke="#388bfd" stroke-width="2"/>
+          <text x="350" y="68" font-size="13" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">postgres container</text>
+          <rect x="130" y="80" width="440" height="70" rx="6" fill="#1e2535" stroke="#30363d" stroke-dasharray="5,3"/>
+          <text x="350" y="106" font-size="12" fill="#c9d1d9" text-anchor="middle" font-family="Inter">Writable Container Layer (ephemeral)</text>
+          <text x="350" y="128" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">users: 50,000 rows · orders: 200,000 rows</text>
+          <text x="350" y="196" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">&#9888; Container crashes &#8594; writable layer destroyed &#8594; ALL data gone forever</text>
+          <text x="350" y="216" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">New container starts from clean image &#8594; 0 rows in the database</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">Database writes go into the container's own writable layer. When Kubernetes kills and restarts the container — OOM kill, crash, probe failure — a brand new container starts from the base image. <strong style="color:#ff7b72">All data is permanently wiped.</strong></p>
+      </div>
+
+      <div class="idia-slide" id="va-1">
+        <span class="idia-label">Step 2 — Fix: Declare a Volume on the Pod Spec</span>
+        <svg width="100%" viewBox="0 0 700 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="232" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">POD SPEC — volumes declared at pod level, not container level</text>
+          <!-- Container -->
+          <rect x="20" y="42" width="300" height="150" rx="8" fill="#161b22" stroke="#388bfd" stroke-width="2"/>
+          <text x="170" y="68" font-size="12" fill="#58a6ff" text-anchor="middle" font-weight="600" font-family="Inter">postgres container</text>
+          <rect x="36" y="80" width="268" height="48" rx="5" fill="#0c2044" stroke="#388bfd"/>
+          <text x="170" y="100" font-size="11" fill="#79c0ff" text-anchor="middle" font-family="JetBrains Mono">volumeMounts:</text>
+          <text x="170" y="118" font-size="11" fill="#79c0ff" text-anchor="middle" font-family="JetBrains Mono">  mountPath: /var/lib/postgresql/data</text>
+          <text x="170" y="160" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Writes go to volume, not layer</text>
+          <!-- Volume -->
+          <rect x="360" y="42" width="316" height="150" rx="8" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+          <text x="518" y="68" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">spec.volumes[]</text>
+          <rect x="376" y="80" width="284" height="48" rx="5" fill="#0d1117" stroke="#3fb950"/>
+          <text x="518" y="100" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">name: pg-data</text>
+          <text x="518" y="118" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">persistentVolumeClaim: {claimName: my-pvc}</text>
+          <text x="518" y="158" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Pod-level — independent of any container</text>
+          <!-- Arrow -->
+          <line x1="322" y1="104" x2="358" y2="104" stroke="#56d364" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#a01)"/>
+          <defs><marker id="a01" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#56d364"/></marker></defs>
+          <text x="350" y="220" font-size="11" fill="#56d364" text-anchor="middle" font-weight="500" font-family="Inter">&#10003; Volume declared once on the Pod, referenced by name in the container</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">You add <code>volumes:</code> to the Pod spec — not inside the container definition. The container declares <code>volumeMounts</code> to say where to mount it. Now all database writes go to the PVC-backed volume on a real cloud disk, not the ephemeral container layer.</p>
+      </div>
+
+      <div class="idia-slide" id="va-2">
+        <span class="idia-label">Step 3 — Sharing: Multiple Containers, Same Volume, Different Paths</span>
+        <svg width="100%" viewBox="0 0 700 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="252" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">POD — SIDECAR LOG PIPELINE</text>
+          <!-- Container A -->
+          <rect x="20" y="42" width="240" height="128" rx="8" fill="#161b22" stroke="#388bfd" stroke-width="2"/>
+          <text x="140" y="66" font-size="12" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">Container A (app)</text>
+          <rect x="36" y="78" width="208" height="38" rx="5" fill="#0c2044" stroke="#388bfd"/>
+          <text x="140" y="96" font-size="11" fill="#79c0ff" text-anchor="middle" font-family="JetBrains Mono">mountPath: /var/log/app</text>
+          <text x="140" y="112" font-size="10" fill="#58a6ff" text-anchor="middle" font-family="JetBrains Mono">WRITES app.log here</text>
+          <text x="140" y="150" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">name: log-vol</text>
+          <!-- Volume in middle -->
+          <rect x="282" y="72" width="136" height="80" rx="8" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+          <text x="350" y="102" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">log-vol</text>
+          <text x="350" y="122" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">emptyDir</text>
+          <text x="350" y="140" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">SHARED &#10003;</text>
+          <!-- Container B -->
+          <rect x="440" y="42" width="240" height="128" rx="8" fill="#161b22" stroke="#a371f7" stroke-width="2"/>
+          <text x="560" y="66" font-size="12" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">Container B (fluentd)</text>
+          <rect x="456" y="78" width="208" height="38" rx="5" fill="#1f0a3c" stroke="#a371f7"/>
+          <text x="560" y="96" font-size="11" fill="#bc8cff" text-anchor="middle" font-family="JetBrains Mono">mountPath: /logs  readOnly</text>
+          <text x="560" y="112" font-size="10" fill="#a371f7" text-anchor="middle" font-family="JetBrains Mono">READS /logs/app.log &#8594; ships to EL</text>
+          <text x="560" y="150" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">name: log-vol</text>
+          <!-- Arrows -->
+          <line x1="262" y1="112" x2="280" y2="112" stroke="#388bfd" stroke-width="1.5" marker-end="url(#a02)"/>
+          <line x1="420" y1="112" x2="438" y2="112" stroke="#a371f7" stroke-width="1.5" marker-end="url(#a03)"/>
+          <defs>
+            <marker id="a02" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#388bfd"/></marker>
+            <marker id="a03" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#a371f7"/></marker>
+          </defs>
+          <rect x="20" y="192" width="660" height="44" rx="6" fill="#0a2e1a" stroke="#3fb950"/>
+          <text x="350" y="210" font-size="11" fill="#56d364" text-anchor="middle" font-weight="500" font-family="Inter">&#10003; Both containers see the SAME files — no network, no API — just shared disk I/O</text>
+          <text x="350" y="228" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">App writes /var/log/app/app.log &#8594; Fluentd reads it at /logs/app.log (same file, different path)</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">The same volume is mounted into Container A at <code>/var/log/app</code> and into Container B at <code>/logs</code>. Both paths resolve to the <strong>identical directory</strong> on disk. When A writes <code>app.log</code>, B reads it at <code>/logs/app.log</code> immediately — no network, no API calls, pure filesystem I/O. This is the sidecar pattern.</p>
+      </div>
+
+      <div class="idia-slide" id="va-3">
+        <span class="idia-label">Step 4 — Container Crashes: Volume Survives, Container Does Not</span>
+        <svg width="100%" viewBox="0 0 700 248" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="240" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">NODE — Pod still alive, Container A restarting</text>
+          <!-- crashed -->
+          <rect x="20" y="42" width="300" height="78" rx="8" fill="#2c0b0e" stroke="#f85149" stroke-width="2"/>
+          <text x="170" y="66" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">Container A — CRASHED &#128165; OOMKilled</text>
+          <text x="170" y="86" font-size="11" fill="#f85149" text-anchor="middle" font-family="JetBrains Mono">Kubernetes restarting...</text>
+          <text x="170" y="104" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Pod itself is still running</text>
+          <!-- restarted -->
+          <rect x="20" y="136" width="300" height="66" rx="8" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+          <text x="170" y="162" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="Inter">Container A — RESTARTED &#10003;</text>
+          <text x="170" y="184" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">remounts volume &#8594; all files intact &#10003;</text>
+          <!-- Volume (survives) -->
+          <rect x="360" y="42" width="316" height="160" rx="8" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+          <text x="518" y="68" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">emptyDir &#8592; ALIVE &#10003;</text>
+          <rect x="376" y="80" width="284" height="106" rx="5" fill="#0d1117" stroke="#3fb950"/>
+          <text x="518" y="106" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">output.txt (2.3 MB) &#10003;</text>
+          <text x="518" y="126" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">results.json (450 KB) &#10003;</text>
+          <text x="518" y="150" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">NOT deleted on container crash</text>
+          <text x="518" y="170" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Only deleted when POD is deleted</text>
+          <line x1="322" y1="170" x2="358" y2="150" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a04)"/>
+          <defs><marker id="a04" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#3fb950"/></marker></defs>
+          <text x="350" y="224" font-size="11" fill="#56d364" text-anchor="middle" font-weight="500" font-family="Inter">Volume lifetime = Pod lifetime. Container lifetime &#8800; Pod lifetime.</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">Container A is OOM-killed. Kubernetes restarts just the container — the Pod keeps running. The emptyDir directory is untouched. When Container A restarts, it remounts the volume and finds every file exactly as it left them. <strong>Container restarts do NOT delete volumes.</strong> Only Pod deletion does.</p>
+      </div>
+
+      <div class="idia-slide" id="va-4">
+        <span class="idia-label">Step 5 — Two Volume Types: Temporary (emptyDir) vs Permanent (PVC)</span>
+        <svg width="100%" viewBox="0 0 700 248" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="240" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">LIFECYCLE COMPARISON</text>
+          <!-- emptyDir column -->
+          <rect x="20" y="42" width="310" height="178" rx="8" fill="#2c0b0e" stroke="#f85149"/>
+          <text x="175" y="68" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">emptyDir — Temporary</text>
+          <rect x="36" y="80" width="278" height="38" rx="5" fill="#0d1117" stroke="#f85149"/>
+          <text x="175" y="96" font-size="11" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">&#10003; Survives container restart</text>
+          <text x="175" y="112" font-size="11" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">within same Pod</text>
+          <rect x="36" y="126" width="278" height="38" rx="5" fill="#2c0b0e" stroke="#f85149"/>
+          <text x="175" y="142" font-size="12" fill="#ff7b72" text-anchor="middle" font-family="JetBrains Mono">&#10007; Deleted when Pod dies</text>
+          <text x="175" y="158" font-size="11" fill="#f85149" text-anchor="middle" font-family="JetBrains Mono">or moves to another node</text>
+          <text x="175" y="196" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Use for: sidecar sharing, scratch space</text>
+          <!-- PVC column -->
+          <rect x="370" y="42" width="310" height="178" rx="8" fill="#0a2e1a" stroke="#3fb950"/>
+          <text x="525" y="68" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="Inter">PVC — Permanent</text>
+          <rect x="386" y="80" width="278" height="38" rx="5" fill="#0d1117" stroke="#3fb950"/>
+          <text x="525" y="96" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">&#10003; Survives container restart</text>
+          <text x="525" y="112" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">&#10003; Survives Pod deletion &#8592; KEY</text>
+          <rect x="386" y="126" width="278" height="38" rx="5" fill="#0a2e1a" stroke="#3fb950"/>
+          <text x="525" y="142" font-size="12" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">Cloud disk outlives everything</text>
+          <text x="525" y="158" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">New Pod remounts same disk &#10003;</text>
+          <text x="525" y="196" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Use for: databases, any data you keep</text>
+          <text x="350" y="236" font-size="11" fill="#e3b341" text-anchor="middle" font-weight="500" font-family="Inter">Rule: emptyDir = scratch/sharing. PVC = anything you must not lose.</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">The most important decision in Kubernetes storage: <strong>emptyDir for temporary shared scratch</strong> (data that can be recreated), <strong>PVC for anything permanent</strong> (databases, user uploads, application state). The API looks the same — only the volume type differs.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card c-blue"><span class="card-icon">📦</span><h3>Declared at Pod Level</h3><p>Volumes live in <code>.spec.volumes[]</code> on the Pod spec — not inside any container. All containers in the Pod can see and mount them. Think: "Pod comes with a drive; containers plug in."</p></div>
+    <div class="card c-cyan"><span class="card-icon">🔗</span><h3>Each Container Mounts Explicitly</h3><p>A container must declare <code>volumeMounts</code> to access a volume. Two containers can mount the same volume at different paths — both see identical files with zero data copies.</p></div>
+    <div class="card c-green"><span class="card-icon">⏳</span><h3>Pod Lifetime, Not Container Lifetime</h3><p>Volumes survive container crashes and restarts. emptyDir is deleted only when the <strong>Pod</strong> is removed. PVC-backed volumes persist beyond even Pod deletion.</p></div>
+    <div class="card c-purple"><span class="card-icon">🔌</span><h3>Same API, Many Backends</h3><p>Identical <code>volumeMounts</code> syntax works for RAM (emptyDir), cloud disks (PVC), config files (ConfigMap), credentials (Secret), and NFS. Your container code never changes.</p></div>
+  </div>
+</section>
+
+<!-- §02 WHY VOLUMES -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 02 — Why Volumes?</div><div class="sdl"></div></div>
+<section class="section reveal" id="why">
+  <span class="section-eyebrow">Motivation</span>
+  <h2>Why Are Volumes Critical?</h2>
+  <div class="dual-explain">
+    <div class="simple-block">
+      <div class="simple-block-label">Simple Explanation</div>
+      <p>Kubernetes treats containers as <strong>cattle, not pets</strong> — disposable, replaceable, constantly killed and rescheduled. For stateless apps, this is a feature. For stateful workloads (databases, queues, file stores), this behavior is catastrophic without volumes.</p>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-label">Official / Technical Context</div>
+      <p>Docker also has a concept of volumes, though it is somewhat looser and less managed. A Docker volume is a directory on disk or in another container. Docker provides volume drivers, but the functionality is somewhat limited.</p>
+      <p>Kubernetes supports many types of volumes. A Pod can use any number of volume types simultaneously. Ephemeral volume types have a lifetime of a Pod, but persistent volumes exist beyond the lifetime of a Pod. When a Pod ceases to exist, Kubernetes destroys ephemeral volumes; however, Kubernetes does not destroy persistent volumes. For any kind of volume in a given Pod, data is preserved across container restarts.</p>
+      <p>At its core, a volume is a directory, possibly with some data in it, which is accessible to the containers in a Pod. How that directory comes to be, the medium that backs it, and the contents of it are determined by the particular volume type used. This directly addresses the need for workloads that require durable state beyond the ephemeral container filesystem.</p>
+    </div>
+  </div>
+  <div class="alert alert-danger">
+    <span class="alert-icon">&#9888;</span>
+    <div class="alert-body">
+      <span class="alert-label">The Core Problem</span>
+      MySQL container OOM-killed at 14:32 &#8594; Kubernetes restarts in 3s &#8594; new container from clean base image &#8594; <strong>every table, row, and index permanently destroyed.</strong> You cannot run any stateful workload in Kubernetes without volumes.
+    </div>
+  </div>
+
+  <!-- INTERACTIVE: Why Volumes Scenarios -->
+  <div class="idia-wrap">
+    <div class="idia-header">
+      <span class="idia-title">Interactive — Real Scenarios: Without vs With Volumes</span>
+      <div class="idia-controls">
+        <button class="idia-btn" onclick="idiaStep('ws',-1)">&#8592; Back</button>
+        <span class="idia-counter" id="ws-counter">1 / 4</span>
+        <button class="idia-btn" onclick="idiaStep('ws',1)">Next &#8594;</button>
+      </div>
+    </div>
+    <div class="idia-body">
+
+      <div class="idia-slide active" id="ws-0">
+        <span class="idia-label">Scenario 1 — Database Without a Volume: Crash = Permanent Data Loss</span>
+        <svg width="100%" viewBox="0 0 700 262" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="254" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">NO VOLUME — data stored in container layer</text>
+          <!-- Before -->
+          <rect x="20" y="42" width="290" height="160" rx="8" fill="#161b22" stroke="#21262d"/>
+          <text x="165" y="66" font-size="12" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">BEFORE crash</text>
+          <rect x="36" y="78" width="258" height="108" rx="7" fill="#0d1117" stroke="#388bfd" stroke-width="1.5"/>
+          <text x="165" y="102" font-size="12" fill="#58a6ff" text-anchor="middle" font-weight="600" font-family="Inter">postgres container</text>
+          <rect x="52" y="112" width="226" height="60" rx="5" fill="#1e2535" stroke="#30363d"/>
+          <text x="165" y="136" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">users: 50,000 rows &#10003;</text>
+          <text x="165" y="156" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">orders: 200,000 rows &#10003;</text>
+          <!-- crash -->
+          <text x="350" y="128" font-size="28" fill="#f85149" text-anchor="middle">&#128165;</text>
+          <text x="350" y="158" font-size="11" fill="#ff7b72" text-anchor="middle" font-family="JetBrains Mono">OOM Killed</text>
+          <text x="350" y="178" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">restarts in 3s</text>
+          <!-- After -->
+          <rect x="390" y="42" width="290" height="160" rx="8" fill="#2c0b0e" stroke="#f85149"/>
+          <text x="535" y="66" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">AFTER restart</text>
+          <rect x="406" y="78" width="258" height="108" rx="7" fill="#0d1117" stroke="#f85149" stroke-width="1.5"/>
+          <text x="535" y="102" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">postgres container (new)</text>
+          <rect x="422" y="112" width="226" height="60" rx="5" fill="#2c0b0e" stroke="#f85149"/>
+          <text x="535" y="140" font-size="13" fill="#ff7b72" text-anchor="middle" font-family="JetBrains Mono">users: 0 rows &#10007;</text>
+          <text x="535" y="162" font-size="13" fill="#ff7b72" text-anchor="middle" font-family="JetBrains Mono">orders: 0 rows &#10007;</text>
+          <text x="350" y="228" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">250,000 rows permanently destroyed — in 3 seconds</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">Without a volume, Postgres stores data entirely in the container's writable layer. Kubernetes creates a brand-new container from the base image when it restarts — which has no data. The database is silently wiped every time the container crashes.</p>
+      </div>
+
+      <div class="idia-slide" id="ws-1">
+        <span class="idia-label">Scenario 1 Fixed — Database WITH a PVC: Crash-Safe</span>
+        <svg width="100%" viewBox="0 0 700 262" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="254" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">WITH PVC VOLUME — data on cloud disk</text>
+          <!-- Node + Pod -->
+          <rect x="20" y="42" width="320" height="170" rx="8" fill="#0d1117" stroke="#21262d"/>
+          <text x="180" y="64" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">NODE — POD</text>
+          <rect x="36" y="74" width="288" height="80" rx="7" fill="#161b22" stroke="#388bfd" stroke-width="1.5"/>
+          <text x="180" y="98" font-size="12" fill="#58a6ff" text-anchor="middle" font-weight="600" font-family="Inter">postgres container</text>
+          <text x="180" y="118" font-size="11" fill="#79c0ff" text-anchor="middle" font-family="JetBrains Mono">mountPath: /var/lib/postgresql/data</text>
+          <text x="180" y="136" font-size="10" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">all writes &#8594; PVC, not container layer</text>
+          <rect x="36" y="166" width="288" height="34" rx="5" fill="#0a2e1a" stroke="#3fb950"/>
+          <text x="180" y="186" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">&#128165; Crashes &#8594; restarts &#8594; remounts PVC &#10003;</text>
+          <!-- PVC cloud disk -->
+          <rect x="372" y="42" width="308" height="170" rx="8" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+          <text x="526" y="68" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">PVC &#8594; Cloud Disk (EBS)</text>
+          <rect x="388" y="80" width="276" height="118" rx="5" fill="#0d1117" stroke="#3fb950"/>
+          <text x="526" y="106" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">users: 50,000 rows &#10003;</text>
+          <text x="526" y="126" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">orders: 200,000 rows &#10003;</text>
+          <text x="526" y="152" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Persists across crashes</text>
+          <text x="526" y="170" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Persists across Pod deletion</text>
+          <text x="526" y="188" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Persists across node failure</text>
+          <text x="350" y="232" font-size="11" fill="#56d364" text-anchor="middle" font-weight="500" font-family="Inter">&#10003; Container can crash 100 times — cloud disk never changes</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">With a PVC at <code>/var/lib/postgresql/data</code>, all writes go to an EBS cloud disk. Container crashes 100 times — the disk is unchanged. New container starts, remounts the same disk, finds all 250,000 rows intact. <strong>This is what makes databases possible on Kubernetes.</strong></p>
+      </div>
+
+      <div class="idia-slide" id="ws-2">
+        <span class="idia-label">Scenario 2 — Sidecar Log Shipping: emptyDir as Shared Bus</span>
+        <svg width="100%" viewBox="0 0 700 262" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="254" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">POD — OBSERVABILITY SIDECAR PATTERN</text>
+          <!-- App -->
+          <rect x="20" y="42" width="238" height="150" rx="8" fill="#0d1117" stroke="#388bfd" stroke-width="2"/>
+          <text x="139" y="68" font-size="12" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">App (node.js)</text>
+          <rect x="36" y="80" width="206" height="60" rx="5" fill="#0c2044" stroke="#388bfd"/>
+          <text x="139" y="100" font-size="11" fill="#79c0ff" text-anchor="middle" font-family="JetBrains Mono">mountPath: /var/log/app</text>
+          <text x="139" y="120" font-size="11" fill="#58a6ff" text-anchor="middle" font-family="JetBrains Mono">WRITES app.log here</text>
+          <text x="139" y="170" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">structured JSON logs</text>
+          <!-- emptyDir center -->
+          <rect x="280" y="72" width="140" height="100" rx="8" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+          <text x="350" y="104" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">emptyDir</text>
+          <text x="350" y="124" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">app.log</text>
+          <text x="350" y="142" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">error.log</text>
+          <text x="350" y="160" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">SHARED &#10003;</text>
+          <!-- Fluentd -->
+          <rect x="442" y="42" width="240" height="150" rx="8" fill="#0d1117" stroke="#a371f7" stroke-width="2"/>
+          <text x="562" y="68" font-size="12" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">Fluentd (sidecar)</text>
+          <rect x="458" y="80" width="208" height="60" rx="5" fill="#1f0a3c" stroke="#a371f7"/>
+          <text x="562" y="100" font-size="11" fill="#bc8cff" text-anchor="middle" font-family="JetBrains Mono">mountPath: /logs  readOnly</text>
+          <text x="562" y="120" font-size="11" fill="#a371f7" text-anchor="middle" font-family="JetBrains Mono">READS &#8594; ships to Elasticsearch</text>
+          <text x="562" y="170" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">zero network between containers</text>
+          <line x1="260" y1="120" x2="278" y2="120" stroke="#388bfd" stroke-width="1.5" marker-end="url(#ws1)"/>
+          <line x1="422" y1="120" x2="440" y2="120" stroke="#a371f7" stroke-width="1.5" marker-end="url(#ws2)"/>
+          <defs>
+            <marker id="ws1" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#388bfd"/></marker>
+            <marker id="ws2" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#a371f7"/></marker>
+          </defs>
+          <text x="350" y="220" font-size="11" fill="#56d364" text-anchor="middle" font-weight="500" font-family="Inter">&#10003; Pure filesystem I/O — faster and simpler than any network protocol</text>
+          <text x="350" y="238" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">No REST API, no gRPC, no socket — just open(file) and read</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">The App writes structured logs to <code>/var/log/app/app.log</code>. Fluentd reads from <code>/logs/app.log</code> (same file, different mount path) and ships to Elasticsearch. Zero network calls between containers — just filesystem reads/writes. This is the foundation of Kubernetes observability.</p>
+      </div>
+
+      <div class="idia-slide" id="ws-3">
+        <span class="idia-label">Scenario 3 — ConfigMap Volume: Live Config Without Redeployment</span>
+        <svg width="100%" viewBox="0 0 700 262" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="692" height="254" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">HOT-RELOAD — update config without restarting pods</text>
+          <!-- Step 1: kubectl apply -->
+          <rect x="20" y="42" width="145" height="90" rx="7" fill="#0d1117" stroke="#a371f7"/>
+          <text x="92" y="68" font-size="11" fill="#bc8cff" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">&#9312; kubectl apply</text>
+          <text x="92" y="88" font-size="10" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">Update ConfigMap</text>
+          <text x="92" y="106" font-size="10" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">cache.ttl=600 &#8592; new</text>
+          <!-- Step 2: API Server -->
+          <rect x="183" y="42" width="145" height="90" rx="7" fill="#0d1117" stroke="#388bfd"/>
+          <text x="255" y="68" font-size="11" fill="#58a6ff" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">&#9313; API Server</text>
+          <text x="255" y="88" font-size="10" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">stores in etcd</text>
+          <text x="255" y="106" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">new version saved</text>
+          <!-- Step 3: Kubelet polls -->
+          <rect x="346" y="42" width="145" height="90" rx="7" fill="#0d1117" stroke="#3fb950"/>
+          <text x="418" y="68" font-size="11" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">&#9314; Kubelet polls</text>
+          <text x="418" y="88" font-size="10" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">~60s sync interval</text>
+          <text x="418" y="106" font-size="10" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">updates file &#10003;</text>
+          <!-- Step 4: App reads -->
+          <rect x="509" y="42" width="169" height="90" rx="7" fill="#0d1117" stroke="#56d364"/>
+          <text x="593" y="68" font-size="11" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">&#9315; File updated</text>
+          <text x="593" y="88" font-size="10" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">container reads</text>
+          <text x="593" y="106" font-size="10" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">new value &#10003;</text>
+          <!-- Arrows -->
+          <line x1="167" y1="87" x2="181" y2="87" stroke="#30363d" stroke-width="1.5" marker-end="url(#ws3)"/>
+          <line x1="330" y1="87" x2="344" y2="87" stroke="#30363d" stroke-width="1.5" marker-end="url(#ws3)"/>
+          <line x1="493" y1="87" x2="507" y2="87" stroke="#30363d" stroke-width="1.5" marker-end="url(#ws3)"/>
+          <defs><marker id="ws3" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#30363d"/></marker></defs>
+          <!-- Warning subPath -->
+          <rect x="20" y="152" width="660" height="80" rx="8" fill="#2e1f00" stroke="#d29922"/>
+          <text x="350" y="176" font-size="12" fill="#e3b341" text-anchor="middle" font-weight="600" font-family="Inter">&#9888; subPath Exception — Does NOT hot-reload</text>
+          <text x="350" y="198" font-size="11" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">mountPath: /etc/nginx/nginx.conf + subPath: nginx.conf</text>
+          <text x="350" y="218" font-size="10" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">File is frozen at container start — ConfigMap updates have zero effect on subPath mounts</text>
+        </svg>
+        <p style="margin-top:12px;margin-bottom:0">Update a ConfigMap with <code>kubectl apply</code> and Kubernetes automatically refreshes the mounted files inside running containers within ~60 seconds — <strong>no pod restart, no redeployment, no downtime.</strong> The app just reads the file on next access and gets the new value. Exception: <code>subPath</code> mounts freeze at container start time.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card c-blue"><span class="card-icon">&#128190;</span><h3>Stateful Data Persistence</h3><p>Databases, message queues, file uploads, ML models — all need data to survive crashes, restarts, and rescheduling to new nodes. PVCs back every serious stateful Kubernetes workload.</p></div>
+    <div class="card c-cyan"><span class="card-icon">&#129309;</span><h3>Zero-Network Sidecar Sharing</h3><p>Two containers in the same Pod share data via filesystem I/O — no REST, no gRPC. App writes, sidecar reads. Simpler, faster, and more reliable than inter-container networking.</p></div>
+    <div class="card c-green"><span class="card-icon">&#128272;</span><h3>Config &amp; Secret Injection</h3><p>Mount ConfigMaps as files for live hot-reload. Mount Secrets as tmpfs (RAM) files — never written to disk. Update config without redeploying. Rotate secrets without restarting pods.</p></div>
+    <div class="card c-yellow"><span class="card-icon">&#9889;</span><h3>RAM-Backed High-Speed I/O</h3><p><code>emptyDir {medium: Memory}</code> gives you a tmpfs — RAM as a filesystem. Sub-millisecond latency, perfect for AI inference scratch, sort buffers, and shared Unix sockets.</p></div>
+    <div class="card c-purple"><span class="card-icon">&#9729;&#65039;</span><h3>Cloud-Portable Storage</h3><p>Identical PVC YAML on AWS (EBS), GCP (PD), Azure (Disk), or on-prem (NFS/Ceph). Only the StorageClass differs per cluster. Your app YAML is truly cloud-portable.</p></div>
+    <div class="card c-teal"><span class="card-icon">&#128193;</span><h3>Node Filesystem Access</h3><p>DaemonSets use <code>hostPath</code> to read <code>/var/log</code> (logs), <code>/proc</code> (metrics), and <code>/var/run/docker.sock</code> (runtime). Impossible to access node-level resources without volumes.</p></div>
+  </div>
+</section>
+
+<!-- §03 HOW VOLUMES WORK -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 03 — How Volumes Work</div><div class="sdl"></div></div>
+<section class="section reveal" id="how">
+  <span class="section-eyebrow">Internals</span>
+  <h2>How Volumes Work Internally</h2>
+  <div class="dual-explain">
+    <div class="simple-block">
+      <div class="simple-block-label">Simple Explanation</div>
+      <p>Behind every mounted volume is a precise 7-step lifecycle managed by the API server, controller-manager, and kubelet. Understanding these steps helps you debug "PVC stuck in Pending", slow Pod starts, and mount failures — problems every Kubernetes engineer hits in production.</p>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-label">Official / Technical — Volume Mount Internals</div>
+      <p>Volumes are mounted on the host before being bind-mounted into the container. The kubelet is responsible for managing volume attachment, mounting, and cleanup. It calls volume plugins (or CSI drivers) via gRPC calls defined in the Container Storage Interface specification.</p>
+      <p>The kubelet uses a <strong>VolumeManager</strong> goroutine that continuously reconciles the desired volume state (volumes that should be attached and mounted for running Pods) with the actual state on the node. This reconciliation loop calls the appropriate volume plugin operations: <code>Attach()</code>, <code>MountDevice()</code>, <code>SetUp()</code> for provisioning, and their counterparts for teardown.</p>
+      <p>For CSI volumes specifically, the kubelet communicates with the node-side CSI driver via a Unix Domain Socket. The driver must implement the <strong>NodeServer</strong> gRPC service, which exposes <code>NodeStageVolume</code>, <code>NodePublishVolume</code>, <code>NodeUnpublishVolume</code>, and <code>NodeUnstageVolume</code> RPCs. The staging step performs a global mount on the node (for shared access across multiple Pods), while the publish step performs a Pod-specific bind-mount into the container's namespace.</p>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">01</div><div class="flow-body"><h3>Declare — Add volumes: to Pod Spec</h3><p>You write <code>volumes:</code> in the Pod spec with a name and type (e.g. <code>emptyDir: {}</code> or <code>persistentVolumeClaim: {claimName: my-pvc}</code>). No storage is created yet — this is pure YAML configuration. Containers reference the volume by name in their <code>volumeMounts</code>.</p></div></div>
+    <div class="flow-step"><div class="flow-num">02</div><div class="flow-body"><h3>Schedule — Topology-Aware Node Placement</h3><p>The scheduler must place the Pod on a node that can physically access the storage. Cloud block disks (EBS, Azure Disk) are <strong>zone-specific</strong> — an EBS volume in us-east-1a cannot attach to a node in us-east-1b. With <code>WaitForFirstConsumer</code> binding mode, the provisioner creates the disk in the same zone as the node the Pod lands on — preventing the classic "volume not accessible in zone" error.</p></div></div>
+    <div class="flow-step"><div class="flow-num">03</div><div class="flow-body"><h3>Provision — Create the Physical Storage</h3><p>For dynamic provisioning, the CSI driver's <strong>external-provisioner</strong> sidecar watches for unbound PVCs and calls <code>CreateVolume</code> on the driver. This creates the actual cloud disk (AWS API, GCP API, Azure API). For static provisioning, an admin pre-created the PV — this step is skipped entirely.</p></div></div>
+    <div class="flow-step"><div class="flow-num">04</div><div class="flow-body"><h3>Attach — Connect Disk to the Node</h3><p>The <strong>external-attacher</strong> calls <code>ControllerPublishVolume</code> on the CSI driver — this attaches the block device to the node at the hypervisor level (e.g. tells AWS to attach EBS vol-0abc to EC2 instance i-0xyz). The disk now appears as <code>/dev/nvme1n1</code> on the node but is not yet mounted. <strong>This step alone takes 10–45 seconds</strong> — it calls the cloud provider API.</p></div></div>
+    <div class="flow-step"><div class="flow-num">05</div><div class="flow-body"><h3>Stage &amp; Mount — Format and Make it a Filesystem</h3><p>Kubelet calls <code>NodeStageVolume</code>: formats the device if new (e.g. <code>mkfs.ext4</code>), then mounts to a global staging path. Then <code>NodePublishVolume</code>: bind-mounts into the Pod's specific volume directory at <code>/var/lib/kubelet/pods/&lt;uid&gt;/volumes/</code>.</p></div></div>
+    <div class="flow-step"><div class="flow-num">06</div><div class="flow-body"><h3>Bind-Mount Into Container Namespace</h3><p>The container runtime (containerd) uses Linux <code>mount --bind</code> to project the Pod's volume directory into the container's <strong>mount namespace</strong> at your <code>mountPath</code>. The container sees it as a completely ordinary directory — it cannot tell it is a bind mount from outside its namespace.</p></div></div>
+    <div class="flow-step"><div class="flow-num">07</div><div class="flow-body"><h3>Teardown — Full Reverse Chain on Pod Deletion</h3><p>Pod deleted: &#9312; containers stop &#8594; &#9313; bind mounts removed from container namespaces &#8594; &#9314; <code>NodeUnpublishVolume</code> &#8594; &#9315; <code>NodeUnstageVolume</code> &#8594; &#9316; <code>ControllerUnpublishVolume</code> detaches disk from node. If reclaim policy is <code>Delete</code>, the cloud disk is destroyed. If <code>Retain</code>, disk and all data survive for manual recovery.</p></div></div>
+  </div>
+  <div class="alert alert-warning">
+    <span class="alert-icon">&#9889;</span>
+    <div class="alert-body">
+      <span class="alert-label">Why Pods With PVCs Start Slowly</span>
+      Steps 3 (provision) and 4 (attach) call cloud provider APIs. Provisioning a new EBS volume: ~10s. Attaching it to a node: ~20–40s. Total first-start penalty: <strong>30–90 seconds</strong> before your app even begins. Set <code>initialDelaySeconds</code> on probes accordingly. Use pre-provisioned static PVs for latency-sensitive workloads.
+    </div>
+  </div>
+</section>
+
+<!-- §04 VOLUME TYPES -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 04 — Volume Types</div><div class="sdl"></div></div>
+<section class="section reveal" id="types">
+  <span class="section-eyebrow">Volume Types</span>
+  <h2>Every Volume Type — Architecture &amp; Deep Dive</h2>
+  <div class="dual-explain">
+    <div class="simple-block">
+      <div class="simple-block-label">Simple Explanation</div>
+      <p>Kubernetes provides over 20 volume types grouped into three families: <strong>Ephemeral</strong> (live and die with the Pod), <strong>Persistent</strong> (outlive the Pod via PVCs), and <strong>Config/Special</strong> (inject data from the Kubernetes control plane). Each solves a specific problem.</p>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-label">Official / Technical — Volume Type Classification</div>
+      <p>Kubernetes supports several types of volumes. The type of a volume determines where the data comes from, how the data persists, and how it is made accessible to a Pod. Volume types can be broadly categorized as follows:</p>
+      <p><strong>Ephemeral volumes</strong> — backed by the local node; exist only for the lifetime of the Pod. Types include <code>emptyDir</code>, <code>configMap</code>, <code>secret</code>, <code>downwardAPI</code>, <code>projected</code>, and generic ephemeral volumes. Ephemeral volumes are specified inline in the Pod spec and are tightly coupled to the Pod's lifecycle.</p>
+      <p><strong>Persistent volumes</strong> — backed by external storage systems that outlive Pod and node boundaries. These are consumed via <code>PersistentVolumeClaim</code> objects which abstract the underlying storage infrastructure. CSI-based storage is the standard for persistent volumes in modern Kubernetes clusters.</p>
+      <p><strong>Host-local volumes</strong> — <code>hostPath</code> and <code>local</code> volumes reference paths on the node's filesystem directly. These have significant security and portability implications and should be used only for specific use cases such as system-level DaemonSets. Use of <code>hostPath</code> is strongly discouraged for general workloads due to security risks and node coupling.</p>
+    </div>
+  </div>
+
+  <div class="tab-wrap">
+    <div class="tab-header">
+      <button class="tab-btn active" onclick="showTab('vt','emptyDir',this)">emptyDir</button>
+      <button class="tab-btn" onclick="showTab('vt','hostPath',this)">hostPath</button>
+      <button class="tab-btn" onclick="showTab('vt','configmap',this)">configMap</button>
+      <button class="tab-btn" onclick="showTab('vt','secret',this)">secret</button>
+      <button class="tab-btn" onclick="showTab('vt','pvcvol',this)">PVC volume</button>
+      <button class="tab-btn" onclick="showTab('vt','nfs',this)">nfs</button>
+      <button class="tab-btn" onclick="showTab('vt','projected',this)">projected</button>
+      <button class="tab-btn" onclick="showTab('vt','csivol',this)">csi</button>
+    </div>
+    <div class="tab-body">
+
+      <!-- emptyDir -->
+      <div class="tab-pane active" id="vt-emptyDir">
+        <div class="card c-cyan" style="margin-bottom:20px">
+          <h3>emptyDir — Ephemeral Pod-Scoped Scratch Space</h3>
+          <p>An empty directory created when a Pod is assigned to a node. Accessible to all containers in the Pod simultaneously. Survives container restarts (container crashes do not delete it). <strong>Permanently deleted</strong> when the Pod is removed from the node for any reason — node drain, pod deletion, eviction, or rescheduling.</p>
+          <p style="margin-top:8px">Setting <code>medium: Memory</code> switches backing storage from the node's disk to <strong>RAM (tmpfs)</strong>. Sub-millisecond I/O. Data counts against the container's memory limit and vanishes if the node restarts.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><span class="badge badge-cyan">Ephemeral</span><span class="badge badge-blue">Pod-scoped</span><span class="badge badge-green">All containers share it</span><span class="badge badge-yellow">Optional RAM backing</span></div>
+        </div>
+
+        <div class="tech-block" style="margin-bottom:16px">
+          <div class="tech-block-label">Official / Technical — emptyDir Specification</div>
+          <p>An <code>emptyDir</code> volume is first created when a Pod is assigned to a Node, and exists as long as that Pod is running on that node. All containers in the Pod can read and write the same files in the <code>emptyDir</code> volume, though that volume can be mounted at the same or different paths in each container. When a Pod is removed from a node for any reason, the data in the <code>emptyDir</code> is deleted permanently.</p>
+          <p>A container crashing does not remove a Pod from a node. The data in an <code>emptyDir</code> volume is safe across container crashes.</p>
+          <p>By default, <code>emptyDir</code> volumes are stored on whatever medium that backs the node such as disk, SSD, or network storage, depending on your environment. However, you can set the <code>emptyDir.medium</code> field to <code>"Memory"</code> to tell Kubernetes to mount a <strong>tmpfs</strong> (RAM-backed filesystem) for you instead. While tmpfs is very fast, be aware that unlike disks, tmpfs is cleared on node reboot and any files you write count against your container's memory limit.</p>
+          <p>A size limit can be specified for the default medium, which limits the total capacity of all files in the <code>emptyDir</code>. This storage is allocated from node ephemeral storage. If that quota is exceeded, the pod will be evicted.</p>
+        </div>
+
+        <div class="idia-wrap">
+          <div class="idia-header">
+            <span class="idia-title">emptyDir Architecture — Step by Step</span>
+            <div class="idia-controls">
+              <button class="idia-btn" onclick="idiaStep('ed',-1)">&#8592; Back</button>
+              <span class="idia-counter" id="ed-counter">1 / 4</span>
+              <button class="idia-btn" onclick="idiaStep('ed',1)">Next &#8594;</button>
+            </div>
+          </div>
+          <div class="idia-body">
+
+            <div class="idia-slide active" id="ed-0">
+              <span class="idia-label">Step 1 — Pod scheduled: kubelet creates empty directory on node disk</span>
+              <svg width="100%" viewBox="0 0 700 230" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="692" height="222" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+                <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">KUBERNETES NODE</text>
+                <rect x="20" y="40" width="660" height="164" rx="8" fill="#161b22" stroke="#21262d"/>
+                <text x="40" y="62" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="1">Node filesystem: /var/lib/kubelet/pods/</text>
+                <!-- Pod (no containers yet) -->
+                <rect x="40" y="72" width="290" height="112" rx="7" fill="#0d1117" stroke="#388bfd" stroke-width="2" stroke-dasharray="6,4"/>
+                <text x="185" y="110" font-size="12" fill="#58a6ff" text-anchor="middle" font-weight="600" font-family="Inter">Pod being scheduled...</text>
+                <text x="185" y="134" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">containers not started yet</text>
+                <!-- emptyDir directory created -->
+                <rect x="368" y="72" width="292" height="112" rx="7" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+                <text x="514" y="102" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">emptyDir Created &#10003;</text>
+                <text x="514" y="122" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">/var/lib/kubelet/pods/abc123/</text>
+                <text x="514" y="140" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">volumes/empty-dir/shared-data/</text>
+                <text x="514" y="160" font-size="11" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">(empty right now)</text>
+                <text x="350" y="210" font-size="11" fill="#56d364" text-anchor="middle" font-weight="500" font-family="Inter">Directory created before any container starts — ready and waiting</text>
+              </svg>
+              <p style="margin-top:12px;margin-bottom:0">The moment the Pod is assigned to a node, the kubelet creates an empty directory on the node's disk (or in RAM). This happens before any containers start. The directory is already there when the first container begins.</p>
+            </div>
+
+            <div class="idia-slide" id="ed-1">
+              <span class="idia-label">Step 2 — Containers start: each gets a bind-mount at their mountPath</span>
+              <svg width="100%" viewBox="0 0 700 262" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="692" height="254" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+                <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">NODE — both containers bind-mounted to same directory</text>
+                <!-- emptyDir on disk -->
+                <rect x="530" y="40" width="148" height="178" rx="8" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+                <text x="604" y="68" font-size="11" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">emptyDir</text>
+                <text x="604" y="88" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">node disk</text>
+                <rect x="546" y="100" width="116" height="28" rx="4" fill="#0d1117" stroke="#3fb950"/>
+                <text x="604" y="118" font-size="10" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">output.txt &#10003;</text>
+                <rect x="546" y="136" width="116" height="28" rx="4" fill="#0d1117" stroke="#3fb950"/>
+                <text x="604" y="154" font-size="10" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">results.json &#10003;</text>
+                <!-- Container A -->
+                <rect x="20" y="40" width="238" height="90" rx="8" fill="#161b22" stroke="#388bfd" stroke-width="2"/>
+                <text x="139" y="66" font-size="12" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">Container A (writer)</text>
+                <rect x="36" y="78" width="206" height="38" rx="5" fill="#0c2044" stroke="#388bfd"/>
+                <text x="139" y="96" font-size="11" fill="#79c0ff" text-anchor="middle" font-family="JetBrains Mono">mountPath: /data</text>
+                <text x="139" y="112" font-size="10" fill="#58a6ff" text-anchor="middle" font-family="JetBrains Mono">writes /data/output.txt</text>
+                <!-- Container B -->
+                <rect x="20" y="148" width="238" height="90" rx="8" fill="#161b22" stroke="#a371f7" stroke-width="2"/>
+                <text x="139" y="174" font-size="12" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">Container B (reader)</text>
+                <rect x="36" y="186" width="206" height="38" rx="5" fill="#1f0a3c" stroke="#a371f7"/>
+                <text x="139" y="204" font-size="11" fill="#bc8cff" text-anchor="middle" font-family="JetBrains Mono">mountPath: /shared</text>
+                <text x="139" y="220" font-size="10" fill="#a371f7" text-anchor="middle" font-family="JetBrains Mono">reads /shared/output.txt</text>
+                <!-- Lines -->
+                <line x1="260" y1="97" x2="528" y2="114" stroke="#388bfd" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ed1)"/>
+                <line x1="260" y1="205" x2="528" y2="150" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ed2)"/>
+                <text x="390" y="95" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">bind mount</text>
+                <text x="390" y="200" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">bind mount</text>
+                <defs>
+                  <marker id="ed1" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#388bfd"/></marker>
+                  <marker id="ed2" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#a371f7"/></marker>
+                </defs>
+                <text x="350" y="244" font-size="11" fill="#56d364" text-anchor="middle" font-weight="500" font-family="Inter">Different paths (/data vs /shared) — same underlying directory on node disk</text>
+              </svg>
+              <p style="margin-top:12px;margin-bottom:0">Both containers are bind-mounted to the same directory at different paths. Container A writes to <code>/data/output.txt</code>. Container B reads it immediately at <code>/shared/output.txt</code>. They are the exact same file — zero copying, zero latency.</p>
+            </div>
+
+            <div class="idia-slide" id="ed-2">
+              <span class="idia-label">Step 3 — Container A crashes: emptyDir data survives the restart</span>
+              <svg width="100%" viewBox="0 0 700 230" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="692" height="222" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+                <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">NODE — Container A crashed, Pod still alive</text>
+                <!-- Crashed -->
+                <rect x="20" y="40" width="280" height="74" rx="7" fill="#2c0b0e" stroke="#f85149" stroke-width="2"/>
+                <text x="160" y="66" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">Container A CRASHED &#128165;</text>
+                <text x="160" y="88" font-size="11" fill="#f85149" text-anchor="middle" font-family="JetBrains Mono">Kubernetes restarting...</text>
+                <!-- Restarted -->
+                <rect x="20" y="130" width="280" height="62" rx="7" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+                <text x="160" y="156" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="Inter">Container A RESTARTED &#10003;</text>
+                <text x="160" y="176" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">remounts /data &#8594; files intact &#10003;</text>
+                <!-- emptyDir alive -->
+                <rect x="360" y="40" width="316" height="152" rx="8" fill="#0a2e1a" stroke="#3fb950" stroke-width="2"/>
+                <text x="518" y="68" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">emptyDir &#8592; ALIVE &#10003;</text>
+                <rect x="376" y="80" width="284" height="98" rx="5" fill="#0d1117" stroke="#3fb950"/>
+                <text x="518" y="106" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">output.txt (2.3 MB) &#10003;</text>
+                <text x="518" y="126" font-size="11" fill="#56d364" text-anchor="middle" font-family="JetBrains Mono">results.json (450 KB) &#10003;</text>
+                <text x="518" y="152" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">NOT deleted on container crash</text>
+                <text x="350" y="212" font-size="11" fill="#56d364" text-anchor="middle" font-weight="500" font-family="Inter">Container restart &#8800; volume deletion. Only Pod deletion deletes emptyDir.</text>
+              </svg>
+              <p style="margin-top:12px;margin-bottom:0">When Container A crashes and is restarted by Kubernetes, the emptyDir is completely untouched. The restarted container remounts <code>/data</code> and finds every file exactly as before. <strong>Container restart ≠ data loss for emptyDir.</strong></p>
+            </div>
+
+            <div class="idia-slide" id="ed-3">
+              <span class="idia-label">Step 4 — Pod deleted: emptyDir permanently gone — use PVC to avoid this</span>
+              <svg width="100%" viewBox="0 0 700 230" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="692" height="222" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+                <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">NODE — kubectl delete pod / node drain / eviction</text>
+                <!-- Pod deleted -->
+                <rect x="20" y="40" width="300" height="100" rx="8" fill="#2c0b0e" stroke="#f85149" stroke-width="2" stroke-dasharray="6,4"/>
+                <text x="170" y="70" font-size="13" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">POD DELETED &#128465;&#65039;</text>
+                <text x="170" y="94" font-size="11" fill="#f85149" text-anchor="middle" font-family="JetBrains Mono">kubectl delete pod my-pod</text>
+                <text x="170" y="114" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">or: node drained, pod evicted</text>
+                <!-- emptyDir destroyed -->
+                <rect x="360" y="40" width="316" height="100" rx="8" fill="#2c0b0e" stroke="#f85149" stroke-width="2"/>
+                <text x="518" y="68" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">emptyDir DELETED &#10007;</text>
+                <rect x="376" y="80" width="284" height="46" rx="5" fill="#0d1117" stroke="#f85149"/>
+                <text x="518" y="100" font-size="11" fill="#f85149" text-anchor="middle" font-family="JetBrains Mono">output.txt &#8592; GONE forever</text>
+                <text x="518" y="118" font-size="11" fill="#f85149" text-anchor="middle" font-family="JetBrains Mono">results.json &#8592; GONE forever</text>
+                <!-- Solution -->
+                <rect x="20" y="158" width="660" height="48" rx="8" fill="#0a2e1a" stroke="#3fb950"/>
+                <text x="350" y="180" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="Inter">&#128161; Need data to survive Pod deletion? Use PVC instead of emptyDir</text>
+                <text x="350" y="198" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">PVC-backed volumes outlive the Pod and can be remounted by a new Pod on any node</text>
+              </svg>
+              <p style="margin-top:12px;margin-bottom:0">When the Pod is deleted (or rescheduled to a new node), the kubelet deletes the emptyDir directory immediately. All files are permanently gone — no recovery possible. <strong>emptyDir is for temporary data only.</strong> Use PVC for anything you must keep.</p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">emptydir-demo.yaml</span></div>
+<pre><span class="yc"># Two containers sharing an emptyDir — writer writes, reader reads</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">Pod</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">emptydir-demo</span>
+<span class="yk">spec</span>:
+  <span class="yk">containers</span>:
+  - <span class="yk">name</span>: <span class="ys">writer</span>
+    <span class="yk">image</span>: <span class="ys">busybox</span>
+    <span class="yk">command</span>: [<span class="ys">"sh"</span>,<span class="ys">"-c"</span>,<span class="ys">"while true; do date >> /data/log.txt; sleep 5; done"</span>]
+    <span class="yk">volumeMounts</span>:
+    - <span class="yk">name</span>: <span class="ys">shared</span>
+      <span class="yk">mountPath</span>: <span class="ys">/data</span>
+  - <span class="yk">name</span>: <span class="ys">reader</span>
+    <span class="yk">image</span>: <span class="ys">busybox</span>
+    <span class="yk">command</span>: [<span class="ys">"sh"</span>,<span class="ys">"-c"</span>,<span class="ys">"tail -f /data/log.txt"</span>]
+    <span class="yk">volumeMounts</span>:
+    - <span class="yk">name</span>: <span class="ys">shared</span>
+      <span class="yk">mountPath</span>: <span class="ys">/data</span>    <span class="yc"># same volume name = same directory</span>
+  <span class="yk">volumes</span>:
+  - <span class="yk">name</span>: <span class="ys">shared</span>
+    <span class="yk">emptyDir</span>:
+      <span class="yk">medium</span>: <span class="ys">""</span>        <span class="yc"># ""=disk | "Memory"=RAM (tmpfs, faster, uses mem limit)</span>
+      <span class="yk">sizeLimit</span>: <span class="ys">500Mi</span> <span class="yc"># ALWAYS set — prevents node disk exhaustion &amp; eviction</span></pre>
+        </div>
+        <div class="alert alert-info"><span class="alert-icon">&#128161;</span><div class="alert-body"><span class="alert-label">When to use emptyDir</span><strong>Sidecar log shipping</strong> (app writes, fluentd reads) &#183; <strong>Init container handoff</strong> (init downloads files, main reads them) &#183; <strong>Sort/merge scratch</strong> for batch jobs &#183; <strong>Shared Unix sockets</strong> (app + Envoy proxy in same Pod)</div></div>
+      </div>
+
+      <!-- hostPath -->
+      <div class="tab-pane" id="vt-hostPath">
+        <div class="card c-red" style="margin-bottom:20px">
+          <h3>hostPath — Direct Node Filesystem Access</h3>
+          <p>Mounts a file or directory from the <strong>host node's filesystem</strong> directly into the Pod. Data persists across Pod restarts as long as the Pod stays on the same node. But it is completely <strong>node-local</strong> — if Kubernetes reschedules the Pod to a different node, it sees a completely different (possibly empty) directory.</p>
+          <p style="margin-top:8px">The <code>type</code> field adds validation: <code>Directory</code> requires the path to exist, <code>DirectoryOrCreate</code> creates it if missing, <code>Socket</code> requires an existing Unix socket (used for container runtime access).</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><span class="badge badge-green">Survives container restart</span><span class="badge badge-yellow">Node-local only</span><span class="badge badge-red">Major security risk</span></div>
+        </div>
+
+        <div class="tech-block" style="margin-bottom:16px">
+          <div class="tech-block-label">Official / Technical — hostPath Specification</div>
+          <p>A <code>hostPath</code> volume mounts a file or directory from the host node's filesystem into your Pod. This is not something that most Pods will need, but it offers a powerful escape hatch for some applications.</p>
+          <p>For example, some uses for <code>hostPath</code> are: running a container that needs access to Docker internals; use <code>/var/lib/docker</code> as a <code>hostPath</code>. Running <code>cAdvisor</code> in a container; use a <code>hostPath</code> of <code>/sys</code>. Allowing a Pod to specify whether a given <code>hostPath</code> should exist prior to the Pod running, whether it should be created, and what it should exist as.</p>
+          <p>In addition to the required <code>path</code> property, you can optionally specify a <code>type</code> for a <code>hostPath</code> volume. The supported values for the <code>type</code> field are: <code>""</code> (empty string, default), <code>DirectoryOrCreate</code>, <code>Directory</code>, <code>FileOrCreate</code>, <code>File</code>, <code>Socket</code>, <code>CharDevice</code>, <code>BlockDevice</code>.</p>
+          <p><strong>Warning:</strong> HostPath volumes present many security risks, and it is a best practice to avoid the use of HostPaths when possible. When a HostPath volume must be used, it should be scoped to only the required file or directory, and mounted as ReadOnly. If restricting HostPath access to specific directories through AdmissionPolicy, <code>volumeMounts</code> MUST be required to use <code>readOnly</code> mounts for the policy to be effective.</p>
+        </div>
+
+        <div class="idia-wrap">
+          <div class="idia-header">
+            <span class="idia-title">hostPath Architecture — Step by Step</span>
+            <div class="idia-controls">
+              <button class="idia-btn" onclick="idiaStep('hp',-1)">&#8592; Back</button>
+              <span class="idia-counter" id="hp-counter">1 / 3</span>
+              <button class="idia-btn" onclick="idiaStep('hp',1)">Next &#8594;</button>
+            </div>
+          </div>
+          <div class="idia-body">
+
+            <div class="idia-slide active" id="hp-0">
+              <span class="idia-label">Step 1 — Node directory bind-mounted directly into the container</span>
+              <svg width="100%" viewBox="0 0 700 248" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="692" height="240" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+                <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">NODE FILESYSTEM &#8594; POD CONTAINER</text>
+                <!-- Node FS tree -->
+                <rect x="20" y="40" width="240" height="168" rx="8" fill="#161b22" stroke="#21262d"/>
+                <text x="40" y="64" font-size="11" fill="#c9d1d9" font-family="JetBrains Mono">/  (root)</text>
+                <text x="56" y="84" font-size="11" fill="#c9d1d9" font-family="JetBrains Mono">&#9500;&#9472;&#9472; etc/</text>
+                <text x="56" y="104" font-size="11" fill="#c9d1d9" font-family="JetBrains Mono">&#9500;&#9472;&#9472; var/</text>
+                <text x="72" y="124" font-size="12" fill="#e3b341" font-weight="600" font-family="JetBrains Mono">&#9474;   &#9492;&#9472;&#9472; log/ &#8592;</text>
+                <text x="88" y="144" font-size="11" fill="#e3b341" font-family="JetBrains Mono">&#9474;       &#9500;&#9472; syslog</text>
+                <text x="88" y="164" font-size="11" fill="#e3b341" font-family="JetBrains Mono">&#9474;       &#9492;&#9472; kern.log</text>
+                <text x="56" y="184" font-size="11" fill="#c9d1d9" font-family="JetBrains Mono">&#9492;&#9472;&#9472; proc/</text>
+                <!-- Pod -->
+                <rect x="290" y="40" width="390" height="168" rx="8" fill="#0d1117" stroke="#21262d"/>
+                <text x="310" y="64" font-size="10" fill="#8b949e" font-family="JetBrains Mono">POD (DaemonSet)</text>
+                <rect x="308" y="74" width="352" height="112" rx="7" fill="#161b22" stroke="#f85149" stroke-width="2"/>
+                <text x="484" y="100" font-size="12" fill="#f0f6fc" text-anchor="middle" font-weight="600" font-family="Inter">log-collector container</text>
+                <rect x="324" y="110" width="320" height="60" rx="5" fill="#2e1f00" stroke="#d29922"/>
+                <text x="484" y="132" font-size="11" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">mountPath: /host-logs</text>
+                <text x="484" y="152" font-size="11" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">readOnly: true</text>
+                <!-- Arrow -->
+                <line x1="148" y1="154" x2="286" y2="142" stroke="#e3b341" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#hp1)"/>
+                <text x="218" y="140" font-size="10" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">bind mount</text>
+                <defs><marker id="hp1" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#e3b341"/></marker></defs>
+                <text x="350" y="228" font-size="11" fill="#e3b341" text-anchor="middle" font-weight="500" font-family="Inter">/var/log on the node appears as /host-logs inside the container — same real files</text>
+              </svg>
+              <p style="margin-top:12px;margin-bottom:0">The node's <code>/var/log</code> directory is bind-mounted into the container at <code>/host-logs</code>. The container reads the real node logs — the exact same files as the node's OS sees. No copy, no sync — the literal same directory via a Linux bind mount.</p>
+            </div>
+
+            <div class="idia-slide" id="hp-1">
+              <span class="idia-label">Step 2 — DaemonSet: 1 Pod per node, each reads its own node's logs</span>
+              <svg width="100%" viewBox="0 0 700 248" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="692" height="240" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+                <text x="22" y="26" font-size="10" fill="#8b949e" font-family="JetBrains Mono" letter-spacing="2">3-NODE CLUSTER — DAEMONSET</text>
+                <!-- Node 1 -->
+                <rect x="14" y="42" width="210" height="180" rx="8" fill="#161b22" stroke="#21262d"/>
+                <text x="119" y="66" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Node 1</text>
+                <rect x="28" y="76" width="182" height="56" rx="6" fill="#2e1f00" stroke="#d29922"/>
+                <text x="119" y="100" font-size="11" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">DaemonSet Pod</text>
+                <text x="119" y="118" font-size="10" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">/host-logs &#8594; /var/log</text>
+                <rect x="28" y="144" width="182" height="62" rx="6" fill="#0d1117" stroke="#30363d"/>
+                <text x="119" y="166" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Node 1 logs only</text>
+                <text x="119" y="186" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">syslog, kern.log</text>
+                <!-- Node 2 -->
+                <rect x="245" y="42" width="210" height="180" rx="8" fill="#161b22" stroke="#21262d"/>
+                <text x="350" y="66" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Node 2</text>
+                <rect x="259" y="76" width="182" height="56" rx="6" fill="#2e1f00" stroke="#d29922"/>
+                <text x="350" y="100" font-size="11" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">DaemonSet Pod</text>
+                <text x="350" y="118" font-size="10" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">/host-logs &#8594; /var/log</text>
+                <rect x="259" y="144" width="182" height="62" rx="6" fill="#0d1117" stroke="#30363d"/>
+                <text x="350" y="166" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Node 2 logs only</text>
+                <text x="350" y="186" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">syslog, kern.log</text>
+                <!-- Node 3 -->
+                <rect x="476" y="42" width="210" height="180" rx="8" fill="#161b22" stroke="#21262d"/>
+                <text x="581" y="66" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Node 3</text>
+                <rect x="490" y="76" width="182" height="56" rx="6" fill="#2e1f00" stroke="#d29922"/>
+                <text x="581" y="100" font-size="11" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">DaemonSet Pod</text>
+                <text x="581" y="118" font-size="10" fill="#e3b341" text-anchor="middle" font-family="JetBrains Mono">/host-logs &#8594; /var/log</text>
+                <rect x="490" y="144" width="182" height="62" rx="6" fill="#0d1117" stroke="#30363d"/>
+                <text x="581" y="166" font-size="11" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Node 3 logs only</text>
+                <text x="581" y="186" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">syslog, kern.log</text>
+                <text x="350" y="234" font-size="11" fill="#e3b341" text-anchor="middle" font-weight="500" font-family="Inter">Each pod reads ONLY its own node's logs — hostPath is strictly node-local</text>
+              </svg>
+              <p style="margin-top:12px;margin-bottom:0">A DaemonSet runs exactly one Pod per node. Each Pod mounts its own node's <code>/var/log</code> via hostPath. Each Pod sees only the logs from its specific node — never another node's logs. This is the canonical, correct use of hostPath.</p>
+            </div>
+
+            <div class="idia-slide" id="hp-2">
+              <span class="idia-label">Step 3 — Why hostPath is dangerous &amp; what to use instead</span>
+              <svg width="100%" viewBox="0 0 700 248" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="692" height="240" rx="10" fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+                <text x="22" y="26" font-size="10" fill="#ff7b72" font-family="JetBrains Mono" letter-spacing="2">&#9888; SECURITY RISKS</text>
+                <rect x="14" y="40" width="322" height="86" rx="8" fill="#2c0b0e" stroke="#f85149"/>
+                <text x="175" y="64" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">Risk 1: Sensitive File Exposure</text>
+                <text x="175" y="86" font-size="11" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">hostPath: /  (root)</text>
+                <text x="175" y="106" font-size="11" fill="#f85149" text-anchor="middle" font-family="JetBrains Mono">Container reads /etc/shadow &#9888;</text>
+                <rect x="364" y="40" width="322" height="86" rx="8" fill="#2c0b0e" stroke="#f85149"/>
+                <text x="525" y="64" font-size="12" fill="#ff7b72" text-anchor="middle" font-weight="600" font-family="Inter">Risk 2: Container Escape</text>
+                <text x="525" y="86" font-size="11" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">hostPath: /var/run/docker.sock</text>
+                <text x="525" y="106" font-size="11" fill="#f85149" text-anchor="middle" font-family="JetBrains Mono">Container controls Docker &#9888;</text>
+                <rect x="14" y="144" width="666" height="82" rx="8" fill="#0a2e1a" stroke="#3fb950"/>
+                <text x="350" y="170" font-size="12" fill="#56d364" text-anchor="middle" font-weight="600" font-family="Inter">&#10003; Correct Usage Pattern</text>
+                <text x="350" y="192" font-size="11" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">DaemonSet + narrow path (/var/log not /) + readOnly: true + securityContext</text>
+                <text x="350" y="212" font-size="11" fill="#c9d1d9" text-anchor="middle" font-family="JetBrains Mono">For app data: ALWAYS use PVC &#8212; never hostPath</text>
+              </svg>
+              <p style="margin-top:12px;margin-bottom:0">hostPath breaks container isolation. A container with <code>hostPath: /</code> can read <code>/etc/shadow</code>. A container with Docker socket access can spawn privileged containers and escape. <strong>Only use hostPath in DaemonSets that genuinely need node-level access, always with <code>readOnly: true</code>.</strong></p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">hostpath-daemonset.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">apps/v1</span>
+<span class="yk">kind</span>: <span class="ys">DaemonSet</span>
+<span class="yk">spec</span>:
+  <span class="yk">template</span>:
+    <span class="yk">spec</span>:
+      <span class="yk">containers</span>:
+      - <span class="yk">name</span>: <span class="ys">log-collector</span>
+        <span class="yk">image</span>: <span class="ys">fluent/fluent-bit</span>
+        <span class="yk">volumeMounts</span>:
+        - <span class="yk">name</span>: <span class="ys">varlog</span>
+          <span class="yk">mountPath</span>: <span class="ys">/host-logs</span>
+          <span class="yk">readOnly</span>: <span class="ys">true</span>  <span class="yc"># always readOnly unless you must write</span>
+      <span class="yk">volumes</span>:
+      - <span class="yk">name</span>: <span class="ys">varlog</span>
+        <span class="yk">hostPath</span>:
+          <span class="yk">path</span>: <span class="ys">/var/log</span>
+          <span class="yk">type</span>: <span class="ys">Directory</span>
+          <span class="yc"># types: File|Directory|Socket|CharDevice|BlockDevice</span>
+          <span class="yc">#        FileOrCreate|DirectoryOrCreate</span></pre>
+        </div>
+        <div class="alert alert-danger"><span class="alert-icon">&#9888;</span><div class="alert-body"><span class="alert-label">Never Use hostPath for Application Data</span>If the Pod is rescheduled to a new node, it gets a completely different (possibly empty) directory. Data on the old node becomes inaccessible. Use PVC for all application data. hostPath is for DaemonSets only.</div></div>
+      </div>
+
+      <!-- configMap -->
+      <div class="tab-pane" id="vt-configmap">
+        <div class="card c-green" style="margin-bottom:20px">
+          <h3>configMap — Live Configuration Files with Auto Hot-Reload</h3>
+          <p>A ConfigMap stores configuration data as key-value pairs. Mounted as a volume, each key becomes a <strong>filename</strong> and its value becomes the <strong>file content</strong>. Files are read-only. When you update the ConfigMap with <code>kubectl apply</code>, Kubernetes automatically refreshes the mounted files inside running containers within ~60 seconds — <strong>no Pod restart needed.</strong></p>
+          <p style="margin-top:8px">Important exception: <code>subPath</code> mounts do NOT auto-update. They are frozen at the time the container started. Use full directory mounts for hot-reload.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><span class="badge badge-green">Read-only</span><span class="badge badge-cyan">Hot-reload ~60s</span><span class="badge badge-blue">Key = filename</span><span class="badge badge-yellow">subPath = no hot-reload</span></div>
+        </div>
+
+        <div class="tech-block" style="margin-bottom:16px">
+          <div class="tech-block-label">Official / Technical — configMap Volume Specification</div>
+          <p>The <code>configMap</code> resource provides a way to inject configuration data into Pods. The data stored in a ConfigMap can be referenced in a volume of type <code>configMap</code> and then consumed by containerized applications running in a Pod.</p>
+          <p>When referencing a ConfigMap, you provide the name of the ConfigMap in the volume. You can customize the path to use for a specific entry in the ConfigMap using the <code>items</code> field. If you omit <code>items</code>, every key in the ConfigMap is placed into a file with the same name as the key. Note that the mounted ConfigMap data is updated automatically in the running Pod; the kubelet checks whether the mounted ConfigMap is fresh on every periodic sync. However, the kubelet uses its local cache for getting the current value of the ConfigMap.</p>
+          <p>A ConfigMap mounted using a <code>subPath</code> volume mount will not receive ConfigMap updates. <code>subPath</code> mounts bypass the symlink mechanism used for atomic updates, which means the file is frozen at container start time.</p>
+          <p>The total size of a ConfigMap's <code>data</code> and <code>binaryData</code> fields must be less than 1 MiB. If you need to store data that is larger than this limit, consider mounting a volume or using a separate database or file service.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">configmap-volume.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">ConfigMap</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">app-config</span>
+<span class="yk">data</span>:
+  <span class="yk">app.properties</span>: |
+    <span class="ys">server.port=8080</span>
+    <span class="ys">db.host=postgres-svc</span>
+  <span class="yk">nginx.conf</span>: |
+    <span class="ys">server { listen 80; root /usr/share/nginx/html; }</span>
+<span class="yc">---</span>
+<span class="yk">spec</span>:
+  <span class="yk">containers</span>:
+  - <span class="yk">name</span>: <span class="ys">app</span>
+    <span class="yk">volumeMounts</span>:
+    <span class="yc"># Full mount &#8594; /etc/app/app.properties + /etc/app/nginx.conf (hot-reloads &#10003;)</span>
+    - <span class="yk">name</span>: <span class="ys">config-vol</span>
+      <span class="yk">mountPath</span>: <span class="ys">/etc/app</span>
+    <span class="yc"># subPath: mounts single key as specific file path (does NOT hot-reload &#10007;)</span>
+    - <span class="yk">name</span>: <span class="ys">nginx-conf</span>
+      <span class="yk">mountPath</span>: <span class="ys">/etc/nginx/nginx.conf</span>
+      <span class="yk">subPath</span>: <span class="ys">nginx.conf</span>
+  <span class="yk">volumes</span>:
+  - <span class="yk">name</span>: <span class="ys">config-vol</span>
+    <span class="yk">configMap</span>:
+      <span class="yk">name</span>: <span class="ys">app-config</span>
+      <span class="yk">defaultMode</span>: <span class="yn">0644</span>
+      <span class="yk">items</span>:                        <span class="yc"># optional: filter + rename specific keys</span>
+      - <span class="yk">key</span>: <span class="ys">app.properties</span>
+        <span class="yk">path</span>: <span class="ys">application.properties</span> <span class="yc"># rename key to different filename</span>
+  - <span class="yk">name</span>: <span class="ys">nginx-conf</span>
+    <span class="yk">configMap</span>:
+      <span class="yk">name</span>: <span class="ys">app-config</span></pre>
+        </div>
+      </div>
+
+      <!-- secret -->
+      <div class="tab-pane" id="vt-secret">
+        <div class="card c-red" style="margin-bottom:20px">
+          <h3>secret — Sensitive Data, Mounted from RAM, Never on Disk</h3>
+          <p>Secret volumes work identically to configMap volumes — each key becomes a file — but with critical security differences: Secret files are backed by <strong>tmpfs (RAM)</strong> on the node, so they are never written to disk. Secrets are only delivered to nodes that are running Pods which request them, minimizing exposure. Data disappears when the Pod is deleted.</p>
+          <p style="margin-top:8px"><strong>Base64 is NOT encryption</strong> — it is just encoding. Enable etcd encryption at rest. Better yet, use the Secrets Store CSI Driver (Vault, AWS Secrets Manager) so secrets never enter etcd at all.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><span class="badge badge-red">Sensitive</span><span class="badge badge-cyan">tmpfs = RAM only</span><span class="badge badge-purple">RBAC required</span><span class="badge badge-blue">Encrypt etcd at rest</span></div>
+        </div>
+
+        <div class="tech-block" style="margin-bottom:16px">
+          <div class="tech-block-label">Official / Technical — Secret Volume Specification</div>
+          <p>A <code>secret</code> volume is used to pass sensitive information, such as passwords, to Pods. You can store secrets in the Kubernetes API and mount them as files for use by Pods without coupling them to Kubernetes directly. Secret volumes are backed by <strong>tmpfs</strong> (a RAM-backed filesystem) so they are never written to non-volatile storage.</p>
+          <p>Secrets are only sent to a node if a Pod on that node requires it. The kubelet stores the secret into a <code>tmpfs</code> so that the secret is not written to disk storage. Once the Pod that depends on the secret is deleted, the kubelet deletes its local copy of the secret data as well.</p>
+          <p><strong>Note:</strong> A container using a Secret as a <code>subPath</code> volume mount does not receive automated Secret updates. Individual secrets are limited to 1MiB in size.</p>
+          <p>Kubernetes Secrets are, by default, stored unencrypted in the API server's underlying data store (etcd). Anyone with API access can retrieve or modify a Secret, and so can anyone with access to etcd. For production clusters: enable <strong>Encryption at Rest</strong> for Secrets; enable or configure <strong>RBAC rules</strong> that restrict reading and writing the Secret; restrict Secret access to specific containers; consider using <strong>external Secret management solutions</strong> (HashiCorp Vault, AWS Secrets Manager) via the Secrets Store CSI Driver.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">secret-volume.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">Secret</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">db-credentials</span>
+<span class="yk">type</span>: <span class="ys">Opaque</span>
+<span class="yk">data</span>:
+  <span class="yk">username</span>: <span class="ys">YWRtaW4=</span>              <span class="yc"># base64("admin") — NOT encrypted!</span>
+  <span class="yk">password</span>: <span class="ys">U3VwZXJTZWNyZXQxMjM=</span> <span class="yc"># base64("SuperSecret123")</span>
+<span class="yc">---</span>
+<span class="yk">spec</span>:
+  <span class="yk">containers</span>:
+  - <span class="yk">name</span>: <span class="ys">app</span>
+    <span class="yk">volumeMounts</span>:
+    - <span class="yk">name</span>: <span class="ys">db-creds</span>
+      <span class="yk">mountPath</span>: <span class="ys">/var/secrets/db</span>
+      <span class="yk">readOnly</span>: <span class="ys">true</span>     <span class="yc"># ALWAYS readOnly for secrets</span>
+    <span class="yc"># App reads: fs.readFileSync('/var/secrets/db/password', 'utf8').trim()</span>
+    <span class="yc"># Creates: /var/secrets/db/username and /var/secrets/db/password</span>
+  <span class="yk">volumes</span>:
+  - <span class="yk">name</span>: <span class="ys">db-creds</span>
+    <span class="yk">secret</span>:
+      <span class="yk">secretName</span>: <span class="ys">db-credentials</span>
+      <span class="yk">defaultMode</span>: <span class="yn">0400</span>   <span class="yc"># r-------- owner read-only. NEVER 0644 for secrets!</span></pre>
+        </div>
+      </div>
+
+      <!-- PVC volume -->
+      <div class="tab-pane" id="vt-pvcvol">
+        <div class="card c-blue" style="margin-bottom:20px">
+          <h3>persistentVolumeClaim — The Standard for All Durable Storage</h3>
+          <p>The Pod references a PVC by name, and Kubernetes mounts whatever cloud disk, NFS share, or Ceph pool the PVC is bound to. Data persists independently of the Pod — delete the Pod, recreate it on any node, and it reattaches to the same data. Even node failure cannot destroy the data (it lives in a cloud disk).</p>
+          <p style="margin-top:8px">This is the <strong>recommended approach for all stateful applications.</strong> Your Pod YAML never mentions cloud-specific details — just the PVC name. The PVC abstracts away whether storage is AWS EBS, GCP PD, Azure Disk, or NFS. Identical YAML, any cloud.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><span class="badge badge-green">Survives Pod deletion</span><span class="badge badge-blue">Dynamic provisioning</span><span class="badge badge-cyan">Cloud-portable</span><span class="badge badge-purple">Resizable online</span></div>
+        </div>
+
+        <div class="tech-block" style="margin-bottom:16px">
+          <div class="tech-block-label">Official / Technical — PersistentVolumeClaim Volume</div>
+          <p>A <code>persistentVolumeClaim</code> volume is used to mount a PersistentVolume into a Pod. PersistentVolumeClaims are a way for users to "claim" durable storage (such as a GCE PersistentDisk or an iSCSI volume) without knowing the details of the particular cloud environment.</p>
+          <p>A <strong>PersistentVolume (PV)</strong> is a piece of storage in the cluster that has been provisioned by an administrator or dynamically provisioned using Storage Classes. It is a resource in the cluster just like a node is a cluster resource. PVs have a lifecycle independent of any individual Pod that uses the PV.</p>
+          <p>A <strong>PersistentVolumeClaim (PVC)</strong> is a request for storage by a user. It is similar to a Pod. Pods consume node resources and PVCs consume PV resources. Pods can request specific levels of resources (CPU and Memory). Claims can request specific size and access modes (e.g., they can be mounted <code>ReadWriteOnce</code>, <code>ReadOnlyMany</code>, <code>ReadWriteMany</code>, or <code>ReadWriteOncePod</code>).</p>
+          <p>The interaction between PVs and PVCs follows this lifecycle: <strong>Provisioning</strong> (static or dynamic) → <strong>Binding</strong> (a control loop in the control plane watches for new PVCs and finds a matching PV to bind to it) → <strong>Using</strong> (Pods use claims as volumes) → <strong>Releasing</strong> (when a user is done with their volume, they can delete the PVC object) → <strong>Reclaiming</strong> (the reclaim policy tells the cluster what to do with the volume after it has been released from its claim).</p>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">pvc-volume.yaml</span></div>
+<pre><span class="yc"># Step 1: Developer requests storage — no cloud-specific details needed</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolumeClaim</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">postgres-data</span>
+<span class="yk">spec</span>:
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteOnce</span>]
+  <span class="yk">storageClassName</span>: <span class="ys">fast-ssd</span>  <span class="yc"># gp3 on AWS, pd-ssd on GCP, Premium_LRS on Azure</span>
+  <span class="yk">resources</span>:
+    <span class="yk">requests</span>:
+      <span class="yk">storage</span>: <span class="ys">50Gi</span>
+<span class="yc">---</span>
+<span class="yc"># Step 2: Pod references PVC by name only — no cloud details anywhere</span>
+<span class="yk">spec</span>:
+  <span class="yk">containers</span>:
+  - <span class="yk">name</span>: <span class="ys">postgres</span>
+    <span class="yk">image</span>: <span class="ys">postgres:15</span>
+    <span class="yk">env</span>:
+    - { <span class="yk">name</span>: <span class="ys">PGDATA</span>, <span class="yk">value</span>: <span class="ys">/var/lib/postgresql/data/pgdata</span> }
+    <span class="yk">volumeMounts</span>:
+    - <span class="yk">name</span>: <span class="ys">pg-storage</span>
+      <span class="yk">mountPath</span>: <span class="ys">/var/lib/postgresql/data</span>
+  <span class="yk">volumes</span>:
+  - <span class="yk">name</span>: <span class="ys">pg-storage</span>
+    <span class="yk">persistentVolumeClaim</span>:
+      <span class="yk">claimName</span>: <span class="ys">postgres-data</span>  <span class="yc"># just the name — all cloud details abstracted away</span></pre>
+        </div>
+      </div>
+
+      <!-- nfs -->
+      <div class="tab-pane" id="vt-nfs">
+        <div class="card c-purple" style="margin-bottom:20px">
+          <h3>nfs — Network File System: Shared Multi-Node Read-Write</h3>
+          <p>NFS mounts an NFS server export into Pods via the network. The critical advantage: NFS supports <strong>ReadWriteMany (RWX)</strong> — multiple Pods running on <em>different nodes</em> can all read and write the same directory simultaneously. Cloud block storage (EBS, Azure Disk) can only attach to one node at a time (RWO).</p>
+          <p style="margin-top:8px">In production, use the NFS Subdir External Provisioner or AWS EFS CSI Driver for dynamic NFS provisioning. Direct NFS volumes require the NFS server to be pre-provisioned and reachable from all cluster nodes.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><span class="badge badge-green">ReadWriteMany</span><span class="badge badge-purple">Multi-node concurrent</span><span class="badge badge-yellow">Pre-provision required</span></div>
+        </div>
+
+        <div class="tech-block" style="margin-bottom:16px">
+          <div class="tech-block-label">Official / Technical — NFS Volume Specification</div>
+          <p>An <code>nfs</code> volume allows an existing NFS (Network File System) share to be mounted into a Pod. Unlike <code>emptyDir</code> that is erased when a Pod is removed, the contents of an <code>nfs</code> volume are preserved and the volume is merely unmounted. This means that an NFS volume can be pre-populated with data, and that data can be shared between Pods. NFS can be mounted by multiple writers simultaneously.</p>
+          <p>NFS volumes support the <code>ReadWriteMany</code> access mode, making them suitable for workloads that require concurrent read/write access from multiple Pods across multiple nodes — a capability not supported by block storage types such as <code>awsElasticBlockStore</code>, <code>gcePersistentDisk</code>, or <code>azureDisk</code>.</p>
+          <p>You must have your own NFS server running with the share exported before you can use it in Kubernetes. For production use, the <strong>NFS Subdir External Provisioner</strong> or cloud-managed equivalents such as <strong>AWS EFS CSI Driver</strong> are recommended for dynamic provisioning of NFS-based PersistentVolumes.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">nfs-pv-pvc.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolume</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">nfs-pv</span>
+<span class="yk">spec</span>:
+  <span class="yk">capacity</span>:
+    <span class="yk">storage</span>: <span class="ys">100Gi</span>
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteMany</span>]   <span class="yc"># RWX: multiple nodes can mount simultaneously</span>
+  <span class="yk">persistentVolumeReclaimPolicy</span>: <span class="ys">Retain</span>
+  <span class="yk">nfs</span>:
+    <span class="yk">server</span>: <span class="ys">192.168.1.100</span>         <span class="yc"># must be reachable from ALL cluster nodes</span>
+    <span class="yk">path</span>: <span class="ys">/exports/shared-data</span>    <span class="yc"># exported path on the NFS server</span>
+    <span class="yk">readOnly</span>: <span class="ys">false</span>
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolumeClaim</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">shared-storage</span>
+<span class="yk">spec</span>:
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteMany</span>]
+  <span class="yk">storageClassName</span>: <span class="ys">""</span>          <span class="yc"># "" = static binding, no dynamic provisioning</span>
+  <span class="yk">volumeName</span>: <span class="ys">nfs-pv</span>            <span class="yc"># bind to the specific named PV</span>
+  <span class="yk">resources</span>:
+    <span class="yk">requests</span>:
+      <span class="yk">storage</span>: <span class="ys">100Gi</span></pre>
+        </div>
+      </div>
+
+      <!-- projected -->
+      <div class="tab-pane" id="vt-projected">
+        <div class="card c-teal" style="margin-bottom:20px">
+          <h3>projected — Merge Multiple Sources Into One Mount Path</h3>
+          <p>Projects multiple volume sources — Secret, ConfigMap, ServiceAccountToken, DownwardAPI — into a <strong>single mounted directory</strong>. Without projected, you need separate <code>volumeMounts</code> entries for each source. With projected, everything appears under one path like <code>/var/run/pod-info/</code>.</p>
+          <p style="margin-top:8px">The <code>serviceAccountToken</code> source generates short-lived, audience-scoped JWTs — automatically rotated before expiry. Much more secure than the legacy auto-mounted token (which never expires). Required for OIDC-based auth with Vault, AWS IAM, etc.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><span class="badge badge-teal">Multi-source</span><span class="badge badge-blue">Single mountPath</span><span class="badge badge-cyan">Auto-rotating tokens</span><span class="badge badge-purple">DownwardAPI</span></div>
+        </div>
+
+        <div class="tech-block" style="margin-bottom:16px">
+          <div class="tech-block-label">Official / Technical — Projected Volume Specification</div>
+          <p>A <code>projected</code> volume maps several existing volume sources into the same directory. The following volume types can be projected: <code>secret</code>, <code>configMap</code>, <code>serviceAccountToken</code>, <code>downwardAPI</code>, and <code>clusterTrustBundle</code>.</p>
+          <p>All sources are required to be in the same namespace as the Pod. The <code>serviceAccountToken</code> source is particularly important for security: it uses the <strong>TokenRequest API</strong> to obtain a <em>bound service account token</em>, scoped to an audience, with a configurable expiration time. This supersedes the deprecated auto-mounted token and is required for workloads that authenticate to external services (e.g. Vault, AWS IAM via IRSA) using OIDC-based identity federation.</p>
+          <p>The <code>downwardAPI</code> source within a projected volume exposes Pod and container metadata (such as Pod name, namespace, labels, annotations, resource limits) as files. This allows processes within containers to discover information about themselves without relying on Kubernetes API access.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">projected-volume.yaml</span></div>
+<pre><span class="yc"># All 4 sources merged into /var/run/secrets/combined/</span>
+<span class="yk">volumes</span>:
+- <span class="yk">name</span>: <span class="ys">pod-credentials</span>
+  <span class="yk">projected</span>:
+    <span class="yk">sources</span>:
+    - <span class="yk">secret</span>:
+        <span class="yk">name</span>: <span class="ys">db-credentials</span>  <span class="yc"># creates: /combined/username, /combined/password</span>
+    - <span class="yk">configMap</span>:
+        <span class="yk">name</span>: <span class="ys">app-config</span>     <span class="yc"># creates: /combined/app.properties</span>
+    - <span class="yk">serviceAccountToken</span>:
+        <span class="yk">path</span>: <span class="ys">sa-token</span>      <span class="yc"># creates: /combined/sa-token (auto-rotated JWT)</span>
+        <span class="yk">expirationSeconds</span>: <span class="yn">3600</span>
+        <span class="yk">audience</span>: <span class="ys">vault</span>     <span class="yc"># audience claim in JWT for Vault auth</span>
+    - <span class="yk">downwardAPI</span>:
+        <span class="yk">items</span>:
+        - <span class="yk">path</span>: <span class="ys">pod-name</span>     <span class="yc"># creates: /combined/pod-name with the actual pod name</span>
+          <span class="yk">fieldRef</span>:
+            <span class="yk">fieldPath</span>: <span class="ys">metadata.name</span>
+        - <span class="yk">path</span>: <span class="ys">cpu-limit</span>
+          <span class="yk">resourceFieldRef</span>:
+            <span class="yk">resource</span>: <span class="ys">limits.cpu</span></pre>
+        </div>
+      </div>
+
+      <!-- CSI -->
+      <div class="tab-pane" id="vt-csivol">
+        <div class="card c-blue" style="margin-bottom:20px">
+          <h3>csi — Container Storage Interface: The Modern Driver Standard</h3>
+          <p>CSI is the <strong>official Kubernetes storage extension API</strong>. Before CSI, adding a new storage provider required patching Kubernetes source code. Now any vendor ships a standalone driver (installed as a DaemonSet + Deployment) implementing the gRPC CSI spec. All major cloud providers now ship CSI drivers. All in-tree plugins are being removed in Kubernetes 1.29+.</p>
+          <p style="margin-top:8px">CSI drivers enable features impossible with in-tree plugins: volume snapshots, online resize, volume cloning, topology-aware provisioning, and storage capacity tracking. Use CSI for all new storage integrations.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><span class="badge badge-blue">Industry standard</span><span class="badge badge-cyan">Out-of-tree drivers</span><span class="badge badge-green">Snapshots + Resize</span><span class="badge badge-purple">Volume cloning</span></div>
+        </div>
+
+        <div class="tech-block" style="margin-bottom:16px">
+          <div class="tech-block-label">Official / Technical — CSI Volume Specification</div>
+          <p>The Container Storage Interface (CSI) defines a standard interface for container orchestration systems (like Kubernetes) to expose arbitrary storage systems to their container workloads. CSI drivers allow storage vendors to develop a plugin once and have it work across multiple container orchestration systems.</p>
+          <p>CSI volumes can be used as an <strong>ephemeral inline volume</strong> (defined directly in the Pod spec, without a PersistentVolumeClaim) or as a <strong>persistent volume</strong> provisioned via a StorageClass. Inline CSI volumes allow storage drivers to manage ephemeral, Pod-scoped volumes — this is the mechanism used by the Secrets Store CSI Driver to inject secrets from external providers.</p>
+          <p>CSI drivers consist of two components: the <strong>Controller Plugin</strong> (runs on the control plane or any node, handles volume provisioning, deletion, attaching, detaching, and snapshotting via the <code>ControllerServer</code> gRPC service) and the <strong>Node Plugin</strong> (runs as a DaemonSet on every node, handles the node-specific operations via the <code>NodeServer</code> gRPC service: staging, mounting, and unmounting volumes into Pod directories).</p>
+          <p>The Kubernetes SIG Storage community maintains a set of <strong>CSI sidecar containers</strong> (external-provisioner, external-attacher, external-resizer, external-snapshotter) that act as adapters between the Kubernetes API and CSI driver RPCs, eliminating the need for driver authors to write Kubernetes-specific controller code.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">csi-volumes.yaml</span></div>
+<pre><span class="yc"># CSI Inline Volume — Secrets Store CSI Driver fetches secrets from Vault/AWS</span>
+<span class="yk">volumes</span>:
+- <span class="yk">name</span>: <span class="ys">vault-secrets</span>
+  <span class="yk">csi</span>:
+    <span class="yk">driver</span>: <span class="ys">secrets-store.csi.k8s.io</span>
+    <span class="yk">readOnly</span>: <span class="ys">true</span>
+    <span class="yk">volumeAttributes</span>:
+      <span class="yk">secretProviderClass</span>: <span class="ys">my-aws-provider</span>  <span class="yc"># SecretProviderClass CR</span>
+<span class="yc">---</span>
+<span class="yc"># CSI via StorageClass — standard dynamic provisioning</span>
+<span class="yk">apiVersion</span>: <span class="ys">storage.k8s.io/v1</span>
+<span class="yk">kind</span>: <span class="ys">StorageClass</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">ebs-csi-gp3</span>
+<span class="yk">provisioner</span>: <span class="ys">ebs.csi.aws.com</span>
+<span class="yk">volumeBindingMode</span>: <span class="ys">WaitForFirstConsumer</span>  <span class="yc"># create disk in same AZ as Pod</span>
+<span class="yk">allowVolumeExpansion</span>: <span class="ys">true</span>
+<span class="yk">parameters</span>:
+  <span class="yk">type</span>: <span class="ys">gp3</span>
+  <span class="yk">encrypted</span>: <span class="ys">"true"</span></pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <h3 style="margin-top:40px;margin-bottom:16px">Volume Types Quick Comparison</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Type</th><th>Survives Container Restart</th><th>Survives Pod Deletion</th><th>Multi-Node RWX</th><th>Dynamic</th><th>Best For</th></tr></thead>
+      <tbody>
+        <tr><td>emptyDir</td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-red">&#10007; deleted</span></td><td><span class="badge badge-red">No</span></td><td><span class="badge badge-cyan">Auto</span></td><td>Sidecar sharing, scratch</td></tr>
+        <tr><td>hostPath</td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-yellow">Node-local</span></td><td><span class="badge badge-red">No</span></td><td><span class="badge badge-red">No</span></td><td>DaemonSets only</td></tr>
+        <tr><td>configMap</td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-cyan">Auto</span></td><td>Config, hot-reload</td></tr>
+        <tr><td>secret</td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-cyan">Auto</span></td><td>TLS certs, passwords</td></tr>
+        <tr><td>PVC (EBS/PD)</td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-red">No (RWO)</span></td><td><span class="badge badge-green">Yes</span></td><td>Databases, stateful apps</td></tr>
+        <tr><td>nfs / EFS</td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">Yes (RWX)</span></td><td><span class="badge badge-yellow">Partial</span></td><td>Shared file access</td></tr>
+        <tr><td>projected</td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-cyan">Auto</span></td><td>Token + secret + config</td></tr>
+        <tr><td>csi (inline)</td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">&#10003;</span></td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-green">Yes</span></td><td>Vault, cloud secrets</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- §05 ACCESS MODES -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 05 — Access Modes</div><div class="sdl"></div></div>
+<section class="section reveal" id="access-modes">
+  <div class="section-eyebrow">Access Modes</div>
+  <h2>Volume Access Modes</h2>
+  <p>Access modes define <strong>how a volume can be mounted</strong> across nodes. A volume can support multiple modes, but only one can be active when claimed.</p>
+  <div class="card-grid">
+    <div class="card c-blue"><h3><span class="badge badge-blue" style="margin-bottom:8px;display:inline-block">RWO</span><br>ReadWriteOnce</h3><p>Mounted as read-write by a <strong>single node</strong>. Multiple Pods on the same node can use it.</p><ul class="checklist"><li>AWS EBS, Azure Disk, GCE PD</li><li>Most common for databases</li><li>Requires <code>strategy: Recreate</code></li></ul></div>
+    <div class="card c-green"><h3><span class="badge badge-green" style="margin-bottom:8px;display:inline-block">ROX</span><br>ReadOnlyMany</h3><p>Mounted <strong>read-only by many nodes</strong> simultaneously.</p><ul class="checklist"><li>NFS, CephFS, GCE PD</li><li>Shared read-only assets</li><li>Static content serving</li></ul></div>
+    <div class="card c-purple"><h3><span class="badge badge-purple" style="margin-bottom:8px;display:inline-block">RWX</span><br>ReadWriteMany</h3><p>Mounted as <strong>read-write by many nodes</strong>. Essential for horizontally scaled stateful apps.</p><ul class="checklist"><li>NFS, CephFS, Azure Files</li><li>Jenkins shared workspace</li><li>Multi-writer file systems</li></ul></div>
+    <div class="card c-yellow"><h3><span class="badge badge-yellow" style="margin-bottom:8px;display:inline-block">RWOP</span><br>ReadWriteOncePod</h3><p>Read-write by <strong>exactly one Pod globally</strong>. Stricter than RWO. K8s 1.22+.</p><ul class="checklist"><li>Guarantees single-writer globally</li><li>Critical single-instance DBs</li><li>Not just one node — one Pod</li></ul></div>
+  </div>
+</section>
+
+<!-- §06 PV -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 06 — PersistentVolume</div><div class="sdl"></div></div>
+<section class="section reveal" id="pv">
+  <div class="section-eyebrow">Persistent Volume</div>
+  <h2>PersistentVolume (PV)</h2>
+  <div class="dual-explain">
+    <div class="simple-block">
+      <div class="simple-block-label">Simple Explanation</div>
+      <p>A PV is a piece of storage in the cluster, provisioned by an admin or dynamically by a StorageClass. It is a <strong>cluster-scoped resource</strong> containing the actual storage implementation details. Developers only work with PVCs — never PVs directly.</p>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-label">Official / Technical — PV &amp; PVC API Model</div>
+      <p>A <strong>PersistentVolume (PV)</strong> is a piece of storage in the cluster that has been provisioned by an administrator or dynamically provisioned using Storage Classes. It is a resource in the cluster just like a node is a cluster resource. PVs have a lifecycle independent of any individual Pod that uses the PV.</p>
+      <p>A <strong>PersistentVolumeClaim (PVC)</strong> is a request for storage by a user. Claims can request specific size and access modes (ReadWriteOnce, ReadOnlyMany, ReadWriteMany, ReadWriteOncePod). The control plane watches for new PVCs, finds a matching available PV (or dynamically provisions one), and <strong>binds</strong> the PVC to it. Once bound, the binding is exclusive — a PV can only be bound to one PVC at a time.</p>
+      <p>PVs support the following <strong>reclaim policies</strong>: <code>Retain</code> (manual reclamation — PV moves to Released state, data preserved); <code>Delete</code> (associated storage asset such as the cloud disk is deleted on PVC deletion, default for dynamic provisioning); and the deprecated <code>Recycle</code> (basic scrub via <code>rm -rf</code>, replaced by dynamic provisioning).</p>
+    </div>
+  </div>
+  <div class="card-grid-2">
+    <div class="card c-green"><h3>PersistentVolume (PV)</h3><ul class="checklist"><li><strong>Cluster-scoped</strong> — not namespace-specific</li><li>Has <strong>capacity, access modes, reclaim policy</strong></li><li><strong>Static:</strong> admin creates it manually</li><li><strong>Dynamic:</strong> StorageClass creates it automatically</li><li>Lifecycle: Available → Bound → Released → Failed</li><li>Contains actual backend details (disk ID, NFS path)</li></ul></div>
+    <div class="card c-blue"><h3>PersistentVolumeClaim (PVC)</h3><ul class="checklist"><li><strong>Namespace-scoped</strong> — belongs to a namespace</li><li>Requests <strong>size and access mode</strong></li><li>References a <strong>StorageClass</strong> for dynamic provisioning</li><li>Binds <strong>1:1 with a PV</strong></li><li>Used in Pod spec via <code>persistentVolumeClaim</code></li><li>Can be resized if StorageClass allows expansion</li></ul></div>
+  </div>
+  <div class="diagram">
+    <svg width="100%" viewBox="0 0 820 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="410" y="18" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono" letter-spacing="2">PV / PVC BINDING MODEL</text>
+      <rect x="4" y="26" width="180" height="224" rx="8" fill="#1e2535" stroke="#2e3a52"/>
+      <text x="94" y="48" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono" letter-spacing="1">NAMESPACE</text>
+      <rect x="20" y="56" width="148" height="44" rx="5" fill="#0a0d14" stroke="rgba(13,110,253,0.45)"/>
+      <text x="94" y="74" font-size="12" fill="#6ea8fe" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">PVC</text>
+      <text x="94" y="90" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">20Gi · RWO</text>
+      <rect x="20" y="110" width="148" height="44" rx="5" fill="#0a0d14" stroke="#2e3a52"/>
+      <text x="94" y="130" font-size="12" fill="#adb5bd" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">Pod</text>
+      <text x="94" y="146" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">claimName: my-pvc</text>
+      <rect x="20" y="164" width="148" height="44" rx="5" fill="#0a0d14" stroke="#2e3a52"/>
+      <text x="94" y="184" font-size="12" fill="#adb5bd" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">StatefulSet</text>
+      <text x="94" y="200" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">volumeClaimTemplates</text>
+      <rect x="204" y="26" width="218" height="224" rx="8" fill="#1e2535" stroke="rgba(111,66,193,0.4)"/>
+      <text x="313" y="48" font-size="10" fill="#a98eda" text-anchor="middle" font-family="JetBrains Mono" letter-spacing="1">CONTROL PLANE</text>
+      <rect x="220" y="56" width="186" height="44" rx="5" fill="#0a0d14" stroke="rgba(111,66,193,0.35)"/>
+      <text x="313" y="76" font-size="12" fill="#a98eda" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">PV Controller</text>
+      <text x="313" y="92" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Watch &amp; reconcile</text>
+      <rect x="220" y="110" width="186" height="44" rx="5" fill="#0a0d14" stroke="rgba(111,66,193,0.35)"/>
+      <text x="313" y="130" font-size="12" fill="#a98eda" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">Binder</text>
+      <text x="313" y="146" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Match PVC → PV</text>
+      <rect x="220" y="164" width="186" height="44" rx="5" fill="#0a0d14" stroke="rgba(111,66,193,0.35)"/>
+      <text x="313" y="184" font-size="12" fill="#a98eda" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">Provisioner</text>
+      <text x="313" y="200" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Dynamic via StorageClass</text>
+      <rect x="442" y="26" width="188" height="224" rx="8" fill="#1e2535" stroke="rgba(25,135,84,0.4)"/>
+      <text x="536" y="48" font-size="10" fill="#75b798" text-anchor="middle" font-family="JetBrains Mono" letter-spacing="1">PV POOL</text>
+      <rect x="458" y="56" width="156" height="44" rx="5" fill="#0a0d14" stroke="rgba(25,135,84,0.45)"/>
+      <text x="536" y="76" font-size="12" fill="#75b798" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">PV (Static)</text>
+      <text x="536" y="92" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Admin created</text>
+      <rect x="458" y="110" width="156" height="44" rx="5" fill="#0a0d14" stroke="rgba(25,135,84,0.35)"/>
+      <text x="536" y="130" font-size="12" fill="#75b798" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">PV (Dynamic)</text>
+      <text x="536" y="146" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Auto provisioned</text>
+      <rect x="458" y="164" width="156" height="44" rx="5" fill="#0a0d14" stroke="#2e3a52"/>
+      <text x="536" y="184" font-size="12" fill="#8b949e" text-anchor="middle" font-weight="500" font-family="JetBrains Mono">PV (Released)</text>
+      <text x="536" y="200" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Reclaim pending</text>
+      <rect x="650" y="26" width="166" height="224" rx="8" fill="#1e2535" stroke="rgba(255,193,7,0.35)"/>
+      <text x="733" y="48" font-size="10" fill="#ffda6a" text-anchor="middle" font-family="JetBrains Mono" letter-spacing="1">STORAGE</text>
+      <rect x="664" y="56" width="138" height="36" rx="5" fill="#0a0d14" stroke="rgba(255,193,7,0.3)"/>
+      <text x="733" y="78" font-size="11" fill="#ffda6a" text-anchor="middle" font-family="JetBrains Mono">AWS EBS</text>
+      <rect x="664" y="102" width="138" height="36" rx="5" fill="#0a0d14" stroke="rgba(255,193,7,0.3)"/>
+      <text x="733" y="124" font-size="11" fill="#ffda6a" text-anchor="middle" font-family="JetBrains Mono">GCP PD</text>
+      <rect x="664" y="148" width="138" height="36" rx="5" fill="#0a0d14" stroke="rgba(255,193,7,0.3)"/>
+      <text x="733" y="170" font-size="11" fill="#ffda6a" text-anchor="middle" font-family="JetBrains Mono">Azure Disk</text>
+      <rect x="664" y="194" width="138" height="36" rx="5" fill="#0a0d14" stroke="rgba(255,193,7,0.3)"/>
+      <text x="733" y="216" font-size="11" fill="#ffda6a" text-anchor="middle" font-family="JetBrains Mono">NFS / Ceph</text>
+      <line x1="186" y1="78" x2="202" y2="78" stroke="rgba(110,168,254,0.5)" stroke-width="1.5" marker-end="url(#ma)"/>
+      <text x="194" y="71" font-size="9" fill="#6ea8fe" text-anchor="middle" font-family="JetBrains Mono">claim</text>
+      <line x1="424" y1="78" x2="440" y2="78" stroke="rgba(169,142,218,0.5)" stroke-width="1.5" marker-end="url(#mb)"/>
+      <text x="432" y="71" font-size="9" fill="#a98eda" text-anchor="middle" font-family="JetBrains Mono">bind</text>
+      <line x1="632" y1="78" x2="648" y2="78" stroke="rgba(117,183,152,0.5)" stroke-width="1.5" marker-end="url(#mc)"/>
+      <text x="640" y="71" font-size="9" fill="#75b798" text-anchor="middle" font-family="JetBrains Mono">backed by</text>
+      <defs>
+        <marker id="ma" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(110,168,254,0.5)"/></marker>
+        <marker id="mb" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(169,142,218,0.5)"/></marker>
+        <marker id="mc" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(117,183,152,0.5)"/></marker>
+      </defs>
+    </svg>
+  </div>
+  <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">static-pv.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolume</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">manual-pv-01</span>
+  <span class="yk">labels</span>:
+    <span class="yk">type</span>: <span class="ys">local</span>
+    <span class="yk">tier</span>: <span class="ys">production</span>
+<span class="yk">spec</span>:
+  <span class="yk">storageClassName</span>: <span class="ys">manual</span>
+  <span class="yk">capacity</span>:
+    <span class="yk">storage</span>: <span class="ys">50Gi</span>
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteOnce</span>]
+  <span class="yk">persistentVolumeReclaimPolicy</span>: <span class="ys">Retain</span>   <span class="yc"># Retain | Delete | Recycle(deprecated)</span>
+  <span class="yk">volumeMode</span>: <span class="ys">Filesystem</span>                   <span class="yc"># Filesystem | Block</span>
+  <span class="yk">hostPath</span>:
+    <span class="yk">path</span>: <span class="ys">/mnt/data</span>
+    <span class="yk">type</span>: <span class="ys">DirectoryOrCreate</span>
+  <span class="yk">nodeAffinity</span>:
+    <span class="yk">required</span>:
+      <span class="yk">nodeSelectorTerms</span>:
+      - <span class="yk">matchExpressions</span>:
+        - <span class="yk">key</span>: <span class="ys">kubernetes.io/hostname</span>
+          <span class="yk">operator</span>: <span class="ys">In</span>
+          <span class="yk">values</span>: [<span class="ys">node-1</span>]</pre></div>
+</section>
+
+<!-- §07 PVC -->
+<section class="section reveal" id="pvc" style="padding-top:0">
+  <div class="section-eyebrow">PVC</div>
+  <h2>PersistentVolumeClaim (PVC)</h2>
+  <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">pvc-full.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolumeClaim</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">my-pvc</span>
+  <span class="yk">namespace</span>: <span class="ys">production</span>
+<span class="yk">spec</span>:
+  <span class="yk">storageClassName</span>: <span class="ys">fast-ssd</span>
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteOnce</span>]
+  <span class="yk">resources</span>:
+    <span class="yk">requests</span>:
+      <span class="yk">storage</span>: <span class="ys">20Gi</span>
+  <span class="yk">selector</span>:              <span class="yc"># optional: target specific PV by label</span>
+    <span class="yk">matchLabels</span>:
+      <span class="yk">tier</span>: <span class="ys">production</span>
+<span class="yc">---</span>
+<span class="yc"># Deployment using the PVC</span>
+<span class="yk">apiVersion</span>: <span class="ys">apps/v1</span>
+<span class="yk">kind</span>: <span class="ys">Deployment</span>
+<span class="yk">spec</span>:
+  <span class="yk">strategy</span>:
+    <span class="yk">type</span>: <span class="ys">Recreate</span>    <span class="yc"># required — only one Pod can use RWO at a time</span>
+  <span class="yk">template</span>:
+    <span class="yk">spec</span>:
+      <span class="yk">containers</span>:
+      - <span class="yk">name</span>: <span class="ys">app</span>
+        <span class="yk">volumeMounts</span>:
+        - <span class="yk">name</span>: <span class="ys">data</span>
+          <span class="yk">mountPath</span>: <span class="ys">/usr/share/nginx/html</span>
+      <span class="yk">volumes</span>:
+      - <span class="yk">name</span>: <span class="ys">data</span>
+        <span class="yk">persistentVolumeClaim</span>:
+          <span class="yk">claimName</span>: <span class="ys">my-pvc</span></pre></div>
+  <h3 style="margin-top:32px;margin-bottom:16px">Reclaim Policies</h3>
+  <div class="card-grid">
+    <div class="card c-green"><h3>Delete <span class="badge badge-green" style="font-size:11px">Default dynamic</span></h3><p>When PVC is deleted, the PV and underlying cloud disk are also deleted. Convenient for dev/test, dangerous for production.</p></div>
+    <div class="card c-blue"><h3>Retain <span class="badge badge-blue" style="font-size:11px">Production</span></h3><p>PV and data are preserved after PVC deletion. PV enters <strong>Released</strong> state — must be manually reclaimed. Safest option.</p></div>
+    <div class="card c-red"><h3>Recycle <span class="badge badge-red" style="font-size:11px">Deprecated</span></h3><p>Performs a basic scrub (<code>rm -rf</code>) on the volume then makes it available again. Use dynamic provisioning instead.</p></div>
+  </div>
+</section>
+
+<!-- §08 STORAGECLASS -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 08 — StorageClass</div><div class="sdl"></div></div>
+<section class="section reveal" id="storageclass">
+  <div class="section-eyebrow">Dynamic Provisioning</div>
+  <h2>StorageClass</h2>
+  <div class="dual-explain">
+    <div class="simple-block">
+      <div class="simple-block-label">Simple Explanation</div>
+      <p>A StorageClass enables <strong>dynamic provisioning</strong> — Kubernetes automatically creates a PV (and the underlying cloud disk) when a PVC is created. Zero manual PV management.</p>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-label">Official / Technical — StorageClass API</div>
+      <p>A <strong>StorageClass</strong> provides a way for administrators to describe the classes of storage they offer. Each StorageClass contains the fields <code>provisioner</code>, <code>parameters</code>, and <code>reclaimPolicy</code>, which are used when a PersistentVolume belonging to the class needs to be dynamically provisioned. The name of a StorageClass cannot be changed after creation.</p>
+      <p>The <code>volumeBindingMode: WaitForFirstConsumer</code> field delays volume binding and dynamic provisioning until a Pod consuming the PVC is created. This ensures PersistentVolumes are provisioned in the same topology zone as the scheduled Pod — critical for zone-restricted storage like AWS EBS, GCE Persistent Disk, and Azure Disk.</p>
+      <p>When <code>allowVolumeExpansion: true</code> is set, users can resize PVCs by editing the claim object. The control plane orchestrates the resize through the CSI driver's <code>ControllerExpandVolume</code> and <code>NodeExpandVolume</code> RPCs, enabling online filesystem expansion without Pod restart in most cases.</p>
+    </div>
+  </div>
+  <div class="alert alert-success"><span class="alert-icon">✓</span><div class="alert-body"><div class="alert-label">Dynamic Provisioning Flow</div>PVC created → Kubernetes sees StorageClass → calls provisioner → creates cloud disk → creates PV → binds PV to PVC → Pod mounts volume. <strong>No admin action needed.</strong></div></div>
+  <div class="tab-wrap">
+    <div class="tab-header">
+      <button class="tab-btn active" onclick="showTab('sc','aws',this)">AWS EBS</button>
+      <button class="tab-btn" onclick="showTab('sc','gcp',this)">GCP</button>
+      <button class="tab-btn" onclick="showTab('sc','azure',this)">Azure</button>
+      <button class="tab-btn" onclick="showTab('sc','local',this)">Local</button>
+      <button class="tab-btn" onclick="showTab('sc','longhorn',this)">Longhorn</button>
+    </div>
+    <div class="tab-body">
+      <div class="tab-pane active" id="sc-aws">
+        <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">storageclass-aws-ebs.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">storage.k8s.io/v1</span>
+<span class="yk">kind</span>: <span class="ys">StorageClass</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">aws-fast-ssd</span>
+  <span class="yk">annotations</span>:
+    <span class="yk">storageclass.kubernetes.io/is-default-class</span>: <span class="ys">"true"</span>
+<span class="yk">provisioner</span>: <span class="ys">ebs.csi.aws.com</span>
+<span class="yk">volumeBindingMode</span>: <span class="ys">WaitForFirstConsumer</span>  <span class="yc"># wait for Pod to schedule first</span>
+<span class="yk">allowVolumeExpansion</span>: <span class="ys">true</span>
+<span class="yk">reclaimPolicy</span>: <span class="ys">Delete</span>
+<span class="yk">parameters</span>:
+  <span class="yk">type</span>: <span class="ys">gp3</span>
+  <span class="yk">iops</span>: <span class="ys">"3000"</span>
+  <span class="yk">throughput</span>: <span class="ys">"125"</span>
+  <span class="yk">encrypted</span>: <span class="ys">"true"</span>
+  <span class="yk">kmsKeyId</span>: <span class="ys">arn:aws:kms:us-east-1:123:key/abcd</span></pre></div>
+      </div>
+      <div class="tab-pane" id="sc-gcp">
+        <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">storageclass-gcp.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">storage.k8s.io/v1</span>
+<span class="yk">kind</span>: <span class="ys">StorageClass</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">gcp-pd-ssd</span>
+<span class="yk">provisioner</span>: <span class="ys">pd.csi.storage.gke.io</span>
+<span class="yk">volumeBindingMode</span>: <span class="ys">WaitForFirstConsumer</span>
+<span class="yk">allowVolumeExpansion</span>: <span class="ys">true</span>
+<span class="yk">parameters</span>:
+  <span class="yk">type</span>: <span class="ys">pd-ssd</span>
+  <span class="yk">replication-type</span>: <span class="ys">regional-pd</span>  <span class="yc"># multi-zone replication</span>
+  <span class="yk">disk-encryption-kms-key</span>: <span class="ys">projects/my-project/locations/global/keyRings/...</span></pre></div>
+      </div>
+      <div class="tab-pane" id="sc-azure">
+        <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">storageclass-azure.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">storage.k8s.io/v1</span>
+<span class="yk">kind</span>: <span class="ys">StorageClass</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">azure-premium</span>
+<span class="yk">provisioner</span>: <span class="ys">disk.csi.azure.com</span>
+<span class="yk">volumeBindingMode</span>: <span class="ys">WaitForFirstConsumer</span>
+<span class="yk">allowVolumeExpansion</span>: <span class="ys">true</span>
+<span class="yk">parameters</span>:
+  <span class="yk">skuName</span>: <span class="ys">Premium_LRS</span>   <span class="yc"># Standard_LRS | Premium_LRS | UltraSSD_LRS</span>
+  <span class="yk">kind</span>: <span class="ys">Managed</span>
+  <span class="yk">cachingmode</span>: <span class="ys">ReadOnly</span></pre></div>
+      </div>
+      <div class="tab-pane" id="sc-local">
+        <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">storageclass-local.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">storage.k8s.io/v1</span>
+<span class="yk">kind</span>: <span class="ys">StorageClass</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">local-storage</span>
+<span class="yk">provisioner</span>: <span class="ys">kubernetes.io/no-provisioner</span>  <span class="yc"># manual PV creation required</span>
+<span class="yk">volumeBindingMode</span>: <span class="ys">WaitForFirstConsumer</span>    <span class="yc"># CRITICAL for local volumes!</span>
+<span class="yk">reclaimPolicy</span>: <span class="ys">Retain</span>
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolume</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">local-pv-node1</span>
+<span class="yk">spec</span>:
+  <span class="yk">capacity</span>: { <span class="yk">storage</span>: <span class="ys">500Gi</span> }
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteOnce</span>]
+  <span class="yk">storageClassName</span>: <span class="ys">local-storage</span>
+  <span class="yk">local</span>:
+    <span class="yk">path</span>: <span class="ys">/mnt/disks/ssd1</span>
+  <span class="yk">nodeAffinity</span>:
+    <span class="yk">required</span>:
+      <span class="yk">nodeSelectorTerms</span>:
+      - <span class="yk">matchExpressions</span>:
+        - <span class="yk">key</span>: <span class="ys">kubernetes.io/hostname</span>
+          <span class="yk">operator</span>: <span class="ys">In</span>
+          <span class="yk">values</span>: [<span class="ys">worker-node-1</span>]</pre></div>
+      </div>
+      <div class="tab-pane" id="sc-longhorn">
+        <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">storageclass-longhorn.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">storage.k8s.io/v1</span>
+<span class="yk">kind</span>: <span class="ys">StorageClass</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">longhorn-replicated</span>
+<span class="yk">provisioner</span>: <span class="ys">driver.longhorn.io</span>
+<span class="yk">allowVolumeExpansion</span>: <span class="ys">true</span>
+<span class="yk">reclaimPolicy</span>: <span class="ys">Delete</span>
+<span class="yk">parameters</span>:
+  <span class="yk">numberOfReplicas</span>: <span class="ys">"3"</span>         <span class="yc"># replicate across 3 nodes</span>
+  <span class="yk">staleReplicaTimeout</span>: <span class="ys">"2880"</span>  <span class="yc"># 48h</span>
+  <span class="yk">fsType</span>: <span class="ys">ext4</span>
+  <span class="yk">diskSelector</span>: <span class="ys">ssd</span>
+  <span class="yk">nodeSelector</span>: <span class="ys">storage</span></pre></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- §09 LIFECYCLE -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 09 — Workflows</div><div class="sdl"></div></div>
+<section class="section reveal" id="lifecycle">
+  <div class="section-eyebrow">Lifecycle</div>
+  <h2>PV Lifecycle &amp; Reclaim</h2>
+  <div class="diagram">
+    <svg width="100%" viewBox="0 0 700 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="20" width="110" height="54" rx="6" fill="#1e2535" stroke="rgba(25,135,84,0.5)"/>
+      <text x="65" y="44" font-size="11" fill="#75b798" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">Available</text>
+      <text x="65" y="62" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Not bound</text>
+      <line x1="122" y1="47" x2="158" y2="47" stroke="#3a4a68" stroke-width="1.5" marker-end="url(#ax)"/>
+      <text x="140" y="41" font-size="9" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">PVC claim</text>
+      <rect x="160" y="20" width="110" height="54" rx="6" fill="#1e2535" stroke="rgba(13,110,253,0.5)"/>
+      <text x="215" y="44" font-size="11" fill="#6ea8fe" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">Bound</text>
+      <text x="215" y="62" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">PVC linked</text>
+      <line x1="272" y1="47" x2="308" y2="47" stroke="#3a4a68" stroke-width="1.5" marker-end="url(#ax)"/>
+      <text x="290" y="41" font-size="9" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">PVC delete</text>
+      <rect x="310" y="20" width="110" height="54" rx="6" fill="#1e2535" stroke="rgba(255,193,7,0.4)"/>
+      <text x="365" y="44" font-size="11" fill="#ffda6a" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">Released</text>
+      <text x="365" y="62" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Data retained</text>
+      <line x1="422" y1="47" x2="458" y2="47" stroke="#3a4a68" stroke-width="1.5" marker-end="url(#ax)"/>
+      <text x="440" y="41" font-size="9" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Admin reclaim</text>
+      <rect x="460" y="20" width="110" height="54" rx="6" fill="#1e2535" stroke="rgba(220,53,69,0.5)"/>
+      <text x="515" y="44" font-size="11" fill="#ea868f" text-anchor="middle" font-weight="600" font-family="JetBrains Mono">Failed</text>
+      <text x="515" y="62" font-size="10" fill="#8b949e" text-anchor="middle" font-family="JetBrains Mono">Auto-reclaim err</text>
+      <path d="M215 76 Q215 94 365 94 Q515 94 515 76" stroke="rgba(220,53,69,0.3)" stroke-width="1" fill="none" stroke-dasharray="4,3"/>
+      <text x="365" y="106" font-size="9" fill="#ea868f" text-anchor="middle" font-family="JetBrains Mono">reclaimPolicy: Delete → PV + disk deleted immediately</text>
+      <defs><marker id="ax" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#3a4a68"/></marker></defs>
+    </svg>
+  </div>
+</section>
+
+<!-- §10 STATEFULSET -->
+<section class="section reveal" id="statefulset" style="padding-top:0">
+  <div class="section-eyebrow">StatefulSet</div>
+  <h2>StatefulSet with volumeClaimTemplates</h2>
+  <p>StatefulSets use <code>volumeClaimTemplates</code> to automatically create a <strong>unique PVC per Pod replica</strong>. Each replica gets dedicated persistent storage — essential for clustered databases.</p>
+  <div class="alert alert-purple"><span class="alert-icon">💡</span><div class="alert-body"><div class="alert-label">Key Point</div>A StatefulSet with 3 replicas and template named <strong>pg-data</strong> creates: <code>pg-data-postgres-0</code>, <code>pg-data-postgres-1</code>, <code>pg-data-postgres-2</code> — automatically.</div></div>
+  <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">statefulset-postgres.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">Service</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">postgres-headless</span>
+<span class="yk">spec</span>:
+  <span class="yk">clusterIP</span>: <span class="ys">None</span>
+  <span class="yk">selector</span>: { <span class="yk">app</span>: <span class="ys">postgres</span> }
+  <span class="yk">ports</span>: [{ <span class="yk">port</span>: <span class="yn">5432</span> }]
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">apps/v1</span>
+<span class="yk">kind</span>: <span class="ys">StatefulSet</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">postgres</span>
+<span class="yk">spec</span>:
+  <span class="yk">serviceName</span>: <span class="ys">postgres-headless</span>
+  <span class="yk">replicas</span>: <span class="yn">3</span>
+  <span class="yk">selector</span>:
+    <span class="yk">matchLabels</span>: { <span class="yk">app</span>: <span class="ys">postgres</span> }
+  <span class="yk">template</span>:
+    <span class="yk">metadata</span>:
+      <span class="yk">labels</span>: { <span class="yk">app</span>: <span class="ys">postgres</span> }
+    <span class="yk">spec</span>:
+      <span class="yk">initContainers</span>:
+      - <span class="yk">name</span>: <span class="ys">fix-permissions</span>
+        <span class="yk">image</span>: <span class="ys">busybox</span>
+        <span class="yk">command</span>: [<span class="ys">"sh"</span>,<span class="ys">"-c"</span>,<span class="ys">"chown -R 999:999 /var/lib/postgresql/data"</span>]
+        <span class="yk">volumeMounts</span>:
+        - { <span class="yk">name</span>: <span class="ys">pg-data</span>, <span class="yk">mountPath</span>: <span class="ys">/var/lib/postgresql/data</span> }
+      <span class="yk">containers</span>:
+      - <span class="yk">name</span>: <span class="ys">postgres</span>
+        <span class="yk">image</span>: <span class="ys">postgres:15-alpine</span>
+        <span class="yk">env</span>:
+        - { <span class="yk">name</span>: <span class="ys">PGDATA</span>, <span class="yk">value</span>: <span class="ys">/var/lib/postgresql/data/pgdata</span> }
+        - <span class="yk">name</span>: <span class="ys">POSTGRES_PASSWORD</span>
+          <span class="yk">valueFrom</span>:
+            <span class="yk">secretKeyRef</span>: { <span class="yk">name</span>: <span class="ys">pg-secret</span>, <span class="yk">key</span>: <span class="ys">password</span> }
+        <span class="yk">resources</span>:
+          <span class="yk">requests</span>: { <span class="yk">memory</span>: <span class="ys">256Mi</span>, <span class="yk">cpu</span>: <span class="ys">250m</span> }
+          <span class="yk">limits</span>:   { <span class="yk">memory</span>: <span class="ys">1Gi</span>,   <span class="yk">cpu</span>: <span class="ys">1000m</span> }
+        <span class="yk">volumeMounts</span>:
+        - { <span class="yk">name</span>: <span class="ys">pg-data</span>, <span class="yk">mountPath</span>: <span class="ys">/var/lib/postgresql/data</span> }
+        <span class="yk">livenessProbe</span>:
+          <span class="yk">exec</span>:
+            <span class="yk">command</span>: [<span class="ys">"pg_isready"</span>,<span class="ys">"-U"</span>,<span class="ys">"postgres"</span>]
+          <span class="yk">initialDelaySeconds</span>: <span class="yn">30</span>
+  <span class="yc"># auto-creates: pg-data-postgres-0 / pg-data-postgres-1 / pg-data-postgres-2</span>
+  <span class="yk">volumeClaimTemplates</span>:
+  - <span class="yk">metadata</span>:
+      <span class="yk">name</span>: <span class="ys">pg-data</span>
+    <span class="yk">spec</span>:
+      <span class="yk">accessModes</span>: [<span class="ys">ReadWriteOnce</span>]
+      <span class="yk">storageClassName</span>: <span class="ys">aws-fast-ssd</span>
+      <span class="yk">resources</span>:
+        <span class="yk">requests</span>:
+          <span class="yk">storage</span>: <span class="ys">50Gi</span></pre></div>
+</section>
+
+<!-- §11 SNAPSHOTS -->
+<section class="section reveal" id="snapshots" style="padding-top:0">
+  <div class="section-eyebrow">Snapshots</div>
+  <h2>Volume Snapshots, Cloning &amp; Resize</h2>
+  <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">snapshot-clone-resize.yaml</span></div>
+<pre><span class="yc"># Step 1: Create a VolumeSnapshot</span>
+<span class="yk">apiVersion</span>: <span class="ys">snapshot.storage.k8s.io/v1</span>
+<span class="yk">kind</span>: <span class="ys">VolumeSnapshot</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">db-snapshot-2024</span>
+<span class="yk">spec</span>:
+  <span class="yk">volumeSnapshotClassName</span>: <span class="ys">csi-aws-vsc</span>
+  <span class="yk">source</span>:
+    <span class="yk">persistentVolumeClaimName</span>: <span class="ys">pg-data-postgres-0</span>
+<span class="yc">---</span>
+<span class="yc"># Step 2: Restore from snapshot</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolumeClaim</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">pg-restore</span>
+<span class="yk">spec</span>:
+  <span class="yk">storageClassName</span>: <span class="ys">aws-fast-ssd</span>
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteOnce</span>]
+  <span class="yk">resources</span>:
+    <span class="yk">requests</span>: { <span class="yk">storage</span>: <span class="ys">50Gi</span> }
+  <span class="yk">dataSource</span>:
+    <span class="yk">name</span>: <span class="ys">db-snapshot-2024</span>
+    <span class="yk">kind</span>: <span class="ys">VolumeSnapshot</span>
+    <span class="yk">apiGroup</span>: <span class="ys">snapshot.storage.k8s.io</span>
+<span class="yc">---</span>
+<span class="yc"># PVC Cloning (live data copy)</span>
+<span class="yk">spec</span>:
+  <span class="yk">dataSource</span>:
+    <span class="yk">name</span>: <span class="ys">pg-data-postgres-0</span>
+    <span class="yk">kind</span>: <span class="ys">PersistentVolumeClaim</span>
+<span class="yc">---</span>
+<span class="yc"># Online Resize — just patch the storage request</span>
+<span class="yk">spec</span>:
+  <span class="yk">resources</span>:
+    <span class="yk">requests</span>:
+      <span class="yk">storage</span>: <span class="ys">100Gi</span>   <span class="yc"># was 50Gi — StorageClass must have allowVolumeExpansion: true</span></pre></div>
+</section>
+
+<!-- §12 CSI -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 12 — CSI Drivers</div><div class="sdl"></div></div>
+<section class="section reveal" id="csi">
+  <div class="section-eyebrow">Advanced</div>
+  <h2>Container Storage Interface (CSI)</h2>
+  <p>CSI is the modern standard for integrating storage with Kubernetes. Drivers are deployed as containers outside of Kubernetes core — fully decoupled, independently upgradeable.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Driver</th><th>Provisioner</th><th>Access Modes</th><th>Key Features</th><th>Platform</th></tr></thead>
+      <tbody>
+        <tr><td>AWS EBS CSI</td><td>ebs.csi.aws.com</td><td><span class="badge badge-blue">RWO</span></td><td>gp3, io2, snapshots, resize, encryption</td><td>EKS</td></tr>
+        <tr><td>AWS EFS CSI</td><td>efs.csi.aws.com</td><td><span class="badge badge-purple">RWX</span></td><td>Elastic, serverless, NFS-based</td><td>EKS</td></tr>
+        <tr><td>GCE PD CSI</td><td>pd.csi.storage.gke.io</td><td><span class="badge badge-blue">RWO</span> <span class="badge badge-green">ROX</span></td><td>pd-ssd, regional, snapshots</td><td>GKE</td></tr>
+        <tr><td>Azure Disk CSI</td><td>disk.csi.azure.com</td><td><span class="badge badge-blue">RWO</span></td><td>Premium/UltraSSD, snapshots</td><td>AKS</td></tr>
+        <tr><td>Azure Files CSI</td><td>file.csi.azure.com</td><td><span class="badge badge-purple">RWX</span></td><td>SMB/NFS, shared access</td><td>AKS</td></tr>
+        <tr><td>Longhorn</td><td>driver.longhorn.io</td><td><span class="badge badge-blue">RWO</span></td><td>Replication, snapshots, backup, Web UI</td><td>On-prem</td></tr>
+        <tr><td>Rook-Ceph</td><td>rook-ceph.rbd.csi.ceph.com</td><td><span class="badge badge-blue">RWO</span> <span class="badge badge-purple">RWX</span></td><td>Block, file, object — enterprise</td><td>On-prem</td></tr>
+        <tr><td>OpenEBS</td><td>openebs.io/local</td><td><span class="badge badge-blue">RWO</span></td><td>LocalPV, cStor, ZFS, lightweight</td><td>Bare metal</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- §13 PROJECTS -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 13 — Real Projects</div><div class="sdl"></div></div>
+<section class="section reveal" id="projects">
+  <div class="section-eyebrow">Projects</div>
+  <h2>Production-Ready Projects</h2>
+  <h3 style="color:#58a6ff;margin-bottom:16px">Project 1 — WordPress + MySQL with Persistent Storage</h3>
+  <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">wordpress-stack.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">storage.k8s.io/v1</span>
+<span class="yk">kind</span>: <span class="ys">StorageClass</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">fast-storage</span>
+<span class="yk">provisioner</span>: <span class="ys">ebs.csi.aws.com</span>
+<span class="yk">parameters</span>: { <span class="yk">type</span>: <span class="ys">gp3</span>, <span class="yk">encrypted</span>: <span class="ys">"true"</span> }
+<span class="yk">volumeBindingMode</span>: <span class="ys">WaitForFirstConsumer</span>
+<span class="yk">allowVolumeExpansion</span>: <span class="ys">true</span>
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">Secret</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">mysql-secret</span>
+<span class="yk">stringData</span>:
+  <span class="yk">root-password</span>: <span class="ys">StrongPassword123!</span>
+  <span class="yk">db-name</span>: <span class="ys">wordpress</span>
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolumeClaim</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">mysql-pvc</span>
+<span class="yk">spec</span>:
+  <span class="yk">storageClassName</span>: <span class="ys">fast-storage</span>
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteOnce</span>]
+  <span class="yk">resources</span>:
+    <span class="yk">requests</span>: { <span class="yk">storage</span>: <span class="ys">20Gi</span> }
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">apps/v1</span>
+<span class="yk">kind</span>: <span class="ys">Deployment</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">mysql</span>
+<span class="yk">spec</span>:
+  <span class="yk">replicas</span>: <span class="yn">1</span>
+  <span class="yk">strategy</span>: { <span class="yk">type</span>: <span class="ys">Recreate</span> }
+  <span class="yk">selector</span>:
+    <span class="yk">matchLabels</span>: { <span class="yk">app</span>: <span class="ys">mysql</span> }
+  <span class="yk">template</span>:
+    <span class="yk">metadata</span>:
+      <span class="yk">labels</span>: { <span class="yk">app</span>: <span class="ys">mysql</span> }
+    <span class="yk">spec</span>:
+      <span class="yk">containers</span>:
+      - <span class="yk">name</span>: <span class="ys">mysql</span>
+        <span class="yk">image</span>: <span class="ys">mysql:8.0</span>
+        <span class="yk">env</span>:
+        - { <span class="yk">name</span>: <span class="ys">MYSQL_ROOT_PASSWORD</span>, <span class="yk">valueFrom</span>: { <span class="yk">secretKeyRef</span>: { <span class="yk">name</span>: <span class="ys">mysql-secret</span>, <span class="yk">key</span>: <span class="ys">root-password</span> } } }
+        - { <span class="yk">name</span>: <span class="ys">MYSQL_DATABASE</span>,      <span class="yk">valueFrom</span>: { <span class="yk">secretKeyRef</span>: { <span class="yk">name</span>: <span class="ys">mysql-secret</span>, <span class="yk">key</span>: <span class="ys">db-name</span> } } }
+        <span class="yk">resources</span>:
+          <span class="yk">requests</span>: { <span class="yk">memory</span>: <span class="ys">256Mi</span>, <span class="yk">cpu</span>: <span class="ys">250m</span> }
+          <span class="yk">limits</span>:   { <span class="yk">memory</span>: <span class="ys">512Mi</span>, <span class="yk">cpu</span>: <span class="ys">500m</span> }
+        <span class="yk">volumeMounts</span>:
+        - { <span class="yk">name</span>: <span class="ys">mysql-storage</span>, <span class="yk">mountPath</span>: <span class="ys">/var/lib/mysql</span> }
+      <span class="yk">volumes</span>:
+      - <span class="yk">name</span>: <span class="ys">mysql-storage</span>
+        <span class="yk">persistentVolumeClaim</span>:
+          <span class="yk">claimName</span>: <span class="ys">mysql-pvc</span>
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">Service</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">mysql</span>
+<span class="yk">spec</span>:
+  <span class="yk">selector</span>: { <span class="yk">app</span>: <span class="ys">mysql</span> }
+  <span class="yk">ports</span>: [{ <span class="yk">port</span>: <span class="yn">3306</span> }]
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">PersistentVolumeClaim</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">wordpress-pvc</span>
+<span class="yk">spec</span>:
+  <span class="yk">storageClassName</span>: <span class="ys">fast-storage</span>
+  <span class="yk">accessModes</span>: [<span class="ys">ReadWriteOnce</span>]
+  <span class="yk">resources</span>:
+    <span class="yk">requests</span>: { <span class="yk">storage</span>: <span class="ys">10Gi</span> }
+<span class="yc">---</span>
+<span class="yk">apiVersion</span>: <span class="ys">apps/v1</span>
+<span class="yk">kind</span>: <span class="ys">Deployment</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">wordpress</span>
+<span class="yk">spec</span>:
+  <span class="yk">replicas</span>: <span class="yn">1</span>
+  <span class="yk">strategy</span>: { <span class="yk">type</span>: <span class="ys">Recreate</span> }
+  <span class="yk">selector</span>:
+    <span class="yk">matchLabels</span>: { <span class="yk">app</span>: <span class="ys">wordpress</span> }
+  <span class="yk">template</span>:
+    <span class="yk">metadata</span>:
+      <span class="yk">labels</span>: { <span class="yk">app</span>: <span class="ys">wordpress</span> }
+    <span class="yk">spec</span>:
+      <span class="yk">containers</span>:
+      - <span class="yk">name</span>: <span class="ys">wordpress</span>
+        <span class="yk">image</span>: <span class="ys">wordpress:6-apache</span>
+        <span class="yk">env</span>:
+        - { <span class="yk">name</span>: <span class="ys">WORDPRESS_DB_HOST</span>,     <span class="yk">value</span>: <span class="ys">mysql</span> }
+        - { <span class="yk">name</span>: <span class="ys">WORDPRESS_DB_PASSWORD</span>, <span class="yk">valueFrom</span>: { <span class="yk">secretKeyRef</span>: { <span class="yk">name</span>: <span class="ys">mysql-secret</span>, <span class="yk">key</span>: <span class="ys">root-password</span> } } }
+        <span class="yk">volumeMounts</span>:
+        - { <span class="yk">name</span>: <span class="ys">wp-files</span>, <span class="yk">mountPath</span>: <span class="ys">/var/www/html</span> }
+      <span class="yk">volumes</span>:
+      - <span class="yk">name</span>: <span class="ys">wp-files</span>
+        <span class="yk">persistentVolumeClaim</span>:
+          <span class="yk">claimName</span>: <span class="ys">wordpress-pvc</span></pre></div>
+
+  <h3 style="color:#bc8cff;margin-top:48px;margin-bottom:16px">Project 2 — Multi-Container Log Pipeline (Sidecar Pattern)</h3>
+  <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">log-pipeline.yaml</span></div>
+<pre><span class="yk">apiVersion</span>: <span class="ys">v1</span>
+<span class="yk">kind</span>: <span class="ys">Pod</span>
+<span class="yk">metadata</span>:
+  <span class="yk">name</span>: <span class="ys">log-pipeline</span>
+<span class="yk">spec</span>:
+  <span class="yk">containers</span>:
+  <span class="yc"># Container 1: App — writes logs to shared emptyDir</span>
+  - <span class="yk">name</span>: <span class="ys">app</span>
+    <span class="yk">image</span>: <span class="ys">myapp:latest</span>
+    <span class="yk">volumeMounts</span>:
+    - { <span class="yk">name</span>: <span class="ys">shared-logs</span>, <span class="yk">mountPath</span>: <span class="ys">/var/log/app</span> }
+    - { <span class="yk">name</span>: <span class="ys">app-config</span>,  <span class="yk">mountPath</span>: <span class="ys">/etc/app</span> }
+    - { <span class="yk">name</span>: <span class="ys">tmp-cache</span>,   <span class="yk">mountPath</span>: <span class="ys">/tmp</span> }
+
+  <span class="yc"># Container 2: Fluentd sidecar — ships logs to Elasticsearch</span>
+  - <span class="yk">name</span>: <span class="ys">fluentd</span>
+    <span class="yk">image</span>: <span class="ys">fluent/fluentd-kubernetes-daemonset:v1</span>
+    <span class="yk">env</span>:
+    - { <span class="yk">name</span>: <span class="ys">FLUENT_ELASTICSEARCH_HOST</span>, <span class="yk">value</span>: <span class="ys">elasticsearch-master</span> }
+    <span class="yk">volumeMounts</span>:
+    - { <span class="yk">name</span>: <span class="ys">shared-logs</span>,   <span class="yk">mountPath</span>: <span class="ys">/var/log/app</span>, <span class="yk">readOnly</span>: <span class="ys">true</span> }
+    - { <span class="yk">name</span>: <span class="ys">fluentd-config</span>, <span class="yk">mountPath</span>: <span class="ys">/fluentd/etc</span> }
+
+  <span class="yc"># Container 3: Prometheus node exporter</span>
+  - <span class="yk">name</span>: <span class="ys">exporter</span>
+    <span class="yk">image</span>: <span class="ys">prom/node-exporter</span>
+    <span class="yk">volumeMounts</span>:
+    - { <span class="yk">name</span>: <span class="ys">host-proc</span>, <span class="yk">mountPath</span>: <span class="ys">/host/proc</span>, <span class="yk">readOnly</span>: <span class="ys">true</span> }
+
+  <span class="yk">volumes</span>:
+  <span class="yc"># Shared between app + fluentd</span>
+  - <span class="yk">name</span>: <span class="ys">shared-logs</span>
+    <span class="yk">emptyDir</span>:
+      <span class="yk">sizeLimit</span>: <span class="ys">2Gi</span>
+
+  <span class="yc"># RAM-backed temp space</span>
+  - <span class="yk">name</span>: <span class="ys">tmp-cache</span>
+    <span class="yk">emptyDir</span>:
+      <span class="yk">medium</span>: <span class="ys">Memory</span>
+      <span class="yk">sizeLimit</span>: <span class="ys">256Mi</span>
+
+  <span class="yc"># ConfigMaps</span>
+  - { <span class="yk">name</span>: <span class="ys">app-config</span>,    <span class="yk">configMap</span>: { <span class="yk">name</span>: <span class="ys">app-config</span> } }
+  - { <span class="yk">name</span>: <span class="ys">fluentd-config</span>, <span class="yk">configMap</span>: { <span class="yk">name</span>: <span class="ys">fluentd-config</span> } }
+
+  <span class="yc"># Node /proc for metrics</span>
+  - <span class="yk">name</span>: <span class="ys">host-proc</span>
+    <span class="yk">hostPath</span>: { <span class="yk">path</span>: <span class="ys">/proc</span>, <span class="yk">type</span>: <span class="ys">Directory</span> }</pre></div>
+</section>
+
+<!-- §14 BEST PRACTICES -->
+<div class="section-divider"><div class="sdl"></div><div class="sdlabel">§ 14 — Best Practices</div><div class="sdl"></div></div>
+<section class="section reveal" id="bestpractices">
+  <div class="section-eyebrow">Best Practices</div>
+  <h2>Storage Best Practices</h2>
+
+  <div class="dual-explain">
+    <div class="tech-block">
+      <div class="tech-block-label">Official / Technical — Production Guidance from kubernetes.io</div>
+      <p><strong>Dynamic provisioning</strong> is the recommended approach. Use StorageClasses with <code>WaitForFirstConsumer</code> to ensure volumes are created in the same availability zone as the consuming Pod. Set a default StorageClass with the annotation <code>storageclass.kubernetes.io/is-default-class: "true"</code>.</p>
+      <p><strong>Resource quota</strong>: Use <code>ResourceQuota</code> objects to limit PVC consumption per namespace. This prevents a single team from exhausting cluster-wide storage capacity and supports chargeback models.</p>
+      <p><strong>PodSecurityAdmission</strong>: The <code>Restricted</code> PSA policy prohibits <code>hostPath</code> volumes and restricts volume types to those considered safe. The <code>Baseline</code> policy disallows the most dangerous hostPath configurations. Enforce these policies in production namespaces to prevent privilege escalation through volume mounts.</p>
+      <p><strong>VolumeSnapshot</strong>: The VolumeSnapshot API (GA in Kubernetes 1.20) provides a standardized mechanism for point-in-time snapshots of PVCs. Snapshots are stored as <code>VolumeSnapshot</code> objects and backed by <code>VolumeSnapshotContent</code> objects, analogous to the PVC/PV relationship. They can be used to provision new PVCs from a snapshot (restore) or to clone volumes (<code>dataSource</code> referencing an existing PVC).</p>
+      <p><strong>Storage Capacity Tracking</strong>: When <code>storageCapacity: true</code> is set on a StorageClass, the CSI driver reports available storage capacity per topology segment. The scheduler uses this information to avoid scheduling Pods to nodes where PVC provisioning would fail due to insufficient capacity.</p>
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card c-green"><span class="card-icon">⚡</span><h3>Use StorageClass Always</h3><p>Prefer dynamic provisioning. Set a default StorageClass. Use <code>WaitForFirstConsumer</code> for zone-aware storage.</p></div>
+    <div class="card c-yellow"><span class="card-icon">📊</span><h3>Always Set sizeLimit</h3><p>Without a <code>sizeLimit</code> on emptyDir, a runaway process can fill the node disk and cause all Pods to be evicted.</p></div>
+    <div class="card c-red"><span class="card-icon">🔐</span><h3>Encrypt Secrets at Rest</h3><p>Enable etcd encryption for Secrets. In production, use external secret managers (Vault, AWS Secrets Manager) via CSI.</p></div>
+    <div class="card c-blue"><span class="card-icon">🛡️</span><h3>Retain Policy in Production</h3><p>Use <code>reclaimPolicy: Retain</code> on production StorageClasses. <code>Delete</code> causes irreversible data loss on accidental PVC deletion.</p></div>
+    <div class="card c-cyan"><span class="card-icon">📸</span><h3>Snapshot Before Changes</h3><p>Always take a VolumeSnapshot before DB migrations, upgrades, or destructive operations. CSI snapshots are fast and cheap.</p></div>
+    <div class="card c-purple"><span class="card-icon">🚫</span><h3>Avoid hostPath in Prod</h3><p>Use <code>hostPath</code> only for DaemonSets that genuinely need node-level access. It breaks Pod portability and is a security risk.</p></div>
+  </div>
+
+  <h3 style="margin-top:40px;margin-bottom:16px">kubectl Cheat Sheet</h3>
+  <div class="code-block"><div class="code-header"><div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><span class="code-filename">kubectl-storage-commands</span></div>
+<pre><span class="yc"># List all PVs and PVCs cluster-wide</span>
+kubectl get pv,pvc -A
+
+<span class="yc"># Debug binding issues</span>
+kubectl describe pvc my-pvc
+kubectl get events --field-selector involvedObject.name=my-pvc
+
+<span class="yc"># List StorageClasses</span>
+kubectl get storageclass
+
+<span class="yc"># Online resize PVC</span>
+kubectl patch pvc my-pvc -p '{"spec":{"resources":{"requests":{"storage":"50Gi"}}}}'
+
+<span class="yc"># List VolumeSnapshots</span>
+kubectl get volumesnapshot -A
+
+<span class="yc"># Check volume mounts inside a container</span>
+kubectl exec -it my-pod -- df -h
+kubectl exec -it my-pod -- mount | grep /app
+
+<span class="yc"># Check disk usage of a volume</span>
+kubectl exec -it my-pod -- du -sh /app/data
+
+<span class="yc"># Force-delete a PVC stuck in Terminating</span>
+kubectl patch pvc my-pvc -p '{"metadata":{"finalizers":null}}'</pre></div>
+
+  <h3 style="margin-top:32px;margin-bottom:16px">Quick Reference</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Concept</th><th>Values / Options</th></tr></thead>
+      <tbody>
+        <tr><td>Access Modes</td><td><span class="badge badge-blue">RWO</span> <span class="badge badge-green">ROX</span> <span class="badge badge-purple">RWX</span> <span class="badge badge-yellow">RWOP</span></td></tr>
+        <tr><td>Reclaim Policies</td><td><span class="badge badge-green">Retain</span> <span class="badge badge-red">Delete</span> <span class="badge badge-yellow">Recycle (deprecated)</span></td></tr>
+        <tr><td>Volume Binding Mode</td><td><span class="badge badge-blue">Immediate</span> <span class="badge badge-cyan">WaitForFirstConsumer</span></td></tr>
+        <tr><td>Volume Mode</td><td><span class="badge badge-blue">Filesystem</span> <span class="badge badge-purple">Block</span></td></tr>
+        <tr><td>emptyDir medium</td><td><span class="badge badge-green">"" (disk)</span> <span class="badge badge-cyan">Memory (tmpfs)</span></td></tr>
+        <tr><td>StatefulSet storage</td><td>Use <code>volumeClaimTemplates</code> — creates 1 PVC per Pod replica</td></tr>
+        <tr><td>Modern driver standard</td><td>CSI replaces all in-tree plugins — use for new deployments</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="footer">Kubernetes Storage Complete Reference &nbsp;·&nbsp; K8s v1.29+ &nbsp;·&nbsp; Inter &nbsp;·&nbsp; Dark Theme</div>
+</main>
+
+<script>
+
+// ═══ MODE TOGGLE ═══
+var currentMode = 'both';
+function setMode(mode){
+  currentMode = mode;
+  document.body.className = document.body.className
+    .replace(/mode-\S+/g,'').trim() + ' mode-' + mode;
+  document.querySelectorAll('.mode-btn').forEach(function(b){
+    b.classList.toggle('active-mode', b.dataset.mode === mode);
+  });
+  localStorage.setItem('k8s-mode', mode);
+}
+(function(){
+  var saved = localStorage.getItem('k8s-mode') || 'both';
+  setMode(saved);
+})();
+
+var idiaDiagrams={};
+function idiaStep(id,dir){
+  if(!idiaDiagrams[id]){var s=document.querySelectorAll('[id^="'+id+'-"]');idiaDiagrams[id]={total:s.length,current:0};}
+  var d=idiaDiagrams[id];
+  d.current=Math.max(0,Math.min(d.total-1,d.current+dir));
+  for(var i=0;i<d.total;i++){var el=document.getElementById(id+'-'+i);if(el)el.classList.toggle('active',i===d.current);}
+  var c=document.getElementById(id+'-counter');if(c)c.textContent=(d.current+1)+' / '+d.total;
+}
+function showTab(group, id, btn) {
+  const wrap = btn.closest('.tab-wrap');
+  wrap.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  wrap.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const pane = wrap.querySelector('#' + group + '-' + id);
+  if (pane) pane.classList.add('active');
+  btn.classList.add('active');
+}
+
+const burger  = document.getElementById('burger');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+
+burger.addEventListener('click', () => {
+  sidebar.classList.add('open');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+});
+overlay.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+});
+sidebar.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    if (window.innerWidth <= 900) {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  });
+});
+
+const sections = document.querySelectorAll('section[id]');
+const navItems = document.querySelectorAll('.nav-item');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      navItems.forEach(n => n.classList.toggle('active', n.getAttribute('href') === '#' + id));
+    }
+  });
+}, { rootMargin: '-30% 0px -65% 0px' });
+sections.forEach(s => io.observe(s));
+
+new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.06 }).observe
+  && document.querySelectorAll('.reveal').forEach(el => {
+  new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.06 }).observe(el);
+});
+
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const t = document.querySelector(a.getAttribute('href'));
+    if (t) {
+      const offset = window.innerWidth <= 900 ? 64 : 0;
+      window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
+    }
+  });
+});
+</script>
+</body>
+</html>
