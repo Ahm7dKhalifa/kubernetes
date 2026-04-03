@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASP.NET Core + PostgreSQL Minikube — Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e17;color:#e2e8f0;font-family:'JetBrains Mono',monospace;overflow:hidden;height:100vh}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
+
+/* header */
+.hdr{padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:14px}
+.hdr-l{flex:1}
+.hdr-tag{font-size:8px;letter-spacing:3px;color:#f97316;font-weight:700;text-transform:uppercase;margin-bottom:2px}
+.hdr h1{font-size:15px;font-weight:800;background:linear-gradient(135deg,#f97316,#0ea5e9,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.badges{display:flex;gap:5px}
+.bdg{font-size:8px;padding:3px 8px;border-radius:4px;font-weight:600;border:1px solid}
+.bdg-a{background:rgba(14,165,233,0.08);color:#38bdf8;border-color:rgba(14,165,233,0.2)}
+.bdg-b{background:rgba(168,85,247,0.08);color:#c084fc;border-color:rgba(168,85,247,0.2)}
+.bdg-c{background:rgba(16,185,129,0.08);color:#34d399;border-color:rgba(16,185,129,0.2)}
+
+/* layout */
+.layout{display:flex;height:calc(100vh - 48px)}
+
+/* sidebar */
+.side{width:290px;min-width:290px;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;background:#0c1120}
+.tabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.06)}
+.tab{flex:1;padding:9px 4px;font-size:9.5px;font-weight:600;font-family:inherit;border:none;border-bottom:2px solid transparent;cursor:pointer;color:#475569;background:transparent;transition:all .12s;text-align:center}
+.tab:hover{color:#94a3b8}
+.tab.act-a{color:#38bdf8;border-bottom-color:#38bdf8;background:rgba(14,165,233,0.06)}
+.tab.act-b{color:#c084fc;border-bottom-color:#c084fc;background:rgba(168,85,247,0.06)}
+.tab.act-c{color:#34d399;border-bottom-color:#34d399;background:rgba(16,185,129,0.06)}
+.tree{flex:1;overflow-y:auto;padding:6px 0}
+.ti{display:flex;align-items:center;gap:4px;padding:4px 10px;cursor:pointer;font-size:11px;color:#94a3b8;border-left:2px solid transparent;transition:background .08s}
+.ti:hover{background:rgba(255,255,255,0.03)}
+.ti.act{background:rgba(99,102,241,0.1);color:#e0e7ff;border-left-color:#6366f1}
+.ti.fld{color:#e2e8f0;font-weight:600}
+.ti.exp{color:#f59e0b}
+.tsp{display:inline-block;width:14px;flex-shrink:0}
+.tic{font-size:11px;flex-shrink:0;width:15px;text-align:center}
+.tn{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tch{font-size:8px;color:#475569;transition:transform .12s;width:10px;flex-shrink:0}
+.tch.op{transform:rotate(90deg)}
+
+/* main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.ftb{display:flex;border-bottom:1px solid rgba(255,255,255,0.06);background:#0c1120;overflow-x:auto;min-height:30px}
+.ftb::-webkit-scrollbar{display:none}
+.ft{display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:10px;font-family:inherit;color:#475569;border:none;border-right:1px solid rgba(255,255,255,0.06);cursor:pointer;background:transparent;white-space:nowrap}
+.ft:hover{color:#94a3b8}
+.ft.act{background:#0a0e17;color:#e2e8f0;border-bottom:1px solid #0a0e17;margin-bottom:-1px}
+.fdt{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.cnt{flex:1;overflow-y:auto}
+.fc{padding:18px 22px;max-width:900px}
+.fp{font-size:10px;color:#475569;margin-bottom:10px;padding:4px 9px;background:rgba(255,255,255,0.02);border-radius:4px;border:1px solid rgba(255,255,255,0.06);display:inline-block}
+.fp b{color:#f97316}
+
+/* code block */
+.cb{border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);margin-bottom:12px}
+.cbh{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06)}
+.cbhl{display:flex;align-items:center;gap:6px}
+.cbd{width:6px;height:6px;border-radius:50%}
+.cbf{font-size:10.5px;color:#c4b5fd;font-weight:600}
+.cbl{font-size:8px;color:#475569;text-transform:uppercase}
+.cpb{font-size:9px;padding:2px 7px;border-radius:3px;background:rgba(255,255,255,0.04);color:#94a3b8;border:1px solid rgba(255,255,255,0.06);cursor:pointer;font-family:inherit}
+.cpb.ok{color:#10b981}
+.pre{padding:10px 12px;overflow-x:auto;font-size:10.5px;line-height:1.7;color:#cbd5e1;white-space:pre;tab-size:2;background:#080b14}
+
+/* ═══ INTERACTIVE DIAGRAM (screenshot style) ═══ */
+.diag{background:#0d1525;border:1px dashed rgba(255,255,255,0.1);border-radius:12px;margin:14px 0;overflow:hidden}
+.diag-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.06);padding:0 16px}
+.diag-tab{padding:10px 16px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}
+.diag-tab.act{color:#38bdf8;border-bottom-color:#38bdf8}
+.diag-body{padding:20px;min-height:280px;position:relative}
+
+/* cluster frame */
+.cluster{border:1px dashed rgba(255,255,255,0.08);border-radius:10px;padding:16px;margin-bottom:12px}
+.cluster-title{font-size:10px;color:#64748b;margin-bottom:14px}
+
+/* node box */
+.node{border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px;background:rgba(255,255,255,0.015)}
+.node-title{font-size:11px;font-weight:600;margin-bottom:8px}
+.node-title.blue{color:#38bdf8}.node-title.green{color:#34d399}.node-title.orange{color:#f97316}.node-title.violet{color:#c084fc}.node-title.red{color:#f87171}
+
+/* service box */
+.svc-box{border:2px solid rgba(56,189,248,0.4);border-radius:10px;padding:12px 16px;text-align:center;margin:0 auto 16px;max-width:420px;background:rgba(56,189,248,0.04)}
+.svc-box.write{border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.04)}
+.svc-box.read{border-color:rgba(52,211,153,0.4);background:rgba(52,211,153,0.04)}
+.svc-box.headless{border-color:rgba(251,191,36,0.4);border-style:dashed;background:rgba(251,191,36,0.04)}
+.svc-name{font-size:13px;font-weight:700;margin-bottom:4px}
+.svc-name.blue{color:#38bdf8}.svc-name.red{color:#f87171}.svc-name.green{color:#34d399}.svc-name.amber{color:#fbbf24}
+.svc-detail{font-size:9px;color:#64748b;line-height:1.5}
+
+/* pod box */
+.pod{border:1px solid;border-radius:7px;padding:10px 12px;display:inline-block;min-width:140px;margin:4px}
+.pod.primary{border-color:rgba(56,189,248,0.4);background:rgba(56,189,248,0.03)}
+.pod.replica{border-color:rgba(52,211,153,0.4);background:rgba(52,211,153,0.03)}
+.pod.dead{border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.05);opacity:0.7}
+.pod.patroni{border-color:rgba(192,132,252,0.4);background:rgba(192,132,252,0.03)}
+.pod-name{font-size:11px;font-weight:600;margin-bottom:3px}
+.pod-name.blue{color:#38bdf8}.pod-name.green{color:#34d399}.pod-name.red{color:#f87171}.pod-name.violet{color:#c084fc}
+.pod-info{font-size:9px;color:#64748b;line-height:1.4}
+
+/* inner container boxes (like kube-proxy, wal sender) */
+.inner{border:1px dashed;border-radius:5px;padding:5px 10px;display:inline-block;font-size:9px;font-weight:600;margin:3px}
+.inner.orange{border-color:rgba(249,115,22,0.4);color:#fb923c;background:rgba(249,115,22,0.04)}
+.inner.violet{border-color:rgba(192,132,252,0.4);color:#c084fc;background:rgba(192,132,252,0.04)}
+.inner.green{border-color:rgba(52,211,153,0.4);color:#34d399;background:rgba(52,211,153,0.04)}
+.inner.red{border-color:rgba(248,113,113,0.4);color:#f87171;background:rgba(248,113,113,0.04)}
+.inner.blue{border-color:rgba(56,189,248,0.4);color:#38bdf8;background:rgba(56,189,248,0.04)}
+
+/* arrows */
+.arrow{text-align:center;color:#475569;font-size:14px;line-height:1;padding:4px 0}
+.arrow-label{font-size:8px;color:#64748b;font-style:italic}
+.arrow-row{display:flex;align-items:center;justify-content:center;gap:4px;color:#475569;font-size:12px;padding:4px}
+.pods-row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.nodes-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.node-col{flex:1;min-width:180px;max-width:280px}
+
+/* step explanation */
+.step-explain{padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-top:12px;font-size:11px;line-height:1.8;color:#94a3b8}
+.step-explain b{color:#e2e8f0}
+.step-explain .hl-blue{color:#38bdf8}.step-explain .hl-green{color:#34d399}.step-explain .hl-red{color:#f87171}.step-explain .hl-violet{color:#c084fc}.step-explain .hl-amber{color:#fbbf24}
+
+/* diagram nav */
+.diag-nav{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-top:1px solid rgba(255,255,255,0.06)}
+.diag-btn{padding:7px 16px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#94a3b8;transition:all .12s}
+.diag-btn:hover{background:rgba(255,255,255,0.06);color:#e2e8f0}
+.diag-btn:disabled{opacity:0.3;cursor:default}
+.diag-btn.next{background:rgba(56,189,248,0.1);color:#38bdf8;border-color:rgba(56,189,248,0.3)}
+.diag-btn.next:hover{background:rgba(56,189,248,0.2)}
+.diag-counter{font-size:11px;color:#475569}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#475569;gap:10px;padding:30px}
+.empty .ei{font-size:40px;opacity:0.3}
+.empty p{font-size:11px;text-align:center;line-height:1.6}
+/* yaml reference under diagrams */
+.yaml-ref{margin-top:14px;border:1px solid rgba(249,115,22,0.15);border-radius:8px;overflow:hidden;background:rgba(249,115,22,0.02)}
+.yaml-ref-hdr{padding:8px 14px;background:rgba(249,115,22,0.06);border-bottom:1px solid rgba(249,115,22,0.1);font-size:11px;font-weight:700;color:#fb923c;cursor:pointer;display:flex;align-items:center;gap:6px}
+.yaml-ref-hdr .arr{font-size:8px;transition:transform .15s}.yaml-ref-hdr.open .arr{transform:rotate(90deg)}
+.yaml-ref-body{padding:10px 14px;display:none}
+.yaml-ref-body.show{display:block}
+.yaml-ref-item{margin-bottom:10px;border:1px solid rgba(255,255,255,0.05);border-radius:6px;overflow:hidden}
+.yaml-ref-prop{padding:6px 10px;background:rgba(249,115,22,0.04);border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px;font-weight:600;color:#fb923c;font-family:monospace}
+.yaml-ref-desc{padding:8px 10px;font-size:10.5px;color:#94a3b8;line-height:1.7}
+.yaml-ref pre{background:#080b14;padding:8px 10px;font-size:10px;line-height:1.6;color:#cbd5e1;overflow-x:auto;border-radius:0;margin:0;border-top:1px solid rgba(255,255,255,0.04)}
+
+@media(max-width:700px){
+  .layout{flex-direction:column}
+  .side{width:100%;min-width:100%;max-height:35vh;border-right:none;border-bottom:1px solid rgba(255,255,255,0.06)}
+  .tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;min-width:0;padding:8px 10px;font-size:9px}
+  .tree{padding:2px 0}
+  .ti{padding:3px 8px;font-size:10px}
+  .fc{padding:12px 10px}
+  .diag-tabs{overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+  .diag-tabs::-webkit-scrollbar{display:none}
+  .diag-tab{white-space:nowrap;padding:8px 10px;font-size:10px}
+  .diag-body{padding:12px 8px}
+  .cluster{padding:10px 8px}
+  .svc-box{max-width:100%;padding:8px 10px}
+  .svc-name{font-size:11px}
+  .svc-detail{font-size:8px}
+  .pods-row{flex-direction:column;align-items:stretch;gap:6px}
+  .pod{display:block;min-width:0;margin:0}
+  .inner{font-size:8px;padding:3px 6px;margin:2px}
+  .step-explain{font-size:10px;padding:8px 10px}
+  .diag-nav{padding:10px 8px}
+  .diag-btn{padding:6px 12px;font-size:10px}
+  .yaml-ref{padding:10px 8px}
+  .yaml-ref-item{font-size:9px}
+  .yaml-ref pre{font-size:9px;padding:6px 8px}
+  .pre{font-size:9px;padding:6px 8px}
+  .node-col{min-width:100%}
+  .fp{font-size:9px}
+  .cbf{font-size:9.5px}
+}
+</style>
+</head>
+<body>
+<div class="hdr"><div class="hdr-l"><div class="hdr-tag">Minikube Deep Dive &#8212; Interactive Diagrams</div><h1>PostgreSQL StatefulSet: Static vs Patroni</h1></div><div class="badges"><span class="bdg bdg-a">A: Static</span><span class="bdg bdg-b">B: Patroni</span><span class="bdg bdg-c">App</span></div></div>
+<div class="layout">
+<div class="side">
+<div class="tabs" id="tabs"></div>
+<div class="tree" id="tree"></div>
+</div>
+<div class="main">
+<div class="ftb" id="ftb"></div>
+<div class="cnt" id="cnt"><div class="empty"><div class="ei">&#128218;</div><p>Select a file from the tree.<br>Each YAML has a <b style="color:#f59e0b">&#128161; explaining</b> below it.<br>Check <b>explaining/</b> folder for interactive architecture diagrams.</p></div></div>
+</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+// ═══════════════════════════════════════
+// TABS CONFIG
+// ═══════════════════════════════════════
+var LC={yaml:"#f59e0b",csharp:"#68217a",bash:"#10b981",json:"#0ea5e9",xml:"#ef4444",dockerfile:"#2496ed",text:"#64748b",md:"#94a3b8",explain:"#f59e0b"};
+
+var TABS=[
+{id:"sa",label:"A: Static",cls:"act-a"},
+{id:"sb",label:"B: Patroni",cls:"act-b"},
+{id:"app",label:"App Code",cls:"act-c"}
+];
+
+// ═══════════════════════════════════════
+// CODE STORAGE
+// ═══════════════════════════════════════
+var C={};
+function J(a){return a.join("\n")}
+
+// -- Solution A --
+C["sa-ns"]=J(["apiVersion: v1","kind: Namespace","metadata:","  name: myapp","  labels: { environment: local }"]);
+
+C["sa-sec1"]=J(["# Option 1: Connect via SERVICE names (recommended)","# Works with both static and Patroni solutions","apiVersion: v1","kind: Secret","metadata: { name: postgres-secret, namespace: myapp }","type: Opaque","stringData:","  POSTGRES_USER: appuser","  POSTGRES_PASSWORD: localpass123","  POSTGRES_DB: appdb","","  # Write -> write service (ClusterIP, routes to primary pod)","  CONNECTION_STRING: >-","    Host=postgres-write.myapp.svc.cluster.local;","    Port=5432;Database=appdb;Username=appuser;Password=localpass123;","    Pooling=true;Min Pool Size=2;Max Pool Size=10;","    Include Error Detail=true;","","  # Read -> read service (ClusterIP, routes to replica pods)","  CONNECTION_STRING_READONLY: >-","    Host=postgres-read.myapp.svc.cluster.local;","    Port=5432;Database=appdb;Username=appuser;Password=localpass123;","    Pooling=true;Min Pool Size=2;Max Pool Size=10;","    Target Session Attrs=prefer-standby;","    Include Error Detail=true;"]);
+
+C["sa-sec2"]=J(["# Option 2: Connect via POD DNS (headless service)","# Direct pod-level addressing, bypasses kube-proxy","apiVersion: v1","kind: Secret","metadata: { name: postgres-secret, namespace: myapp }","type: Opaque","stringData:","  POSTGRES_USER: appuser","  POSTGRES_PASSWORD: localpass123","  POSTGRES_DB: appdb","","  # Write -> pod-0 directly via headless DNS","  CONNECTION_STRING: >-","    Host=postgres-0.postgres-headless.myapp.svc.cluster.local;","    Port=5432;Database=appdb;Username=appuser;Password=localpass123;","    Pooling=true;Min Pool Size=2;Max Pool Size=10;","    Include Error Detail=true;","","  # Read -> pod-1,pod-2 directly via headless DNS","  CONNECTION_STRING_READONLY: >-","    Host=postgres-1.postgres-headless.myapp.svc.cluster.local,","    postgres-2.postgres-headless.myapp.svc.cluster.local;","    Port=5432;Database=appdb;Username=appuser;Password=localpass123;","    Pooling=true;Min Pool Size=2;Max Pool Size=10;","    Load Balance Hosts=true;Target Session Attrs=prefer-standby;","    Include Error Detail=true;"]);
+
+C["sa-cm"]=J(["apiVersion: v1","kind: ConfigMap","metadata: { name: postgres-config, namespace: myapp }","data:","  postgresql.conf: |","    listen_addresses = '*'","    max_connections = 100","    shared_buffers = 128MB","    wal_level = replica","    max_wal_senders = 5","    max_replication_slots = 5","    hot_standby = on","    hot_standby_feedback = on","    log_statement = 'all'","  pg_hba.conf: |","    local all all trust","    host all all 0.0.0.0/0 md5","    host replication all 0.0.0.0/0 md5","  init-primary.sh: |","    #!/bin/bash","    set -e","    ORDINAL=${HOSTNAME##*-}","    [ \"$ORDINAL\" != \"0\" ] && exit 0","    psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" <<-SQL","      DO $$ BEGIN","        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='replicator') THEN","          CREATE USER replicator REPLICATION ENCRYPTED PASSWORD 'replpass';","        END IF; END $$;","      CREATE TABLE IF NOT EXISTS products (id SERIAL PRIMARY KEY, name VARCHAR(200) NOT NULL, price DECIMAL(10,2) NOT NULL, stock INT DEFAULT 0, category VARCHAR(100), is_active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());","      CREATE TABLE IF NOT EXISTS orders (id SERIAL PRIMARY KEY, product_id INT REFERENCES products(id), quantity INT NOT NULL, total_price DECIMAL(10,2) NOT NULL, status VARCHAR(50) DEFAULT 'pending', customer_name VARCHAR(200), created_at TIMESTAMPTZ DEFAULT NOW());","      INSERT INTO products(name,price,stock,category) VALUES('K8s Book',59.99,100,'Books'),('Docker Guide',39.99,50,'Books') ON CONFLICT DO NOTHING;","    SQL","  setup-replica.sh: |","    #!/bin/bash","    set -e","    ORDINAL=${HOSTNAME##*-}","    [ \"$ORDINAL\" = \"0\" ] && exit 0","    until pg_isready -h postgres-0.postgres-headless -U appuser; do sleep 2; done","    if [ ! -s \"$PGDATA/PG_VERSION\" ]; then","      rm -rf $PGDATA/*","      pg_basebackup -h postgres-0.postgres-headless -U replicator -D $PGDATA -Fp -Xs -P -R","      touch $PGDATA/standby.signal","    fi"]);
+
+C["sa-hl"]=J(["apiVersion: v1","kind: Service","metadata: { name: postgres-headless, namespace: myapp }","spec:","  clusterIP: None","  selector: { app: postgres }","  ports: [{ name: pg, port: 5432, targetPort: 5432 }]","  publishNotReadyAddresses: true"]);
+
+C["sa-ws"]=J(["apiVersion: v1","kind: Service","metadata: { name: postgres-write, namespace: myapp }","spec:","  type: ClusterIP","  selector: { app: postgres, role: primary }","  ports: [{ name: pg, port: 5432, targetPort: 5432 }]"]);
+
+C["sa-rs"]=J(["apiVersion: v1","kind: Service","metadata: { name: postgres-read, namespace: myapp }","spec:","  type: ClusterIP","  selector: { app: postgres, role: replica }","  ports: [{ name: pg, port: 5432, targetPort: 5432 }]"]);
+
+C["sa-ss"]=J(["apiVersion: apps/v1","kind: StatefulSet","metadata: { name: postgres, namespace: myapp }","spec:","  serviceName: postgres-headless","  replicas: 3","  selector: { matchLabels: { app: postgres } }","  template:","    metadata: { labels: { app: postgres } }","    spec:","      terminationGracePeriodSeconds: 10","      initContainers:","        - name: init","          image: postgres:16-alpine","          command: ['bash','-c']","          args: ['ORDINAL=${HOSTNAME##*-}; if [ \"$ORDINAL\" = \"0\" ]; then echo primary>/role/role.txt; else echo replica>/role/role.txt; bash /config/setup-replica.sh; fi']","          envFrom: [{ secretRef: { name: postgres-secret } }]","          env: [{ name: PGDATA, value: /var/lib/postgresql/data/pgdata }]","          volumeMounts:","            - { name: data, mountPath: /var/lib/postgresql/data }","            - { name: cfg, mountPath: /config }","            - { name: role, mountPath: /role }","      containers:","        - name: postgres","          image: postgres:16-alpine","          ports: [{ containerPort: 5432 }]","          envFrom: [{ secretRef: { name: postgres-secret } }]","          env: [{ name: PGDATA, value: /var/lib/postgresql/data/pgdata }]","          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 500m, memory: 512Mi } }","          livenessProbe: { exec: { command: [pg_isready,-U,appuser] }, initialDelaySeconds: 30, periodSeconds: 10 }","          readinessProbe: { exec: { command: [pg_isready,-U,appuser] }, initialDelaySeconds: 5, periodSeconds: 5 }","          volumeMounts:","            - { name: data, mountPath: /var/lib/postgresql/data }","            - { name: cfg, mountPath: /config }","            - { name: init, mountPath: /docker-entrypoint-initdb.d }","            - { name: role, mountPath: /role }","      volumes:","        - { name: cfg, configMap: { name: postgres-config } }","        - { name: init, configMap: { name: postgres-config, items: [{ key: init-primary.sh, path: init-primary.sh }] } }","        - { name: role, emptyDir: {} }","  volumeClaimTemplates:","    - metadata: { name: data }","      spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } } }"]);
+
+C["sa-app"]=J(["apiVersion: apps/v1","kind: Deployment","metadata: { name: myapp-api, namespace: myapp }","spec:","  replicas: 1","  selector: { matchLabels: { app: myapp-api } }","  template:","    metadata: { labels: { app: myapp-api } }","    spec:","      containers:","        - name: api","          image: myapp-api:local","          imagePullPolicy: Never","          ports: [{ containerPort: 8080 }]","          env:","            - { name: CONNECTION_STRING, valueFrom: { secretKeyRef: { name: postgres-secret, key: CONNECTION_STRING } } }","            - { name: CONNECTION_STRING_READONLY, valueFrom: { secretKeyRef: { name: postgres-secret, key: CONNECTION_STRING_READONLY } } }","            - { name: ASPNETCORE_ENVIRONMENT, value: Development }","          readinessProbe: { httpGet: { path: /healthz, port: 8080 }, initialDelaySeconds: 10 }"]);
+
+C["sa-asvc"]=J(["apiVersion: v1","kind: Service","metadata: { name: myapp-api-svc, namespace: myapp }","spec:","  type: NodePort","  selector: { app: myapp-api }","  ports: [{ port: 80, targetPort: 8080, nodePort: 30080 }]"]);
+
+C["sa-deploy"]=J(["#!/bin/bash","set -e","eval $(minikube docker-env)","cd ../myapp-api && docker build -t myapp-api:local . && cd -","kubectl apply -f namespace/ -f secrets/ -f postgres/ -f app/","kubectl -n myapp rollout status statefulset/postgres --timeout=180s","kubectl -n myapp wait --for=condition=ready pod -l app=myapp-api --timeout=60s","echo \"=== Replication ===\"","kubectl -n myapp exec postgres-0 -- psql -U appuser -d appdb -c 'SELECT client_addr,state FROM pg_stat_replication;'","API=$(minikube service myapp-api-svc -n myapp --url)","echo \"API: $API/swagger\""]);
+
+// ═══ SOLUTION A EXPLAINING (interactive diagrams stored as structured data) ═══
+// We'll store diagram steps as JSON-like arrays and render them with HTML
+
+C["sa-ns-x"]="EXPLAINING";C["sa-sec1-x"]="EXPLAINING";C["sa-sec2-x"]="EXPLAINING";C["sa-cm-x"]="EXPLAINING";C["sa-hl-x"]="EXPLAINING";C["sa-ws-x"]="EXPLAINING";C["sa-rs-x"]="EXPLAINING";C["sa-ss-x"]="EXPLAINING";
+C["sa-arch"]="DIAGRAM";C["sa-repl"]="DIAGRAM";C["sa-fail"]="DIAGRAM";
+
+// ═══ Solution B ═══
+C["sb-ns"]=C["sa-ns"];C["sb-ns-x"]="EXPLAINING";
+C["sb-sec1"]=J(["# Option 1: Connect via SERVICE names","# Patroni manages the write Endpoint - transparent failover!","apiVersion: v1","kind: Secret","metadata: { name: postgres-secret, namespace: myapp }","type: Opaque","stringData:","  POSTGRES_USER: appuser","  POSTGRES_PASSWORD: localpass123","  POSTGRES_DB: appdb","  REPLICATION_PASSWORD: replpass","  PATRONI_SUPERUSER_PASSWORD: superpass","  CONNECTION_STRING: >-","    Host=postgres-write.myapp.svc.cluster.local;Port=5432;","    Database=appdb;Username=appuser;Password=localpass123;","    Pooling=true;Min Pool Size=2;Max Pool Size=10;Include Error Detail=true;","  CONNECTION_STRING_READONLY: >-","    Host=postgres-read.myapp.svc.cluster.local;Port=5432;","    Database=appdb;Username=appuser;Password=localpass123;","    Pooling=true;Min Pool Size=2;Max Pool Size=10;Target Session Attrs=prefer-standby;Include Error Detail=true;"]);
+C["sb-sec2"]=J(["# Option 2: Connect via POD DNS (headless)","# Less common with Patroni since leader can change","apiVersion: v1","kind: Secret","metadata: { name: postgres-secret, namespace: myapp }","type: Opaque","stringData:","  POSTGRES_USER: appuser","  POSTGRES_PASSWORD: localpass123","  POSTGRES_DB: appdb","  REPLICATION_PASSWORD: replpass","  PATRONI_SUPERUSER_PASSWORD: superpass","  # WARNING: With Patroni, pg-0 may NOT be leader!","  # Use patronictl list to find current leader","  CONNECTION_STRING: >-","    Host=postgres-0.postgres-headless.myapp.svc.cluster.local,","    postgres-1.postgres-headless.myapp.svc.cluster.local,","    postgres-2.postgres-headless.myapp.svc.cluster.local;","    Port=5432;Database=appdb;Username=appuser;Password=localpass123;","    Target Session Attrs=read-write;","    Pooling=true;Min Pool Size=2;Max Pool Size=10;Include Error Detail=true;","  CONNECTION_STRING_READONLY: >-","    Host=postgres-0.postgres-headless.myapp.svc.cluster.local,","    postgres-1.postgres-headless.myapp.svc.cluster.local,","    postgres-2.postgres-headless.myapp.svc.cluster.local;","    Port=5432;Database=appdb;Username=appuser;Password=localpass123;","    Target Session Attrs=prefer-standby;","    Pooling=true;Min Pool Size=2;Max Pool Size=10;Include Error Detail=true;"]);
+C["sb-sec1-x"]="EXPLAINING";C["sb-sec2-x"]="EXPLAINING";
+C["sb-rbac"]=J(["apiVersion: v1","kind: ServiceAccount","metadata: { name: patroni, namespace: myapp }","---","apiVersion: rbac.authorization.k8s.io/v1","kind: Role","metadata: { name: patroni, namespace: myapp }","rules:","  - apiGroups: [\"\"]","    resources: [endpoints,pods,configmaps]","    verbs: [get,list,watch,create,update,patch,delete]","---","apiVersion: rbac.authorization.k8s.io/v1","kind: RoleBinding","metadata: { name: patroni, namespace: myapp }","subjects: [{ kind: ServiceAccount, name: patroni }]","roleRef: { kind: Role, name: patroni, apiGroup: rbac.authorization.k8s.io }"]);
+C["sb-rbac-x"]="EXPLAINING";
+C["sb-pcm"]=J(["apiVersion: v1","kind: ConfigMap","metadata: { name: patroni-config, namespace: myapp }","data:","  patroni.yaml: |","    scope: pg-cluster","    namespace: myapp","","    kubernetes:","      use_endpoints: true","      labels: { app: postgres }","","    restapi:","      listen: 0.0.0.0:8008","      connect_address: ${HOSTNAME}.postgres-headless.myapp.svc.cluster.local:8008","","    bootstrap:","      dcs:","        ttl: 30","        loop_wait: 10","        retry_timeout: 10","        maximum_lag_on_failover: 1048576","      initdb:","        - encoding: UTF8","        - data-checksums","      pg_hba:","        - local all all trust","        - host all all 0.0.0.0/0 md5","        - host replication replicator 0.0.0.0/0 md5","      post_bootstrap: |","        #!/bin/bash","        psql -U postgres -d appdb -c \"","          CREATE USER appuser WITH PASSWORD 'localpass123' CREATEDB;","          GRANT ALL PRIVILEGES ON DATABASE appdb TO appuser;","          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO appuser;","          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO appuser;","        \"","","    postgresql:","      listen: 0.0.0.0:5432","      connect_address: ${HOSTNAME}.postgres-headless.myapp.svc.cluster.local:5432","      data_dir: /var/lib/postgresql/data/pgdata","      authentication:","        superuser:","          username: postgres","          password: superpass","        replication:","          username: replicator","          password: replpass","      parameters:","        max_connections: 100","        shared_buffers: 128MB","        wal_level: replica","        max_wal_senders: 5","        max_replication_slots: 5","        hot_standby: 'on'","        log_statement: 'all'"]);
+C["sb-pcm-x"]="EXPLAINING";
+C["sb-hl"]=C["sa-hl"];C["sb-hl-x"]="EXPLAINING";
+C["sb-ws"]=J(["# NO selector! Patroni manages Endpoints directly","apiVersion: v1","kind: Service","metadata: { name: postgres-write, namespace: myapp }","spec:","  type: ClusterIP","  ports: [{ name: pg, port: 5432, targetPort: 5432 }]"]);
+C["sb-ws-x"]="EXPLAINING";
+C["sb-rs"]=C["sa-rs"];C["sb-rs-x"]="EXPLAINING";
+C["sb-ss"]=J(["apiVersion: apps/v1","kind: StatefulSet","metadata: { name: postgres, namespace: myapp }","spec:","  serviceName: postgres-headless","  replicas: 3","  selector: { matchLabels: { app: postgres } }","  template:","    metadata: { labels: { app: postgres } }","    spec:","      serviceAccountName: patroni","      terminationGracePeriodSeconds: 10","      containers:","        - name: patroni","          image: patroni-k8s:local","          imagePullPolicy: Never","          ports:","            - { containerPort: 5432, name: pg }","            - { containerPort: 8008, name: api }","          env:","            # Patroni identity","            - name: PATRONI_NAME","              valueFrom: { fieldRef: { fieldPath: metadata.name } }","            - { name: PATRONI_SCOPE, value: pg-cluster }","            - { name: PATRONI_NAMESPACE, value: myapp }","","            # Kubernetes DCS","            - { name: PATRONI_KUBERNETES_NAMESPACE, value: myapp }","            - { name: PATRONI_KUBERNETES_USE_ENDPOINTS, value: \"true\" }","            - { name: PATRONI_KUBERNETES_LABELS, value: \"{app: postgres}\" }","","            # PostgreSQL superuser (Patroni connects with this)","            - { name: PATRONI_SUPERUSER_USERNAME, value: postgres }","            - name: PATRONI_SUPERUSER_PASSWORD","              valueFrom:","                secretKeyRef: { name: postgres-secret, key: PATRONI_SUPERUSER_PASSWORD }","","            # Replication user","            - { name: PATRONI_REPLICATION_USERNAME, value: replicator }","            - name: PATRONI_REPLICATION_PASSWORD","              valueFrom:","                secretKeyRef: { name: postgres-secret, key: REPLICATION_PASSWORD }","","            # Data directory","            - { name: PATRONI_POSTGRESQL_DATA_DIR, value: /var/lib/postgresql/data/pgdata }","","            # Listen addresses","            - { name: PATRONI_POSTGRESQL_LISTEN, value: 0.0.0.0:5432 }","            - { name: PATRONI_RESTAPI_LISTEN, value: 0.0.0.0:8008 }","","            # Connect addresses (how other pods reach this pod)","            - name: PATRONI_POSTGRESQL_CONNECT_ADDRESS","              value: $(PATRONI_NAME).postgres-headless.myapp.svc.cluster.local:5432","            - name: PATRONI_RESTAPI_CONNECT_ADDRESS","              value: $(PATRONI_NAME).postgres-headless.myapp.svc.cluster.local:8008","","          volumeMounts:","            - { name: data, mountPath: /var/lib/postgresql/data }","            - { name: pcfg, mountPath: /etc/patroni }","          resources:","            requests: { cpu: 100m, memory: 256Mi }","            limits: { cpu: 500m, memory: 512Mi }","          readinessProbe:","            httpGet: { path: /readiness, port: 8008 }","            initialDelaySeconds: 15","            periodSeconds: 10","            timeoutSeconds: 5","            failureThreshold: 3","          livenessProbe:","            httpGet: { path: /liveness, port: 8008 }","            initialDelaySeconds: 30","            periodSeconds: 10","            timeoutSeconds: 5","            failureThreshold: 3","      volumes:","        - name: pcfg","          configMap: { name: patroni-config }","  volumeClaimTemplates:","    - metadata: { name: data }","      spec:","        accessModes: [ReadWriteOnce]","        resources: { requests: { storage: 1Gi } }"]);
+
+C["sb-dockerfile"]=J(["# Dockerfile.patroni - Build Patroni image for Minikube","# Based on official postgres:16, installs Patroni + K8s deps","FROM postgres:16-alpine","","RUN apk add --no-cache python3 py3-pip py3-psycopg2 curl bash \\","    && pip3 install --break-system-packages \\","        patroni[kubernetes] \\","        python-dateutil \\","    && rm -rf /root/.cache","","# Create data directory with correct permissions","RUN mkdir -p /var/lib/postgresql/data \\","    && chown -R postgres:postgres /var/lib/postgresql","","USER postgres","","ENTRYPOINT [\"patroni\"]","CMD [\"/etc/patroni/patroni.yaml\"]"]);
+C["sb-ss-x"]="EXPLAINING";
+C["sb-app"]=C["sa-app"];C["sb-asvc"]=C["sa-asvc"];
+C["sb-deploy"]=J(["#!/bin/bash","set -e","echo \"=== Solution B: Patroni ===\"","eval $(minikube docker-env)","","echo \"-> Building Patroni image inside Minikube...\"","docker build -f patroni/Dockerfile.patroni -t patroni-k8s:local patroni/","","echo \"-> Building API image...\"","cd ../myapp-api && docker build -t myapp-api:local . && cd -","","echo \"-> Applying K8s resources...\"","kubectl apply -f namespace/ -f secrets/ -f patroni/ -f app/","echo \"Waiting for 3 Patroni pods...\"","kubectl -n myapp rollout status statefulset/postgres --timeout=180s","kubectl -n myapp wait --for=condition=ready pod -l app=myapp-api --timeout=60s","echo \"\"","echo \"=== Patroni Cluster ===\"","kubectl -n myapp exec postgres-0 -- patronictl list","API=$(minikube service myapp-api-svc -n myapp --url)","echo \"API: $API/swagger\""]);
+
+C["sb-dock-opts"]=J(["# ============================================","# 3 Ways to Build the Patroni Image for Minikube","# ============================================","#","# The patroni-k8s:local image does NOT exist on Docker Hub.","# You must build it locally. Minikube runs its own Docker","# daemon, separate from your host machine's Docker.","#","#   Your PC Docker  =/=  Minikube Docker","#","# If you build on your host, Minikube can't see it.","# Here are 3 options to get the image into Minikube:","","","# =============================================","# OPTION 1: Build inside Minikube (recommended)","# =============================================","# Switch your Docker CLI to Minikube's Docker daemon.","# Any docker build you run goes directly into Minikube.","","# Step 1: Point Docker to Minikube","eval $(minikube docker-env)","","# Step 2: Build (image goes INTO Minikube's Docker)","docker build -f Dockerfile.patroni -t patroni-k8s:local .","","# Step 3: Verify","docker images | grep patroni-k8s","# patroni-k8s   local   abc123   Just now   ~250MB","","# Step 4: Apply StatefulSet (imagePullPolicy: Never)","kubectl apply -f statefulset.yaml","","# NOTE: eval only works for THIS terminal session.","#       Close terminal = back to host Docker.","#       Open new terminal = run eval again.","","","# =============================================","# OPTION 2: Build on host, then load into Minikube","# =============================================","# Build normally on your host Docker, then copy","# the image into Minikube with one command.","","# Step 1: Build on your host (normal docker)","docker build -f Dockerfile.patroni -t patroni-k8s:local .","","# Step 2: Load the image into Minikube","minikube image load patroni-k8s:local","","# Step 3: Verify it's in Minikube","minikube image ls | grep patroni","","# Step 4: Apply StatefulSet","kubectl apply -f statefulset.yaml","","# PROS: No need to switch Docker env","# CONS: Slower - copies entire image layer by layer","","","# =============================================","# OPTION 3: Build directly with minikube command","# =============================================","# No eval needed. Minikube builds internally.","","# Step 1: Build (one command, no Docker env switch)","minikube image build -t patroni-k8s:local -f Dockerfile.patroni .","","# Step 2: Verify","minikube image ls | grep patroni","","# Step 3: Apply StatefulSet","kubectl apply -f statefulset.yaml","","# PROS: Simplest, one command","# CONS: Slower than Option 1, less Docker control","","","# =============================================","# TROUBLESHOOTING","# =============================================","","# Check if image exists in Minikube:","minikube image ls | grep patroni","","# If pod shows ImagePullBackOff:","# 1. Check imagePullPolicy: Never in statefulset.yaml","# 2. Check image name matches exactly: patroni-k8s:local","# 3. Re-run the build inside Minikube (Option 1)","","# Rebuild after changes:","eval $(minikube docker-env)","docker build -f Dockerfile.patroni -t patroni-k8s:local .","kubectl -n myapp rollout restart statefulset/postgres","kubectl -n myapp rollout status statefulset/postgres"]);
+C["sb-arch"]="DIAGRAM";C["sb-repl"]="DIAGRAM";C["sb-fail"]="DIAGRAM";
+
+// ═══ App code ═══
+C["app-csproj"]=J(["<Project Sdk=\"Microsoft.NET.Sdk.Web\">","  <PropertyGroup><TargetFramework>net8.0</TargetFramework><Nullable>enable</Nullable></PropertyGroup>","  <ItemGroup>","    <PackageReference Include=\"Npgsql.EntityFrameworkCore.PostgreSQL\" Version=\"8.0.4\" />","    <PackageReference Include=\"Microsoft.EntityFrameworkCore.Design\" Version=\"8.0.8\" />","    <PackageReference Include=\"AspNetCore.HealthChecks.NpgSql\" Version=\"8.0.1\" />","  </ItemGroup>","</Project>"]);
+C["app-prog"]=J(["using Microsoft.EntityFrameworkCore;","using MyApp.Api.Data; using MyApp.Api.Services;","var builder=WebApplication.CreateBuilder(args);","var wc=Environment.GetEnvironmentVariable(\"CONNECTION_STRING\")??builder.Configuration.GetConnectionString(\"WriteDb\")??throw new InvalidOperationException(\"No WriteDb\");","var rc=Environment.GetEnvironmentVariable(\"CONNECTION_STRING_READONLY\")??builder.Configuration.GetConnectionString(\"ReadDb\")??wc;","builder.Services.AddDbContext<AppDbContext>(o=>o.UseNpgsql(wc,n=>n.EnableRetryOnFailure(3)).EnableDetailedErrors());","builder.Services.AddDbContext<ReadOnlyDbContext>(o=>o.UseNpgsql(rc,n=>n.EnableRetryOnFailure(3)).UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));","builder.Services.AddScoped<IProductService,ProductService>();","builder.Services.AddControllers();builder.Services.AddSwaggerGen();","builder.Services.AddHealthChecks().AddNpgSql(wc,name:\"pg\");","var app=builder.Build();","using(var s=app.Services.CreateScope())await s.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();","app.UseSwagger();app.UseSwaggerUI();app.MapControllers();app.MapHealthChecks(\"/healthz\");app.Run();"]);
+C["app-dock"]=J(["FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build","WORKDIR /src","COPY *.csproj ./ && RUN dotnet restore","COPY . ./ && RUN dotnet publish -c Release -o /app/publish","FROM mcr.microsoft.com/dotnet/aspnet:8.0","WORKDIR /app","COPY --from=build /app/publish .","ENV ASPNETCORE_URLS=http://+:8080","ENTRYPOINT [\"dotnet\",\"MyApp.Api.dll\"]"]);
+C["app-set"]=J(["{","  \"ConnectionStrings\":{","    \"WriteDb\":\"Host=localhost;Port=5432;Database=appdb;Username=appuser;Password=localpass123;\",","    \"ReadDb\":\"Host=localhost;Port=5432;Database=appdb;Username=appuser;Password=localpass123;\"","  }","}"]);
+C["app-prod"]=J(["using System.ComponentModel.DataAnnotations;","using System.ComponentModel.DataAnnotations.Schema;","namespace MyApp.Api.Models;","[Table(\"products\")] public class Product {","    [Key][Column(\"id\")] public int Id{get;set;}","    [Required,MaxLength(200)][Column(\"name\")] public string Name{get;set;}=\"\";","    [Column(\"price\",TypeName=\"decimal(10,2)\")] public decimal Price{get;set;}","    [Column(\"stock\")] public int Stock{get;set;}","    [Column(\"category\")] public string? Category{get;set;}","    [Column(\"is_active\")] public bool IsActive{get;set;}=true;","    [Column(\"created_at\")] public DateTime CreatedAt{get;set;}=DateTime.UtcNow;","    [Column(\"updated_at\")] public DateTime UpdatedAt{get;set;}=DateTime.UtcNow;","    public ICollection<Order> Orders{get;set;}=[];}"]);
+C["app-ord"]=J(["using System.ComponentModel.DataAnnotations;","using System.ComponentModel.DataAnnotations.Schema;","namespace MyApp.Api.Models;","[Table(\"orders\")] public class Order {","    [Key][Column(\"id\")] public int Id{get;set;}","    [Column(\"product_id\")] public int ProductId{get;set;}","    [Column(\"quantity\")] public int Quantity{get;set;}","    [Column(\"total_price\",TypeName=\"decimal(10,2)\")] public decimal TotalPrice{get;set;}","    [Column(\"status\")] public string Status{get;set;}=\"pending\";","    [Column(\"customer_name\")] public string? CustomerName{get;set;}","    [Column(\"created_at\")] public DateTime CreatedAt{get;set;}=DateTime.UtcNow;","    [ForeignKey(\"ProductId\")] public Product? Product{get;set;}}"]);
+C["app-wdb"]=J(["using Microsoft.EntityFrameworkCore;using MyApp.Api.Models;","namespace MyApp.Api.Data;","public class AppDbContext:DbContext{","  public AppDbContext(DbContextOptions<AppDbContext> o):base(o){}","  public DbSet<Product> Products=>Set<Product>();public DbSet<Order> Orders=>Set<Order>();","  protected override void OnModelCreating(ModelBuilder m){","    m.Entity<Product>(e=>{e.HasIndex(p=>p.Name);e.Property(p=>p.CreatedAt).HasDefaultValueSql(\"NOW()\");});","    m.Entity<Order>(e=>{e.HasOne(o=>o.Product).WithMany(p=>p.Orders).HasForeignKey(o=>o.ProductId).OnDelete(DeleteBehavior.Restrict);});}","  public override Task<int> SaveChangesAsync(CancellationToken ct=default){","    foreach(var e in ChangeTracker.Entries<Product>().Where(e=>e.State==EntityState.Modified))e.Entity.UpdatedAt=DateTime.UtcNow;","    return base.SaveChangesAsync(ct);}}"]);
+C["app-rdb"]=J(["using Microsoft.EntityFrameworkCore;using MyApp.Api.Models;","namespace MyApp.Api.Data;","public class ReadOnlyDbContext:DbContext{","  public ReadOnlyDbContext(DbContextOptions<ReadOnlyDbContext> o):base(o){}","  public DbSet<Product> Products=>Set<Product>();public DbSet<Order> Orders=>Set<Order>();","  protected override void OnModelCreating(ModelBuilder m){m.Entity<Order>(e=>e.HasOne(o=>o.Product).WithMany(p=>p.Orders).HasForeignKey(o=>o.ProductId));}","  public override int SaveChanges()=>throw new InvalidOperationException(\"Read-only\");","  public override Task<int> SaveChangesAsync(CancellationToken ct=default)=>throw new InvalidOperationException(\"Read-only\");}"]);
+C["app-isv"]=J(["using MyApp.Api.Models;","namespace MyApp.Api.Services;","public interface IProductService{","  Task<List<Product>> GetAllAsync(string? cat);Task<Product?> GetByIdAsync(int id);","  Task<Product> CreateAsync(Product p);Task<bool> DeleteAsync(int id);","  Task<Order> PlaceOrderAsync(int pid,int qty,string? c);}","public record DashboardStats(int P,int O,decimal R);"]);
+C["app-svc"]=J(["using Microsoft.EntityFrameworkCore;using MyApp.Api.Data;using MyApp.Api.Models;","namespace MyApp.Api.Services;","public class ProductService(AppDbContext w,ReadOnlyDbContext r,ILogger<ProductService> log):IProductService{","  public async Task<List<Product>> GetAllAsync(string? c){var q=r.Products.Where(p=>p.IsActive);if(c!=null)q=q.Where(p=>p.Category==c);return await q.OrderByDescending(p=>p.CreatedAt).ToListAsync();}","  public async Task<Product?> GetByIdAsync(int id)=>await r.Products.Include(p=>p.Orders.Take(10)).FirstOrDefaultAsync(p=>p.Id==id);","  public async Task<Product> CreateAsync(Product p){w.Products.Add(p);await w.SaveChangesAsync();return p;}","  public async Task<bool> DeleteAsync(int id){var p=await w.Products.FindAsync(id);if(p is null)return false;p.IsActive=false;await w.SaveChangesAsync();return true;}","  public async Task<Order> PlaceOrderAsync(int pid,int qty,string? cust){await using var tx=await w.Database.BeginTransactionAsync();try{var p=await w.Products.FindAsync(pid)??throw new KeyNotFoundException();if(p.Stock<qty)throw new InvalidOperationException(\"Low stock\");p.Stock-=qty;var o=new Order{ProductId=pid,Quantity=qty,TotalPrice=p.Price*qty,CustomerName=cust,Status=\"confirmed\"};w.Orders.Add(o);await w.SaveChangesAsync();await tx.CommitAsync();return o;}catch{await tx.RollbackAsync();throw;}}}"]);
+C["app-ctl"]=J(["using Microsoft.AspNetCore.Mvc;using MyApp.Api.Models;using MyApp.Api.Services;","namespace MyApp.Api.Controllers;","[ApiController][Route(\"api/[controller]\")]","public class ProductsController(IProductService s):ControllerBase{","  [HttpGet]public async Task<IActionResult> GetAll([FromQuery]string? cat)=>Ok(await s.GetAllAsync(cat));","  [HttpGet(\"{id:int}\")]public async Task<IActionResult> Get(int id){var p=await s.GetByIdAsync(id);return p is null?NotFound():Ok(p);}","  [HttpPost]public async Task<IActionResult> Create(Product p){var c=await s.CreateAsync(p);return CreatedAtAction(nameof(Get),new{id=c.Id},c);}","  [HttpDelete(\"{id:int}\")]public async Task<IActionResult> Del(int id)=>await s.DeleteAsync(id)?NoContent():NotFound();","  [HttpPost(\"{id:int}/orders\")]public async Task<IActionResult> Order(int id,[FromBody]OReq r){try{return Ok(await s.PlaceOrderAsync(id,r.Qty,r.Name));}catch(Exception e){return BadRequest(new{e=e.Message});}}","}","public record OReq(int Qty,string? Name);"]);
+
+// ═══════════════════════════════════════
+// DIAGRAM DATA (interactive step-by-step)
+// ═══════════════════════════════════════
+var DIAG={};
+
+DIAG["sa-arch"]={title:"Solution A: Cluster Architecture",steps:[
+{tab:"Full Cluster Diagram",html:'<div class="cluster"><div class="cluster-title">Minikube Cluster (Single Node) | Pod CIDR: 10.244.0.0/16 | Service CIDR: 10.96.0.0/12</div><div class="svc-box write"><div class="svc-name red">&#9679; postgres-write (ClusterIP)</div><div class="svc-detail">selector: app=postgres, role=primary<br>Only routes to pg-0</div></div><div class="arrow">\u2193 \u2193 \u2193</div><div class="pods-row"><div class="pod primary"><div class="pod-name blue">postgres-0</div><div class="pod-info">PRIMARY (R/W)<br>10.244.0.10:5432</div><div style="margin-top:6px"><span class="inner orange">wal sender &rarr; pg-1</span><span class="inner orange">wal sender &rarr; pg-2</span></div></div><div class="pod replica"><div class="pod-name green">postgres-1</div><div class="pod-info">REPLICA (RO)<br>10.244.0.11:5432</div><div style="margin-top:6px"><span class="inner green">wal receiver</span></div></div><div class="pod replica"><div class="pod-name green">postgres-2</div><div class="pod-info">REPLICA (RO)<br>10.244.0.12:5432</div><div style="margin-top:6px"><span class="inner green">wal receiver</span></div></div></div><div class="arrow">\u2191 \u2191 \u2191</div><div class="svc-box read"><div class="svc-name green">&#9679; postgres-read (ClusterIP)</div><div class="svc-detail">selector: app=postgres, role=replica<br>Load balances across pg-1, pg-2</div></div><div style="margin-top:12px"><div class="svc-box headless"><div class="svc-name amber">&#9679; postgres-headless (clusterIP: None)</div><div class="svc-detail">DNS: postgres-{0,1,2}.postgres-headless.myapp.svc.cluster.local<br>Direct pod addressing for connection strings</div></div></div></div><div class="step-explain"><b>Three services, three purposes:</b><br><span class="hl-red">postgres-write</span> &#8594; only pg-0 (writes) | <span class="hl-green">postgres-read</span> &#8594; pg-1 + pg-2 (reads) | <span class="hl-amber">postgres-headless</span> &#8594; per-pod DNS for direct addressing<br><br>The <b>ASP.NET Core</b> app connects via the write and read services (Option 1) or directly via headless pod DNS (Option 2).</div>'},
+{tab:"Write Flow",html:'<div class="cluster"><div class="cluster-title">Write Request Flow: POST /api/products</div><div class="pod" style="border-color:rgba(249,115,22,0.4);background:rgba(249,115,22,0.03);display:block;text-align:center;max-width:300px;margin:0 auto"><div class="pod-name" style="color:#fb923c">ASP.NET Core Pod</div><div class="pod-info">AppDbContext (Write)<br>Npgsql connection</div></div><div class="arrow">\u2193<br><span class="arrow-label">CONNECTION_STRING</span></div><div class="svc-box write"><div class="svc-name red">postgres-write service</div><div class="svc-detail">ClusterIP: 10.96.x.x:5432<br>kube-proxy iptables \u2192 only pods with role=primary</div></div><div class="arrow">\u2193<br><span class="arrow-label">DNAT to pod IP</span></div><div class="pod primary" style="display:block;text-align:center;max-width:250px;margin:0 auto"><div class="pod-name blue">postgres-0 (PRIMARY)</div><div class="pod-info">INSERT INTO products...<br>1. Write to WAL<br>2. Write to data files<br>3. Return success</div></div><div class="arrow">\u2193<br><span class="arrow-label">WAL streaming (async)</span></div><div class="pods-row"><div class="pod replica"><div class="pod-name green">pg-1 receives WAL</div><div class="pod-info">Replays INSERT<br>Data now in sync</div></div><div class="pod replica"><div class="pod-name green">pg-2 receives WAL</div><div class="pod-info">Replays INSERT<br>Data now in sync</div></div></div></div><div class="step-explain"><b>Write path:</b> App \u2192 postgres-write service \u2192 kube-proxy routes to pg-0 \u2192 PostgreSQL executes INSERT \u2192 WAL record created \u2192 wal sender streams to pg-1 and pg-2 \u2192 replicas replay the WAL record \u2192 all 3 pods have identical data.<br><br><b>Latency:</b> The write returns to the app as soon as pg-0 commits. Replication to replicas is async (milliseconds behind).</div>'},
+{tab:"Read Flow",html:'<div class="cluster"><div class="cluster-title">Read Request Flow: GET /api/products</div><div class="pod" style="border-color:rgba(249,115,22,0.4);background:rgba(249,115,22,0.03);display:block;text-align:center;max-width:300px;margin:0 auto"><div class="pod-name" style="color:#fb923c">ASP.NET Core Pod</div><div class="pod-info">ReadOnlyDbContext<br>NoTracking query</div></div><div class="arrow">\u2193<br><span class="arrow-label">CONNECTION_STRING_READONLY</span></div><div class="svc-box read"><div class="svc-name green">postgres-read service</div><div class="svc-detail">ClusterIP: 10.96.x.x:5432<br>kube-proxy \u2192 round-robin to role=replica pods</div></div><div class="arrow" style="display:flex;justify-content:center;gap:60px"><span>\u2199\uFE0F</span><span>\u2198\uFE0F</span></div><div class="pods-row"><div class="pod replica"><div class="pod-name green">postgres-1</div><div class="pod-info">SELECT * FROM products<br>Returns data from<br>replicated WAL</div></div><div class="pod replica"><div class="pod-name green">postgres-2</div><div class="pod-info">SELECT * FROM products<br>Returns data from<br>replicated WAL</div></div></div></div><div class="step-explain"><b>Read path:</b> App \u2192 postgres-read service \u2192 kube-proxy picks pg-1 OR pg-2 (round-robin) \u2192 replica executes SELECT \u2192 returns data.<br><br><b>hot_standby=on</b> allows read queries during WAL replay. Data may be milliseconds behind primary. <b>NoTracking</b> in EF Core skips change tracking for better read performance.</div>'}
+]};
+
+DIAG["sa-repl"]={title:"Solution A: How Replication Syncs Data",steps:[
+{tab:"1. Initial Setup",html:'<div class="cluster"><div class="cluster-title">Step 1: pg_basebackup - Initial Full Copy</div><div class="pod primary" style="display:block;text-align:center;max-width:300px;margin:0 auto"><div class="pod-name blue">postgres-0 (PRIMARY)</div><div class="pod-info">Running with all data<br>Tables: products, orders<br>WAL position: 0/5000000</div></div><div class="arrow">\u2193 pg_basebackup (full copy) \u2193</div><div class="pods-row"><div class="pod replica"><div class="pod-name green">postgres-1 (NEW)</div><div class="pod-info">1. Connects to pg-0<br>2. Primary takes checkpoint<br>3. ALL data files copied<br>4. WAL streamed during copy (-Xs)<br>5. standby.signal created<br>6. Starts as hot standby</div></div><div class="pod replica"><div class="pod-name green">postgres-2 (NEW)</div><div class="pod-info">Same process as pg-1<br>Runs after pg-1 is ready<br>(StatefulSet ordered startup)</div></div></div></div><div class="step-explain"><b>pg_basebackup</b> is a full physical copy of the entire database. It copies every data file from the primary to the replica. The <b>-Xs</b> flag streams WAL during the copy so no data is lost. The <b>standby.signal</b> file tells PostgreSQL to start in standby mode and connect to the primary for streaming.</div>'},
+{tab:"2. WAL Streaming",html:'<div class="cluster"><div class="cluster-title">Step 2: Continuous WAL Streaming</div><div class="pod primary" style="display:block;max-width:400px;margin:0 auto"><div class="pod-name blue">postgres-0 (PRIMARY)</div><div class="pod-info" style="margin:8px 0">App executes: INSERT INTO products (name,price) VALUES (\'Book\', 59.99)</div><div style="margin:8px 0;text-align:center"><span class="inner orange">WAL Writer</span> <span style="color:#475569">\u2192</span> <span class="inner blue">WAL File (pg_wal/)</span></div><div style="margin:8px 0;text-align:center"><span class="inner orange">wal sender (pg-1)</span> <span class="inner orange">wal sender (pg-2)</span></div></div><div class="arrow">\u2193 TCP Stream (real-time) \u2193</div><div class="pods-row"><div class="pod replica"><div class="pod-name green">postgres-1</div><div style="margin:6px 0"><span class="inner green">wal receiver</span></div><div class="pod-info">\u2193 receive WAL bytes<br>\u2193 write to local pg_wal/<br>\u2193 replay: INSERT INTO products...<br>\u2193 data files updated<br>Result: identical data!</div></div><div class="pod replica"><div class="pod-name green">postgres-2</div><div style="margin:6px 0"><span class="inner green">wal receiver</span></div><div class="pod-info">Same process<br>Independent stream<br>May be at slightly<br>different WAL position</div></div></div></div><div class="step-explain"><b>WAL (Write-Ahead Log)</b> records every change before it hits data files. The primary has one <b>wal sender</b> process per replica. Each replica has one <b>wal receiver</b> that connects to the primary. WAL records stream continuously over TCP. Replicas write WAL to disk, then <b>replay</b> each record to update their data files. Typical lag: <b>milliseconds</b>.</div>'},
+{tab:"3. Monitoring",html:'<div class="cluster"><div class="cluster-title">Step 3: Verify Replication Status</div><div class="cb"><div class="cbh"><div class="cbhl"><div class="cbd" style="background:#10b981"></div><span class="cbf">On PRIMARY (pg-0)</span></div></div><pre class="pre">kubectl -n myapp exec postgres-0 -- psql -U appuser -d appdb -c \\\n  \"SELECT pid, client_addr, state, sent_lsn, replay_lsn FROM pg_stat_replication;\"\n\n pid  | client_addr  |  state    | sent_lsn  | replay_lsn\n------+--------------+-----------+-----------+-----------\n 100  | 10.244.0.11  | streaming | 0/5001000 | 0/5001000\n 101  | 10.244.0.12  | streaming | 0/5001000 | 0/5000F00</pre></div><div style="margin-top:10px" class="cb"><div class="cbh"><div class="cbhl"><div class="cbd" style="background:#0ea5e9"></div><span class="cbf">On REPLICA (pg-1)</span></div></div><pre class="pre">kubectl -n myapp exec postgres-1 -- psql -U appuser -d appdb -c \\\n  \"SELECT status, sender_host, received_lsn FROM pg_stat_wal_receiver;\"\n\n status    | sender_host                          | received_lsn\n-----------+--------------------------------------+-------------\n streaming | postgres-0.postgres-headless...       | 0/5001000</pre></div></div><div class="step-explain"><b>pg_stat_replication</b> (on primary): shows each connected replica, its state (<b>streaming</b> = healthy), and WAL positions. If <b>sent_lsn > replay_lsn</b>, the replica has lag.<br><br><b>pg_stat_wal_receiver</b> (on replica): shows connection to primary and received WAL position.</div>'}
+]};
+
+DIAG["sa-fail"]={title:"Solution A: What Happens When Primary Fails",steps:[
+{tab:"1. Before Failure",html:'<div class="cluster"><div class="cluster-title">Normal State - All Healthy</div><div class="pods-row"><div class="pod primary"><div class="pod-name blue">postgres-0</div><div class="pod-info">PRIMARY \u2714\uFE0F<br>Accepting writes<br>Streaming WAL to replicas</div><div style="margin-top:6px"><span class="inner orange">wal sender \u2192 pg-1</span><br><span class="inner orange">wal sender \u2192 pg-2</span></div></div><div class="pod replica"><div class="pod-name green">postgres-1</div><div class="pod-info">REPLICA \u2714\uFE0F<br>Serving reads<br>WAL lag: 0 bytes</div></div><div class="pod replica"><div class="pod-name green">postgres-2</div><div class="pod-info">REPLICA \u2714\uFE0F<br>Serving reads<br>WAL lag: 0 bytes</div></div></div><div class="arrow">\u2191 \u2191</div><div class="svc-box write"><div class="svc-name red">postgres-write \u2192 pg-0 \u2714\uFE0F</div></div><div class="svc-box read"><div class="svc-name green">postgres-read \u2192 pg-1, pg-2 \u2714\uFE0F</div></div></div><div class="step-explain">Everything is healthy. Writes go to pg-0 via the write service. Reads go to pg-1 and pg-2 via the read service. WAL streams continuously with zero lag.</div>'},
+{tab:"2. Primary Crashes",html:'<div class="cluster"><div class="cluster-title">t=0s: pg-0 Crashes!</div><div class="pods-row"><div class="pod dead"><div class="pod-name red">\u274C postgres-0</div><div class="pod-info">CRASHED!<br>OOMKilled / node failure<br>Container terminated</div><div style="margin-top:6px"><span class="inner red">wal senders DEAD</span></div></div><div class="pod replica"><div class="pod-name green">postgres-1</div><div class="pod-info">REPLICA \u2714\uFE0F<br>Reads still work!<br>wal receiver: disconnected<br>Data may be slightly stale</div></div><div class="pod replica"><div class="pod-name green">postgres-2</div><div class="pod-info">REPLICA \u2714\uFE0F<br>Reads still work!<br>wal receiver: disconnected<br>Data may be slightly stale</div></div></div><div class="arrow">\u2191</div><div class="svc-box" style="border-color:rgba(248,113,113,0.6);background:rgba(248,113,113,0.08)"><div class="svc-name red">postgres-write \u2192 pg-0 \u274C FAIL</div><div class="svc-detail">All write requests get: Connection Refused<br>Npgsql retries (EnableRetryOnFailure) but keeps failing</div></div><div class="svc-box read"><div class="svc-name green">postgres-read \u2192 pg-1, pg-2 \u2714\uFE0F STILL WORKING</div></div></div><div class="step-explain"><b>Writes FAIL</b> immediately. The app gets ConnectionRefused errors. Npgsql retries but pg-0 is down.<br><b>Reads CONTINUE</b> working on pg-1 and pg-2! Data is slightly stale (last replicated WAL) but available.<br><b>Replicas do NOT promote.</b> They just wait for the primary to come back. This is the key limitation of Solution A.</div>'},
+{tab:"3. K8s Restarts",html:'<div class="cluster"><div class="cluster-title">t=5-25s: Kubernetes Restarts pg-0</div><div class="pods-row"><div class="pod" style="border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.03)"><div class="pod-name" style="color:#fbbf24">\u23F3 postgres-0</div><div class="pod-info">RESTARTING...<br>1. K8s detects CrashLoopBackOff<br>2. Schedules new container<br>3. PVC reattaches (data intact!)<br>4. PostgreSQL starts recovery<br>5. Replays its own WAL<br>6. Accepts connections</div></div><div class="pod replica"><div class="pod-name green">postgres-1</div><div class="pod-info">Still serving reads<br>Waiting to reconnect<br>to primary...</div></div><div class="pod replica"><div class="pod-name green">postgres-2</div><div class="pod-info">Still serving reads<br>Waiting to reconnect<br>to primary...</div></div></div></div><div class="step-explain"><b>t=5s:</b> K8s detects the pod is not Running and schedules a new container on the same node.<br><b>t=10s:</b> PVC <b>pg-data-postgres-0</b> reattaches \u2014 all data is intact!<br><b>t=15s:</b> PostgreSQL starts recovery, replays any uncommitted WAL.<br><b>t=20-25s:</b> pg-0 is ready and accepting connections again.</div>'},
+{tab:"4. Recovery",html:'<div class="cluster"><div class="cluster-title">t=25-30s: Full Recovery</div><div class="pods-row"><div class="pod primary"><div class="pod-name blue">postgres-0 \u2714\uFE0F BACK!</div><div class="pod-info">PRIMARY restored<br>All data intact from PVC<br>Accepting writes again</div><div style="margin-top:6px"><span class="inner orange">wal sender \u2192 pg-1 \u2714\uFE0F</span><br><span class="inner orange">wal sender \u2192 pg-2 \u2714\uFE0F</span></div></div><div class="pod replica"><div class="pod-name green">postgres-1 \u2714\uFE0F</div><div class="pod-info">wal receiver reconnected<br>Catching up on missed WAL<br>Back to streaming</div></div><div class="pod replica"><div class="pod-name green">postgres-2 \u2714\uFE0F</div><div class="pod-info">wal receiver reconnected<br>Catching up on missed WAL<br>Back to streaming</div></div></div><div class="arrow">\u2191</div><div class="svc-box write"><div class="svc-name red">postgres-write \u2192 pg-0 \u2714\uFE0F RESTORED</div></div><div class="svc-box read"><div class="svc-name green">postgres-read \u2192 pg-1, pg-2 \u2714\uFE0F</div></div></div><div class="step-explain"><b>Total write downtime: ~10-30 seconds</b> (K8s pod restart time).<br><b>Total read downtime: ZERO</b> (replicas served reads throughout).<br><b>Data loss: NONE</b> (PVC preserved all committed data).<br><br>Replicas automatically reconnect their wal receivers to the restored primary and catch up on any WAL generated during the brief period where writes may have been rejected.</div>'}
+]};
+
+DIAG["sb-arch"]={title:"Solution B: Patroni Cluster Architecture",steps:[
+{tab:"Full Cluster",html:'<div class="cluster"><div class="cluster-title">Patroni HA Cluster on Minikube</div><div class="svc-box write"><div class="svc-name red">&#9679; postgres-write (NO selector!)</div><div class="svc-detail">Patroni manages Endpoint directly<br>Points to current LEADER pod (can be any pod!)</div></div><div class="arrow">\u2193</div><div class="pods-row"><div class="pod patroni"><div class="pod-name violet">postgres-0</div><div class="pod-info">Patroni + PostgreSQL<br>Role: LEADER? REPLICA?<br>(determined by election)</div><div style="margin-top:6px"><span class="inner violet">Patroni :8008</span><span class="inner blue">PG :5432</span></div></div><div class="pod patroni"><div class="pod-name violet">postgres-1</div><div class="pod-info">Patroni + PostgreSQL<br>Role: depends on election</div><div style="margin-top:6px"><span class="inner violet">Patroni :8008</span><span class="inner blue">PG :5432</span></div></div><div class="pod patroni"><div class="pod-name violet">postgres-2</div><div class="pod-info">Patroni + PostgreSQL<br>Role: depends on election</div><div style="margin-top:6px"><span class="inner violet">Patroni :8008</span><span class="inner blue">PG :5432</span></div></div></div><div class="arrow">\u2191</div><div class="svc-box read"><div class="svc-name green">postgres-read (selector: role=replica)</div></div><div style="margin-top:10px;text-align:center"><span class="inner violet" style="padding:8px 16px;font-size:10px">K8s Endpoints (DCS) \u2014 Leader lock + cluster state</span></div></div><div class="step-explain"><b>Key difference:</b> The write service has <b>NO selector</b>! Patroni directly manages the Kubernetes Endpoint object, updating it to point to whichever pod is currently the leader. This means failover is <b>transparent to the application</b> \u2014 the connection string never changes.</div>'},
+{tab:"Leader Election",html:'<div class="cluster"><div class="cluster-title">Patroni Leader Election via K8s Endpoints</div><div class="pods-row"><div class="pod patroni"><div class="pod-name violet">postgres-0</div><div class="pod-info">Patroni loop (every 10s):<br>1. Try to acquire leader lock<br>2. If acquired \u2192 become LEADER<br>3. If not \u2192 become REPLICA</div></div><div class="pod patroni"><div class="pod-name violet">postgres-1</div><div class="pod-info">Same loop running<br>Competes for lock<br>Only ONE can win</div></div><div class="pod patroni"><div class="pod-name violet">postgres-2</div><div class="pod-info">Same loop running<br>Competes for lock<br>Only ONE can win</div></div></div><div class="arrow">\u2193 \u2193 \u2193</div><div style="text-align:center;padding:12px"><div class="inner violet" style="padding:10px 20px;font-size:11px">K8s Endpoint: \"pg-cluster\"<br>Leader: postgres-0 (IP: 10.244.0.10)<br>TTL: 30 seconds (must renew)</div></div></div><div class="step-explain"><b>How leader election works:</b><br>1. All Patroni instances run a loop every <b>loop_wait=10s</b><br>2. They try to create/update a K8s Endpoint with their pod name<br>3. Only ONE can hold the leader lock at a time (atomic K8s operation)<br>4. The winner becomes <b>LEADER</b> (primary), others become <b>REPLICAS</b><br>5. Leader must renew the lock within <b>TTL=30s</b> or it expires<br>6. If lock expires, remaining pods compete for a new leader</div>'}
+]};
+
+DIAG["sb-repl"]={title:"Solution B: Patroni Replication",steps:[
+{tab:"Automated Setup",html:'<div class="cluster"><div class="cluster-title">Patroni Automates Everything</div><div class="pods-row"><div class="pod patroni" style="min-width:250px"><div class="pod-name violet">postgres-0 (LEADER)</div><div class="pod-info">Patroni bootstrapped this pod:<br>\u2714\uFE0F initdb (created database)<br>\u2714\uFE0F Created replicator user<br>\u2714\uFE0F Set up replication slots<br>\u2714\uFE0F Configured pg_hba.conf<br>\u2714\uFE0F Started WAL streaming</div></div></div><div class="arrow">\u2193 Patroni auto-runs pg_basebackup \u2193</div><div class="pods-row"><div class="pod patroni"><div class="pod-name violet">postgres-1 (REPLICA)</div><div class="pod-info">\u2714\uFE0F Patroni detected leader exists<br>\u2714\uFE0F Ran pg_basebackup from pg-0<br>\u2714\uFE0F Started streaming replication<br>\u2714\uFE0F Created replication slot</div></div><div class="pod patroni"><div class="pod-name violet">postgres-2 (REPLICA)</div><div class="pod-info">\u2714\uFE0F Same automated process<br>\u2714\uFE0F No init containers needed!<br>\u2714\uFE0F Patroni handles everything</div></div></div></div><div class="step-explain"><b>No init containers or setup scripts needed!</b> Patroni handles:<br>\u2022 Bootstrap: initdb, create users, configure replication<br>\u2022 New replicas: automatic pg_basebackup from leader<br>\u2022 Replication slots: created and managed per replica<br>\u2022 WAL streaming: configured and monitored continuously</div>'},
+{tab:"WAL Flow",html:DIAG["sa-repl"]?DIAG["sa-repl"].steps[1].html.replace("Solution A","Patroni"):'<div>Same WAL mechanism as Solution A</div>'}
+]};
+
+DIAG["sb-fail"]={title:"Solution B: Automatic Failover",steps:[
+{tab:"1. Before",html:'<div class="cluster"><div class="cluster-title">Normal State - postgres-1 is Leader</div><div class="pods-row"><div class="pod patroni"><div class="pod-name violet">postgres-0</div><div class="pod-info">REPLICA<br>Streaming from pg-1</div></div><div class="pod patroni" style="border-color:rgba(56,189,248,0.5);border-width:2px"><div class="pod-name blue">\u2B50 postgres-1 (LEADER)</div><div class="pod-info">PRIMARY \u2714\uFE0F<br>Handling all writes<br>Renewing lock every 10s</div></div><div class="pod patroni"><div class="pod-name violet">postgres-2</div><div class="pod-info">REPLICA<br>Streaming from pg-1</div></div></div><div style="text-align:center;margin-top:8px"><span class="inner blue" style="padding:6px 14px">postgres-write Endpoint \u2192 postgres-1 IP</span></div></div><div class="step-explain">Note: In Patroni, the leader can be <b>any pod</b> \u2014 not necessarily pg-0! Here pg-1 is the leader. The write service Endpoint points to pg-1\'s IP.</div>'},
+{tab:"2. Leader Dies",html:'<div class="cluster"><div class="cluster-title">t=0s: postgres-1 (Leader) Crashes!</div><div class="pods-row"><div class="pod patroni"><div class="pod-name violet">postgres-0</div><div class="pod-info">REPLICA<br>Notices leader is gone<br>wal receiver disconnected<br>Waiting for lock to expire...</div></div><div class="pod dead"><div class="pod-name red">\u274C postgres-1 DEAD</div><div class="pod-info">Leader lock still held<br>TTL: 30s countdown<br>t=0s...10s...20s...30s</div></div><div class="pod patroni"><div class="pod-name violet">postgres-2</div><div class="pod-info">REPLICA<br>Notices leader is gone<br>wal receiver disconnected<br>Waiting for lock to expire...</div></div></div></div><div class="step-explain"><b>t=0s:</b> Leader pod crashes. The leader lock is still held in the K8s Endpoint.<br><b>t=0-30s:</b> Replicas detect the leader is unreachable but must wait for the TTL (30s) to expire before competing for leadership. Writes fail during this window. Reads from replicas continue!</div>'},
+{tab:"3. Election",html:'<div class="cluster"><div class="cluster-title">t=30s: Leader Lock Expires - Election!</div><div class="pods-row"><div class="pod patroni" style="border-color:rgba(56,189,248,0.5);border-width:2px"><div class="pod-name blue">\u2B50 postgres-0 WINS!</div><div class="pod-info">\u2714\uFE0F WAL lag: 0 bytes (best candidate)<br>\u2714\uFE0F Acquires leader lock<br>\u2714\uFE0F Calls pg_promote()<br>\u2714\uFE0F Now PRIMARY!</div></div><div class="pod dead"><div class="pod-name red">postgres-1</div><div class="pod-info">Still dead<br>K8s will restart it soon</div></div><div class="pod patroni"><div class="pod-name violet">postgres-2</div><div class="pod-info">Lost election<br>Repoints to new leader (pg-0)<br>Resumes streaming</div></div></div><div class="arrow">\u2191</div><div style="text-align:center"><span class="inner blue" style="padding:8px 16px;font-size:11px">postgres-write Endpoint \u2192 postgres-0 IP \u2714\uFE0F UPDATED!</span></div></div><div class="step-explain"><b>t=30s:</b> Lock expires. pg-0 and pg-2 compete. pg-0 wins (least WAL lag).<br><b>t=30-31s:</b> pg-0 calls <b>pg_promote()</b> \u2014 transitions from replica to primary.<br><b>t=31s:</b> Patroni updates the <b>postgres-write Endpoint</b> to pg-0\'s IP.<br><b>t=32s:</b> All new connections routed to pg-0. <b>Writes resume!</b><br>pg-2 automatically repoints its replication to pg-0.</div>'},
+{tab:"4. Full Recovery",html:'<div class="cluster"><div class="cluster-title">t=60-90s: Old Leader Rejoins as Replica</div><div class="pods-row"><div class="pod patroni" style="border-color:rgba(56,189,248,0.5);border-width:2px"><div class="pod-name blue">\u2B50 postgres-0 (LEADER)</div><div class="pod-info">New PRIMARY \u2714\uFE0F<br>Accepting writes<br>Streaming to pg-1, pg-2</div></div><div class="pod patroni"><div class="pod-name violet">postgres-1 (rejoined)</div><div class="pod-info">\u2714\uFE0F K8s restarted the pod<br>\u2714\uFE0F Patroni: I\'m not leader anymore<br>\u2714\uFE0F Auto-demotes to replica<br>\u2714\uFE0F pg_rewind from pg-0<br>\u2714\uFE0F Streaming replication resumed</div></div><div class="pod patroni"><div class="pod-name violet">postgres-2 (REPLICA)</div><div class="pod-info">Streaming from pg-0 \u2714\uFE0F</div></div></div><div style="text-align:center;margin-top:8px"><span class="inner blue" style="padding:6px 14px">postgres-write \u2192 pg-0 | postgres-read \u2192 pg-1, pg-2</span></div></div><div class="step-explain"><b>Total write downtime: ~30-35 seconds</b> (TTL expiry + election + promotion).<br><b>Read downtime: ZERO</b> (replicas served reads throughout).<br><b>Data loss: NONE</b> (most up-to-date replica was promoted).<br><b>Manual intervention: NONE</b> (fully automatic!).<br><br>The old leader (pg-1) automatically rejoins as a replica. Patroni uses <b>pg_rewind</b> to efficiently resync it with the new leader without a full pg_basebackup.</div>'}
+]};
+
+// ═══ YAML References per diagram step ═══
+var YREF={};
+YREF["sa-arch"]=[
+  [{p:"write-service.yaml",y:"spec:\n  selector:\n    app: postgres\n    role: primary",d:"Selector with role=primary ensures only pg-0 receives write traffic. kube-proxy creates iptables rules matching these labels."},{p:"read-service.yaml",y:"spec:\n  selector:\n    app: postgres\n    role: replica",d:"Selector with role=replica routes to pg-1 and pg-2. kube-proxy round-robins between matching pods."},{p:"headless-service.yaml",y:"spec:\n  clusterIP: None\n  publishNotReadyAddresses: true",d:"clusterIP: None creates per-pod DNS entries. publishNotReadyAddresses includes pods during initial setup."}],
+  [{p:"postgres-secret.yaml",y:"CONNECTION_STRING: >-\n  Host=postgres-write.myapp...;",d:"Write connection string targets the write service. kube-proxy routes to the primary pod."},{p:"write-service.yaml",y:"spec:\n  type: ClusterIP\n  selector: { role: primary }",d:"ClusterIP gives a stable virtual IP. All writes are DNATed to pg-0 pod IP."}],
+  [{p:"postgres-secret.yaml",y:"CONNECTION_STRING_READONLY: >-\n  Host=postgres-read.myapp...;\n  Target Session Attrs=prefer-standby;",d:"Read connection uses the read service. prefer-standby ensures Npgsql connects to replicas, not the primary."},{p:"configmap.yaml",y:"hot_standby = on",d:"This PostgreSQL parameter allows SELECT queries on replica pods during WAL replay. Without it, replicas reject all queries."}]
+];
+YREF["sa-repl"]=[
+  [{p:"setup-replica.sh",y:"pg_basebackup -h postgres-0.postgres-headless \\\n  -U replicator -D $PGDATA -Fp -Xs -P -R\ntouch $PGDATA/standby.signal",d:"-h: connect to primary via headless DNS. -Fp: plain format. -Xs: stream WAL during backup. -R: write recovery config. standby.signal: start as standby."},{p:"configmap.yaml",y:"max_wal_senders = 5\nmax_replication_slots = 5",d:"max_wal_senders: concurrent streaming connections (need 2+ for our replicas). max_replication_slots: prevents WAL cleanup before replicas consume it."}],
+  [{p:"configmap.yaml",y:"wal_level = replica\nhot_standby = on\nhot_standby_feedback = on",d:"wal_level=replica: enables streaming replication. hot_standby=on: allows reads on replicas. hot_standby_feedback=on: replicas report progress to prevent premature vacuum."},{p:"pg_hba.conf",y:"host replication all 0.0.0.0/0 md5",d:"CRITICAL: allows replication connections from any IP with password auth. Without this line, replicas CANNOT stream WAL from the primary."}],
+  [{p:"pg_stat_replication columns",y:"sent_lsn    -- WAL position sent by primary\nwrite_lsn   -- WAL written to replica disk\nflush_lsn   -- WAL flushed to replica disk\nreplay_lsn  -- WAL replayed on replica",d:"If sent_lsn > replay_lsn, the replica has lag. state=streaming means healthy. Monitor these to detect replication issues."}]
+];
+YREF["sa-fail"]=[
+  [{p:"statefulset.yaml",y:"livenessProbe:\n  exec:\n    command: [pg_isready,-U,appuser]\n  initialDelaySeconds: 30\n  periodSeconds: 10",d:"Liveness probe checks if PostgreSQL accepts connections. If it fails 3 times, K8s kills the container. This does NOT trigger failover in Solution A."},{p:"readinessProbe",y:"readinessProbe:\n  exec:\n    command: [pg_isready,-U,appuser]\n  initialDelaySeconds: 5\n  periodSeconds: 5",d:"Readiness probe: if fails, pod is removed from Service endpoints. Traffic stops going to this pod until recovery."}],
+  [{p:"write-service.yaml",y:"selector: { role: primary }",d:"When pg-0 dies, the write service has no healthy endpoints. All write requests fail with ConnectionRefused."},{p:"read-service.yaml",y:"selector: { role: replica }",d:"Read service still has pg-1 and pg-2 as healthy endpoints. Reads continue working throughout the failure!"}],
+  [{p:"volumeClaimTemplates",y:"volumeClaimTemplates:\n  - metadata: { name: data }\n    spec:\n      accessModes: [ReadWriteOnce]\n      resources:\n        requests: { storage: 1Gi }",d:"PVC pg-data-postgres-0 persists across pod restarts. When K8s creates a new pg-0 container, the PVC reattaches with all data intact. No data loss!"}],
+  [{p:"Npgsql retry config",y:"opt.UseNpgsql(writeConn, n =>\n  n.EnableRetryOnFailure(3))",d:"Npgsql retries failed connections 3 times with exponential backoff. If pg-0 recovers within the retry window, writes resume automatically without app restart."}]
+];
+YREF["sb-arch"]=[
+  [{p:"write-service.yaml (Patroni)",y:"spec:\n  type: ClusterIP\n  # NO selector!\n  ports:\n    - port: 5432",d:"NO selector means K8s does not manage the Endpoints. Patroni creates and updates the Endpoint directly, pointing to the current leader pod IP."},{p:"rbac.yaml",y:"rules:\n  - resources: [endpoints]\n    verbs: [create,update,patch]",d:"Patroni needs RBAC permission to manage Endpoints. Without this, it cannot update the write service when leadership changes."}],
+  [{p:"patroni-config.yaml",y:"bootstrap:\n  dcs:\n    ttl: 30\n    loop_wait: 10",d:"ttl=30: leader lock expires after 30 seconds if not renewed. loop_wait=10: Patroni checks health and renews lock every 10 seconds. These control failover speed."},{p:"patroni-config.yaml",y:"kubernetes:\n  use_endpoints: true",d:"Patroni uses K8s Endpoints as its distributed config store (DCS). The leader writes its identity to a K8s Endpoint object. Other pods watch it."}]
+];
+YREF["sb-repl"]=[
+  [{p:"patroni-config.yaml",y:"postgresql:\n  parameters:\n    wal_level: replica\n    max_wal_senders: 5\n    hot_standby: 'on'",d:"Same PostgreSQL parameters as Solution A, but Patroni applies them automatically during bootstrap. No manual postgresql.conf editing needed."},{p:"bootstrap.users",y:"users:\n  replicator:\n    password: replpass\n    options: [replication]",d:"Patroni auto-creates the replication user during bootstrap. In Solution A, you need a manual init script for this."}],
+  [{p:"Same WAL mechanism",y:"# Patroni configures these automatically:\n# - replication slots per replica\n# - pg_hba.conf replication entries\n# - primary_conninfo on replicas",d:"The WAL streaming mechanism is identical to Solution A. The difference is that Patroni manages the entire lifecycle automatically."}]
+];
+YREF["sb-fail"]=[
+  [{p:"patroni-config.yaml",y:"dcs:\n  ttl: 30\n  loop_wait: 10",d:"Leader renews its lock every loop_wait (10s). Other pods monitor leader health. Normal operation: leader is responsive, lock renewed."}],
+  [{p:"Leader lock TTL",y:"ttl: 30  # seconds\n# If leader doesn't renew within 30s:\n# -> lock expires\n# -> replicas can compete",d:"The TTL (Time To Live) is the critical failover parameter. Lower = faster failover but more sensitive to brief network hiccups."}],
+  [{p:"maximum_lag_on_failover",y:"maximum_lag_on_failover: 1048576  # 1MB\n# Only replicas with < 1MB lag\n# are eligible for promotion",d:"Prevents promoting a very outdated replica. The replica with the least WAL lag wins the election. pg_promote() transitions it from standby to primary."},{p:"Endpoint update",y:"# Patroni leader updates Endpoint:\n# postgres-write -> new leader IP\n# App reconnects automatically",d:"The postgres-write service Endpoint is updated to the new leader IP. Existing connections break but new connections route correctly. Npgsql retry handles reconnection."}],
+  [{p:"pg_rewind",y:"# Old leader restarts:\n# Patroni detects: not leader anymore\n# Uses pg_rewind to resync\n# Faster than full pg_basebackup",d:"pg_rewind efficiently resyncs the old leader with the new one by reverting only the divergent WAL. Much faster than a full pg_basebackup for small divergence."}]
+];
+var EXPLAIN={};
+EXPLAIN["sa-ns-x"]=[{q:"apiVersion: v1",a:"Kubernetes API version. v1 is the core/stable API for basic resources like Namespaces, Pods, Services, Secrets."},{q:"kind: Namespace",a:"Resource type. A Namespace provides logical isolation - all resources inside are separated from other namespaces. Easy cleanup: kubectl delete ns myapp removes everything."},{q:"metadata.name: myapp",a:"The namespace name. All YAML files reference namespace: myapp. Pods, services, secrets are all scoped to this namespace."},{q:"labels.environment: local",a:"Labels are key-value metadata for organizing and filtering resources. This marks the namespace as a local dev environment."}];
+EXPLAIN["sa-sec1-x"]=[{q:"kind: Secret",a:"Stores sensitive data (passwords, connection strings). Encoded in base64 at rest. Mounted as env vars or files in pods."},{q:"type: Opaque",a:"Generic secret type. Other types: kubernetes.io/tls (TLS certs), kubernetes.io/dockerconfigjson (registry auth)."},{q:"stringData",a:"Plain text input - K8s auto-encodes to base64. Alternative: data field with pre-encoded base64 values."},{q:"Host=postgres-write.myapp.svc.cluster.local",a:"K8s internal DNS for the write service. Format: <service>.<namespace>.svc.cluster.local. Routes to pods with selector role=primary."},{q:"Host=postgres-read.myapp.svc.cluster.local",a:"Read service DNS. Routes to pods with selector role=replica. kube-proxy load balances between pg-1 and pg-2."},{q:"Pooling=true; Min Pool Size=2; Max Pool Size=10",a:"Npgsql connection pooling. Pre-warms 2 connections, allows max 10. Reduces connection overhead for repeated queries."},{q:"Target Session Attrs=prefer-standby",a:"Npgsql parameter: prefer connecting to a standby (replica). Falls back to primary if no standby available. Ensures reads go to replicas."}];
+EXPLAIN["sa-sec2-x"]=[{q:"Host=postgres-0.postgres-headless...",a:"Direct pod DNS via headless service. Format: <pod>.<headless-svc>.<ns>.svc.cluster.local. Bypasses kube-proxy - connects directly to the pod IP."},{q:"Host=postgres-1..., postgres-2...",a:"Multiple hosts comma-separated. Npgsql tries them in order or round-robins (with Load Balance Hosts=true)."},{q:"Load Balance Hosts=true",a:"Npgsql distributes connections across the listed hosts. Without this, it always tries the first host first."},{q:"Trade-off: Service vs Pod DNS",a:"Service approach: simpler, kube-proxy handles routing, works with Patroni failover. Pod DNS: direct connection, bypasses load balancer, but hardcodes pod identity (breaks with Patroni where leader changes)."}];
+EXPLAIN["sa-cm-x"]=[{q:"wal_level = replica",a:"Controls how much info is written to WAL. 'replica' enables streaming replication. Other options: minimal (no replication), logical (for logical replication/CDC)."},{q:"max_wal_senders = 5",a:"Max concurrent WAL streaming connections. We need at least 2 (one per replica). Extra capacity for pg_basebackup operations."},{q:"max_replication_slots = 5",a:"Replication slots prevent WAL cleanup until all replicas have consumed the data. Prevents replicas from falling behind and needing a full re-sync."},{q:"hot_standby = on",a:"Allows SELECT queries on replicas during WAL replay. Without this, replicas reject ALL queries and are useless for reads."},{q:"hot_standby_feedback = on",a:"Replicas report their oldest transaction to the primary. Prevents the primary from vacuuming rows still needed by replica queries."},{q:"pg_hba.conf: host replication all 0.0.0.0/0 md5",a:"CRITICAL: Allows replication connections from any IP with password auth. Without this line, replicas CANNOT connect to the primary for streaming."},{q:"setup-replica.sh: pg_basebackup",a:"Full physical copy of the entire database from primary to replica. -Fp=plain format, -Xs=stream WAL during backup (no data loss), -P=show progress, -R=write recovery config."}];
+EXPLAIN["sa-hl-x"]=[{q:"clusterIP: None",a:"Makes this a HEADLESS service. Normal services get a virtual IP (10.96.x.x) and kube-proxy load balances. Headless: NO virtual IP. DNS returns individual pod IPs directly."},{q:"DNS entries created",a:"postgres-0.postgres-headless.myapp.svc.cluster.local -> pod-0 IP\npostgres-1.postgres-headless... -> pod-1 IP\npostgres-2.postgres-headless... -> pod-2 IP"},{q:"publishNotReadyAddresses: true",a:"Include pods in DNS even if they're not Ready yet. Critical: replicas need to find the primary during initial pg_basebackup, before they pass their readiness probe."}];
+EXPLAIN["sa-ws-x"]=[{q:"selector: { app: postgres, role: primary }",a:"Only routes to pods with BOTH labels. The init container on pg-0 sets role=primary. pg-1 and pg-2 get role=replica. So this service only ever routes to pg-0."},{q:"type: ClusterIP",a:"Internal-only service with a virtual IP. Not accessible from outside the cluster. The ASP.NET pod connects to this service for all write operations."}];
+EXPLAIN["sa-rs-x"]=[{q:"selector: { app: postgres, role: replica }",a:"Routes to pods with role=replica (pg-1 and pg-2). kube-proxy round-robins between them. If one replica dies, traffic goes to the surviving one."},{q:"Why separate services?",a:"Write and read services allow different routing. Writes always go to primary (consistency). Reads go to replicas (scalability). This is the CQRS pattern at the infrastructure level."}];
+EXPLAIN["sa-ss-x"]=[{q:"kind: StatefulSet",a:"Unlike Deployment: pods get stable names (postgres-0,1,2), created in order (0 first), each gets its own PVC, deleted in reverse order. Essential for databases."},{q:"serviceName: postgres-headless",a:"Links to the headless service for DNS. Combined: postgres-0.postgres-headless.myapp.svc.cluster.local"},{q:"replicas: 3",a:"Creates postgres-0, postgres-1, postgres-2. pg-0 starts first and must be Ready before pg-1 starts (ordered startup)."},{q:"initContainers",a:"Runs BEFORE the main container. Detects role (primary/replica) by checking pod ordinal from HOSTNAME. Replicas run pg_basebackup to copy data from primary."},{q:"livenessProbe: pg_isready",a:"Checks if PostgreSQL is accepting connections. If fails 3 times -> K8s kills and restarts the container. Does NOT trigger failover in Solution A."},{q:"readinessProbe: pg_isready",a:"If fails -> pod removed from Service endpoints. Traffic stops going to this pod. Pod stays running but not receiving traffic until it recovers."},{q:"volumeClaimTemplates",a:"Each pod gets its OWN PVC: pg-data-postgres-0, pg-data-postgres-1, pg-data-postgres-2. PVCs persist even when pods are deleted. On Minikube: uses 'standard' StorageClass (hostPath)."}];
+
+// SB explaining
+EXPLAIN["sb-ns-x"]=EXPLAIN["sa-ns-x"];
+EXPLAIN["sb-sec1-x"]=[{q:"Host=postgres-write.myapp.svc.cluster.local",a:"KEY DIFFERENCE: In Patroni, this service has NO selector. Patroni manages the Endpoint directly, pointing to the current leader. After failover, the Endpoint updates to the new leader's IP. Connection string never changes!"},{q:"PATRONI_SUPERUSER_PASSWORD",a:"PostgreSQL superuser password for Patroni management operations (pg_rewind, pg_promote, etc)."},{q:"REPLICATION_PASSWORD",a:"Used by Patroni to configure streaming replication between pods automatically."}];
+EXPLAIN["sb-sec2-x"]=[{q:"All 3 hosts listed for writes",a:"With Patroni, pg-0 may NOT be the leader. Listing all hosts with Target Session Attrs=read-write lets Npgsql connect to whichever pod is currently the primary."},{q:"Target Session Attrs=read-write",a:"Npgsql tries each host and checks if it's a primary (read-write). Skips replicas. Finds the leader regardless of which pod it is."},{q:"Risk: Slightly slower connection",a:"Npgsql may need to try multiple hosts to find the primary. The service-based approach (Option 1) is faster because Patroni keeps the Endpoint updated."}];
+EXPLAIN["sb-rbac-x"]=[{q:"ServiceAccount: patroni",a:"Kubernetes identity for Patroni pods. Like a user account but for pods. Referenced via spec.serviceAccountName in the StatefulSet."},{q:"Role: endpoints, pods, configmaps",a:"Patroni needs to: create/update Endpoints (leader election), read pod info, store config in ConfigMaps. Without these permissions, leader election FAILS."},{q:"RoleBinding",a:"Connects the ServiceAccount to the Role. Scoped to the 'myapp' namespace only (least privilege principle)."}];
+EXPLAIN["sb-pcm-x"]=[{q:"scope: pg-cluster",a:"Cluster name. All Patroni instances with the same scope form ONE cluster. Used as the K8s Endpoint name for leader election."},{q:"kubernetes.use_endpoints: true",a:"Use K8s Endpoints as DCS. Patroni creates an Endpoint named after the scope. The leader writes its identity there. Safer than ConfigMaps (atomic update)."},{q:"restapi.connect_address",a:"How OTHER pods reach this pod's REST API. Uses headless DNS: $(HOSTNAME).postgres-headless... so each pod has a unique reachable address."},{q:"postgresql.connect_address",a:"How OTHER pods reach this pod's PostgreSQL. Same headless DNS pattern. Essential for replicas to connect to primary for streaming."},{q:"authentication.superuser: postgres",a:"CRITICAL: Patroni connects to PostgreSQL as 'postgres' superuser. The postgres role is auto-created by initdb. Without this, you get 'role postgres does not exist' errors."},{q:"authentication.replication: replicator",a:"The user Patroni creates for streaming replication between pods. Replicas connect to the primary using this user."},{q:"post_bootstrap script",a:"Runs ONCE after initial cluster bootstrap (initdb). Creates the 'appuser' application user with password, CREATEDB, and grants on the public schema."},{q:"ttl: 30 / loop_wait: 10",a:"Leader lock TTL=30s. Patroni renews every loop_wait=10s. If leader misses 3 renewals, lock expires and failover triggers."},{q:"maximum_lag_on_failover: 1048576",a:"1MB max WAL lag. Only replicas within 1MB of the primary are eligible for promotion during failover. Prevents promoting very outdated replicas."}];
+EXPLAIN["sb-hl-x"]=EXPLAIN["sa-hl-x"];
+EXPLAIN["sb-ws-x"]=[{q:"NO selector in spec!",a:"CRITICAL difference from Solution A. Normal services have a selector that matches pod labels. This service has NONE. Patroni directly manages the Endpoints object."},{q:"How Patroni manages it",a:"1. Leader Patroni creates/updates K8s Endpoint 'postgres-write'\n2. Sets the Endpoint address to its own pod IP\n3. If leadership changes, new leader updates the Endpoint\n4. K8s routes all new connections to the new IP\n5. Result: transparent failover!"}];
+EXPLAIN["sb-rs-x"]=EXPLAIN["sa-rs-x"];
+EXPLAIN["sb-ss-x"]=[{q:"serviceAccountName: patroni",a:"Gives this pod the RBAC permissions to manage Endpoints for leader election. Without it, Patroni gets 403 Forbidden errors."},{q:"image: patroni-k8s:local",a:"Locally-built image inside Minikube (via eval $(minikube docker-env) + docker build). Contains postgres:16-alpine + Patroni + python kubernetes module. No registry pull needed."},{q:"imagePullPolicy: Never",a:"Tells K8s to use the local image and never try pulling from Docker Hub. Essential for Minikube local builds."},{q:"ports: 5432 (PG) + 8008 (Patroni API)",a:"Two ports: PostgreSQL for data, Patroni REST API for health checks and management."},{q:"PATRONI_KUBERNETES_USE_ENDPOINTS: true",a:"Tells Patroni to use K8s Endpoints (not ConfigMaps) for leader election. Safer because leader info and Endpoint addresses update atomically."},{q:"readinessProbe: /readiness on 8008",a:"Patroni checks if PG is running AND accepting connections. More intelligent than raw pg_isready because Patroni knows the cluster state."},{q:"NO initContainers!",a:"Patroni handles everything: bootstrap (initdb), pg_basebackup for replicas, streaming replication, health monitoring. No shell scripts needed."}];
+
+// ═══════════════════════════════════════
+// TREES
+// ═══════════════════════════════════════
+var TR={
+sa:[
+{t:"f",n:"solution-a-static/",d:0},
+{t:"f",n:"namespace/",d:1},
+{t:"i",n:"namespace.yaml",d:2,id:"sa-ns",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sa-ns-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"f",n:"secrets/",d:1},
+{t:"i",n:"secret-via-services.yaml",d:2,id:"sa-sec1",x:"yaml",ic:"\uD83D\uDD10"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sa-sec1-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"secret-via-pod-dns.yaml",d:2,id:"sa-sec2",x:"yaml",ic:"\uD83D\uDD10"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sa-sec2-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"f",n:"postgres/",d:1},
+{t:"i",n:"configmap.yaml",d:2,id:"sa-cm",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sa-cm-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"headless-service.yaml",d:2,id:"sa-hl",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sa-hl-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"write-service.yaml",d:2,id:"sa-ws",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sa-ws-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"read-service.yaml",d:2,id:"sa-rs",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sa-rs-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"statefulset.yaml",d:2,id:"sa-ss",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sa-ss-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"f",n:"app/",d:1},
+{t:"i",n:"deployment.yaml",d:2,id:"sa-app",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"service.yaml",d:2,id:"sa-asvc",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"f",n:"scripts/",d:1},
+{t:"i",n:"deploy.sh",d:2,id:"sa-deploy",x:"bash",ic:"\u26A1"},
+{t:"f",n:"explaining/",d:1},
+{t:"i",n:"\uD83C\uDFD7 architecture",d:2,id:"sa-arch",x:"explain",ic:"\uD83C\uDFD7"},
+{t:"i",n:"\uD83D\uDD04 replication",d:2,id:"sa-repl",x:"explain",ic:"\uD83D\uDD04"},
+{t:"i",n:"\uD83D\uDCA5 primary failure",d:2,id:"sa-fail",x:"explain",ic:"\uD83D\uDCA5"}
+],
+sb:[
+{t:"f",n:"solution-b-patroni/",d:0},
+{t:"f",n:"namespace/",d:1},
+{t:"i",n:"namespace.yaml",d:2,id:"sb-ns",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-ns-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"f",n:"secrets/",d:1},
+{t:"i",n:"secret-via-services.yaml",d:2,id:"sb-sec1",x:"yaml",ic:"\uD83D\uDD10"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-sec1-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"secret-via-pod-dns.yaml",d:2,id:"sb-sec2",x:"yaml",ic:"\uD83D\uDD10"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-sec2-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"f",n:"patroni/",d:1},
+{t:"i",n:"rbac.yaml",d:2,id:"sb-rbac",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-rbac-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"patroni-config.yaml",d:2,id:"sb-pcm",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-pcm-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"Dockerfile.patroni",d:2,id:"sb-dockerfile",x:"dockerfile",ic:"\uD83D\uDC33"},
+{t:"i",n:"headless-service.yaml",d:2,id:"sb-hl",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-hl-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"write-service.yaml",d:2,id:"sb-ws",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-ws-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"read-service.yaml",d:2,id:"sb-rs",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-rs-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"i",n:"statefulset.yaml",d:2,id:"sb-ss",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"\uD83D\uDCA1 explaining",d:2,id:"sb-ss-x",x:"explain",ic:"\uD83D\uDCA1",e:1},
+{t:"f",n:"app/",d:1},
+{t:"i",n:"deployment.yaml",d:2,id:"sb-app",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"i",n:"service.yaml",d:2,id:"sb-asvc",x:"yaml",ic:"\uD83D\uDCDC"},
+{t:"f",n:"scripts/",d:1},
+{t:"i",n:"deploy.sh",d:2,id:"sb-deploy",x:"bash",ic:"\u26A1"},
+{t:"i",n:"docker-patroni-options.sh",d:2,id:"sb-dock-opts",x:"bash",ic:"\uD83D\uDC33"},
+{t:"f",n:"explaining/",d:1},
+{t:"i",n:"\uD83C\uDFD7 architecture",d:2,id:"sb-arch",x:"explain",ic:"\uD83C\uDFD7"},
+{t:"i",n:"\uD83D\uDD04 replication",d:2,id:"sb-repl",x:"explain",ic:"\uD83D\uDD04"},
+{t:"i",n:"\uD83D\uDCA5 failover",d:2,id:"sb-fail",x:"explain",ic:"\uD83D\uDCA5"}
+],
+app:[
+{t:"f",n:"MyApp.Api/",d:0},
+{t:"i",n:"MyApp.Api.csproj",d:1,id:"app-csproj",x:"xml",ic:"\uD83D\uDCE6"},
+{t:"i",n:"Program.cs",d:1,id:"app-prog",x:"csharp",ic:"\uD83D\uDD35"},
+{t:"i",n:"Dockerfile",d:1,id:"app-dock",x:"dockerfile",ic:"\uD83D\uDC33"},
+{t:"i",n:"appsettings.Development.json",d:1,id:"app-set",x:"json",ic:"\u2699\uFE0F"},
+{t:"f",n:"Models/",d:1},
+{t:"i",n:"Product.cs",d:2,id:"app-prod",x:"csharp",ic:"\uD83D\uDD35"},
+{t:"i",n:"Order.cs",d:2,id:"app-ord",x:"csharp",ic:"\uD83D\uDD35"},
+{t:"f",n:"Data/",d:1},
+{t:"i",n:"AppDbContext.cs",d:2,id:"app-wdb",x:"csharp",ic:"\uD83D\uDD35"},
+{t:"i",n:"ReadOnlyDbContext.cs",d:2,id:"app-rdb",x:"csharp",ic:"\uD83D\uDD35"},
+{t:"f",n:"Services/",d:1},
+{t:"i",n:"IProductService.cs",d:2,id:"app-isv",x:"csharp",ic:"\uD83D\uDD35"},
+{t:"i",n:"ProductService.cs",d:2,id:"app-svc",x:"csharp",ic:"\uD83D\uDD35"},
+{t:"f",n:"Controllers/",d:1},
+{t:"i",n:"ProductsController.cs",d:2,id:"app-ctl",x:"csharp",ic:"\uD83D\uDD35"}
+]};
+
+// ═══ FILE META (for tab display) ═══
+var FM={};
+function addFM(id,t,l){FM[id]={t:t,l:l}}
+addFM("sa-ns","namespace.yaml","yaml");addFM("sa-ns-x","explaining: namespace","explain");
+addFM("sa-sec1","secret-via-services.yaml","yaml");addFM("sa-sec1-x","explaining: secret (svc)","explain");
+addFM("sa-sec2","secret-via-pod-dns.yaml","yaml");addFM("sa-sec2-x","explaining: secret (pod)","explain");
+addFM("sa-cm","configmap.yaml","yaml");addFM("sa-cm-x","explaining: configmap","explain");
+addFM("sa-hl","headless-service.yaml","yaml");addFM("sa-hl-x","explaining: headless","explain");
+addFM("sa-ws","write-service.yaml","yaml");addFM("sa-ws-x","explaining: write-svc","explain");
+addFM("sa-rs","read-service.yaml","yaml");addFM("sa-rs-x","explaining: read-svc","explain");
+addFM("sa-ss","statefulset.yaml","yaml");addFM("sa-ss-x","explaining: statefulset","explain");
+addFM("sa-app","deployment.yaml","yaml");addFM("sa-asvc","service.yaml","yaml");
+addFM("sa-deploy","deploy.sh","bash");
+addFM("sa-arch","architecture","explain");addFM("sa-repl","replication","explain");addFM("sa-fail","primary failure","explain");
+addFM("sb-ns","namespace.yaml","yaml");addFM("sb-ns-x","explaining: namespace","explain");
+addFM("sb-sec1","secret-via-services.yaml","yaml");addFM("sb-sec1-x","explaining: secret (svc)","explain");
+addFM("sb-sec2","secret-via-pod-dns.yaml","yaml");addFM("sb-sec2-x","explaining: secret (pod)","explain");
+addFM("sb-rbac","rbac.yaml","yaml");addFM("sb-rbac-x","explaining: rbac","explain");
+addFM("sb-pcm","patroni-config.yaml","yaml");addFM("sb-pcm-x","explaining: patroni cfg","explain");
+addFM("sb-dockerfile","Dockerfile.patroni","dockerfile");
+addFM("sb-hl","headless-service.yaml","yaml");addFM("sb-hl-x","explaining: headless","explain");
+addFM("sb-ws","write-service.yaml","yaml");addFM("sb-ws-x","explaining: write-svc","explain");
+addFM("sb-rs","read-service.yaml","yaml");addFM("sb-rs-x","explaining: read-svc","explain");
+addFM("sb-ss","statefulset.yaml","yaml");addFM("sb-ss-x","explaining: statefulset","explain");
+addFM("sb-app","deployment.yaml","yaml");addFM("sb-asvc","service.yaml","yaml");
+addFM("sb-deploy","deploy.sh","bash");
+addFM("sb-dock-opts","docker-patroni-options.sh","bash");
+addFM("sb-arch","architecture","explain");addFM("sb-repl","replication","explain");addFM("sb-fail","failover","explain");
+addFM("app-csproj","MyApp.Api.csproj","xml");addFM("app-prog","Program.cs","csharp");addFM("app-dock","Dockerfile","dockerfile");addFM("app-set","appsettings.json","json");
+addFM("app-prod","Product.cs","csharp");addFM("app-ord","Order.cs","csharp");addFM("app-wdb","AppDbContext.cs","csharp");addFM("app-rdb","ReadOnlyDbContext.cs","csharp");
+addFM("app-isv","IProductService.cs","csharp");addFM("app-svc","ProductService.cs","csharp");addFM("app-ctl","ProductsController.cs","csharp");
+
+// ═══ ENGINE ═══
+var aR="sa",aF=null,oT=[];
+
+// Render tabs
+function renderMainTabs(){
+  var h="";
+  TABS.forEach(function(t){
+    var ac=aR===t.id?" "+t.cls:"";
+    h+="<button class=\"tab"+ac+"\" onclick=\"sw('"+t.id+"')\">"+t.label+"</button>";
+  });
+  document.getElementById("tabs").innerHTML=h;
+}
+
+function sw(r){aR=r;renderMainTabs();renderTree();}
+window.sw=sw;
+
+function renderTree(){
+  var t=TR[aR],c=document.getElementById("tree"),h="";
+  for(var i=0;i<t.length;i++){
+    var it=t[i],ind="";
+    for(var j=0;j<it.d;j++)ind+="<span class=\"tsp\"></span>";
+    if(it.t==="f")h+="<div class=\"ti fld\" onclick=\"tf(this)\">"+ind+"<span class=\"tch op\">\u25B6</span><span class=\"tic\">\uD83D\uDCC1</span><span class=\"tn\">"+it.n+"</span></div>";
+    else{var ac=aF===it.id?" act":"",ec=it.e?" exp":"";h+="<div class=\"ti"+ac+ec+"\" onclick=\"sf('"+it.id+"')\">"+ind+"<span class=\"tic\">"+it.ic+"</span><span class=\"tn\">"+it.n+"</span></div>"}
+  }
+  c.innerHTML=h;
+}
+
+window.tf=function(el){var ch=el.querySelector(".tch"),o=ch.classList.toggle("op"),d=el.querySelectorAll(".tsp").length,s=el.nextElementSibling;while(s){if(s.querySelectorAll(".tsp").length<=d)break;s.style.display=o?"":"none";s=s.nextElementSibling}};
+window.sf=function(id){aF=id;if(oT.indexOf(id)===-1)oT.push(id);renderTree();renderFileTabs();renderContent(id)};
+window.ct=function(id,ev){ev.stopPropagation();oT=oT.filter(function(x){return x!==id});if(aF===id)aF=oT.length?oT[oT.length-1]:null;renderFileTabs();if(aF)renderContent(aF);else showEmpty();renderTree()};
+
+function renderFileTabs(){
+  var b=document.getElementById("ftb"),h="";
+  oT.forEach(function(id){
+    var m=FM[id];if(!m)return;
+    var cl=LC[m.l]||"#6366f1",ac=aF===id?" act":"";
+    h+="<button class=\"ft"+ac+"\" onclick=\"sf('"+id+"')\"><span class=\"fdt\" style=\"background:"+cl+"\"></span>"+m.t+"<span style=\"cursor:pointer;margin-left:4px;color:#475569;font-size:11px\" onclick=\"ct('"+id+"',event)\">\u00D7</span></button>";
+  });
+  b.innerHTML=h;
+}
+
+function showEmpty(){document.getElementById("cnt").innerHTML="<div class=\"empty\"><div class=\"ei\">\uD83D\uDCC2</div><p>Select a file.</p></div>"}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+
+function renderContent(id){
+  var a=document.getElementById("cnt");
+  var m=FM[id];if(!m)return;
+  var code=C[id];
+  var rn=TR.sa.some(function(x){return x.id===id})?"solution-a-static":TR.sb.some(function(x){return x.id===id})?"solution-b-patroni":"MyApp.Api";
+
+  // Check if it's a diagram
+  if(DIAG[id]){renderDiagram(id);return}
+
+  // Check if it's an explanation
+  if(EXPLAIN[id]){renderExplain(id,rn);return}
+
+  // Regular code file
+  if(!code)return;
+  var cl=LC[m.l]||"#6366f1";
+  var h="<div class=\"fc\"><div class=\"fp\"><b>"+rn+"/</b>"+m.t+"</div>";
+  h+="<div class=\"cb\"><div class=\"cbh\"><div class=\"cbhl\"><div class=\"cbd\" style=\"background:"+cl+"\"></div><span class=\"cbf\">"+m.t+"</span><span class=\"cbl\">"+m.l+"</span></div><button class=\"cpb\" onclick=\"dc(this,'"+id+"')\">Copy</button></div><pre class=\"pre\">"+esc(code)+"</pre></div></div>";
+  a.innerHTML=h;a.scrollTop=0;
+}
+
+// ═══ Render interactive diagram (screenshot-style) ═══
+function renderDiagram(id){
+  var d=DIAG[id],a=document.getElementById("cnt");
+  var yr=YREF[id]||[];
+  var curStep=0;
+  function draw(){
+    var h="<div class=\"fc\"><div class=\"diag\">";
+    h+="<div class=\"diag-tabs\">";
+    d.steps.forEach(function(s,i){
+      h+="<button class=\"diag-tab"+(i===curStep?" act":"")+"\" onclick=\"diagTab('"+id+"',"+i+")\">"+s.tab+"</button>";
+    });
+    h+="</div>";
+    h+="<div class=\"diag-body\">"+d.steps[curStep].html+"</div>";
+    // YAML Reference section
+    var stepYaml=yr[curStep];
+    if(stepYaml&&stepYaml.length>0){
+      var yid="yr_"+id+"_"+curStep;
+      h+="<div class=\"yaml-ref\">";
+      h+="<div class=\"yaml-ref-hdr open\" onclick=\"this.classList.toggle('open');this.nextElementSibling.classList.toggle('show')\">";
+      h+="<span class=\"arr\">\u25B6</span> \uD83D\uDCDC YAML Reference \u2014 Properties that make this work</div>";
+      h+="<div class=\"yaml-ref-body show\">";
+      stepYaml.forEach(function(item){
+        h+="<div class=\"yaml-ref-item\">";
+        h+="<div class=\"yaml-ref-prop\">\uD83D\uDD27 "+esc(item.p)+"</div>";
+        h+="<pre>"+esc(item.y)+"</pre>";
+        h+="<div class=\"yaml-ref-desc\">"+esc(item.d)+"</div>";
+        h+="</div>";
+      });
+      h+="</div></div>";
+    }
+    // nav
+    h+="<div class=\"diag-nav\">";
+    h+="<button class=\"diag-btn\" "+(curStep===0?"disabled":"")+" onclick=\"diagNav('"+id+"',-1)\">\u2190 Prev</button>";
+    h+="<span class=\"diag-counter\">"+(curStep+1)+" / "+d.steps.length+"</span>";
+    h+="<button class=\"diag-btn next\" "+(curStep===d.steps.length-1?"disabled":"")+" onclick=\"diagNav('"+id+"',1)\">Next \u2192</button>";
+    h+="</div></div></div>";
+    a.innerHTML=h;a.scrollTop=0;
+  }
+  window._diagState=window._diagState||{};
+  window._diagState[id]=curStep;
+  draw();
+  window.diagTab=function(did,i){window._diagState[did]=i;curStep=i;draw()};
+  window.diagNav=function(did,dir){var s=window._diagState[did]+dir;if(s<0||s>=DIAG[did].steps.length)return;window._diagState[did]=s;curStep=s;draw()};
+}
+
+// ═══ Render property-by-property explanation ═══
+function renderExplain(id,rn){
+  var items=EXPLAIN[id],a=document.getElementById("cnt");
+  if(!items){a.innerHTML="<div class=\"fc\"><p>No explanation available.</p></div>";return}
+  var m=FM[id];
+  var h="<div class=\"fc\"><div class=\"fp\"><b>"+rn+"/</b>"+m.t+"</div>";
+  h+="<div style=\"margin-bottom:14px\"><span style=\"font-size:14px;font-weight:700;color:#f59e0b\">\uD83D\uDCA1 Property-by-Property Explanation</span></div>";
+  items.forEach(function(item,i){
+    h+="<div style=\"margin-bottom:10px;border:1px solid rgba(255,255,255,0.06);border-radius:7px;overflow:hidden\">";
+    h+="<div style=\"padding:8px 12px;background:rgba(249,115,22,0.05);border-bottom:1px solid rgba(255,255,255,0.06);font-size:11px;font-weight:600;color:#fb923c;font-family:monospace\">"+esc(item.q)+"</div>";
+    h+="<div style=\"padding:10px 12px;font-size:11px;color:#94a3b8;line-height:1.7;white-space:pre-wrap\">"+esc(item.a)+"</div>";
+    h+="</div>";
+  });
+  h+="</div>";
+  a.innerHTML=h;a.scrollTop=0;
+}
+
+window.dc=function(b,id){var c=C[id];if(!c)return;navigator.clipboard.writeText(c).then(function(){b.textContent="\u2713";b.classList.add("ok");setTimeout(function(){b.textContent="Copy";b.classList.remove("ok")},1200)})};
+
+renderMainTabs();
+renderTree();
+})();
+</script>
+</body>
+</html>

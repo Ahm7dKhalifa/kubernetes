@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: postgres, namespace: myapp }
+spec:
+  serviceName: postgres-headless
+  replicas: 3
+  selector: { matchLabels: { app: postgres } }
+  template:
+    metadata: { labels: { app: postgres } }
+    spec:
+      serviceAccountName: patroni
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: patroni
+          image: patroni-k8s:local
+          imagePullPolicy: Never
+          ports:
+            - { containerPort: 5432, name: pg }
+            - { containerPort: 8008, name: api }
+          env:
+            # Patroni identity
+            - name: PATRONI_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - { name: PATRONI_SCOPE, value: pg-cluster }
+            - { name: PATRONI_NAMESPACE, value: myapp }
+
+            # Kubernetes DCS
+            - { name: PATRONI_KUBERNETES_NAMESPACE, value: myapp }
+            - { name: PATRONI_KUBERNETES_USE_ENDPOINTS, value: "true" }
+            - { name: PATRONI_KUBERNETES_LABELS, value: "{app: postgres}" }
+
+            # PostgreSQL superuser (Patroni connects with this)
+            - { name: PATRONI_SUPERUSER_USERNAME, value: postgres }
+            - name: PATRONI_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: postgres-secret, key: PATRONI_SUPERUSER_PASSWORD }
+
+            # Replication user
+            - { name: PATRONI_REPLICATION_USERNAME, value: replicator }
+            - name: PATRONI_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: postgres-secret, key: REPLICATION_PASSWORD }
+
+            # Data directory
+            - { name: PATRONI_POSTGRESQL_DATA_DIR, value: /var/lib/postgresql/data/pgdata }
+
+            # Listen addresses
+            - { name: PATRONI_POSTGRESQL_LISTEN, value: 0.0.0.0:5432 }
+            - { name: PATRONI_RESTAPI_LISTEN, value: 0.0.0.0:8008 }
+
+            # Connect addresses (how other pods reach this pod)
+            - name: PATRONI_POSTGRESQL_CONNECT_ADDRESS
+              value: $(PATRONI_NAME).postgres-headless.myapp.svc.cluster.local:5432
+            - name: PATRONI_RESTAPI_CONNECT_ADDRESS
+              value: $(PATRONI_NAME).postgres-headless.myapp.svc.cluster.local:8008
+
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: pcfg, mountPath: /etc/patroni }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /readiness, port: 8008 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /liveness, port: 8008 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: pcfg
+          configMap: { name: patroni-config }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }

@@ -1,0 +1,18 @@
+# Dockerfile.patroni - Build Patroni image for Minikube
+# Based on official postgres:16, installs Patroni + K8s deps
+FROM postgres:16-alpine
+
+RUN apk add --no-cache python3 py3-pip py3-psycopg2 curl bash \
+    && pip3 install --break-system-packages \
+        patroni[kubernetes] \
+        python-dateutil \
+    && rm -rf /root/.cache
+
+# Create data directory with correct permissions
+RUN mkdir -p /var/lib/postgresql/data \
+    && chown -R postgres:postgres /var/lib/postgresql
+
+USER postgres
+
+ENTRYPOINT ["patroni"]
+CMD ["/etc/patroni/patroni.yaml"]

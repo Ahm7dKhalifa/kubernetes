@@ -1,0 +1,7 @@
+# NO selector! Patroni manages Endpoints directly
+apiVersion: v1
+kind: Service
+metadata: { name: postgres-write, namespace: myapp }
+spec:
+  type: ClusterIP
+  ports: [{ name: pg, port: 5432, targetPort: 5432 }]
