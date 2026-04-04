@@ -1,8 +1,14 @@
 apiVersion: v1
 kind: Service
-metadata: { name: postgres-headless, namespace: myapp }
+metadata:
+  name: postgres-headless
+  namespace: myapp
 spec:
   clusterIP: None
-  selector: { app: postgres }
-  ports: [{ name: pg, port: 5432, targetPort: 5432 }]
-  publishNotReadyAddresses: true
+  selector:
+    app: postgres
+  ports:
+    - name: postgresql
+      port: 5432
+    - name: patroni
+      port: 8008

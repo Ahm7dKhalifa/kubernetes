@@ -1,0 +1,2 @@
+docker pull ghcr.io/zalando/spilo-15:3.2-p1
+minikube image pull ghcr.io/zalando/spilo-15:3.2-p1

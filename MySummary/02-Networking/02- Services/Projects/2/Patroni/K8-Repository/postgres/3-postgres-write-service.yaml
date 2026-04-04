@@ -1,7 +1,12 @@
-# NO selector! Patroni manages Endpoints directly
 apiVersion: v1
 kind: Service
-metadata: { name: postgres-write, namespace: myapp }
+metadata:
+  name: postgres-write
+  namespace: myapp
 spec:
-  type: ClusterIP
-  ports: [{ name: pg, port: 5432, targetPort: 5432 }]
+  selector:
+    app: postgres
+    role: master # Spilo/Patroni default label for leader
+  ports:
+    - port: 5432
+      targetPort: 5432

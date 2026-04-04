@@ -1,7 +1,12 @@
 apiVersion: v1
 kind: Service
-metadata: { name: postgres-read, namespace: myapp }
+metadata:
+  name: postgres-read
+  namespace: myapp
 spec:
-  type: ClusterIP
-  selector: { app: postgres, role: replica }
-  ports: [{ name: pg, port: 5432, targetPort: 5432 }]
+  selector:
+    app: postgres
+    role: replica
+  ports:
+    - port: 5432
+      targetPort: 5432
