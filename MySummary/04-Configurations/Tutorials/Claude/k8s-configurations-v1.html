@@ -1,0 +1,2301 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#05070a;color-scheme:dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#05070a" />
+<meta name="supported-color-schemes" content="dark" />
+<title>Kubernetes Configurations — The Deep Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;500;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#05070a;
+  --bg-2:#0a0d12;
+  --panel:#0d1117;
+  --panel-2:#111821;
+  --ink:#f0f4f9;
+  --ink-dim:#aab3c0;
+  --ink-faint:#6b7685;
+  --line:#1f2a38;
+  --line-2:#2a3747;
+  --accent:#6bc785;    /* envvar / green (muted) */
+  --accent-2:#6fa8e0;  /* configmap / blue (muted) */
+  --accent-3:#d99559;  /* secret / amber (muted) */
+  --danger:#c85555;
+  --warn:#c7a448;
+  --ok:#4ea86b;
+  --code-bg:#070a0e;
+  --chip:#141c26;
+  --radius:14px;
+  --radius-sm:8px;
+  --shadow:0 10px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
+  --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans:'Inter Tight', system-ui, -apple-system, sans-serif;
+  --serif:'Fraunces', Georgia, serif;
+}
+
+*{box-sizing:border-box}
+html{background:#05070a;color-scheme:dark}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+body{
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(74,143,209,.04), transparent 60%),
+    radial-gradient(1000px 500px at 110% 10%, rgba(78,168,107,.03), transparent 60%),
+    radial-gradient(800px 400px at 50% 120%, rgba(199,133,71,.025), transparent 60%),
+    var(--bg);
+  min-height:100vh;
+  color:var(--ink);
+}
+.shell, .layout, .main{background:#05070a}
+.main{color:#f0f4f9}
+
+/* ---------- Layout ---------- */
+.shell{max-width:1400px;margin:0 auto;padding:0}
+.layout{display:block}
+@media (min-width:960px){
+  .layout{display:grid;grid-template-columns:260px 1fr;gap:0;align-items:start}
+}
+.main{padding:24px 20px 120px;min-width:0}
+@media (min-width:760px){.main{padding:40px 32px 140px}}
+@media (min-width:960px){.main{padding:40px 48px 140px;max-width:1000px}}
+
+header.hero{
+  padding:28px 0 20px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:28px;
+}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink-dim);padding:6px 10px;border:1px solid var(--line-2);border-radius:999px;background:var(--panel);
+}
+.eyebrow .dot{width:6px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+h1.title{
+  font-family:var(--serif);font-weight:800;font-size:clamp(32px,5vw,56px);
+  line-height:1.05;letter-spacing:-0.02em;margin:18px 0 10px;
+}
+h1.title em{font-style:italic;font-weight:400;color:var(--ink-dim)}
+.subtitle{color:var(--ink-dim);max-width:720px;font-size:clamp(15px,1.6vw,17px)}
+
+.meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--chip);border:1px solid var(--line-2);border-radius:999px;
+  padding:6px 12px;font-family:var(--mono);font-size:12px;color:var(--ink-dim);
+}
+.chip b{color:var(--ink);font-weight:600}
+.chip.env .swatch{background:var(--accent)}
+.chip.cm .swatch{background:var(--accent-2)}
+.chip.sec .swatch{background:var(--accent-3)}
+.swatch{width:8px;height:8px;border-radius:2px;display:inline-block}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  background:var(--bg-2);
+  border-right:1px solid var(--line);
+  padding:24px 0;
+}
+@media (min-width:960px){
+  .sidebar{
+    position:sticky;top:0;height:100vh;overflow-y:auto;
+    padding:32px 0 40px;
+  }
+}
+@media (max-width:959px){
+  .sidebar{
+    position:fixed;top:0;left:-280px;width:280px;height:100vh;
+    z-index:100;transition:left .25s ease;
+    box-shadow:2px 0 20px rgba(0,0,0,.5);
+  }
+  .sidebar.open{left:0}
+  .sidebar-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
+    z-index:99;
+  }
+  .sidebar-backdrop.open{display:block}
+}
+.sidebar-brand{
+  padding:0 24px 20px;border-bottom:1px solid var(--line);margin-bottom:16px;
+}
+.sidebar-brand .tag{
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;
+}
+.sidebar-brand .name{
+  font-family:var(--serif);font-size:17px;font-weight:600;color:var(--ink);
+  line-height:1.25;
+}
+.sidebar-brand .name em{font-style:italic;font-weight:400;color:var(--ink-dim)}
+.sidebar-group{padding:0 12px;margin-bottom:18px}
+.sidebar-group-label{
+  font-family:var(--mono);font-size:10px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--ink-faint);
+  padding:4px 12px 8px;display:flex;align-items:center;gap:8px;
+}
+.sidebar-group-label .swatch{width:6px;height:6px;border-radius:2px}
+.sidebar-group-label.env .swatch{background:var(--accent)}
+.sidebar-group-label.cm .swatch{background:var(--accent-2)}
+.sidebar-group-label.sec .swatch{background:var(--accent-3)}
+.sidebar a{
+  display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:6px;
+  color:var(--ink-dim);text-decoration:none;font-size:13px;
+  transition:background .15s ease,color .15s ease;
+  border-left:2px solid transparent;
+}
+.sidebar a:hover{background:var(--panel);color:var(--ink)}
+.sidebar a.active{
+  color:var(--ink);background:var(--panel);
+  border-left-color:var(--accent-2);
+}
+.sidebar a .num{
+  font-family:var(--mono);font-size:10px;color:var(--ink-faint);
+  min-width:18px;
+}
+.sidebar a.active .num{color:var(--accent-2)}
+
+/* mobile toggle button */
+.menu-toggle{
+  display:none;position:fixed;top:14px;left:14px;z-index:101;
+  background:var(--panel);border:1px solid var(--line-2);border-radius:8px;
+  width:42px;height:42px;align-items:center;justify-content:center;
+  color:var(--ink);cursor:pointer;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);
+}
+@media (max-width:959px){
+  .menu-toggle{display:inline-flex}
+  .main{padding-top:70px}
+}
+.menu-toggle svg{width:18px;height:18px}
+
+/* Part divider — big section break */
+.part-divider{
+  margin:48px 0 32px;padding:28px 0 0;
+  border-top:1px solid var(--line);
+}
+.part-divider:first-of-type{margin-top:0;border-top:0;padding-top:0}
+.part-divider .part-label{
+  font-family:var(--mono);font-size:11px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;
+  display:flex;align-items:center;gap:10px;
+}
+.part-divider .part-label .swatch{width:8px;height:8px;border-radius:2px}
+.part-divider.env .part-label .swatch{background:var(--accent)}
+.part-divider.cm .part-label .swatch{background:var(--accent-2)}
+.part-divider.sec .part-label .swatch{background:var(--accent-3)}
+.part-divider.found .part-label .swatch{background:var(--ink-dim)}
+.part-divider.adv .part-label .swatch{background:var(--warn)}
+.part-divider h2.part-title{
+  font-family:var(--serif);font-weight:700;font-size:clamp(26px,3.5vw,36px);
+  line-height:1.15;letter-spacing:-0.01em;margin:0 0 8px;color:var(--ink);
+}
+.part-divider h2.part-title em{font-style:italic;font-weight:400;color:var(--ink-dim)}
+.part-divider .part-desc{color:var(--ink-dim);font-size:15px;max-width:680px;margin:0}
+
+/* ---------- Sections ---------- */
+section.block{
+  margin:48px 0;
+  padding-top:8px;
+  scroll-margin-top:16px;
+}
+h2.section-title{
+  font-family:var(--serif);font-weight:800;font-size:clamp(26px,3.4vw,36px);
+  letter-spacing:-0.015em;margin:0 0 8px;display:flex;gap:14px;align-items:baseline;
+}
+h2.section-title .num{
+  font-family:var(--mono);font-size:.45em;color:var(--ink-faint);font-weight:500;
+  border:1px solid var(--line-2);padding:3px 8px;border-radius:6px;background:var(--panel);
+}
+h3.sub{font-family:var(--serif);font-size:clamp(20px,2.4vw,26px);margin:28px 0 10px;font-weight:600}
+h4{font-size:16px;margin:20px 0 8px;color:var(--ink);font-weight:600}
+p{color:var(--ink-dim);margin:8px 0 14px}
+p strong, li strong{color:var(--ink);font-weight:600}
+ul,ol{color:var(--ink-dim);padding-left:22px}
+li{margin:4px 0}
+ul.tight, ol.tight{margin:10px 0 16px;padding-left:22px}
+ul.tight li, ol.tight li{margin:6px 0;line-height:1.55}
+a{color:var(--accent-2)}
+
+/* ---------- Cards ---------- */
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:20px;margin:18px 0;
+  box-shadow:var(--shadow);
+}
+.card.tight{padding:14px 16px}
+.grid-2{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:800px){.grid-2{grid-template-columns:1fr 1fr}}
+.grid-3{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:800px){.grid-3{grid-template-columns:repeat(3,1fr)}}
+
+.callout{
+  border-left:3px solid var(--accent-2);background:rgba(88,166,255,.06);
+  padding:12px 14px;border-radius:8px;margin:14px 0;
+}
+.callout.warn{border-left-color:var(--warn);background:rgba(247,201,72,.07)}
+.callout.danger{border-left-color:var(--danger);background:rgba(255,107,107,.07)}
+.callout.ok{border-left-color:var(--ok);background:rgba(52,211,153,.07)}
+.callout .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;display:block;margin-bottom:4px;color:var(--ink-dim)}
+.callout p:last-child{margin-bottom:0}
+
+/* ---------- Code blocks ---------- */
+.code-wrap{
+  position:relative;background:var(--code-bg);border:1px solid var(--line);
+  border-radius:10px;margin:14px 0;overflow:hidden;
+}
+.code-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 12px;background:var(--bg-2);border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:12px;color:var(--ink-dim);
+}
+.code-head .filename{display:flex;gap:8px;align-items:center}
+.code-head .tag{padding:2px 8px;border-radius:4px;background:var(--panel-2);font-size:10px}
+.copy-btn{
+  background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink-dim);
+  padding:4px 10px;border-radius:4px;font-family:var(--mono);font-size:11px;cursor:pointer;
+  transition:all .15s;
+}
+.copy-btn:hover{background:var(--line);color:var(--ink)}
+.copy-btn.copied{color:var(--ok);border-color:var(--ok)}
+pre{margin:0;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.55;color:#d6deea}
+.k{color:#ff7b72}.s{color:#a5d6ff}.c{color:#8b949e;font-style:italic}
+.n{color:#ffa657}.v{color:#79c0ff}.p{color:#d2a8ff}
+.y-key{color:#ff7b72}.y-val{color:#a5d6ff}.y-str{color:#a5d6ff}.y-cmt{color:#8b949e;font-style:italic}.y-num{color:#79c0ff}
+
+/* ---------- Tabs / Modes ---------- */
+.modes{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 6px}
+.modes button{
+  background:var(--panel);border:1px solid var(--line-2);color:var(--ink-dim);
+  padding:7px 12px;border-radius:8px;font-family:var(--mono);font-size:12px;cursor:pointer;
+  transition:all .15s;
+}
+.modes button.active{background:var(--panel-2);border-color:var(--accent-2);color:var(--accent-2)}
+.modes button:hover{color:var(--ink)}
+.mode-panel{display:none}
+.mode-panel.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ---------- Slider (carousel) ---------- */
+.slider{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px;margin:18px 0;overflow:hidden;position:relative;
+}
+.slider-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.slider-head .title{font-family:var(--serif);font-size:18px;font-weight:600}
+.slider-nav{display:flex;gap:6px;align-items:center}
+.slider-nav button{
+  background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);
+  width:34px;height:34px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.slider-nav button:hover{background:var(--line);border-color:var(--accent-2)}
+.slider-nav button:disabled{opacity:.35;cursor:not-allowed}
+.slider-counter{font-family:var(--mono);font-size:12px;color:var(--ink-dim);padding:0 6px}
+.slider-viewport{overflow:hidden}
+.slider-track{display:flex;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.slide{min-width:100%;padding:6px 2px}
+.slide-label{
+  font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;
+}
+.slide h4{margin-top:4px;font-size:18px}
+.slider-dots{display:flex;gap:6px;justify-content:center;margin-top:14px}
+.slider-dots button{
+  width:8px;height:8px;border-radius:999px;border:none;background:var(--line-2);cursor:pointer;padding:0;transition:all .2s;
+}
+.slider-dots button.active{background:var(--accent-2);width:22px;border-radius:4px}
+
+/* ---------- Tables ---------- */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:14px 0;background:var(--panel)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--bg-2);font-weight:600;color:var(--ink);font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+td{color:var(--ink-dim)}
+td code, th code{background:var(--code-bg);padding:1px 6px;border-radius:4px;font-size:12px;color:#a5d6ff}
+tr:last-child td{border-bottom:none}
+
+/* ---------- Diagrams (SVG) ---------- */
+.diagram{
+  background:linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;margin:18px 0;
+}
+.diagram-caption{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.diagram svg{width:100%;height:auto;display:block}
+
+/* ---------- Collapsible ---------- */
+details.fold{
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:0;margin:14px 0;overflow:hidden;
+}
+details.fold > summary{
+  cursor:pointer;padding:14px 16px;font-family:var(--mono);font-size:13px;color:var(--ink);
+  list-style:none;display:flex;justify-content:space-between;align-items:center;
+  user-select:none;
+}
+details.fold > summary::-webkit-details-marker{display:none}
+details.fold > summary::after{content:'+';font-size:18px;color:var(--ink-dim);transition:transform .2s}
+details.fold[open] > summary::after{content:'−'}
+details.fold[open] > summary{border-bottom:1px solid var(--line)}
+details.fold .fold-body{padding:14px 16px}
+
+/* ---------- Compare (Before / After) ---------- */
+.compare{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:900px){.compare{grid-template-columns:1fr 1fr}}
+.compare .col{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.compare .col h5{margin:0 0 8px;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-dim)}
+.compare .col.bad h5{color:var(--danger)}
+.compare .col.good h5{color:var(--ok)}
+
+/* ---------- Inline key styling ---------- */
+code.inline{background:var(--code-bg);padding:2px 7px;border-radius:4px;font-family:var(--mono);font-size:13px;color:#a5d6ff;border:1px solid var(--line)}
+.kbd{font-family:var(--mono);font-size:11px;background:var(--chip);padding:2px 6px;border-radius:3px;border:1px solid var(--line-2)}
+
+/* ---------- Footer ---------- */
+footer.foot{
+  margin-top:60px;padding-top:28px;border-top:1px solid var(--line);
+  color:var(--ink-faint);font-size:13px;text-align:center;font-family:var(--mono)
+}
+footer.foot .rule{opacity:.5;margin-bottom:16px}
+
+/* ---------- Scrollbar (subtle) ---------- */
+pre::-webkit-scrollbar,.table-wrap::-webkit-scrollbar{height:8px;width:8px}
+pre::-webkit-scrollbar-thumb,.table-wrap::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+pre::-webkit-scrollbar-track,.table-wrap::-webkit-scrollbar-track{background:var(--bg-2)}
+
+/* ---------- Badges & pills for types ---------- */
+.type-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;margin-right:6px}
+.type-env{background:rgba(126,231,135,.12);color:var(--accent);border:1px solid rgba(126,231,135,.3)}
+.type-cm{background:rgba(88,166,255,.12);color:var(--accent-2);border:1px solid rgba(88,166,255,.3)}
+.type-sec{background:rgba(255,166,87,.12);color:var(--accent-3);border:1px solid rgba(255,166,87,.3)}
+
+/* Decision tree boxes */
+.decision{
+  display:flex;flex-direction:column;gap:10px;
+  padding:14px;background:var(--panel-2);border-radius:10px;border:1px dashed var(--line-2);
+}
+.decision .q{font-family:var(--mono);font-size:13px;color:var(--ink)}
+.decision .a{margin-left:14px;padding-left:12px;border-left:2px solid var(--line-2)}
+
+/* Mobile tweaks */
+@media (max-width:600px){
+  h2.section-title{flex-direction:column;gap:6px;align-items:flex-start}
+  .card{padding:16px}
+  pre{font-size:12px;padding:14px}
+}
+</style>
+</head>
+<body style="background:#05070a;color:#d8dee7">
+
+<!-- mobile menu toggle -->
+<button class="menu-toggle" id="menuToggle" aria-label="Open navigation" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="shell" style="background:#05070a;color:#f0f4f9">
+<div class="layout" style="background:#05070a">
+
+<!-- ============================================================ SIDEBAR ============================================================ -->
+<aside class="sidebar" id="sidebar" aria-label="Section navigation">
+  <div class="sidebar-brand">
+    <div class="tag">Part 3 of 3</div>
+    <div class="name">Kubernetes<br/><em>Configurations</em></div>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label"><span class="swatch" style="background:var(--ink-dim)"></span>Foundations</div>
+    <a href="#s1"><span class="num">01</span> The Configuration Problem</a>
+    <a href="#s2"><span class="num">02</span> Three Primitives at a Glance</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label env"><span class="swatch"></span>Environment Variables</div>
+    <a href="#s3"><span class="num">03</span> Env Vars — Deep Dive</a>
+    <a href="#s4"><span class="num">04</span> Types &amp; Sources</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label cm"><span class="swatch"></span>ConfigMaps</div>
+    <a href="#s5"><span class="num">05</span> ConfigMaps — Deep Dive</a>
+    <a href="#s6"><span class="num">06</span> Consumption Patterns</a>
+    <a href="#s9"><span class="num">09</span> Immutable ConfigMaps</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label sec"><span class="swatch"></span>Secrets</div>
+    <a href="#s7"><span class="num">07</span> Secrets — Deep Dive</a>
+    <a href="#s8"><span class="num">08</span> Secret Types (All 8)</a>
+    <a href="#s12"><span class="num">12</span> Security Hardening</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label"><span class="swatch" style="background:var(--warn)"></span>Architecture &amp; Practice</div>
+    <a href="#s10"><span class="num">10</span> Cluster Architecture</a>
+    <a href="#s11"><span class="num">11</span> Decision Matrix</a>
+    <a href="#s13"><span class="num">13</span> Best Practices</a>
+    <a href="#s14"><span class="num">14</span> Full Project — Order Service</a>
+  </div>
+</aside>
+
+<main class="main" style="background:#05070a;color:#f0f4f9">
+
+<!-- ============================================================ HERO ============================================================ -->
+<header class="hero">
+  <span class="eyebrow"><span class="dot"></span>Series · Part 3 of 3 · Kubernetes Deep Reference</span>
+  <h1 class="title" style="color:#f0f4f9">Kubernetes <em style="color:#aab3c0">Configurations</em><br/>Env Vars · ConfigMaps · Secrets</h1>
+  <p class="subtitle" style="color:#aab3c0">A complete, field-tested guide to how applications get their configuration inside a Kubernetes cluster. Every definition, every type, every YAML, every anti-pattern — plus a full-project walk-through you can <code class="inline">kubectl apply -f</code> end-to-end.</p>
+  <div class="meta-row">
+    <span class="chip env"><span class="swatch"></span><b>Env Vars</b> · process-level</span>
+    <span class="chip cm"><span class="swatch"></span><b>ConfigMaps</b> · non-sensitive config</span>
+    <span class="chip sec"><span class="swatch"></span><b>Secrets</b> · sensitive data</span>
+    <span class="chip"><b>K8s</b> 1.29+ · <b>kubectl</b> required</span>
+  </div>
+</header>
+
+<!-- ============================================================ PART: FOUNDATIONS ============================================================ -->
+<div class="part-divider found">
+  <div class="part-label"><span class="swatch"></span>Part I · Foundations</div>
+  <h2 class="part-title">Why configuration is <em>hard</em> in distributed systems</h2>
+  <p class="part-desc">Before we dive into primitives, let's frame the problem. These two sections establish why Kubernetes gives you three separate tools — env vars, ConfigMaps, and Secrets — instead of one.</p>
+</div>
+
+
+<!-- ============================================================ S1 ============================================================ -->
+<section class="block" id="s1">
+  <h2 class="section-title"><span class="num">01</span>The Configuration Problem</h2>
+  <p>Every non-trivial application needs <strong>configuration</strong> — values that change between environments (dev, staging, prod) or between runs, without changing the code or rebuilding the image. Database URLs, feature flags, API endpoints, credentials, tuning knobs. A container image should be <strong>environment-agnostic</strong>; only configuration should differ between a dev pod and a production pod.</p>
+
+  <p>Kubernetes solves this with three complementary primitives:</p>
+
+  <div class="grid-3">
+    <div class="card tight">
+      <span class="type-pill type-env">env</span>
+      <h4 style="margin:10px 0 6px">Environment Variables</h4>
+      <p style="margin:0;font-size:14px">Key/value pairs injected directly into the container process. Simplest mechanism. Ideal for a handful of small, non-sensitive values.</p>
+    </div>
+    <div class="card tight">
+      <span class="type-pill type-cm">configMap</span>
+      <h4 style="margin:10px 0 6px">ConfigMaps</h4>
+      <p style="margin:0;font-size:14px">A cluster-stored object holding non-sensitive key/value or file data. Decouples config from pods; one source, many consumers.</p>
+    </div>
+    <div class="card tight">
+      <span class="type-pill type-sec">secret</span>
+      <h4 style="margin:10px 0 6px">Secrets</h4>
+      <p style="margin:0;font-size:14px">Like ConfigMaps but for sensitive data: passwords, tokens, TLS certs, SSH keys. Stored base64-encoded, optionally encrypted at rest.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="lbl">The twelve-factor principle</span>
+    <p>Configuration that varies between deploys <strong>must live outside the code</strong>. In Kubernetes, that "outside" is a ConfigMap or Secret, surfaced to the container via env vars or mounted files. Treat your image as a pure function of code; configuration is the argument.</p>
+  </div>
+</section>
+
+<!-- ============================================================ S2 — Overview diagram ============================================================ -->
+<section class="block" id="s2">
+  <h2 class="section-title"><span class="num">02</span>The Three Primitives at a Glance</h2>
+  <p>Before diving into each, here is how they relate inside a cluster. ConfigMaps and Secrets are <strong>cluster objects</strong> stored in etcd. Env vars are a <strong>projection mechanism</strong> — a way to inject those values (or literal values) into a container's process environment. Files-on-disk is the other projection mechanism, via <code class="inline">volumeMounts</code>.</p>
+
+  <div class="diagram">
+    <div class="diagram-caption">Figure 2.1 — The two projection paths: env vars vs. volume mounts</div>
+    <svg viewBox="0 0 900 440" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#9aa7b8"/>
+        </marker>
+        <linearGradient id="gCM" x1="0" x2="1"><stop offset="0" stop-color="#58a6ff" stop-opacity=".25"/><stop offset="1" stop-color="#58a6ff" stop-opacity=".05"/></linearGradient>
+        <linearGradient id="gSec" x1="0" x2="1"><stop offset="0" stop-color="#ffa657" stop-opacity=".25"/><stop offset="1" stop-color="#ffa657" stop-opacity=".05"/></linearGradient>
+        <linearGradient id="gPod" x1="0" x2="1"><stop offset="0" stop-color="#7ee787" stop-opacity=".18"/><stop offset="1" stop-color="#7ee787" stop-opacity=".03"/></linearGradient>
+      </defs>
+
+      <!-- etcd / API layer -->
+      <rect x="30" y="30" width="830" height="110" rx="10" fill="#0f141b" stroke="#2a3747"/>
+      <text x="50" y="55" fill="#9aa7b8" font-family="JetBrains Mono" font-size="12">CLUSTER CONTROL PLANE · etcd (persisted objects)</text>
+
+      <rect x="70" y="75" width="320" height="50" rx="8" fill="url(#gCM)" stroke="#58a6ff"/>
+      <text x="90" y="100" fill="#58a6ff" font-family="JetBrains Mono" font-size="13" font-weight="700">ConfigMap</text>
+      <text x="90" y="117" fill="#d6deea" font-family="JetBrains Mono" font-size="11">key=value, files, binary data</text>
+
+      <rect x="510" y="75" width="320" height="50" rx="8" fill="url(#gSec)" stroke="#ffa657"/>
+      <text x="530" y="100" fill="#ffa657" font-family="JetBrains Mono" font-size="13" font-weight="700">Secret</text>
+      <text x="530" y="117" fill="#d6deea" font-family="JetBrains Mono" font-size="11">base64, encrypted at rest (opt.)</text>
+
+      <!-- Pod node -->
+      <rect x="150" y="220" width="600" height="190" rx="12" fill="url(#gPod)" stroke="#7ee787"/>
+      <text x="170" y="246" fill="#7ee787" font-family="JetBrains Mono" font-size="12" font-weight="700">POD · container</text>
+
+      <!-- env projection box -->
+      <rect x="180" y="265" width="240" height="120" rx="8" fill="#121821" stroke="#2a3747"/>
+      <text x="195" y="286" fill="#e6edf5" font-family="Inter Tight" font-size="13" font-weight="700">Process Environment</text>
+      <text x="195" y="308" fill="#a5d6ff" font-family="JetBrains Mono" font-size="11">DB_HOST=postgres.svc</text>
+      <text x="195" y="324" fill="#a5d6ff" font-family="JetBrains Mono" font-size="11">LOG_LEVEL=info</text>
+      <text x="195" y="340" fill="#a5d6ff" font-family="JetBrains Mono" font-size="11">API_TOKEN=eyJ...</text>
+      <text x="195" y="370" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">injected at container start</text>
+
+      <!-- volume mount box -->
+      <rect x="480" y="265" width="240" height="120" rx="8" fill="#121821" stroke="#2a3747"/>
+      <text x="495" y="286" fill="#e6edf5" font-family="Inter Tight" font-size="13" font-weight="700">Mounted Files</text>
+      <text x="495" y="308" fill="#a5d6ff" font-family="JetBrains Mono" font-size="11">/etc/config/app.yaml</text>
+      <text x="495" y="324" fill="#a5d6ff" font-family="JetBrains Mono" font-size="11">/etc/config/nginx.conf</text>
+      <text x="495" y="340" fill="#a5d6ff" font-family="JetBrains Mono" font-size="11">/etc/secrets/tls.crt</text>
+      <text x="495" y="370" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">live-updated via kubelet</text>
+
+      <!-- arrows -->
+      <path d="M230 125 Q230 180 300 265" stroke="#58a6ff" stroke-width="1.8" fill="none" marker-end="url(#arr)"/>
+      <path d="M330 125 Q400 180 560 265" stroke="#58a6ff" stroke-width="1.8" fill="none" marker-end="url(#arr)" stroke-dasharray="4 4"/>
+      <path d="M670 125 Q610 180 380 265" stroke="#ffa657" stroke-width="1.8" fill="none" marker-end="url(#arr)" stroke-dasharray="4 4"/>
+      <path d="M700 125 Q700 180 620 265" stroke="#ffa657" stroke-width="1.8" fill="none" marker-end="url(#arr)"/>
+
+      <text x="260" y="195" fill="#58a6ff" font-family="JetBrains Mono" font-size="10">envFrom / valueFrom</text>
+      <text x="540" y="195" fill="#ffa657" font-family="JetBrains Mono" font-size="10">volumeMounts</text>
+    </svg>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Aspect</th><th>Env Vars</th><th>ConfigMap</th><th>Secret</th></tr></thead>
+      <tbody>
+        <tr><td>Scope</td><td>Container</td><td>Namespace</td><td>Namespace</td></tr>
+        <tr><td>Sensitive data?</td><td>⚠️ avoid</td><td>❌ No</td><td>✅ Yes</td></tr>
+        <tr><td>Hot-reload on change?</td><td>❌ No (pod restart)</td><td>✅ Yes (as file)</td><td>✅ Yes (as file)</td></tr>
+        <tr><td>Max size</td><td>~1 MiB per container</td><td>1 MiB total</td><td>1 MiB total</td></tr>
+        <tr><td>Encoding at rest</td><td>—</td><td>Plain</td><td>base64 (encrypt. optional)</td></tr>
+        <tr><td>Typical use</td><td>Tiny runtime flags</td><td>App config files, URLs</td><td>Passwords, tokens, certs</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ S3 — Env Vars Deep Dive ============================================================ -->
+<!-- ============================================================ PART: ENV VARS ============================================================ -->
+<div class="part-divider env">
+  <div class="part-label"><span class="swatch"></span>Part II · Environment Variables</div>
+  <h2 class="part-title">The <em>process-level</em> contract between Kubernetes and your app</h2>
+  <p class="part-desc">Environment variables are the oldest, simplest, and most universal way to pass configuration to a process. Every language can read them. Here's how Kubernetes injects them, what sources you can pull from, and when to use them vs. alternatives.</p>
+</div>
+
+<!-- ============================================================ S3 ============================================================ -->
+<section class="block" id="s3">
+  <h2 class="section-title"><span class="num">03</span>Environment Variables — Deep Dive</h2>
+
+  <h3 class="sub">Definition — what env vars <em>actually</em> are</h3>
+  <p>An <strong>environment variable</strong> is <em>not</em> a Kubernetes object and <em>not</em> stored in etcd. At the Linux level, env vars live in a contiguous block of memory at the <strong>top of the process's stack</strong> — specifically in the <code class="inline">envp</code> array passed to <code class="inline">execve(2)</code> when a process is started. After that, they're copied into the process's own address space and exposed via <code class="inline">/proc/&lt;pid&gt;/environ</code> (a null-separated blob). That's it — no file on disk, no inode, no K8s resource.</p>
+
+  <div class="callout">
+    <span class="lbl">What this means in practice</span>
+    <p>You <strong>cannot</strong> <code class="inline">ls</code> env vars, you <strong>cannot</strong> <code class="inline">kubectl get envvars</code>, and you <strong>cannot</strong> change them while the container runs. They exist only for the lifetime of the process. When the container restarts, the kubelet rebuilds the <code class="inline">envp</code> array from the Pod spec <em>again</em> — re-reading any referenced ConfigMap/Secret fresh from the API server.</p>
+  </div>
+
+  <h3 class="sub">Where the values come from</h3>
+  <p>The <code class="inline">env</code> field in a Pod spec is a <em>delivery mechanism</em>, not a source. Each entry tells the kubelet: "at container-start time, assemble this name=value pair from somewhere." The <em>somewhere</em> can be:</p>
+  <ul class="tight">
+    <li>A <strong>literal string</strong> written inline in the Pod spec (stored in etcd as part of the Pod object)</li>
+    <li>A <strong>ConfigMap key</strong> — kubelet fetches the CM, reads the key, copies the value</li>
+    <li>A <strong>Secret key</strong> — kubelet fetches the Secret, base64-decodes the value, copies it</li>
+    <li>A <strong>Pod field</strong> via the Downward API (<code class="inline">fieldRef</code>) — e.g., the pod's name, namespace, labels, or IP</li>
+    <li>A <strong>container resource</strong> via <code class="inline">resourceFieldRef</code> — e.g., the CPU limit in millicores, memory limit in bytes</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="lbl">Common misconception</span>
+    <p>People say "I put my config in env vars." That's imprecise. What you actually put in etcd is the <strong>Pod spec</strong> (with literals) and the <strong>ConfigMap/Secret</strong> (with referenced values). Env vars are the runtime <em>view</em> the process sees — reconstructed every time the container starts, never persisted as env vars anywhere.</p>
+  </div>
+
+  <h3 class="sub">The full lifecycle — from <code class="inline">kubectl apply</code> to <code class="inline">process.env</code></h3>
+  <p>When you create a Pod, here's the exact chain of custody:</p>
+  <ol class="tight">
+    <li><strong>kubectl apply</strong> → sends Pod manifest (YAML) to <code class="inline">kube-apiserver</code></li>
+    <li><strong>apiserver</strong> → validates, persists Pod object in <strong>etcd</strong> (encrypted at rest if configured)</li>
+    <li><strong>scheduler</strong> → binds the Pod to a node</li>
+    <li><strong>kubelet</strong> on that node → watches the Pod, pulls image, then <em>resolves</em> every <code class="inline">env</code> entry: literals straight from the spec, <code class="inline">configMapKeyRef</code>/<code class="inline">secretKeyRef</code> via additional API calls, <code class="inline">fieldRef</code> from pod metadata it already has</li>
+    <li><strong>kubelet → CRI</strong> (containerd/CRI-O) → passes the fully resolved env map to the runtime</li>
+    <li><strong>runc</strong> → calls <code class="inline">execve()</code> with the <code class="inline">envp</code> array as the third argument</li>
+    <li><strong>your process</strong> → sees the values in <code class="inline">process.env</code> / <code class="inline">os.environ</code> / <code class="inline">getenv()</code></li>
+  </ol>
+
+  <div class="callout danger">
+    <span class="lbl">Security implication</span>
+    <p>Because env vars are stored in <code class="inline">/proc/&lt;pid&gt;/environ</code> with file mode <code class="inline">0444</code> (world-readable to the same UID), <em>any</em> process running as the same user — including sidecars, <code class="inline">kubectl exec</code> sessions, and crash-dump collectors — can read them. This is why Secrets-as-files are preferred over Secrets-as-env-vars for highly sensitive values. More in §12.</p>
+  </div>
+
+  <h3 class="sub">Anatomy of an env block</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">pod-env.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Pod</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-api</span>
+<span class="y-key">spec</span>:
+  <span class="y-key">containers</span>:
+  - <span class="y-key">name</span>: <span class="y-str">api</span>
+    <span class="y-key">image</span>: <span class="y-str">ghcr.io/jahez/order-api:1.8.2</span>
+    <span class="y-key">env</span>:
+    <span class="y-cmt"># 1. Literal value</span>
+    - <span class="y-key">name</span>: <span class="y-str">LOG_LEVEL</span>
+      <span class="y-key">value</span>: <span class="y-str">"info"</span>
+
+    <span class="y-cmt"># 2. From a ConfigMap key</span>
+    - <span class="y-key">name</span>: <span class="y-str">DB_HOST</span>
+      <span class="y-key">valueFrom</span>:
+        <span class="y-key">configMapKeyRef</span>:
+          <span class="y-key">name</span>: <span class="y-str">order-config</span>
+          <span class="y-key">key</span>: <span class="y-str">db.host</span>
+
+    <span class="y-cmt"># 3. From a Secret key</span>
+    - <span class="y-key">name</span>: <span class="y-str">DB_PASSWORD</span>
+      <span class="y-key">valueFrom</span>:
+        <span class="y-key">secretKeyRef</span>:
+          <span class="y-key">name</span>: <span class="y-str">order-secrets</span>
+          <span class="y-key">key</span>: <span class="y-str">db.password</span>
+
+    <span class="y-cmt"># 4. From pod metadata (Downward API)</span>
+    - <span class="y-key">name</span>: <span class="y-str">POD_NAME</span>
+      <span class="y-key">valueFrom</span>:
+        <span class="y-key">fieldRef</span>:
+          <span class="y-key">fieldPath</span>: <span class="y-str">metadata.name</span>
+
+    <span class="y-cmt"># 5. From container resource limits</span>
+    - <span class="y-key">name</span>: <span class="y-str">MEM_LIMIT</span>
+      <span class="y-key">valueFrom</span>:
+        <span class="y-key">resourceFieldRef</span>:
+          <span class="y-key">containerName</span>: <span class="y-str">api</span>
+          <span class="y-key">resource</span>: <span class="y-str">limits.memory</span></pre>
+  </div>
+
+  <h3 class="sub">What happens at pod start — step by step</h3>
+  <ol>
+    <li><strong>Scheduler</strong> assigns the Pod to a node.</li>
+    <li><strong>Kubelet</strong> on that node pulls the Pod spec from the API server.</li>
+    <li>For each <code class="inline">valueFrom</code>, the kubelet resolves the reference by fetching the ConfigMap or Secret from the API server (or its watch cache).</li>
+    <li>If <strong>any referenced key is missing</strong> and <code class="inline">optional: false</code> (the default), the container will fail to start with <code class="inline">CreateContainerConfigError</code>.</li>
+    <li>Kubelet builds the final env list, passes it to the container runtime (containerd/CRI-O), which launches the process with that environment.</li>
+  </ol>
+
+  <div class="callout danger">
+    <span class="lbl">Failure mode to know</span>
+    <p>If you reference a ConfigMap/Secret that <em>doesn't exist yet</em>, the pod stays in <code class="inline">CreateContainerConfigError</code> forever until you create it. Use <code class="inline">optional: true</code> if the variable is genuinely optional.</p>
+  </div>
+
+  <h3 class="sub">Variable expansion ($(VAR))</h3>
+  <p>You can reference an earlier env var inside a later one using <code class="inline">$(VAR_NAME)</code>. Order matters — the referenced variable must be declared <em>before</em> the one that uses it.</p>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">env-expansion.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">env</span>:
+- <span class="y-key">name</span>: <span class="y-str">DB_HOST</span>
+  <span class="y-key">value</span>: <span class="y-str">"postgres.data.svc.cluster.local"</span>
+- <span class="y-key">name</span>: <span class="y-str">DB_PORT</span>
+  <span class="y-key">value</span>: <span class="y-str">"5432"</span>
+- <span class="y-key">name</span>: <span class="y-str">DATABASE_URL</span>
+  <span class="y-key">value</span>: <span class="y-str">"postgres://app@$(DB_HOST):$(DB_PORT)/orders"</span></pre>
+  </div>
+</section>
+
+<!-- ============================================================ S4 — Env Var Types Slider ============================================================ -->
+<section class="block" id="s4">
+  <h2 class="section-title"><span class="num">04</span>Env Var Types &amp; Sources</h2>
+  <p>There are five sources a container env var can pull from. Swipe through each below.</p>
+
+  <div class="slider" data-slider="envtypes">
+    <div class="slider-head">
+      <div class="title">The 5 sources of env vars</div>
+      <div class="slider-nav">
+        <button data-prev aria-label="Previous">‹</button>
+        <span class="slider-counter"><span data-current>1</span> / <span data-total>5</span></span>
+        <button data-next aria-label="Next">›</button>
+      </div>
+    </div>
+    <div class="slider-viewport">
+      <div class="slider-track">
+
+        <!-- Slide 1 -->
+        <div class="slide">
+          <div class="slide-label">Type 01 · Literal</div>
+          <h4>Static value inline in the Pod spec</h4>
+          <p>The simplest form. Hard-coded into the manifest. Good for non-sensitive, per-deployment constants that rarely change.</p>
+          <div class="code-wrap">
+            <div class="code-head"><span class="filename">literal.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">env</span>:
+- <span class="y-key">name</span>: <span class="y-str">LOG_LEVEL</span>
+  <span class="y-key">value</span>: <span class="y-str">"info"</span>
+- <span class="y-key">name</span>: <span class="y-str">MAX_CONNECTIONS</span>
+  <span class="y-key">value</span>: <span class="y-str">"100"</span>   <span class="y-cmt"># must be a string!</span></pre>
+          </div>
+          <p><strong>Gotcha:</strong> all env-var values must be strings. Quote numbers and booleans.</p>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="slide">
+          <div class="slide-label">Type 02 · configMapKeyRef</div>
+          <h4>Pull one key out of a ConfigMap</h4>
+          <p>Use when you want a small number of specific keys, possibly renamed, rather than dumping the whole ConfigMap.</p>
+          <div class="code-wrap">
+            <div class="code-head"><span class="filename">configmap-ref.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">env</span>:
+- <span class="y-key">name</span>: <span class="y-str">REDIS_HOST</span>
+  <span class="y-key">valueFrom</span>:
+    <span class="y-key">configMapKeyRef</span>:
+      <span class="y-key">name</span>: <span class="y-str">cache-config</span>
+      <span class="y-key">key</span>: <span class="y-str">redis.host</span>
+      <span class="y-key">optional</span>: <span class="y-num">false</span>  <span class="y-cmt"># default; fail if missing</span></pre>
+          </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="slide">
+          <div class="slide-label">Type 03 · secretKeyRef</div>
+          <h4>Pull one key out of a Secret</h4>
+          <p>Identical shape to <code class="inline">configMapKeyRef</code> but reads from a Secret. The value is base64-decoded by the kubelet before injection.</p>
+          <div class="code-wrap">
+            <div class="code-head"><span class="filename">secret-ref.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">env</span>:
+- <span class="y-key">name</span>: <span class="y-str">STRIPE_API_KEY</span>
+  <span class="y-key">valueFrom</span>:
+    <span class="y-key">secretKeyRef</span>:
+      <span class="y-key">name</span>: <span class="y-str">payment-secrets</span>
+      <span class="y-key">key</span>: <span class="y-str">stripe.api_key</span></pre>
+          </div>
+          <div class="callout warn" style="margin-top:10px"><p style="margin:0"><strong>Trade-off:</strong> a Secret consumed as env var appears in <code class="inline">/proc/&lt;pid&gt;/environ</code> and can leak via crash dumps or child processes. For ultra-sensitive values, prefer a file mount.</p></div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="slide">
+          <div class="slide-label">Type 04 · fieldRef (Downward API)</div>
+          <h4>Inject pod/container metadata</h4>
+          <p>Useful for observability: sidecars that need to know their own pod name, namespace, service account, or node.</p>
+          <div class="code-wrap">
+            <div class="code-head"><span class="filename">downward.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">env</span>:
+- <span class="y-key">name</span>: <span class="y-str">POD_NAME</span>
+  <span class="y-key">valueFrom</span>: { <span class="y-key">fieldRef</span>: { <span class="y-key">fieldPath</span>: <span class="y-str">metadata.name</span> } }
+- <span class="y-key">name</span>: <span class="y-str">POD_NAMESPACE</span>
+  <span class="y-key">valueFrom</span>: { <span class="y-key">fieldRef</span>: { <span class="y-key">fieldPath</span>: <span class="y-str">metadata.namespace</span> } }
+- <span class="y-key">name</span>: <span class="y-str">POD_IP</span>
+  <span class="y-key">valueFrom</span>: { <span class="y-key">fieldRef</span>: { <span class="y-key">fieldPath</span>: <span class="y-str">status.podIP</span> } }
+- <span class="y-key">name</span>: <span class="y-str">NODE_NAME</span>
+  <span class="y-key">valueFrom</span>: { <span class="y-key">fieldRef</span>: { <span class="y-key">fieldPath</span>: <span class="y-str">spec.nodeName</span> } }</pre>
+          </div>
+          <p><strong>Supported paths:</strong> <code class="inline">metadata.name</code>, <code class="inline">metadata.namespace</code>, <code class="inline">metadata.uid</code>, <code class="inline">metadata.labels['x']</code>, <code class="inline">metadata.annotations['x']</code>, <code class="inline">spec.nodeName</code>, <code class="inline">spec.serviceAccountName</code>, <code class="inline">status.hostIP</code>, <code class="inline">status.podIP</code>, <code class="inline">status.podIPs</code>.</p>
+        </div>
+
+        <!-- Slide 5 -->
+        <div class="slide">
+          <div class="slide-label">Type 05 · resourceFieldRef</div>
+          <h4>Inject container resource requests/limits</h4>
+          <p>Lets the app right-size itself — e.g. setting a JVM heap based on the container's memory limit. This is exactly the pattern used to fix the OOM issue in the jahez-gateway (JVM didn't know the container limit).</p>
+          <div class="code-wrap">
+            <div class="code-head"><span class="filename">resource-downward.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">env</span>:
+- <span class="y-key">name</span>: <span class="y-str">MEM_LIMIT_BYTES</span>
+  <span class="y-key">valueFrom</span>:
+    <span class="y-key">resourceFieldRef</span>:
+      <span class="y-key">containerName</span>: <span class="y-str">api</span>
+      <span class="y-key">resource</span>: <span class="y-str">limits.memory</span>
+      <span class="y-key">divisor</span>: <span class="y-str">"1"</span>   <span class="y-cmt"># bytes. Use 1Mi for MB, 1Gi for GB</span>
+- <span class="y-key">name</span>: <span class="y-str">CPU_LIMIT</span>
+  <span class="y-key">valueFrom</span>:
+    <span class="y-key">resourceFieldRef</span>:
+      <span class="y-key">containerName</span>: <span class="y-str">api</span>
+      <span class="y-key">resource</span>: <span class="y-str">limits.cpu</span>
+      <span class="y-key">divisor</span>: <span class="y-str">"1m"</span>  <span class="y-cmt"># millicores</span></pre>
+          </div>
+          <p><strong>Supported:</strong> <code class="inline">limits.cpu</code>, <code class="inline">limits.memory</code>, <code class="inline">limits.ephemeral-storage</code>, and the matching <code class="inline">requests.*</code> forms.</p>
+        </div>
+
+      </div>
+    </div>
+    <div class="slider-dots"></div>
+  </div>
+
+  <h3 class="sub">Bulk injection — envFrom</h3>
+  <p>When you want <em>every</em> key from a ConfigMap or Secret to become an env var, use <code class="inline">envFrom</code>. Optionally prefix the names to avoid collisions.</p>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">envfrom.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">envFrom</span>:
+- <span class="y-key">configMapRef</span>:
+    <span class="y-key">name</span>: <span class="y-str">order-config</span>      <span class="y-cmt"># every key becomes an env var</span>
+- <span class="y-key">configMapRef</span>:
+    <span class="y-key">name</span>: <span class="y-str">feature-flags</span>
+    <span class="y-key">optional</span>: <span class="y-num">true</span>
+- <span class="y-key">secretRef</span>:
+    <span class="y-key">name</span>: <span class="y-str">order-secrets</span>
+  <span class="y-key">prefix</span>: <span class="y-str">SEC_</span>              <span class="y-cmt"># db.password → SEC_db.password</span></pre>
+  </div>
+
+  <div class="callout warn">
+    <span class="lbl">envFrom quirks</span>
+    <p>Keys that aren't valid env-var names (e.g. contain dots or hyphens) are <strong>silently skipped</strong> and logged as events. Keep ConfigMap keys in <code class="inline">UPPER_SNAKE_CASE</code> if you plan to use <code class="inline">envFrom</code>.</p>
+  </div>
+</section>
+
+<!-- ============================================================ S5 — ConfigMaps Deep Dive ============================================================ -->
+<!-- ============================================================ PART: CONFIGMAPS ============================================================ -->
+<div class="part-divider cm">
+  <div class="part-label"><span class="swatch"></span>Part III · ConfigMaps</div>
+  <h2 class="part-title">Non-sensitive configuration as a <em>first-class</em> object</h2>
+  <p class="part-desc">ConfigMaps decouple configuration from container images. One object can be consumed by many pods, many ways — as env vars, as files, or as command-line arguments. Let's unpack the anatomy, the creation methods, and the four consumption patterns.</p>
+</div>
+
+<!-- ============================================================ S5 ============================================================ -->
+<section class="block" id="s5">
+  <h2 class="section-title"><span class="num">05</span>ConfigMaps — Deep Dive</h2>
+
+  <h3 class="sub">Definition — what a ConfigMap <em>actually</em> is</h3>
+  <p>A <strong>ConfigMap</strong> is a <strong>namespaced Kubernetes API object</strong> (kind: <code class="inline">ConfigMap</code>, apiVersion: <code class="inline">v1</code>, resource name: <code class="inline">configmaps</code>, short name: <code class="inline">cm</code>) whose sole purpose is to store non-confidential configuration data as key/value pairs. Unlike env vars, a ConfigMap is a <em>real object</em> — it has a name, a UID, a resourceVersion, a creationTimestamp, labels, annotations, and it participates in the full Kubernetes API surface: you can <code class="inline">get</code>, <code class="inline">list</code>, <code class="inline">watch</code>, <code class="inline">patch</code>, <code class="inline">delete</code> it, RBAC it, version it, GitOps it.</p>
+
+  <div class="callout">
+    <span class="lbl">Where is it stored?</span>
+    <p>A ConfigMap lives in <strong>etcd</strong>, the cluster's distributed key-value store, alongside every other API object (Pods, Services, Deployments, Nodes, etc.). The etcd key looks roughly like <code class="inline">/registry/configmaps/&lt;namespace&gt;/&lt;name&gt;</code>. When you run <code class="inline">kubectl get cm order-config -o yaml</code>, the apiserver fetches that etcd key, deserializes the protobuf/JSON, and returns it to you. ConfigMap data is <strong>not encrypted at rest by default</strong> — it's stored as plain strings in etcd, same as the rest of your cluster state.</p>
+  </div>
+
+  <h3 class="sub">What it is <em>not</em></h3>
+  <ul class="tight">
+    <li><strong>Not a file on the node.</strong> ConfigMaps exist only in etcd until the kubelet projects them into a pod (as env vars or as tmpfs-mounted files). There is no <code class="inline">/etc/k8s/configmaps/</code> directory on your worker nodes.</li>
+    <li><strong>Not meant for large data.</strong> The total size of a single ConfigMap is capped at <strong>1 MiB</strong> (etcd value-size limit minus overhead). For bigger blobs, use a real object store (S3, GCS) and pass its URL via a ConfigMap.</li>
+    <li><strong>Not for secrets.</strong> ConfigMap values are visible to anyone with <code class="inline">get configmaps</code> RBAC, and they're stored unencrypted. Sensitive data belongs in a Secret (§7).</li>
+    <li><strong>Not type-safe.</strong> All values are strings. <code class="inline">"true"</code> is a string, not a boolean. Numbers are strings. Your application parses them.</li>
+  </ul>
+
+  <h3 class="sub">Lifecycle — from <code class="inline">kubectl create</code> to a running pod</h3>
+  <ol class="tight">
+    <li><strong>You create the CM</strong> via YAML, <code class="inline">--from-literal</code>, or <code class="inline">--from-file</code>. kubectl sends a POST to the apiserver.</li>
+    <li><strong>apiserver</strong> validates and writes the object to etcd. The CM now exists cluster-wide within its namespace.</li>
+    <li><strong>A Pod references the CM</strong> in its spec — either via <code class="inline">envFrom</code>/<code class="inline">configMapKeyRef</code> (env-var path) or as a <code class="inline">volume</code> with <code class="inline">configMap:</code> (file path).</li>
+    <li><strong>kubelet resolves the reference</strong> when starting the pod. For env vars: fetch-once, inject into <code class="inline">envp</code>, done. For volume mounts: the kubelet creates a <strong>tmpfs</strong> (RAM-backed filesystem) and writes each key as a file inside it, then bind-mounts it into the container.</li>
+    <li><strong>The kubelet keeps watching</strong> the CM if it's mounted as a volume. When the CM changes in etcd, the kubelet updates the tmpfs files — usually within a minute (the kubelet's sync period, configurable via <code class="inline">--configMapAndSecretChangeDetectionStrategy</code>).</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="lbl">Env-var consumption is a point-in-time snapshot</span>
+    <p>If you consume a CM via <code class="inline">env</code> or <code class="inline">envFrom</code>, the values are captured at <strong>pod start</strong>. Updating the CM afterwards does <em>not</em> update the running process — you must restart the pod. Only <strong>volume mounts</strong> of a CM propagate updates automatically. This is one of the most common Kubernetes gotchas.</p>
+  </div>
+
+  <h3 class="sub">Structure</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">configmap-structure.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">ConfigMap</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-config</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-cmt"># simple key/value pairs — used by env vars OR as files</span>
+<span class="y-key">data</span>:
+  <span class="y-key">LOG_LEVEL</span>: <span class="y-str">"info"</span>
+  <span class="y-key">FEATURE_DARK_MODE</span>: <span class="y-str">"true"</span>
+  <span class="y-key">db.host</span>: <span class="y-str">"postgres.data.svc.cluster.local"</span>
+
+  <span class="y-cmt"># multi-line content — behaves as a whole file</span>
+  <span class="y-key">application.yaml</span>: |
+    server:
+      port: 8080
+      shutdown: graceful
+    logging:
+      level:
+        root: INFO
+        com.jahez: DEBUG
+    jahez:
+      region: KSA
+      checkout:
+        max-retries: 3
+
+<span class="y-cmt"># binary data — base64-encoded; only mountable as files</span>
+<span class="y-key">binaryData</span>:
+  <span class="y-key">logo.png</span>: <span class="y-str">iVBORw0KGgoAAAANSUhEUg...</span></pre>
+  </div>
+
+  <div class="grid-2">
+    <div class="card tight">
+      <h4>data</h4>
+      <p>UTF-8 strings. Each key can be used individually (via <code class="inline">configMapKeyRef</code>), all at once (<code class="inline">envFrom</code>), or mounted as a file whose content is the value.</p>
+    </div>
+    <div class="card tight">
+      <h4>binaryData</h4>
+      <p>Base64-encoded bytes. Cannot be consumed as env vars; only projected as files. Use for certificates, small icons, compiled templates.</p>
+    </div>
+  </div>
+
+  <h3 class="sub">Three ways to create a ConfigMap</h3>
+
+  <div class="modes" data-modes="cm-create">
+    <button class="active" data-mode="yaml">YAML</button>
+    <button data-mode="literals">--from-literal</button>
+    <button data-mode="files">--from-file / --from-env-file</button>
+  </div>
+
+  <div class="mode-panel active" data-panel="yaml">
+    <div class="code-wrap">
+      <div class="code-head"><span class="filename">yaml-approach.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-cmt"># Best for GitOps. Check into source control.</span>
+<span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">ConfigMap</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-config</span>
+<span class="y-key">data</span>:
+  <span class="y-key">LOG_LEVEL</span>: <span class="y-str">"info"</span>
+  <span class="y-key">TIMEOUT_MS</span>: <span class="y-str">"5000"</span></pre>
+    </div>
+    <p><code class="inline">kubectl apply -f order-config.yaml</code></p>
+  </div>
+
+  <div class="mode-panel" data-panel="literals">
+    <div class="code-wrap">
+      <div class="code-head"><span class="filename">kubectl</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="c"># Best for quick experiments. Not GitOps-friendly.</span>
+<span class="k">kubectl</span> create configmap order-config \
+  --from-literal=LOG_LEVEL=info \
+  --from-literal=TIMEOUT_MS=5000 \
+  --from-literal=FEATURE_X=true</pre>
+    </div>
+  </div>
+
+  <div class="mode-panel" data-panel="files">
+    <div class="code-wrap">
+      <div class="code-head"><span class="filename">kubectl</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="c"># Load each file as a key (filename=key, contents=value)</span>
+<span class="k">kubectl</span> create configmap nginx-config --from-file=./nginx.conf
+<span class="c"># Yields: data.nginx.conf = &lt;file contents&gt;</span>
+
+<span class="c"># Load a whole directory (every file becomes a key)</span>
+<span class="k">kubectl</span> create configmap app-config --from-file=./config/
+
+<span class="c"># Parse a dotenv-style file: each KEY=VALUE line → individual key</span>
+<span class="k">kubectl</span> create configmap env-config --from-env-file=.env
+
+<span class="c"># Rename key on import</span>
+<span class="k">kubectl</span> create configmap app --from-file=settings=./prod.yaml</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ S6 — Consumption Patterns ============================================================ -->
+<section class="block" id="s6">
+  <h2 class="section-title"><span class="num">06</span>ConfigMap Consumption Patterns</h2>
+  <p>Same ConfigMap, three ways to reach your container. Pick based on what the app expects.</p>
+
+  <div class="slider" data-slider="cmpatterns">
+    <div class="slider-head">
+      <div class="title">Consumption patterns</div>
+      <div class="slider-nav">
+        <button data-prev>‹</button>
+        <span class="slider-counter"><span data-current>1</span> / <span data-total>4</span></span>
+        <button data-next>›</button>
+      </div>
+    </div>
+    <div class="slider-viewport">
+      <div class="slider-track">
+
+        <div class="slide">
+          <div class="slide-label">Pattern 01</div>
+          <h4>Pick specific keys as env vars</h4>
+          <p>Use when only a few keys are needed and you want them renamed in-pod.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">pattern-pick.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">env</span>:
+- <span class="y-key">name</span>: <span class="y-str">LOG_LEVEL</span>
+  <span class="y-key">valueFrom</span>:
+    <span class="y-key">configMapKeyRef</span>:
+      <span class="y-key">name</span>: <span class="y-str">order-config</span>
+      <span class="y-key">key</span>: <span class="y-str">LOG_LEVEL</span>
+- <span class="y-key">name</span>: <span class="y-str">DB_HOST</span>
+  <span class="y-key">valueFrom</span>:
+    <span class="y-key">configMapKeyRef</span>:
+      <span class="y-key">name</span>: <span class="y-str">order-config</span>
+      <span class="y-key">key</span>: <span class="y-str">db.host</span></pre></div>
+          <p><strong>When:</strong> 2-5 vars, strict naming, want renames.</p>
+          <p><strong>Downside:</strong> pod restart required when ConfigMap changes.</p>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Pattern 02</div>
+          <h4>Bulk-import all keys (envFrom)</h4>
+          <p>Use when the ConfigMap was designed as an "env file" with <code class="inline">UPPER_SNAKE_CASE</code> keys.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">pattern-envfrom.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">envFrom</span>:
+- <span class="y-key">configMapRef</span>:
+    <span class="y-key">name</span>: <span class="y-str">order-config</span>
+  <span class="y-key">prefix</span>: <span class="y-str">ORDER_</span>   <span class="y-cmt"># optional namespace</span></pre></div>
+          <p><strong>When:</strong> many flags, naming already fits.</p>
+          <p><strong>Downside:</strong> no selective import, no renames, pod restart on change.</p>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Pattern 03</div>
+          <h4>Mount as files (volume)</h4>
+          <p>Use when the app reads a config file (<code class="inline">application.yaml</code>, <code class="inline">nginx.conf</code>, …). Files are <strong>auto-updated</strong> in place — no pod restart needed.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">pattern-volume.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">spec</span>:
+  <span class="y-key">containers</span>:
+  - <span class="y-key">name</span>: <span class="y-str">api</span>
+    <span class="y-key">image</span>: <span class="y-str">order-api:1.8.2</span>
+    <span class="y-key">volumeMounts</span>:
+    - <span class="y-key">name</span>: <span class="y-str">cfg</span>
+      <span class="y-key">mountPath</span>: <span class="y-str">/etc/app</span>
+      <span class="y-key">readOnly</span>: <span class="y-num">true</span>
+  <span class="y-key">volumes</span>:
+  - <span class="y-key">name</span>: <span class="y-str">cfg</span>
+    <span class="y-key">configMap</span>:
+      <span class="y-key">name</span>: <span class="y-str">order-config</span>
+      <span class="y-key">defaultMode</span>: <span class="y-num">0444</span>     <span class="y-cmt"># read-only for all</span></pre></div>
+          <p>Result: <code class="inline">/etc/app/LOG_LEVEL</code>, <code class="inline">/etc/app/application.yaml</code>, … each as a separate file.</p>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Pattern 04</div>
+          <h4>Mount specific keys with paths (items)</h4>
+          <p>Pick only some keys, rename their file paths, and set per-file permissions.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">pattern-items.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">volumes</span>:
+- <span class="y-key">name</span>: <span class="y-str">cfg</span>
+  <span class="y-key">configMap</span>:
+    <span class="y-key">name</span>: <span class="y-str">order-config</span>
+    <span class="y-key">items</span>:
+    - <span class="y-key">key</span>: <span class="y-str">application.yaml</span>
+      <span class="y-key">path</span>: <span class="y-str">config/app.yaml</span>   <span class="y-cmt"># relative to mountPath</span>
+      <span class="y-key">mode</span>: <span class="y-num">0440</span>
+    - <span class="y-key">key</span>: <span class="y-str">logback.xml</span>
+      <span class="y-key">path</span>: <span class="y-str">config/logback.xml</span></pre></div>
+          <p><strong>When:</strong> the ConfigMap holds many keys but this container only needs a subset, at specific paths.</p>
+        </div>
+
+      </div>
+    </div>
+    <div class="slider-dots"></div>
+  </div>
+
+  <h3 class="sub">The auto-update mechanic (the subtle one)</h3>
+  <p>When a ConfigMap or Secret is mounted as a volume, the kubelet watches the API server and <strong>replaces the files on disk</strong> when the object changes. Propagation takes on the order of <strong>60 seconds</strong> (dependent on <code class="inline">kubelet-sync-frequency</code> and cache TTL).</p>
+
+  <p><strong>But:</strong> env vars do NOT auto-update. The process started with whatever was in <code class="inline">environ</code> at launch. Updating the ConfigMap has no effect until the pod restarts.</p>
+
+  <div class="diagram">
+    <div class="diagram-caption">Figure 6.1 — Propagation: file vs. env</div>
+    <svg viewBox="0 0 900 260" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="30" width="160" height="80" rx="8" fill="#121821" stroke="#58a6ff"/>
+      <text x="100" y="60" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono" font-size="12" font-weight="700">ConfigMap v2</text>
+      <text x="100" y="80" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="11">updated via apply</text>
+
+      <rect x="260" y="30" width="140" height="80" rx="8" fill="#121821" stroke="#2a3747"/>
+      <text x="330" y="60" text-anchor="middle" fill="#e6edf5" font-family="JetBrains Mono" font-size="12">API Server</text>
+      <text x="330" y="80" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">watch → etcd</text>
+
+      <rect x="480" y="30" width="140" height="80" rx="8" fill="#121821" stroke="#2a3747"/>
+      <text x="550" y="60" text-anchor="middle" fill="#e6edf5" font-family="JetBrains Mono" font-size="12">Kubelet</text>
+      <text x="550" y="80" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">cache sync ~60s</text>
+
+      <rect x="700" y="10" width="180" height="52" rx="8" fill="#121821" stroke="#7ee787"/>
+      <text x="790" y="32" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="11" font-weight="700">FILE MOUNT</text>
+      <text x="790" y="48" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">updates in place ✓</text>
+
+      <rect x="700" y="78" width="180" height="52" rx="8" fill="#121821" stroke="#ff6b6b"/>
+      <text x="790" y="100" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono" font-size="11" font-weight="700">ENV VAR</text>
+      <text x="790" y="116" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">requires pod restart ✗</text>
+
+      <path d="M180 70 L260 70" stroke="#9aa7b8" marker-end="url(#arr)"/>
+      <path d="M400 70 L480 70" stroke="#9aa7b8" marker-end="url(#arr)"/>
+      <path d="M620 60 L700 40" stroke="#7ee787" marker-end="url(#arr)"/>
+      <path d="M620 80 L700 100" stroke="#ff6b6b" marker-end="url(#arr)" stroke-dasharray="5 4"/>
+
+      <text x="450" y="170" fill="#9aa7b8" font-family="JetBrains Mono" font-size="11" text-anchor="middle">Even for mounted files, the application must re-read the file or use a file-watcher</text>
+      <text x="450" y="190" fill="#9aa7b8" font-family="JetBrains Mono" font-size="11" text-anchor="middle">(e.g. Spring Cloud Kubernetes watcher, NGINX reload signal, envoy xDS).</text>
+    </svg>
+  </div>
+
+  <div class="callout ok">
+    <span class="lbl">Trick</span>
+    <p>To force a rolling restart when a ConfigMap changes (to pick up new env vars), add a hash annotation to the pod template: <code class="inline">checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}</code> in Helm, or use <code class="inline">kubectl rollout restart deployment</code>.</p>
+  </div>
+</section>
+
+<!-- ============================================================ S7 — Secrets ============================================================ -->
+<!-- ============================================================ PART: SECRETS ============================================================ -->
+<div class="part-divider sec">
+  <div class="part-label"><span class="swatch"></span>Part IV · Secrets</div>
+  <h2 class="part-title">Sensitive data — with all the <em>caveats</em> you need to know</h2>
+  <p class="part-desc">Secrets look almost identical to ConfigMaps on the surface, but they behave very differently under the hood: eight distinct types, base64 encoding (not encryption!), tmpfs-backed volume mounts, and a completely different security story. Here's what you must know.</p>
+</div>
+
+<!-- ============================================================ S7 ============================================================ -->
+<section class="block" id="s7">
+  <h2 class="section-title"><span class="num">07</span>Secrets — Deep Dive</h2>
+
+  <h3 class="sub">Definition — what a Secret <em>actually</em> is</h3>
+  <p>A <strong>Secret</strong> is a <strong>namespaced Kubernetes API object</strong> (kind: <code class="inline">Secret</code>, apiVersion: <code class="inline">v1</code>, resource name: <code class="inline">secrets</code>) designed to hold sensitive data: passwords, OAuth tokens, TLS private keys, SSH keys, image-pull credentials. Structurally it's almost identical to a ConfigMap — same key/value shape, same creation patterns, same namespace scoping — but with <strong>four</strong> critical differences in behavior and storage.</p>
+
+  <div class="callout">
+    <span class="lbl">Where is it stored?</span>
+    <p>Just like ConfigMaps, Secrets live in <strong>etcd</strong> under <code class="inline">/registry/secrets/&lt;namespace&gt;/&lt;name&gt;</code>. The difference: when you configure <code class="inline">EncryptionConfiguration</code> on the apiserver (with a provider like <code class="inline">aescbc</code>, <code class="inline">kms</code>, or <code class="inline">aesgcm</code>), the <em>values</em> of Secrets are encrypted before being written to etcd — so even someone with raw etcd access sees ciphertext, not plaintext. ConfigMaps can also be encrypted this way, but Secrets are the canonical target. See §12 for the full setup.</p>
+  </div>
+
+  <p>The four key differences from ConfigMaps:</p>
+  <ol class="tight">
+    <li><strong>Values are base64-encoded in <code class="inline">data</code></strong> (<em>not</em> encryption — encoding only). This exists so binary data can travel cleanly through JSON/YAML. You can use <code class="inline">stringData</code> to write plain strings and let Kubernetes base64 them for you.</li>
+    <li><strong>Can be encrypted at rest in etcd</strong> via <code class="inline">EncryptionConfiguration</code> — Secrets are the primary object this feature is designed for.</li>
+    <li><strong>Mounted as tmpfs (RAM), not disk.</strong> When a Secret is projected into a pod as a volume, the kubelet mounts it on a RAM-backed <code class="inline">tmpfs</code> filesystem — so the plaintext never touches the node's disk. ConfigMaps are also mounted as tmpfs in practice, but for Secrets this is a hard guarantee.</li>
+    <li><strong>Typed.</strong> The <code class="inline">type</code> field (e.g. <code class="inline">Opaque</code>, <code class="inline">kubernetes.io/tls</code>, <code class="inline">kubernetes.io/dockerconfigjson</code>) dictates required keys and how other components (kubelet, ingress controllers, the container runtime) interpret the data. See §8 for all 8 types.</li>
+  </ol>
+
+  <div class="callout danger">
+    <span class="lbl">Base64 ≠ encryption</span>
+    <p><code class="inline">echo 'cGFzc3dvcmQ=' | base64 -d</code> → <code class="inline">password</code>. Anyone with <code class="inline">get secrets</code> RBAC, or anyone reading raw etcd without encryption-at-rest enabled, sees plaintext. Security comes from the <strong>combination</strong> of: RBAC (who can read), encryption-at-rest (how etcd stores it), network policy (who can call the apiserver), audit logging (who actually read it), and tmpfs mounts (plaintext never on node disk). Encoding is just for transport.</p>
+  </div>
+
+  <h3 class="sub">Memory footprint and node impact</h3>
+  <p>Because Secrets mount as tmpfs, every Secret projected into a pod consumes RAM on the node. The kubelet charges this against the node's total memory, not the container's memory limit. For a pod that mounts 10 Secret volumes of 1 MiB each, that's 10 MiB of node RAM held for the pod's lifetime. On small nodes running many pods, this adds up — a good reason not to project Secrets you don't actually use.</p>
+
+  <div class="callout warn">
+    <span class="lbl">Every pod's ServiceAccount token is a Secret (sort of)</span>
+    <p>Before Kubernetes 1.24, every pod had a Secret of type <code class="inline">kubernetes.io/service-account-token</code> auto-mounted at <code class="inline">/var/run/secrets/kubernetes.io/serviceaccount/</code>. Since 1.24, this is generated via the <strong>TokenRequest API</strong> as a short-lived projected token and is <em>not</em> persisted as a Secret object anymore — a security win. Your older clusters may still have legacy SA-token Secrets lying around; <code class="inline">kubectl get secrets --all-namespaces | grep service-account</code>.</p>
+  </div>
+
+  <h3 class="sub">Anatomy</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">secret.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Secret</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-secrets</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">type</span>: <span class="y-val">Opaque</span>   <span class="y-cmt"># default — arbitrary user data</span>
+<span class="y-key">data</span>:
+  <span class="y-cmt"># base64-encoded values</span>
+  <span class="y-key">db.password</span>: <span class="y-str">c3VwZXJTZWNyZXQxMjM=</span>       <span class="y-cmt"># "superSecret123"</span>
+  <span class="y-key">stripe.api_key</span>: <span class="y-str">c2tfdGVzdF9YWFhYWA==</span>
+
+<span class="y-cmt"># OR use stringData: plain strings, k8s will base64 them for you</span>
+<span class="y-key">stringData</span>:
+  <span class="y-key">jwt.secret</span>: <span class="y-str">"change-me-in-prod"</span></pre>
+  </div>
+
+  <p><strong>When both <code class="inline">data</code> and <code class="inline">stringData</code> are present,</strong> <code class="inline">stringData</code> wins on conflicting keys. <code class="inline">stringData</code> is write-only: when you <code class="inline">kubectl get secret -o yaml</code>, it always comes back as <code class="inline">data</code>.</p>
+
+  <h3 class="sub">Creating secrets — avoid secrets in git</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">secret-create.sh</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="c"># Preferred for manual ops (never committed to git):</span>
+<span class="k">kubectl</span> create secret generic order-secrets \
+  --from-literal=db.password=&#39;$uper$ecret123&#39; \
+  --from-literal=stripe.api_key=&#39;sk_live_abc&#39;
+
+<span class="c"># From files (useful for certs, SSH keys):</span>
+<span class="k">kubectl</span> create secret generic tls-certs \
+  --from-file=tls.crt=./server.crt \
+  --from-file=tls.key=./server.key
+
+<span class="c"># TLS shorthand (validates types + paths):</span>
+<span class="k">kubectl</span> create secret tls ingress-tls \
+  --cert=./tls.crt --key=./tls.key
+
+<span class="c"># Docker registry auth:</span>
+<span class="k">kubectl</span> create secret docker-registry ghcr-creds \
+  --docker-server=ghcr.io --docker-username=jahez-ci \
+  --docker-password=&#39;ghp_xxx&#39; --docker-email=ci@jahez.sa</pre>
+  </div>
+
+  <div class="callout warn">
+    <span class="lbl">GitOps with secrets</span>
+    <p>Never commit raw Secret YAML. Use one of: <strong>Sealed Secrets</strong> (bitnami), <strong>SOPS + age/KMS</strong>, <strong>External Secrets Operator</strong> (pulls from AWS/GCP/Vault), or <strong>HashiCorp Vault Agent Injector</strong>. The manifest in git should be the <em>encrypted</em> or <em>reference</em> form; the plaintext never leaves the secret store.</p>
+  </div>
+</section>
+
+<!-- ============================================================ S8 — Secret Types ============================================================ -->
+<section class="block" id="s8">
+  <h2 class="section-title"><span class="num">08</span>Secret Types (All 8)</h2>
+  <p>The <code class="inline">type</code> field tells Kubernetes how to validate and use the Secret. Swipe through all eight built-in types.</p>
+
+  <div class="slider" data-slider="sectypes">
+    <div class="slider-head">
+      <div class="title">Built-in Secret types</div>
+      <div class="slider-nav">
+        <button data-prev>‹</button>
+        <span class="slider-counter"><span data-current>1</span> / <span data-total>8</span></span>
+        <button data-next>›</button>
+      </div>
+    </div>
+    <div class="slider-viewport">
+      <div class="slider-track">
+
+        <div class="slide">
+          <div class="slide-label">Type 01 · Opaque</div>
+          <h4><code class="inline">Opaque</code></h4>
+          <p>The default. Arbitrary user-defined key/value data. No special validation, no magic keys. Most application secrets land here.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">opaque.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">type</span>: <span class="y-val">Opaque</span>
+<span class="y-key">data</span>:
+  <span class="y-key">api.key</span>: <span class="y-str">c2VjcmV0</span>
+  <span class="y-key">jwt.signing.key</span>: <span class="y-str">YWJjMTIz</span></pre></div>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Type 02 · ServiceAccountToken</div>
+          <h4><code class="inline">kubernetes.io/service-account-token</code></h4>
+          <p>Holds a token for a ServiceAccount. Historically auto-created per SA; on modern clusters (≥1.24), tokens are projected via the <code class="inline">TokenRequest</code> API instead. You rarely create this manually.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">sa-token.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Secret</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">my-sa-token</span>
+  <span class="y-key">annotations</span>:
+    <span class="y-key">kubernetes.io/service-account.name</span>: <span class="y-str">my-sa</span>
+<span class="y-key">type</span>: <span class="y-val">kubernetes.io/service-account-token</span></pre></div>
+          <p>Keys auto-populated: <code class="inline">token</code>, <code class="inline">ca.crt</code>, <code class="inline">namespace</code>.</p>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Type 03 · DockerConfigJson</div>
+          <h4><code class="inline">kubernetes.io/dockerconfigjson</code></h4>
+          <p>Used by kubelet to pull images from a private registry. Referenced from a pod via <code class="inline">imagePullSecrets</code>. The <code class="inline">.dockerconfigjson</code> key must hold a valid Docker config file.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">dockerconfig.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Secret</span>
+<span class="y-key">metadata</span>: { <span class="y-key">name</span>: <span class="y-str">ghcr-creds</span> }
+<span class="y-key">type</span>: <span class="y-val">kubernetes.io/dockerconfigjson</span>
+<span class="y-key">data</span>:
+  <span class="y-key">.dockerconfigjson</span>: <span class="y-str">eyJhdXRocyI6eyJnaGNyLmlvIjp7ImF1dGgiOiJiV1Y2WTJvNiJ9fX0=</span>
+
+<span class="y-cmt"># usage:</span>
+<span class="y-key">spec</span>:
+  <span class="y-key">imagePullSecrets</span>:
+  - <span class="y-key">name</span>: <span class="y-str">ghcr-creds</span></pre></div>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Type 04 · Dockercfg (legacy)</div>
+          <h4><code class="inline">kubernetes.io/dockercfg</code></h4>
+          <p>Legacy predecessor to <code class="inline">dockerconfigjson</code>. Uses a single <code class="inline">.dockercfg</code> key with older format. Prefer <code class="inline">dockerconfigjson</code> on new clusters.</p>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Type 05 · BasicAuth</div>
+          <h4><code class="inline">kubernetes.io/basic-auth</code></h4>
+          <p>Carries HTTP basic-auth credentials. Requires keys <code class="inline">username</code> and <code class="inline">password</code>. Consumed by Ingress controllers, Argo CD, and anything reading standard k8s basic-auth.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">basic-auth.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">type</span>: <span class="y-val">kubernetes.io/basic-auth</span>
+<span class="y-key">stringData</span>:
+  <span class="y-key">username</span>: <span class="y-str">admin</span>
+  <span class="y-key">password</span>: <span class="y-str">"correct horse battery staple"</span></pre></div>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Type 06 · SSHAuth</div>
+          <h4><code class="inline">kubernetes.io/ssh-auth</code></h4>
+          <p>SSH private-key auth. Requires a single key <code class="inline">ssh-privatekey</code>. Used by Argo CD for git over SSH, Flux, and custom sync jobs.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">ssh-auth.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">type</span>: <span class="y-val">kubernetes.io/ssh-auth</span>
+<span class="y-key">data</span>:
+  <span class="y-key">ssh-privatekey</span>: <span class="y-str">LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZ...</span></pre></div>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Type 07 · TLS</div>
+          <h4><code class="inline">kubernetes.io/tls</code></h4>
+          <p>PEM-encoded certificate + key pair. Requires <code class="inline">tls.crt</code> and <code class="inline">tls.key</code>. Used by Ingress for HTTPS, cert-manager outputs these, and any TLS-aware workload can mount it.</p>
+          <div class="code-wrap"><div class="code-head"><span class="filename">tls.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Secret</span>
+<span class="y-key">metadata</span>: { <span class="y-key">name</span>: <span class="y-str">jahez-tls</span> }
+<span class="y-key">type</span>: <span class="y-val">kubernetes.io/tls</span>
+<span class="y-key">data</span>:
+  <span class="y-key">tls.crt</span>: <span class="y-str">LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZ...</span>
+  <span class="y-key">tls.key</span>: <span class="y-str">LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV...</span></pre></div>
+        </div>
+
+        <div class="slide">
+          <div class="slide-label">Type 08 · Bootstrap Token</div>
+          <h4><code class="inline">bootstrap.kubernetes.io/token</code></h4>
+          <p>Used by <code class="inline">kubeadm</code> to join new nodes. Lives in <code class="inline">kube-system</code>. Has an expiration. You generally never touch this; <code class="inline">kubeadm token create</code> manages it.</p>
+        </div>
+
+      </div>
+    </div>
+    <div class="slider-dots"></div>
+  </div>
+
+  <div class="callout">
+    <span class="lbl">Custom types</span>
+    <p>You can set <code class="inline">type</code> to anything following <code class="inline">domain/name</code> format (e.g. <code class="inline">example.com/my-type</code>). Kubernetes won't validate it, but consumers can. Useful when writing your own operators.</p>
+  </div>
+</section>
+
+<!-- ============================================================ S9 — Immutability ============================================================ -->
+<section class="block" id="s9">
+  <h2 class="section-title"><span class="num">09</span>Immutable ConfigMaps &amp; Secrets</h2>
+  <p>Since Kubernetes 1.21 (GA), you can mark ConfigMaps and Secrets as <strong>immutable</strong>. Once created, their <code class="inline">data</code> / <code class="inline">binaryData</code> can never change — only the whole object can be deleted.</p>
+
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">immutable.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">ConfigMap</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-config-v23</span>
+<span class="y-key">immutable</span>: <span class="y-num">true</span>     <span class="y-cmt"># ← after this, data is frozen</span>
+<span class="y-key">data</span>:
+  <span class="y-key">LOG_LEVEL</span>: <span class="y-str">"info"</span></pre>
+  </div>
+
+  <h4>Why you want it</h4>
+  <ul>
+    <li><strong>Performance:</strong> kubelet stops watching for changes → fewer API server RPCs, cheaper at scale (thousands of pods on one ConfigMap).</li>
+    <li><strong>Safety:</strong> no accidental mutation in production.</li>
+    <li><strong>Versioned config pattern:</strong> name your ConfigMap <code class="inline">order-config-v23</code>; when config changes, create <code class="inline">order-config-v24</code>, update the Deployment to reference it, get a clean rolling update. Old pods keep their old config; rollback is trivial.</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="lbl">Trade-off</span>
+    <p>You lose hot-reload. Any change = new object = rolling restart. In practice this is usually what you want for production config: explicit, versioned, reviewable.</p>
+  </div>
+</section>
+
+<!-- ============================================================ S10 — Architecture ============================================================ -->
+<!-- ============================================================ PART: ARCHITECTURE ============================================================ -->
+<div class="part-divider adv">
+  <div class="part-label"><span class="swatch"></span>Part V · Architecture &amp; Practice</div>
+  <h2 class="part-title">Putting it all together — <em>how</em> and <em>when</em></h2>
+  <p class="part-desc">Now that you know the three primitives individually, let's see how they flow through the cluster, how to choose between them, what the anti-patterns look like, and how a real service uses every one of them.</p>
+</div>
+
+<!-- ============================================================ S10 ============================================================ -->
+<section class="block" id="s10">
+  <h2 class="section-title"><span class="num">10</span>Cluster Architecture &amp; Data Flow</h2>
+  <p>How ConfigMaps and Secrets actually move from <code class="inline">kubectl apply</code> to bytes in your container.</p>
+
+  <div class="diagram">
+    <div class="diagram-caption">Figure 10.1 — End-to-end data path</div>
+    <svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#9aa7b8"/>
+        </marker>
+      </defs>
+
+      <!-- User -->
+      <rect x="30" y="30" width="160" height="60" rx="8" fill="#121821" stroke="#2a3747"/>
+      <text x="110" y="55" text-anchor="middle" fill="#e6edf5" font-family="JetBrains Mono" font-size="12" font-weight="700">kubectl apply</text>
+      <text x="110" y="75" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">user / CI / GitOps</text>
+
+      <!-- Control plane group -->
+      <rect x="230" y="10" width="490" height="170" rx="10" fill="#0f141b" stroke="#2a3747" stroke-dasharray="4 4"/>
+      <text x="250" y="28" fill="#9aa7b8" font-family="JetBrains Mono" font-size="11">CONTROL PLANE</text>
+
+      <rect x="250" y="40" width="140" height="60" rx="8" fill="#121821" stroke="#58a6ff"/>
+      <text x="320" y="65" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono" font-size="12" font-weight="700">API Server</text>
+      <text x="320" y="85" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">auth · validate · admit</text>
+
+      <rect x="430" y="40" width="140" height="60" rx="8" fill="#121821" stroke="#ffa657"/>
+      <text x="500" y="65" text-anchor="middle" fill="#ffa657" font-family="JetBrains Mono" font-size="12" font-weight="700">Encryption Provider</text>
+      <text x="500" y="85" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">KMS / aescbc (secrets only)</text>
+
+      <rect x="610" y="40" width="90" height="60" rx="8" fill="#121821" stroke="#7ee787"/>
+      <text x="655" y="65" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="12" font-weight="700">etcd</text>
+      <text x="655" y="85" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">persisted</text>
+
+      <rect x="250" y="120" width="450" height="40" rx="6" fill="#121821" stroke="#2a3747"/>
+      <text x="475" y="145" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="11">RBAC gates every read · audit log records it · admission webhooks validate</text>
+
+      <!-- Node -->
+      <rect x="750" y="30" width="180" height="150" rx="10" fill="#0f141b" stroke="#2a3747"/>
+      <text x="770" y="48" fill="#9aa7b8" font-family="JetBrains Mono" font-size="11">WORKER NODE</text>
+
+      <rect x="770" y="60" width="140" height="48" rx="6" fill="#121821" stroke="#58a6ff"/>
+      <text x="840" y="82" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono" font-size="11" font-weight="700">kubelet</text>
+      <text x="840" y="98" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">watches API</text>
+
+      <rect x="770" y="120" width="140" height="48" rx="6" fill="#121821" stroke="#7ee787"/>
+      <text x="840" y="142" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="11" font-weight="700">CRI runtime</text>
+      <text x="840" y="158" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">containerd / CRI-O</text>
+
+      <!-- Pod -->
+      <rect x="320" y="220" width="500" height="270" rx="10" fill="#0f141b" stroke="#7ee787"/>
+      <text x="340" y="240" fill="#7ee787" font-family="JetBrains Mono" font-size="11" font-weight="700">POD</text>
+
+      <!-- Container -->
+      <rect x="340" y="260" width="460" height="210" rx="8" fill="#121821" stroke="#2a3747"/>
+      <text x="360" y="282" fill="#e6edf5" font-family="JetBrains Mono" font-size="11" font-weight="700">Container (your app)</text>
+
+      <!-- env -->
+      <rect x="360" y="295" width="200" height="75" rx="6" fill="#0b1118" stroke="#58a6ff"/>
+      <text x="460" y="315" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono" font-size="11" font-weight="700">process env</text>
+      <text x="460" y="335" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">injected once at start</text>
+      <text x="460" y="352" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">immutable for the process</text>
+
+      <!-- files -->
+      <rect x="580" y="295" width="200" height="75" rx="6" fill="#0b1118" stroke="#ffa657"/>
+      <text x="680" y="315" text-anchor="middle" fill="#ffa657" font-family="JetBrains Mono" font-size="11" font-weight="700">tmpfs volume</text>
+      <text x="680" y="335" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">/etc/config, /etc/secrets</text>
+      <text x="680" y="352" text-anchor="middle" fill="#9aa7b8" font-family="JetBrains Mono" font-size="10">live-updated atomically</text>
+
+      <!-- note -->
+      <rect x="360" y="390" width="420" height="65" rx="6" fill="#0b1118" stroke="#2a3747"/>
+      <text x="570" y="412" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="11">Secrets are stored on an in-memory tmpfs — never written to the</text>
+      <text x="570" y="428" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="11">node's disk. They vanish with the pod.</text>
+
+      <!-- flow arrows -->
+      <path d="M190 60 L250 60" stroke="#9aa7b8" marker-end="url(#arr2)"/>
+      <path d="M390 70 L430 70" stroke="#9aa7b8" marker-end="url(#arr2)"/>
+      <path d="M570 70 L610 70" stroke="#9aa7b8" marker-end="url(#arr2)"/>
+      <path d="M700 85 L770 85" stroke="#9aa7b8" marker-end="url(#arr2)"/>
+      <path d="M840 170 L500 260" stroke="#9aa7b8" stroke-dasharray="4 4" marker-end="url(#arr2)"/>
+    </svg>
+  </div>
+
+  <h3 class="sub">Kubelet's two delivery paths</h3>
+  <div class="grid-2">
+    <div class="card tight">
+      <h4>Path A: env var injection</h4>
+      <ol style="margin:6px 0">
+        <li>Kubelet reads Pod spec</li>
+        <li>Resolves all <code class="inline">valueFrom</code> against API server cache</li>
+        <li>Builds final env list</li>
+        <li>Passes to CRI via CreateContainer RPC</li>
+        <li>Container starts with env set</li>
+      </ol>
+      <p style="margin:6px 0 0;font-size:13px"><strong>Updates require container restart.</strong></p>
+    </div>
+    <div class="card tight">
+      <h4>Path B: volume mount</h4>
+      <ol style="margin:6px 0">
+        <li>Kubelet creates an in-memory tmpfs</li>
+        <li>Writes ConfigMap/Secret data as files</li>
+        <li>Bind-mounts into container at <code class="inline">mountPath</code></li>
+        <li>Kubelet watches for changes, rewrites atomically via symlink swap</li>
+      </ol>
+      <p style="margin:6px 0 0;font-size:13px"><strong>Updates propagate in ~60s without restart.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ S11 — Decision Matrix ============================================================ -->
+<section class="block" id="s11">
+  <h2 class="section-title"><span class="num">11</span>Decision Matrix — When to Use What</h2>
+
+  <div class="decision">
+    <div class="q">① Is the value sensitive (password, token, key, cert)?</div>
+    <div class="a">
+      <div class="q">→ <strong>Yes</strong> → Secret</div>
+      <div class="a">
+        <div class="q">Is it enormous or binary?</div>
+        <div class="a">→ File mount (volume).</div>
+        <div class="q">Is it a short token the app reads from env?</div>
+        <div class="a">→ <code class="inline">secretKeyRef</code> env var (accept the leak-risk trade-off).</div>
+      </div>
+      <div class="q">→ <strong>No</strong> → ConfigMap (or literal env)</div>
+    </div>
+  </div>
+
+  <div class="decision" style="margin-top:14px">
+    <div class="q">② Does the app read a <em>file</em> (YAML, properties, conf) or <em>env vars</em>?</div>
+    <div class="a">
+      <div class="q">→ file → mount ConfigMap / Secret as volume</div>
+      <div class="q">→ env vars → <code class="inline">env.valueFrom</code> or <code class="inline">envFrom</code></div>
+    </div>
+  </div>
+
+  <div class="decision" style="margin-top:14px">
+    <div class="q">③ Must the config update without restart?</div>
+    <div class="a">
+      <div class="q">→ Yes → volume mount (+ app file-watcher)</div>
+      <div class="q">→ No / prefer restart → env vars (+ <code class="inline">checksum</code> annotation to trigger rollout)</div>
+    </div>
+  </div>
+
+  <div class="decision" style="margin-top:14px">
+    <div class="q">④ Does the value vary per environment (dev/stg/prod)?</div>
+    <div class="a">
+      <div class="q">→ Yes → ConfigMap or Secret — one per environment</div>
+      <div class="q">→ No (same everywhere) → literal env in the Deployment still fine</div>
+    </div>
+  </div>
+
+  <h3 class="sub">Cheat sheet</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Use case</th><th>Recommended</th></tr></thead>
+      <tbody>
+        <tr><td>JVM heap sizing</td><td>Downward API env (<code>resourceFieldRef</code>)</td></tr>
+        <tr><td>Log level toggle</td><td>ConfigMap → env</td></tr>
+        <tr><td>Feature flags (&gt; 10)</td><td>ConfigMap mounted as file + file-watcher</td></tr>
+        <tr><td>Database password</td><td>Secret → env (ok) or file (better)</td></tr>
+        <tr><td>TLS cert for ingress</td><td>Secret type <code>kubernetes.io/tls</code></td></tr>
+        <tr><td>Private registry auth</td><td>Secret type <code>dockerconfigjson</code> + <code>imagePullSecrets</code></td></tr>
+        <tr><td>nginx.conf / application.yaml</td><td>ConfigMap mounted as volume</td></tr>
+        <tr><td>Large reference data (&lt; 1 MiB)</td><td>ConfigMap file mount</td></tr>
+        <tr><td>Large reference data (&gt; 1 MiB)</td><td>PVC or object storage, NOT ConfigMap</td></tr>
+        <tr><td>Secrets rotated often</td><td>External Secrets Operator + Vault/AWS SM/GCP SM</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ S12 — Security Hardening ============================================================ -->
+<section class="block" id="s12">
+  <h2 class="section-title"><span class="num">12</span>Security Hardening for Secrets</h2>
+  <p>Default behavior is not secure enough for production. Here are the layered protections.</p>
+
+  <h3 class="sub">1. Encryption at rest in etcd</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">encryption-config.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-cmt"># Passed to kube-apiserver via --encryption-provider-config</span>
+<span class="y-key">apiVersion</span>: <span class="y-val">apiserver.config.k8s.io/v1</span>
+<span class="y-key">kind</span>: <span class="y-val">EncryptionConfiguration</span>
+<span class="y-key">resources</span>:
+- <span class="y-key">resources</span>:
+  - <span class="y-str">secrets</span>
+  <span class="y-key">providers</span>:
+  - <span class="y-key">kms</span>:                <span class="y-cmt"># prefer a KMS-backed key (AWS/GCP/Vault)</span>
+      <span class="y-key">name</span>: <span class="y-str">kms-provider</span>
+      <span class="y-key">endpoint</span>: <span class="y-str">unix:///var/run/kmsplugin/socket.sock</span>
+      <span class="y-key">cachesize</span>: <span class="y-num">1000</span>
+      <span class="y-key">timeout</span>: <span class="y-str">3s</span>
+  - <span class="y-key">identity</span>: {}        <span class="y-cmt"># fallback for reads; never for writes</span></pre>
+  </div>
+  <p>Without this, Secrets sit in etcd in plaintext (base64 ≠ encrypted). A compromised etcd backup = every Secret exposed.</p>
+
+  <h3 class="sub">2. RBAC — principle of least privilege</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">rbac.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">rbac.authorization.k8s.io/v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Role</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+  <span class="y-key">name</span>: <span class="y-str">order-secret-reader</span>
+<span class="y-key">rules</span>:
+- <span class="y-key">apiGroups</span>: [<span class="y-str">""</span>]
+  <span class="y-key">resources</span>: [<span class="y-str">"secrets"</span>]
+  <span class="y-key">resourceNames</span>: [<span class="y-str">"order-secrets"</span>]   <span class="y-cmt"># only THIS secret</span>
+  <span class="y-key">verbs</span>: [<span class="y-str">"get"</span>]                      <span class="y-cmt"># read, not list</span></pre>
+  </div>
+  <p><strong>Avoid cluster-wide <code class="inline">secrets/list</code>.</strong> A pod with list access can enumerate every Secret in its namespace.</p>
+
+  <h3 class="sub">3. Restrict mounting via ServiceAccount scope</h3>
+  <p>A pod can only consume Secrets in its own namespace. Keep blast-radius small: one namespace per team / service boundary.</p>
+
+  <h3 class="sub">4. Use file mounts over env for ultra-sensitive values</h3>
+  <div class="compare">
+    <div class="col bad">
+      <h5>❌ Risky</h5>
+      <p>Secret as env var. Appears in <code class="inline">/proc/&lt;pid&gt;/environ</code>, inheritable by any <code class="inline">exec</code>'d child process, sometimes printed by crash handlers.</p>
+    </div>
+    <div class="col good">
+      <h5>✅ Safer</h5>
+      <p>Secret as file on tmpfs. Access-controlled by <code class="inline">mode: 0400</code> and pod user. App reads once on startup. Not exposed to child processes by default.</p>
+    </div>
+  </div>
+
+  <h3 class="sub">5. External secret stores</h3>
+  <p>For rotating secrets, audit trails, and separation of duty, use a dedicated secret manager. Two canonical integrations:</p>
+  <div class="grid-2">
+    <div class="card tight">
+      <h4>External Secrets Operator</h4>
+      <p>You declare an <code class="inline">ExternalSecret</code> CRD; the operator fetches from AWS Secrets Manager / GCP Secret Manager / Vault / Azure Key Vault and materializes a native k8s Secret. Refreshes on a schedule.</p>
+    </div>
+    <div class="card tight">
+      <h4>Vault Agent Injector</h4>
+      <p>A mutating webhook injects a Vault sidecar that authenticates with the pod's SA token, fetches secrets, and writes them to a shared volume. Secrets never become k8s Secrets at all.</p>
+    </div>
+  </div>
+
+  <h3 class="sub">6. Audit every secret access</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">audit-policy.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">audit.k8s.io/v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Policy</span>
+<span class="y-key">rules</span>:
+<span class="y-cmt"># Log every read on secrets at Metadata level (who, when, which)</span>
+- <span class="y-key">level</span>: <span class="y-val">Metadata</span>
+  <span class="y-key">resources</span>:
+  - <span class="y-key">group</span>: <span class="y-str">""</span>
+    <span class="y-key">resources</span>: [<span class="y-str">"secrets"</span>]
+  <span class="y-key">verbs</span>: [<span class="y-str">"get"</span>, <span class="y-str">"list"</span>, <span class="y-str">"watch"</span>]</pre>
+  </div>
+</section>
+
+<!-- ============================================================ S13 — Best Practices ============================================================ -->
+<section class="block" id="s13">
+  <h2 class="section-title"><span class="num">13</span>Best Practices &amp; Anti-Patterns</h2>
+
+  <h3 class="sub">Do</h3>
+  <ul>
+    <li><strong>One ConfigMap per logical concern.</strong> Don't dump feature flags, DB config, and logging into one blob.</li>
+    <li><strong>Use versioned names</strong> (<code class="inline">order-config-v7</code>) + <code class="inline">immutable: true</code> for production config. Changes = new object + Deployment update.</li>
+    <li><strong>Put checksums in the pod template annotations</strong> so a config change triggers a rolling update automatically.</li>
+    <li><strong>Validate config at startup</strong> — fail fast if required keys are missing, rather than crashing three requests later.</li>
+    <li><strong>Enable encryption at rest</strong> with a KMS provider, not just AES-CBC with a static key.</li>
+    <li><strong>Scope RBAC with <code class="inline">resourceNames</code></strong> so a pod can only read its own Secret, not every Secret in the namespace.</li>
+    <li><strong>Use namespaces as security boundaries</strong> — one per team/service means Secret exposure is contained.</li>
+    <li><strong>Rotate secrets.</strong> Build the rotation pathway from day one. External Secrets Operator or Vault Agent Injector makes it routine.</li>
+    <li><strong>Prefer stringData</strong> for Secret authoring; you avoid human base64 errors.</li>
+  </ul>
+
+  <h3 class="sub">Don't</h3>
+  <ul>
+    <li><strong>Don't commit plaintext Secrets to git.</strong> Ever. Use Sealed Secrets, SOPS, or an external store.</li>
+    <li><strong>Don't treat base64 as encryption.</strong> It is encoding only.</li>
+    <li><strong>Don't pack huge blobs into a ConfigMap.</strong> The 1 MiB limit applies to the whole object and large ConfigMaps destabilize the API server watch cache.</li>
+    <li><strong>Don't rely on env-var auto-update.</strong> It doesn't exist. Restart the pod.</li>
+    <li><strong>Don't share a single "god" Secret</strong> across every service. Blast radius = everything.</li>
+    <li><strong>Don't log Secrets.</strong> Scrub application logs; reject PRs that print env.</li>
+    <li><strong>Don't grant <code class="inline">secrets/list</code> cluster-wide</strong> to CI or to service accounts. Enumeration is the first step in lateral movement.</li>
+  </ul>
+
+  <h3 class="sub">Anti-pattern gallery</h3>
+
+  <details class="fold" open>
+    <summary>❌ The "env-var kitchen sink"</summary>
+    <div class="fold-body">
+      <p>30+ <code class="inline">value</code> entries inlined in the Deployment. Any change requires editing the Deployment, which owns workload identity. Mixes "what runs" with "how it's configured."</p>
+      <p><strong>Fix:</strong> extract to a ConfigMap, reference via <code class="inline">envFrom</code> or <code class="inline">valueFrom</code>.</p>
+    </div>
+  </details>
+
+  <details class="fold">
+    <summary>❌ Storing a Base64-encoded password in a ConfigMap "for obfuscation"</summary>
+    <div class="fold-body">
+      <p>This provides zero protection and misleads reviewers. ConfigMaps aren't encrypted at rest by default; Secrets are (when you configure it). Use the right type.</p>
+    </div>
+  </details>
+
+  <details class="fold">
+    <summary>❌ Secret-as-env-var for something read once</summary>
+    <div class="fold-body">
+      <p>The app reads <code class="inline">STRIPE_KEY</code> from env on startup, then never again. Now it lives in <code class="inline">/proc/&lt;pid&gt;/environ</code> for the container's whole lifetime, visible to every <code class="inline">kubectl exec</code>.</p>
+      <p><strong>Fix:</strong> file mount with <code class="inline">mode: 0400</code> and a specific UID.</p>
+    </div>
+  </details>
+
+  <details class="fold">
+    <summary>❌ Not triggering restarts when env-backed ConfigMap changes</summary>
+    <div class="fold-body">
+      <p>Change propagates to the cluster, but running pods still run with the old values. Operator assumes "it's updated" and forgets. Cue an incident 4 hours later.</p>
+      <p><strong>Fix:</strong> checksum annotation on pod template, or <code class="inline">kubectl rollout restart</code> as part of the config-update pipeline.</p>
+    </div>
+  </details>
+
+  <details class="fold">
+    <summary>❌ Using the default ServiceAccount for everything</summary>
+    <div class="fold-body">
+      <p>Every pod in the namespace gets the same identity; any Secret any of them can read, all of them can read. Minimizes nothing.</p>
+      <p><strong>Fix:</strong> one ServiceAccount per workload; RBAC pinned to <code class="inline">resourceNames</code>.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ S14 — Full Project ============================================================ -->
+<section class="block" id="s14">
+  <h2 class="section-title"><span class="num">14</span>Full Project — Order Service</h2>
+  <p>A realistic end-to-end example. An <strong>order-service</strong> with a Postgres-backed store, Redis cache, feature flags, TLS for ingress, and a docker-registry pull secret. Every configuration primitive gets used exactly where it should be.</p>
+
+  <h3 class="sub">Architecture</h3>
+  <div class="diagram">
+    <div class="diagram-caption">Figure 14.1 — Order Service configuration topology</div>
+    <svg viewBox="0 0 960 540" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#9aa7b8"/>
+        </marker>
+      </defs>
+
+      <!-- Namespace border -->
+      <rect x="20" y="20" width="920" height="500" rx="14" fill="none" stroke="#2a3747" stroke-dasharray="6 6"/>
+      <text x="40" y="42" fill="#9aa7b8" font-family="JetBrains Mono" font-size="12">NAMESPACE · orders</text>
+
+      <!-- ConfigMaps -->
+      <rect x="50" y="70" width="220" height="80" rx="10" fill="#0f141b" stroke="#58a6ff"/>
+      <text x="160" y="95" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono" font-size="12" font-weight="700">ConfigMap · order-config</text>
+      <text x="160" y="115" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">LOG_LEVEL, REGION, DB_HOST</text>
+      <text x="160" y="130" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">application.yaml (file)</text>
+
+      <rect x="50" y="170" width="220" height="60" rx="10" fill="#0f141b" stroke="#58a6ff"/>
+      <text x="160" y="195" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono" font-size="12" font-weight="700">ConfigMap · feature-flags</text>
+      <text x="160" y="215" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">FF_DARK_STORES, FF_EXPRESS</text>
+
+      <!-- Secrets -->
+      <rect x="50" y="270" width="220" height="60" rx="10" fill="#0f141b" stroke="#ffa657"/>
+      <text x="160" y="295" text-anchor="middle" fill="#ffa657" font-family="JetBrains Mono" font-size="12" font-weight="700">Secret · order-secrets</text>
+      <text x="160" y="315" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">db.password, jwt.key</text>
+
+      <rect x="50" y="350" width="220" height="60" rx="10" fill="#0f141b" stroke="#ffa657"/>
+      <text x="160" y="375" text-anchor="middle" fill="#ffa657" font-family="JetBrains Mono" font-size="12" font-weight="700">Secret · jahez-tls</text>
+      <text x="160" y="395" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">tls.crt, tls.key</text>
+
+      <rect x="50" y="430" width="220" height="60" rx="10" fill="#0f141b" stroke="#ffa657"/>
+      <text x="160" y="455" text-anchor="middle" fill="#ffa657" font-family="JetBrains Mono" font-size="12" font-weight="700">Secret · ghcr-creds</text>
+      <text x="160" y="475" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">.dockerconfigjson</text>
+
+      <!-- Deployment / Pod -->
+      <rect x="360" y="120" width="380" height="240" rx="12" fill="#121821" stroke="#7ee787"/>
+      <text x="380" y="142" fill="#7ee787" font-family="JetBrains Mono" font-size="12" font-weight="700">Deployment · order-api (×3 replicas)</text>
+
+      <rect x="380" y="160" width="340" height="180" rx="8" fill="#0b1118" stroke="#2a3747"/>
+      <text x="400" y="182" fill="#e6edf5" font-family="JetBrains Mono" font-size="11" font-weight="700">Container: order-api</text>
+
+      <rect x="400" y="195" width="300" height="30" rx="5" fill="#121821" stroke="#58a6ff"/>
+      <text x="550" y="215" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">envFrom: order-config, feature-flags</text>
+
+      <rect x="400" y="230" width="300" height="30" rx="5" fill="#121821" stroke="#ffa657"/>
+      <text x="550" y="250" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">env.valueFrom: order-secrets (jwt.key)</text>
+
+      <rect x="400" y="265" width="300" height="30" rx="5" fill="#121821" stroke="#58a6ff"/>
+      <text x="550" y="285" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">mount /etc/app ← order-config.application.yaml</text>
+
+      <rect x="400" y="300" width="300" height="30" rx="5" fill="#121821" stroke="#ffa657"/>
+      <text x="550" y="320" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">mount /etc/secrets ← order-secrets.db.password</text>
+
+      <!-- Ingress -->
+      <rect x="780" y="70" width="150" height="80" rx="10" fill="#121821" stroke="#ffa657"/>
+      <text x="855" y="95" text-anchor="middle" fill="#ffa657" font-family="JetBrains Mono" font-size="12" font-weight="700">Ingress</text>
+      <text x="855" y="115" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">uses jahez-tls</text>
+      <text x="855" y="130" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">(TLS Secret)</text>
+
+      <!-- Service -->
+      <rect x="780" y="180" width="150" height="60" rx="10" fill="#121821" stroke="#7ee787"/>
+      <text x="855" y="205" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="12" font-weight="700">Service · order-api</text>
+      <text x="855" y="225" text-anchor="middle" fill="#d6deea" font-family="JetBrains Mono" font-size="10">ClusterIP :8080</text>
+
+      <!-- arrows -->
+      <path d="M270 110 L380 200" stroke="#58a6ff" marker-end="url(#arr3)"/>
+      <path d="M270 200 L380 215" stroke="#58a6ff" marker-end="url(#arr3)"/>
+      <path d="M270 300 L380 245" stroke="#ffa657" marker-end="url(#arr3)"/>
+      <path d="M270 110 L380 280" stroke="#58a6ff" stroke-dasharray="4 4" marker-end="url(#arr3)"/>
+      <path d="M270 300 L380 315" stroke="#ffa657" stroke-dasharray="4 4" marker-end="url(#arr3)"/>
+      <path d="M270 380 L780 110" stroke="#ffa657" marker-end="url(#arr3)"/>
+      <path d="M270 460 L380 140" stroke="#ffa657" stroke-dasharray="4 4" marker-end="url(#arr3)"/>
+
+      <path d="M740 240 L780 210" stroke="#9aa7b8" marker-end="url(#arr3)"/>
+      <path d="M855 150 L855 180" stroke="#9aa7b8" marker-end="url(#arr3)"/>
+    </svg>
+  </div>
+
+  <h3 class="sub">File layout</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">project/</span><button class="copy-btn" data-copy>copy</button></div>
+<pre>order-service/
+├── 00-namespace.yaml
+├── 01-configmap-order-config.yaml
+├── 02-configmap-feature-flags.yaml
+├── 03-secret-order-secrets.yaml
+├── 04-secret-jahez-tls.yaml
+├── 05-secret-ghcr-creds.yaml
+├── 06-serviceaccount-rbac.yaml
+├── 07-deployment-order-api.yaml
+├── 08-service-order-api.yaml
+└── 09-ingress-order-api.yaml</pre>
+  </div>
+
+  <h3 class="sub">00 — Namespace</h3>
+  <div class="code-wrap"><div class="code-head"><span class="filename">00-namespace.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Namespace</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">orders</span>
+  <span class="y-key">labels</span>:
+    <span class="y-key">app.kubernetes.io/part-of</span>: <span class="y-str">jahez-platform</span>
+    <span class="y-key">pod-security.kubernetes.io/enforce</span>: <span class="y-str">restricted</span></pre></div>
+
+  <h3 class="sub">01 — order-config (non-sensitive, mixed shape)</h3>
+  <p>Holds both simple env-style keys (<code class="inline">envFrom</code>) and a full application.yaml file (volume mount).</p>
+  <div class="code-wrap"><div class="code-head"><span class="filename">01-configmap-order-config.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">ConfigMap</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-config</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+  <span class="y-key">labels</span>:
+    <span class="y-key">app.kubernetes.io/name</span>: <span class="y-str">order-api</span>
+    <span class="y-key">app.kubernetes.io/component</span>: <span class="y-str">config</span>
+<span class="y-key">data</span>:
+  <span class="y-cmt"># env-style keys (picked up by envFrom)</span>
+  <span class="y-key">LOG_LEVEL</span>: <span class="y-str">"info"</span>
+  <span class="y-key">SERVER_PORT</span>: <span class="y-str">"8080"</span>
+  <span class="y-key">REGION</span>: <span class="y-str">"KSA"</span>
+  <span class="y-key">DB_HOST</span>: <span class="y-str">"postgres.data.svc.cluster.local"</span>
+  <span class="y-key">DB_PORT</span>: <span class="y-str">"5432"</span>
+  <span class="y-key">DB_NAME</span>: <span class="y-str">"orders"</span>
+  <span class="y-key">REDIS_HOST</span>: <span class="y-str">"redis.cache.svc.cluster.local"</span>
+  <span class="y-key">REDIS_PORT</span>: <span class="y-str">"6379"</span>
+
+  <span class="y-cmt"># Whole Spring application.yaml as a single file</span>
+  <span class="y-key">application.yaml</span>: |
+    server:
+      port: 8080
+      shutdown: graceful
+      tomcat:
+        threads:
+          max: 200
+    spring:
+      application:
+        name: order-api
+      datasource:
+        url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+        hikari:
+          maximum-pool-size: 20
+          connection-timeout: 3000
+      redis:
+        host: ${REDIS_HOST}
+        port: ${REDIS_PORT}
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,prometheus
+      endpoint:
+        health:
+          probes:
+            enabled: true
+    jahez:
+      checkout:
+        max-retries: 3
+        idempotency-ttl: 15m</pre></div>
+
+  <h3 class="sub">02 — feature-flags (isolated, optional)</h3>
+  <div class="code-wrap"><div class="code-head"><span class="filename">02-configmap-feature-flags.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">ConfigMap</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">feature-flags</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">data</span>:
+  <span class="y-key">FF_DARK_STORES</span>: <span class="y-str">"true"</span>
+  <span class="y-key">FF_EXPRESS_DELIVERY</span>: <span class="y-str">"false"</span>
+  <span class="y-key">FF_LOYALTY_V2</span>: <span class="y-str">"true"</span>
+  <span class="y-key">FF_CHECKOUT_SPLIT_TEST</span>: <span class="y-str">"30"</span>     <span class="y-cmt"># percent</span></pre></div>
+
+  <h3 class="sub">03 — order-secrets (generic Opaque)</h3>
+  <p>Uses <code class="inline">stringData</code> to avoid base64 pain. In real life, this file <strong>is generated</strong> by sealed-secrets or external-secrets and never committed raw.</p>
+  <div class="code-wrap"><div class="code-head"><span class="filename">03-secret-order-secrets.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Secret</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-secrets</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">type</span>: <span class="y-val">Opaque</span>
+<span class="y-key">stringData</span>:
+  <span class="y-key">db.password</span>: <span class="y-str">"CHANGE_ME_IN_VAULT"</span>
+  <span class="y-key">jwt.signing.key</span>: <span class="y-str">"CHANGE_ME_IN_VAULT"</span>
+  <span class="y-key">stripe.api_key</span>: <span class="y-str">"sk_live_CHANGE_ME"</span>
+  <span class="y-key">mada.merchant_secret</span>: <span class="y-str">"CHANGE_ME"</span></pre></div>
+
+  <h3 class="sub">04 — jahez-tls (type: kubernetes.io/tls)</h3>
+  <div class="code-wrap"><div class="code-head"><span class="filename">04-secret-jahez-tls.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-cmt"># Usually produced by cert-manager from a Certificate resource.</span>
+<span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Secret</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">jahez-tls</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">type</span>: <span class="y-val">kubernetes.io/tls</span>
+<span class="y-key">data</span>:
+  <span class="y-key">tls.crt</span>: <span class="y-str">LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...   # base64 PEM</span>
+  <span class="y-key">tls.key</span>: <span class="y-str">LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t...   # base64 PEM</span></pre></div>
+
+  <h3 class="sub">05 — ghcr-creds (type: dockerconfigjson)</h3>
+  <div class="code-wrap"><div class="code-head"><span class="filename">05-secret-ghcr-creds.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-cmt"># Create via:</span>
+<span class="y-cmt"># kubectl -n orders create secret docker-registry ghcr-creds \</span>
+<span class="y-cmt">#   --docker-server=ghcr.io --docker-username=jahez-ci \</span>
+<span class="y-cmt">#   --docker-password=$GHCR_TOKEN --docker-email=ci@jahez.sa</span>
+<span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Secret</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">ghcr-creds</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">type</span>: <span class="y-val">kubernetes.io/dockerconfigjson</span>
+<span class="y-key">data</span>:
+  <span class="y-key">.dockerconfigjson</span>: <span class="y-str">eyJhdXRocyI6eyJnaGNyLmlvIjp7InVzZXJuYW1lIjoiamFoZXotY2kiLCJwYXNzd29yZCI6ImdocF94eHgiLCJlbWFpbCI6ImNpQGphaGV6LnNhIiwiYXV0aCI6ImFtRm9aWG90WTJrNloyaHdYM2g0ZUE9PSJ9fX0=</span></pre></div>
+
+  <h3 class="sub">06 — ServiceAccount + narrow RBAC</h3>
+  <div class="code-wrap"><div class="code-head"><span class="filename">06-serviceaccount-rbac.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">ServiceAccount</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-api</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">automountServiceAccountToken</span>: <span class="y-num">false</span>   <span class="y-cmt"># do not mount unless app needs API access</span>
+---
+<span class="y-key">apiVersion</span>: <span class="y-val">rbac.authorization.k8s.io/v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Role</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+  <span class="y-key">name</span>: <span class="y-str">order-api-config-read</span>
+<span class="y-key">rules</span>:
+- <span class="y-key">apiGroups</span>: [<span class="y-str">""</span>]
+  <span class="y-key">resources</span>: [<span class="y-str">"configmaps"</span>]
+  <span class="y-key">resourceNames</span>: [<span class="y-str">"order-config"</span>, <span class="y-str">"feature-flags"</span>]
+  <span class="y-key">verbs</span>: [<span class="y-str">"get"</span>, <span class="y-str">"watch"</span>]
+- <span class="y-key">apiGroups</span>: [<span class="y-str">""</span>]
+  <span class="y-key">resources</span>: [<span class="y-str">"secrets"</span>]
+  <span class="y-key">resourceNames</span>: [<span class="y-str">"order-secrets"</span>]
+  <span class="y-key">verbs</span>: [<span class="y-str">"get"</span>]
+---
+<span class="y-key">apiVersion</span>: <span class="y-val">rbac.authorization.k8s.io/v1</span>
+<span class="y-key">kind</span>: <span class="y-val">RoleBinding</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-api-config-read</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">subjects</span>:
+- <span class="y-key">kind</span>: <span class="y-val">ServiceAccount</span>
+  <span class="y-key">name</span>: <span class="y-str">order-api</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">roleRef</span>:
+  <span class="y-key">kind</span>: <span class="y-val">Role</span>
+  <span class="y-key">name</span>: <span class="y-str">order-api-config-read</span>
+  <span class="y-key">apiGroup</span>: <span class="y-val">rbac.authorization.k8s.io</span></pre></div>
+
+  <h3 class="sub">07 — Deployment (the centerpiece)</h3>
+  <p>Every primitive in use: literal env, downward API, <code class="inline">envFrom</code> (both ConfigMaps), <code class="inline">secretKeyRef</code>, volume-mounted ConfigMap, volume-mounted Secret, image-pull Secret, checksum annotation for auto-restart-on-change.</p>
+  <div class="code-wrap"><div class="code-head"><span class="filename">07-deployment-order-api.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">apps/v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Deployment</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-api</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+  <span class="y-key">labels</span>:
+    <span class="y-key">app.kubernetes.io/name</span>: <span class="y-str">order-api</span>
+<span class="y-key">spec</span>:
+  <span class="y-key">replicas</span>: <span class="y-num">3</span>
+  <span class="y-key">strategy</span>:
+    <span class="y-key">type</span>: <span class="y-val">RollingUpdate</span>
+    <span class="y-key">rollingUpdate</span>: { <span class="y-key">maxSurge</span>: <span class="y-num">1</span>, <span class="y-key">maxUnavailable</span>: <span class="y-num">0</span> }
+  <span class="y-key">selector</span>:
+    <span class="y-key">matchLabels</span>: { <span class="y-key">app.kubernetes.io/name</span>: <span class="y-str">order-api</span> }
+  <span class="y-key">template</span>:
+    <span class="y-key">metadata</span>:
+      <span class="y-key">labels</span>: { <span class="y-key">app.kubernetes.io/name</span>: <span class="y-str">order-api</span> }
+      <span class="y-key">annotations</span>:
+        <span class="y-cmt"># Change the checksum → pod template changes → rolling restart</span>
+        <span class="y-key">checksum/config</span>: <span class="y-str">"REPLACE_WITH_SHA256_OF_CONFIGMAPS"</span>
+        <span class="y-key">checksum/secret</span>: <span class="y-str">"REPLACE_WITH_SHA256_OF_SECRETS"</span>
+    <span class="y-key">spec</span>:
+      <span class="y-key">serviceAccountName</span>: <span class="y-str">order-api</span>
+      <span class="y-key">imagePullSecrets</span>:
+      - <span class="y-key">name</span>: <span class="y-str">ghcr-creds</span>
+      <span class="y-key">securityContext</span>:
+        <span class="y-key">runAsNonRoot</span>: <span class="y-num">true</span>
+        <span class="y-key">runAsUser</span>: <span class="y-num">10001</span>
+        <span class="y-key">fsGroup</span>: <span class="y-num">10001</span>
+        <span class="y-key">seccompProfile</span>: { <span class="y-key">type</span>: <span class="y-val">RuntimeDefault</span> }
+      <span class="y-key">containers</span>:
+      - <span class="y-key">name</span>: <span class="y-str">api</span>
+        <span class="y-key">image</span>: <span class="y-str">ghcr.io/jahez/order-api:1.8.2</span>
+        <span class="y-key">ports</span>:
+        - { <span class="y-key">name</span>: <span class="y-str">http</span>, <span class="y-key">containerPort</span>: <span class="y-num">8080</span> }
+        <span class="y-key">securityContext</span>:
+          <span class="y-key">allowPrivilegeEscalation</span>: <span class="y-num">false</span>
+          <span class="y-key">readOnlyRootFilesystem</span>: <span class="y-num">true</span>
+          <span class="y-key">capabilities</span>: { <span class="y-key">drop</span>: [<span class="y-str">"ALL"</span>] }
+        <span class="y-key">resources</span>:
+          <span class="y-key">requests</span>: { <span class="y-key">cpu</span>: <span class="y-str">"250m"</span>, <span class="y-key">memory</span>: <span class="y-str">"512Mi"</span> }
+          <span class="y-key">limits</span>:   { <span class="y-key">cpu</span>: <span class="y-str">"1"</span>,    <span class="y-key">memory</span>: <span class="y-str">"1Gi"</span>   }
+
+        <span class="y-cmt"># ── 1. Literal + Downward API env ────────────────</span>
+        <span class="y-key">env</span>:
+        - { <span class="y-key">name</span>: <span class="y-str">SPRING_PROFILES_ACTIVE</span>, <span class="y-key">value</span>: <span class="y-str">"prod"</span> }
+        - { <span class="y-key">name</span>: <span class="y-str">TZ</span>,                     <span class="y-key">value</span>: <span class="y-str">"Asia/Riyadh"</span> }
+        - <span class="y-key">name</span>: <span class="y-str">POD_NAME</span>
+          <span class="y-key">valueFrom</span>: { <span class="y-key">fieldRef</span>: { <span class="y-key">fieldPath</span>: <span class="y-str">metadata.name</span> } }
+        - <span class="y-key">name</span>: <span class="y-str">POD_NAMESPACE</span>
+          <span class="y-key">valueFrom</span>: { <span class="y-key">fieldRef</span>: { <span class="y-key">fieldPath</span>: <span class="y-str">metadata.namespace</span> } }
+        - <span class="y-key">name</span>: <span class="y-str">POD_IP</span>
+          <span class="y-key">valueFrom</span>: { <span class="y-key">fieldRef</span>: { <span class="y-key">fieldPath</span>: <span class="y-str">status.podIP</span> } }
+        - <span class="y-key">name</span>: <span class="y-str">MEM_LIMIT_MB</span>
+          <span class="y-key">valueFrom</span>:
+            <span class="y-key">resourceFieldRef</span>:
+              <span class="y-key">containerName</span>: <span class="y-str">api</span>
+              <span class="y-key">resource</span>: <span class="y-str">limits.memory</span>
+              <span class="y-key">divisor</span>: <span class="y-str">"1Mi"</span>
+        <span class="y-cmt"># JVM heap sized from container limit — fixes the gateway OOM pattern</span>
+        - <span class="y-key">name</span>: <span class="y-str">JAVA_TOOL_OPTIONS</span>
+          <span class="y-key">value</span>: <span class="y-str">"-XX:MaxRAMPercentage=70.0 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"</span>
+
+        <span class="y-cmt"># Single sensitive value consumed as env (convenience; small blast radius)</span>
+        - <span class="y-key">name</span>: <span class="y-str">JWT_SIGNING_KEY</span>
+          <span class="y-key">valueFrom</span>:
+            <span class="y-key">secretKeyRef</span>:
+              <span class="y-key">name</span>: <span class="y-str">order-secrets</span>
+              <span class="y-key">key</span>: <span class="y-str">jwt.signing.key</span>
+
+        <span class="y-cmt"># ── 2. Bulk import of non-sensitive config ───────</span>
+        <span class="y-key">envFrom</span>:
+        - <span class="y-key">configMapRef</span>: { <span class="y-key">name</span>: <span class="y-str">order-config</span> }
+        - <span class="y-key">configMapRef</span>: { <span class="y-key">name</span>: <span class="y-str">feature-flags</span>, <span class="y-key">optional</span>: <span class="y-num">true</span> }
+
+        <span class="y-cmt"># ── 3. File mounts ───────────────────────────────</span>
+        <span class="y-key">volumeMounts</span>:
+        - { <span class="y-key">name</span>: <span class="y-str">app-config</span>,  <span class="y-key">mountPath</span>: <span class="y-str">/etc/app</span>,     <span class="y-key">readOnly</span>: <span class="y-num">true</span> }
+        - { <span class="y-key">name</span>: <span class="y-str">app-secrets</span>, <span class="y-key">mountPath</span>: <span class="y-str">/etc/secrets</span>, <span class="y-key">readOnly</span>: <span class="y-num">true</span> }
+        - { <span class="y-key">name</span>: <span class="y-str">tmp</span>,         <span class="y-key">mountPath</span>: <span class="y-str">/tmp</span> }
+
+        <span class="y-key">livenessProbe</span>:
+          <span class="y-key">httpGet</span>:  { <span class="y-key">path</span>: <span class="y-str">/actuator/health/liveness</span>,  <span class="y-key">port</span>: <span class="y-str">http</span> }
+          <span class="y-key">initialDelaySeconds</span>: <span class="y-num">30</span>
+          <span class="y-key">periodSeconds</span>: <span class="y-num">10</span>
+        <span class="y-key">readinessProbe</span>:
+          <span class="y-key">httpGet</span>:  { <span class="y-key">path</span>: <span class="y-str">/actuator/health/readiness</span>, <span class="y-key">port</span>: <span class="y-str">http</span> }
+          <span class="y-key">periodSeconds</span>: <span class="y-num">5</span>
+
+      <span class="y-key">volumes</span>:
+      <span class="y-cmt"># ConfigMap projected — only application.yaml file</span>
+      - <span class="y-key">name</span>: <span class="y-str">app-config</span>
+        <span class="y-key">configMap</span>:
+          <span class="y-key">name</span>: <span class="y-str">order-config</span>
+          <span class="y-key">items</span>:
+          - { <span class="y-key">key</span>: <span class="y-str">application.yaml</span>, <span class="y-key">path</span>: <span class="y-str">application.yaml</span>, <span class="y-key">mode</span>: <span class="y-num">0440</span> }
+          <span class="y-key">defaultMode</span>: <span class="y-num">0440</span>
+      <span class="y-cmt"># Secret projected — just db.password file, not env</span>
+      - <span class="y-key">name</span>: <span class="y-str">app-secrets</span>
+        <span class="y-key">secret</span>:
+          <span class="y-key">secretName</span>: <span class="y-str">order-secrets</span>
+          <span class="y-key">items</span>:
+          - { <span class="y-key">key</span>: <span class="y-str">db.password</span>,    <span class="y-key">path</span>: <span class="y-str">db.password</span>,    <span class="y-key">mode</span>: <span class="y-num">0400</span> }
+          - { <span class="y-key">key</span>: <span class="y-str">stripe.api_key</span>, <span class="y-key">path</span>: <span class="y-str">stripe.api_key</span>, <span class="y-key">mode</span>: <span class="y-num">0400</span> }
+          <span class="y-key">defaultMode</span>: <span class="y-num">0400</span>
+      - <span class="y-key">name</span>: <span class="y-str">tmp</span>
+        <span class="y-key">emptyDir</span>: { <span class="y-key">medium</span>: <span class="y-val">Memory</span>, <span class="y-key">sizeLimit</span>: <span class="y-str">64Mi</span> }</pre></div>
+
+  <h3 class="sub">08 — Service</h3>
+  <div class="code-wrap"><div class="code-head"><span class="filename">08-service-order-api.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Service</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-api</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+<span class="y-key">spec</span>:
+  <span class="y-key">type</span>: <span class="y-val">ClusterIP</span>
+  <span class="y-key">selector</span>: { <span class="y-key">app.kubernetes.io/name</span>: <span class="y-str">order-api</span> }
+  <span class="y-key">ports</span>:
+  - { <span class="y-key">name</span>: <span class="y-str">http</span>, <span class="y-key">port</span>: <span class="y-num">8080</span>, <span class="y-key">targetPort</span>: <span class="y-str">http</span>, <span class="y-key">protocol</span>: <span class="y-val">TCP</span> }</pre></div>
+
+  <h3 class="sub">09 — Ingress (uses the TLS Secret)</h3>
+  <div class="code-wrap"><div class="code-head"><span class="filename">09-ingress-order-api.yaml</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="y-key">apiVersion</span>: <span class="y-val">networking.k8s.io/v1</span>
+<span class="y-key">kind</span>: <span class="y-val">Ingress</span>
+<span class="y-key">metadata</span>:
+  <span class="y-key">name</span>: <span class="y-str">order-api</span>
+  <span class="y-key">namespace</span>: <span class="y-str">orders</span>
+  <span class="y-key">annotations</span>:
+    <span class="y-key">nginx.ingress.kubernetes.io/ssl-redirect</span>: <span class="y-str">"true"</span>
+<span class="y-key">spec</span>:
+  <span class="y-key">ingressClassName</span>: <span class="y-str">nginx</span>
+  <span class="y-key">tls</span>:
+  - <span class="y-key">hosts</span>: [<span class="y-str">orders.jahez.sa</span>]
+    <span class="y-key">secretName</span>: <span class="y-str">jahez-tls</span>        <span class="y-cmt"># ← Secret of type kubernetes.io/tls</span>
+  <span class="y-key">rules</span>:
+  - <span class="y-key">host</span>: <span class="y-str">orders.jahez.sa</span>
+    <span class="y-key">http</span>:
+      <span class="y-key">paths</span>:
+      - { <span class="y-key">path</span>: <span class="y-str">/</span>, <span class="y-key">pathType</span>: <span class="y-val">Prefix</span>, <span class="y-key">backend</span>: { <span class="y-key">service</span>: { <span class="y-key">name</span>: <span class="y-str">order-api</span>, <span class="y-key">port</span>: { <span class="y-key">name</span>: <span class="y-str">http</span> } } }</pre></div>
+
+  <h3 class="sub">Deploy it</h3>
+  <div class="code-wrap"><div class="code-head"><span class="filename">deploy.sh</span><button class="copy-btn" data-copy>copy</button></div>
+<pre><span class="c"># Apply in order (manifests are numbered on purpose)</span>
+<span class="k">kubectl</span> apply -f order-service/
+
+<span class="c"># Watch the rollout</span>
+<span class="k">kubectl</span> -n orders rollout status deploy/order-api
+
+<span class="c"># Confirm env landed correctly</span>
+<span class="k">kubectl</span> -n orders exec deploy/order-api -- env | grep -E &#39;LOG_LEVEL|DB_HOST|POD_NAME|MEM_LIMIT&#39;
+
+<span class="c"># Confirm mounted config</span>
+<span class="k">kubectl</span> -n orders exec deploy/order-api -- ls -la /etc/app /etc/secrets
+
+<span class="c"># Inspect rendered config (secrets are NOT printed; file mode 0400)</span>
+<span class="k">kubectl</span> -n orders exec deploy/order-api -- cat /etc/app/application.yaml
+
+<span class="c"># Trigger restart after config change (if not using checksum automation)</span>
+<span class="k">kubectl</span> -n orders rollout restart deploy/order-api
+
+<span class="c"># Debug: view a secret (requires RBAC)</span>
+<span class="k">kubectl</span> -n orders get secret order-secrets -o json \
+  | jq &#39;.data | map_values(@base64d)&#39;</pre></div>
+
+  <h3 class="sub">Update flow — changing a feature flag safely</h3>
+  <ol>
+    <li>Edit <code class="inline">02-configmap-feature-flags.yaml</code> (<code class="inline">FF_EXPRESS_DELIVERY: "true"</code>).</li>
+    <li><code class="inline">kubectl apply -f 02-configmap-feature-flags.yaml</code>.</li>
+    <li>Since it's consumed via <code class="inline">envFrom</code> (not a volume), running pods keep the old value.</li>
+    <li>Recompute <code class="inline">checksum/config</code> annotation OR run <code class="inline">kubectl rollout restart deploy/order-api</code>.</li>
+    <li>Rolling update replaces pods with <code class="inline">maxUnavailable: 0</code> → no downtime.</li>
+    <li>Rollback is trivial: re-apply the previous ConfigMap or <code class="inline">kubectl rollout undo</code>.</li>
+  </ol>
+
+  <div class="callout ok">
+    <span class="lbl">Production upgrade path</span>
+    <p>For real production: make the ConfigMap <strong>immutable + versioned</strong> (<code class="inline">feature-flags-2026-04-18</code>), bump the Deployment's <code class="inline">envFrom.configMapRef.name</code>, and let standard Deployment rollout + rollback handle safety. You get config history in git and in <code class="inline">kubectl rollout history</code> simultaneously.</p>
+  </div>
+
+  <h3 class="sub">What each primitive taught us in this project</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Primitive</th><th>Used for</th><th>Consumption</th></tr></thead>
+      <tbody>
+        <tr><td><code>LOG_LEVEL</code>, <code>REGION</code></td><td>Simple runtime toggles</td><td>ConfigMap → envFrom</td></tr>
+        <tr><td><code>application.yaml</code></td><td>Spring Boot config file</td><td>ConfigMap → volume mount</td></tr>
+        <tr><td><code>FF_*</code></td><td>Feature flags</td><td>Separate ConfigMap → envFrom</td></tr>
+        <tr><td><code>JWT_SIGNING_KEY</code></td><td>Signing key, read once at boot</td><td>Secret → env (secretKeyRef)</td></tr>
+        <tr><td><code>db.password</code>, <code>stripe.api_key</code></td><td>Ultra-sensitive</td><td>Secret → volume mount (mode 0400)</td></tr>
+        <tr><td><code>tls.crt</code>/<code>tls.key</code></td><td>Ingress TLS</td><td>Secret type <code>kubernetes.io/tls</code></td></tr>
+        <tr><td><code>.dockerconfigjson</code></td><td>Private image pull</td><td>Secret type <code>dockerconfigjson</code> + <code>imagePullSecrets</code></td></tr>
+        <tr><td><code>POD_NAME</code>, <code>MEM_LIMIT_MB</code></td><td>Self-awareness, JVM sizing</td><td>Downward API (fieldRef / resourceFieldRef)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ Footer ============================================================ -->
+<footer class="foot">
+  <div class="rule">· · ·</div>
+  <div>Kubernetes Configurations · Deep Reference · Part 3 of the K8s series</div>
+  <div style="margin-top:8px;opacity:.7">Env Vars · ConfigMaps · Secrets — one file, cluster-ready YAML, zero external deps</div>
+</footer>
+
+</main>
+</div><!-- /layout -->
+</div><!-- /shell -->
+
+<script>
+/* ---------- Copy buttons ---------- */
+document.querySelectorAll('.copy-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const wrap = btn.closest('.code-wrap');
+    const code = wrap ? wrap.querySelector('pre').innerText : '';
+    navigator.clipboard.writeText(code).then(()=>{
+      const orig = btn.textContent;
+      btn.textContent = 'copied';
+      btn.classList.add('copied');
+      setTimeout(()=>{btn.textContent = orig; btn.classList.remove('copied');}, 1400);
+    }).catch(()=>{
+      btn.textContent = 'err';
+      setTimeout(()=>btn.textContent = 'copy', 1200);
+    });
+  });
+});
+
+/* ---------- Mode panels (tabs) ---------- */
+document.querySelectorAll('.modes').forEach(modes=>{
+  const key = modes.dataset.modes;
+  const buttons = modes.querySelectorAll('button');
+  buttons.forEach(b=>{
+    b.addEventListener('click',()=>{
+      buttons.forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const target = b.dataset.mode;
+      const container = modes.parentElement;
+      container.querySelectorAll('.mode-panel').forEach(p=>{
+        p.classList.toggle('active', p.dataset.panel === target);
+      });
+    });
+  });
+});
+
+/* ---------- Sliders ---------- */
+document.querySelectorAll('.slider').forEach(sl=>{
+  const track = sl.querySelector('.slider-track');
+  const slides = Array.from(track.children);
+  const total = slides.length;
+  const counterCur = sl.querySelector('[data-current]');
+  const counterTot = sl.querySelector('[data-total]');
+  const prev = sl.querySelector('[data-prev]');
+  const next = sl.querySelector('[data-next]');
+  const dotsBox = sl.querySelector('.slider-dots');
+  let idx = 0;
+
+  if (counterTot) counterTot.textContent = total;
+
+  // build dots
+  slides.forEach((_,i)=>{
+    const d = document.createElement('button');
+    d.setAttribute('aria-label','Go to slide '+(i+1));
+    d.addEventListener('click',()=>go(i));
+    dotsBox.appendChild(d);
+  });
+
+  function update(){
+    track.style.transform = `translateX(-${idx*100}%)`;
+    counterCur.textContent = idx+1;
+    Array.from(dotsBox.children).forEach((d,i)=>d.classList.toggle('active', i===idx));
+    prev.disabled = idx===0;
+    next.disabled = idx===total-1;
+  }
+  function go(i){ idx = Math.max(0,Math.min(total-1,i)); update(); }
+  prev.addEventListener('click',()=>go(idx-1));
+  next.addEventListener('click',()=>go(idx+1));
+
+  // touch swipe
+  let startX=0, dx=0, touching=false;
+  track.addEventListener('touchstart', e=>{touching=true; startX = e.touches[0].clientX; dx=0;}, {passive:true});
+  track.addEventListener('touchmove',  e=>{ if(!touching) return; dx = e.touches[0].clientX - startX; }, {passive:true});
+  track.addEventListener('touchend',   ()=>{
+    if (Math.abs(dx) > 40) go(idx + (dx < 0 ? 1 : -1));
+    touching=false; dx=0;
+  });
+
+  // keyboard when focused
+  sl.tabIndex = 0;
+  sl.addEventListener('keydown', e=>{
+    if (e.key === 'ArrowRight') go(idx+1);
+    if (e.key === 'ArrowLeft')  go(idx-1);
+  });
+
+  update();
+});
+
+/* ---------- Smooth-scroll sidebar links + close mobile drawer on click ---------- */
+document.querySelectorAll('.sidebar a').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const target = document.querySelector(a.getAttribute('href'));
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({behavior:'smooth', block:'start'});
+    // close mobile drawer
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarBackdrop').classList.remove('open');
+    document.getElementById('menuToggle').setAttribute('aria-expanded','false');
+  });
+});
+
+/* ---------- Mobile menu toggle ---------- */
+(function(){
+  const btn = document.getElementById('menuToggle');
+  const sb  = document.getElementById('sidebar');
+  const bd  = document.getElementById('sidebarBackdrop');
+  if (!btn || !sb || !bd) return;
+  btn.addEventListener('click', ()=>{
+    const open = !sb.classList.contains('open');
+    sb.classList.toggle('open', open);
+    bd.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  bd.addEventListener('click', ()=>{
+    sb.classList.remove('open');
+    bd.classList.remove('open');
+    btn.setAttribute('aria-expanded','false');
+  });
+})();
+
+/* ---------- Active section highlighting in sidebar ---------- */
+(function(){
+  const links = Array.from(document.querySelectorAll('.sidebar a[href^="#"]'));
+  const sections = links
+    .map(a => document.querySelector(a.getAttribute('href')))
+    .filter(Boolean);
+  if (!sections.length) return;
+  const linkById = {};
+  links.forEach(a => linkById[a.getAttribute('href').slice(1)] = a);
+
+  const obs = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = linkById[entry.target.id];
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px', threshold: 0 });
+
+  sections.forEach(s => obs.observe(s));
+})();
+</script>
+</body>
+</html>
