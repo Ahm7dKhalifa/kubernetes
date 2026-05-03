@@ -1,0 +1,48 @@
+add new section to shared or main goal of Resilience , Fault Tolerance : 
+- both about how to achieve the availability ,  availability is measurement , Resilience and Fault Tolerance are the strategies , principles , practices to achieve the availability
+- both about how the system will handle failures when it occurs     
+-----------------------------
+Goals · Resilience
+change definition : 
+The ability of the system to handle failures and recover gracefully without major disruption
+to :
+- The ability of the system to handle failures and recover gracefully , quickly with minimum impact or downtime
+- Focus on recovery , Accepts that failures will happen but ensures the system can bounce back
+
+patterns : 
+- Timeouts
+- Retries with Backoff
+- Circuit Breakers
+- Bulkheads
+- Fallbacks & Graceful Degradation : 
+    Provide defaults when dependency unavailable.
+    ex 1 : when home / search service down , show cached products ( Fallbacks )
+    ex 2 : reduce video stream quality instead of down the entire service ( Graceful Degradation )
+- Rate Limiting & Load Shedding
+
+----------
+Goals · Fault Tolerance
+change definition : 
+The ability of the system to continue working with zero interruption even when components fail.
+to 
+- The ability of the system to continue working correctly and providing the desired functionality even when one or more components fail
+- Focuses on hide/mask failures from impacting system operations by using redundancy, failover mechanisms, and error handling.
+
+change example to : 
+one database replica fail , the users can still serve and get data correctly from others replica without notice any thing 
+
+patterns : 
+- Replication & Redundancy
+   - Stateless App or Workload ( One Pod crash , removed from load balancer or service endpoints , others pods still working )
+   - Stateful App : ( one database replica fail , the users can still serve and get data correctly from others replica without notice any thing )
+-  Failover Mechanisms
+   - Automatic Failover: Switch to backup systems or components when a failure is detected.
+   - Active-Active: Both primary and backup systems handle traffic simultaneously, providing seamless failover.
+   - Active-Passive: A backup system becomes active only when the primary system fails.
+
+-------------
+
+
+--------
+https://medium.com/@shraddhazladhe/benefits-of-fault-tolerance-ba4765a4db0a
+https://officialcto.com/interview-section/architectural-design-principles/resilience-fault-tolerance
