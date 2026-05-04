@@ -7,7 +7,18 @@ change definition :
 The ability of the system to handle failures and recover gracefully without major disruption
 to :
 - The ability of the system to handle failures and recover gracefully , quickly with minimum impact or downtime
-- Focus on recovery , Accepts that failures will happen but ensures the system can bounce back
+- Focus on recovery , Accepts that failures will happen but ensures the system can bounce back quickly with minimum impact
+- System still works but with limited features
+
+main example : 
+- search service call [ recommendation service - advs service - primary search service ]
+- recommendation service is fail but advs and primary working 
+- do not wait recommendation service forever , just 200 ms ( Timeout ) 
+- do not return 500 or error to the user because one optional dependency is failed ( Bulkhead - Prevent Cascade Failures)
+- user can see results only from [ advs service - primary search service ] , System still works with limited features but this more and more better from nothing
+- system also can get data from [ popular trends service or cache ] when recommendation service is fail [ Fallbacks ]
+- user can see results from [ popular trends service - advs service - primary search service ] 
+
 
 patterns : 
 - Timeouts
@@ -26,16 +37,36 @@ change definition :
 The ability of the system to continue working with zero interruption even when components fail.
 to 
 - The ability of the system to continue working correctly and providing the desired functionality even when one or more components fail
-- Focuses on hide/mask failures from impacting system operations by using redundancy, failover mechanisms, and error handling.
+- Focuses on hide/mask failures from impacting system operations by using redundancy, failover mechanisms, load balances with health checks and error handling.
+- System keeps working exactly the same
 
-change example to : 
-one database replica fail , the users can still serve and get data correctly from others replica without notice any thing 
+main example : 
+- recommendation service has load balancer with 3 replica [ A , B , C ] 
+- load balancer sent health check every 5 sec
+- replica B is crashed 
+- load balancer will remove replica B until it back healthy 
+- load balancer will still serve traffic from [ A , C ]
+- user still see results from [ recommendation service - advs service - primary search service ]
+- user does not notice any thing about replica B crash [ Hide Failure ] 
+- System keeps working exactly the same
+
+
 
 patterns : 
-- Replication & Redundancy
-   - Stateless App or Workload ( One Pod crash , removed from load balancer or service endpoints , others pods still working )
-   - Stateful App : ( one database replica fail , the users can still serve and get data correctly from others replica without notice any thing )
--  Failover Mechanisms
+- Redundancy with 
+   - Replication with [ Load Balancer and Health Check ]
+   - Cluster with [ Primary - Replicas ] with internal managements like Elastic search
+   - note : 
+     if client service connect directly to static replicas 
+        or load balancer does not manage crashed replica and remove it from serving traffic
+        this only Redundancy and not achieve Fault Tolerance
+     ex : 
+         - recommendation service connect statically to Replicas [ A , B , C ]
+         - Replica B crashed
+         - recommendation service still connect to Replica B ( crashed )
+         - user or client service receive 500 
+          
+- Failover Mechanisms
    - Automatic Failover: Switch to backup systems or components when a failure is detected.
    - Active-Active: Both primary and backup systems handle traffic simultaneously, providing seamless failover.
    - Active-Passive: A backup system becomes active only when the primary system fails.
