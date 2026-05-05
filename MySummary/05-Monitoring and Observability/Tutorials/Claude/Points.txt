@@ -30,6 +30,7 @@ patterns :
     ex 1 : when home / search service down , show cached products ( Fallbacks )
     ex 2 : reduce video stream quality instead of down the entire service ( Graceful Degradation )
 - Rate Limiting & Load Shedding
+- Restart Strategies
 
 ----------
 Goals · Fault Tolerance
