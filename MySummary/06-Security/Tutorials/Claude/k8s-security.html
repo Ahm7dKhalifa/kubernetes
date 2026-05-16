@@ -1,0 +1,3116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Security & Authentication — Complete Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =====================================================
+   RESET + DARK BASE
+   ===================================================== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; background: #0d1117; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #0d1117;
+  color: #e6edf3;
+  line-height: 1.7;
+  font-size: 15px;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =====================================================
+   TYPOGRAPHY
+   ===================================================== */
+h1, h2, h3, h4 { color: #f0f6fc; font-weight: 700; line-height: 1.25; }
+h1 { font-size: clamp(32px, 6vw, 56px); letter-spacing: -1.5px; }
+h2 { font-size: clamp(24px, 4vw, 36px); margin-bottom: 16px; letter-spacing: -0.5px; }
+h3 { font-size: 20px; margin: 24px 0 12px; color: #58a6ff; }
+h4 { font-size: 16px; margin: 18px 0 10px; color: #f0f6fc; }
+p { color: #c9d1d9; line-height: 1.75; margin-bottom: 14px; }
+p strong { color: #f0f6fc; font-weight: 600; }
+code { font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace; }
+a { color: #58a6ff; text-decoration: none; }
+
+/* =====================================================
+   LAYOUT
+   ===================================================== */
+.app { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 280px;
+  background-color: #010409;
+  border-right: 1px solid #21262d;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 100;
+  padding: 24px 0;
+  transition: transform 0.3s ease;
+}
+.sidebar-brand {
+  padding: 0 22px 20px;
+  border-bottom: 1px solid #21262d;
+  margin-bottom: 14px;
+}
+.sidebar-brand h2 {
+  font-size: 16px;
+  color: #f0f6fc;
+  font-weight: 700;
+  margin: 0;
+}
+.sidebar-brand .sub {
+  font-size: 11px;
+  color: #7d8590;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 1px;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+.sidebar nav { padding: 8px 12px; }
+.sidebar nav a {
+  display: block;
+  padding: 9px 12px;
+  color: #8b949e;
+  font-size: 13.5px;
+  font-weight: 500;
+  border-radius: 6px;
+  margin-bottom: 2px;
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+.sidebar nav a:hover {
+  background-color: #161b22;
+  color: #e6edf3;
+}
+.sidebar nav a.active {
+  background-color: #1f2937;
+  color: #58a6ff;
+  border-left-color: #58a6ff;
+}
+.sidebar nav .group-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6e7681;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 16px 12px 6px;
+}
+
+/* Topbar (mobile) */
+.topbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background-color: #010409;
+  border-bottom: 1px solid #21262d;
+  padding: 12px 16px;
+  z-index: 99;
+  align-items: center;
+  justify-content: space-between;
+}
+.topbar .brand-mini { font-size: 14px; font-weight: 700; color: #f0f6fc; }
+.menu-btn {
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #e6edf3;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+/* Main content */
+.main {
+  margin-left: 280px;
+  flex: 1;
+  background-color: #0d1117;
+  min-width: 0;
+}
+
+.section {
+  padding: 70px 50px;
+  max-width: 1080px;
+  margin: 0 auto;
+  border-bottom: 1px solid #161b22;
+}
+.section .lead {
+  font-size: 17px;
+  color: #c9d1d9;
+  margin-bottom: 28px;
+  max-width: 80ch;
+}
+
+/* =====================================================
+   HERO
+   ===================================================== */
+.hero {
+  padding: 100px 50px 80px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(239,68,68,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(88,166,255,0.08) 0%, transparent 70%),
+    #0d1117;
+  border-bottom: 1px solid #21262d;
+  text-align: center;
+}
+.hero .badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  color: #f85149;
+  text-transform: uppercase;
+  border: 1px solid rgba(248,81,73,0.3);
+  padding: 6px 16px;
+  border-radius: 100px;
+  margin-bottom: 28px;
+  background: rgba(248,81,73,0.06);
+}
+.hero h1 { margin-bottom: 18px; }
+.hero h1 .red { color: #f85149; }
+.hero h1 .blue { color: #58a6ff; }
+.hero p {
+  font-size: 18px;
+  color: #8b949e;
+  max-width: 700px;
+  margin: 0 auto 32px;
+}
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  max-width: 720px;
+  margin: 30px auto 0;
+}
+.stat-pill {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 18px 16px;
+}
+.stat-pill .n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: #58a6ff;
+  display: block;
+}
+.stat-pill .l {
+  font-size: 11px;
+  color: #7d8590;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 4px;
+}
+
+/* =====================================================
+   CARDS
+   ===================================================== */
+.card {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 22px;
+  margin: 16px 0;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.card.feature .icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(88,166,255,0.12);
+  border: 1px solid rgba(88,166,255,0.3);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 14px;
+}
+.card.feature.red .icon { background: rgba(248,81,73,0.12); border-color: rgba(248,81,73,0.3); }
+.card.feature.green .icon { background: rgba(63,185,80,0.12); border-color: rgba(63,185,80,0.3); }
+.card.feature.amber .icon { background: rgba(210,153,34,0.12); border-color: rgba(210,153,34,0.3); }
+.card.feature.purple .icon { background: rgba(163,113,247,0.12); border-color: rgba(163,113,247,0.3); }
+.card h4 { margin-top: 0; }
+
+/* =====================================================
+   ALERTS
+   ===================================================== */
+.alert {
+  border-left: 3px solid;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 16px 0;
+  font-size: 14px;
+}
+.alert.info { background: rgba(56,139,253,0.10); border-color: #58a6ff; color: #c9d1d9; }
+.alert.warn { background: rgba(210,153,34,0.10); border-color: #d29922; color: #c9d1d9; }
+.alert.danger { background: rgba(248,81,73,0.10); border-color: #f85149; color: #c9d1d9; }
+.alert.success { background: rgba(63,185,80,0.10); border-color: #3fb950; color: #c9d1d9; }
+.alert strong { display: block; margin-bottom: 4px; color: #f0f6fc; }
+
+/* =====================================================
+   CODE BLOCKS
+   ===================================================== */
+.code-block {
+  background-color: #010409;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  margin: 16px 0;
+  overflow: hidden;
+}
+.code-header {
+  background-color: #0d1117;
+  padding: 10px 16px;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #7d8590;
+}
+.code-header .file { color: #58a6ff; }
+.code-header .tag {
+  background: #1f2937;
+  color: #79c0ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.code-block pre {
+  padding: 16px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #e6edf3;
+}
+.code-block pre .k { color: #ff7b72; }   /* keyword */
+.code-block pre .s { color: #a5d6ff; }   /* string */
+.code-block pre .c { color: #8b949e; font-style: italic; } /* comment */
+.code-block pre .n { color: #79c0ff; }   /* identifier */
+.code-block pre .v { color: #d2a8ff; }   /* value */
+.code-block pre .y { color: #ffa657; }   /* yaml keys highlight */
+
+/* Inline code */
+:not(pre) > code {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 12.5px;
+  color: #79c0ff;
+}
+
+/* =====================================================
+   TABLES
+   ===================================================== */
+.table-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid #30363d; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+thead { background-color: #161b22; }
+th {
+  text-align: left;
+  padding: 12px 14px;
+  font-weight: 600;
+  color: #f0f6fc;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid #30363d;
+}
+td { padding: 12px 14px; border-bottom: 1px solid #21262d; color: #c9d1d9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background-color: #0d1117; }
+td code { font-size: 12px; }
+
+/* =====================================================
+   TABS
+   ===================================================== */
+.tabs {
+  margin: 20px 0;
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.tab-nav {
+  display: flex;
+  background-color: #0d1117;
+  border-bottom: 1px solid #30363d;
+  overflow-x: auto;
+}
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  padding: 13px 18px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.tab-btn:hover { color: #e6edf3; background-color: #161b22; }
+.tab-btn.active { color: #58a6ff; border-bottom-color: #58a6ff; background-color: #161b22; }
+.tab-body { padding: 22px; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+.tab-pane h4:first-child { margin-top: 0; }
+
+/* =====================================================
+   DIAGRAMS
+   ===================================================== */
+.diagram {
+  background-color: #010409;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 24px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+.diagram svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.diagram-caption {
+  text-align: center;
+  font-size: 12.5px;
+  color: #7d8590;
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* =====================================================
+   FLOW STEPS
+   ===================================================== */
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+.flow-step {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-left: 4px solid #58a6ff;
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.flow-step .num {
+  background: rgba(88,166,255,0.15);
+  color: #58a6ff;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.flow-step .body h4 { margin: 0 0 6px; color: #f0f6fc; font-size: 15px; }
+.flow-step .body p { font-size: 13.5px; color: #8b949e; margin: 0; }
+
+/* =====================================================
+   SLIDER (carousel)
+   ===================================================== */
+.slider {
+  position: relative;
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 24px 0;
+}
+.slide-track { display: flex; transition: transform 0.4s ease; }
+.slide {
+  min-width: 100%;
+  padding: 28px;
+  box-sizing: border-box;
+}
+.slide h3 { color: #f0f6fc; margin: 0 0 6px; font-size: 22px; }
+.slide .step-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #58a6ff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+.slider-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  background-color: #0d1117;
+  border-top: 1px solid #30363d;
+}
+.slider-controls button {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+.slider-controls button:hover { background: #30363d; }
+.slider-dots { display: flex; gap: 6px; }
+.slider-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #30363d;
+  cursor: pointer;
+}
+.slider-dots .dot.active { background: #58a6ff; }
+
+/* =====================================================
+   BADGES / PILLS
+   ===================================================== */
+.pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pill.blue { background: rgba(88,166,255,0.15); color: #58a6ff; }
+.pill.green { background: rgba(63,185,80,0.15); color: #3fb950; }
+.pill.red { background: rgba(248,81,73,0.15); color: #f85149; }
+.pill.amber { background: rgba(210,153,34,0.15); color: #d29922; }
+.pill.purple { background: rgba(163,113,247,0.15); color: #a371f7; }
+
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+@media (max-width: 900px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: 260px;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .topbar { display: flex; }
+  body { padding-top: 56px; }
+  .section { padding: 40px 20px; }
+  .hero { padding: 50px 20px 50px; }
+}
+@media (max-width: 600px) {
+  h1 { font-size: 30px !important; }
+  h2 { font-size: 22px; }
+  h3 { font-size: 17px; }
+  .code-block pre { font-size: 11.5px; }
+  .flow-step { flex-direction: column; gap: 8px; }
+  .tab-btn { padding: 11px 14px; font-size: 12px; }
+  .section { padding: 36px 16px; }
+}
+
+/* Overlay for mobile menu */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 98;
+}
+.overlay.show { display: block; }
+
+/* Property tables (after YAML) */
+.prop-table { margin: 8px 0 24px; }
+.prop-table .table-wrap { margin-top: 0; }
+.prop-table .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #7d8590;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 0 0 8px 2px;
+}
+.prop-table td:first-child { white-space: nowrap; }
+.prop-table td code { color: #ffa657; }
+
+/* Utility */
+.mb-0 { margin-bottom: 0; }
+.mt-md { margin-top: 28px; }
+.text-mono { font-family: 'JetBrains Mono', monospace; }
+.text-small { font-size: 13px; }
+.text-muted { color: #7d8590; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR (mobile) -->
+<div class="topbar">
+  <div class="brand-mini">🔐 K8s Security</div>
+  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+</div>
+
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<div class="app">
+
+  <!-- ============================= SIDEBAR ============================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <h2>🔐 K8s Security</h2>
+      <div class="sub">AuthN · AuthZ · RBAC</div>
+    </div>
+    <nav>
+      <div class="group-title">Foundations</div>
+      <a href="#intro" onclick="closeMenu()">Why Security Matters</a>
+      <a href="#3a-model" onclick="closeMenu()">The 3A Security Model</a>
+      <a href="#api-flow" onclick="closeMenu()">API Request Lifecycle</a>
+
+      <div class="group-title">Authentication</div>
+      <a href="#authn" onclick="closeMenu()">What is AuthN</a>
+      <a href="#users" onclick="closeMenu()">Users & ServiceAccounts</a>
+      <a href="#authn-methods" onclick="closeMenu()">Auth Methods</a>
+      <a href="#sa-tokens" onclick="closeMenu()">ServiceAccount Tokens</a>
+
+      <div class="group-title">Authorization</div>
+      <a href="#authz" onclick="closeMenu()">What is AuthZ</a>
+      <a href="#rbac" onclick="closeMenu()">RBAC Deep Dive</a>
+      <a href="#rbac-yaml" onclick="closeMenu()">Roles & Bindings YAML</a>
+      <a href="#abac-node" onclick="closeMenu()">ABAC & Node Auth</a>
+
+      <div class="group-title">Admission</div>
+      <a href="#admission" onclick="closeMenu()">Admission Controllers</a>
+      <a href="#psa" onclick="closeMenu()">Pod Security Admission</a>
+      <a href="#webhooks" onclick="closeMenu()">Validating Webhooks</a>
+
+      <div class="group-title">Context & Security</div>
+      <a href="#kubeconfig" onclick="closeMenu()">kubectl Context</a>
+      <a href="#security-context" onclick="closeMenu()">Pod SecurityContext</a>
+      <a href="#netpol" onclick="closeMenu()">Network Policies</a>
+      <a href="#secrets" onclick="closeMenu()">Secrets Management</a>
+
+      <div class="group-title">Project</div>
+      <a href="#project" onclick="closeMenu()">Full Multi-Tenant Project</a>
+      <a href="#cheatsheet" onclick="closeMenu()">Cheat Sheet</a>
+    </nav>
+  </aside>
+
+  <!-- ============================= MAIN ============================= -->
+  <main class="main">
+
+    <!-- ========== HERO ========== -->
+    <section class="hero">
+      <span class="badge">🔐 Security · Authentication · Authorization</span>
+      <h1>Kubernetes <span class="red">Security</span> &<br>
+        <span class="blue">Access Control</span></h1>
+      <p>Master the complete security model: from how a kubectl command reaches the API server, through authentication, authorization (RBAC), admission control, and pod-level security — built around a real multi-tenant project.</p>
+      <div class="hero-stats">
+        <div class="stat-pill"><span class="n">3</span><span class="l">Phases (AuthN/Z/Admission)</span></div>
+        <div class="stat-pill"><span class="n">8+</span><span class="l">Auth Methods</span></div>
+        <div class="stat-pill"><span class="n">∞</span><span class="l">RBAC Combinations</span></div>
+        <div class="stat-pill"><span class="n">1</span><span class="l">Full Project</span></div>
+      </div>
+    </section>
+
+    <!-- ========== 1. INTRO ========== -->
+    <section class="section" id="intro">
+      <h2>1. Why Security Matters</h2>
+      <p class="lead">Kubernetes runs your production workloads, holds your secrets, talks to your databases, and exposes services to the internet. A misconfigured RBAC binding or a leaked ServiceAccount token can hand an attacker the entire cluster.</p>
+
+      <h3>The Real-World Risk</h3>
+      <p>A single Kubernetes cluster typically hosts:</p>
+      <ul style="color:#c9d1d9; padding-left: 24px; margin-bottom: 18px;">
+        <li>Dozens of applications from multiple teams (multi-tenancy)</li>
+        <li>Database credentials, API keys, TLS certificates (Secrets)</li>
+        <li>Service-to-service communication that crosses trust boundaries</li>
+        <li>CI/CD pipelines that need to deploy without humans</li>
+        <li>Developer access from laptops, dashboards, and IDEs</li>
+      </ul>
+
+      <div class="card-grid">
+        <div class="card feature red">
+          <div class="icon">⚠️</div>
+          <h4>What Attackers Want</h4>
+          <p class="text-small text-muted">Cluster-admin access, mining cryptocurrency on your nodes, stealing customer data, lateral movement to cloud accounts via instance metadata.</p>
+        </div>
+        <div class="card feature amber">
+          <div class="icon">🎯</div>
+          <h4>Common Attack Surface</h4>
+          <p class="text-small text-muted">Exposed kubelet APIs, overly broad ServiceAccount permissions, public dashboards, default namespace permissions, weak admission controls.</p>
+        </div>
+        <div class="card feature green">
+          <div class="icon">🛡️</div>
+          <h4>Defense in Depth</h4>
+          <p class="text-small text-muted">Multiple layers: AuthN, AuthZ, Admission, NetworkPolicy, PodSecurity, runtime monitoring. No single control is enough.</p>
+        </div>
+      </div>
+
+      <div class="alert info">
+        <strong>The Principle of Least Privilege (PoLP)</strong>
+        Every identity (human or machine) should have the minimum permissions needed to do its job — nothing more. This is the foundation of every decision you'll make in this guide.
+      </div>
+    </section>
+
+    <!-- ========== 2. 3A MODEL ========== -->
+    <section class="section" id="3a-model">
+      <h2>2. The 3A Security Model</h2>
+      <p class="lead">Every request to the Kubernetes API passes through three sequential gates. If a request fails any one of them, it's rejected. This is the mental model you must internalize.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
+          <!-- Client -->
+          <rect x="20" y="130" width="120" height="60" rx="8" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+          <text x="80" y="155" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="600" font-family="Inter">Client</text>
+          <text x="80" y="175" text-anchor="middle" fill="#7d8590" font-size="11" font-family="JetBrains Mono">kubectl / pod</text>
+
+          <!-- Arrow 1 -->
+          <path d="M 145 160 L 195 160" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="170" y="150" text-anchor="middle" fill="#58a6ff" font-size="10" font-family="JetBrains Mono">TLS</text>
+
+          <!-- Stage 1: AuthN -->
+          <rect x="200" y="100" width="140" height="120" rx="10" fill="#1c2128" stroke="#388bfd" stroke-width="2"/>
+          <text x="270" y="125" text-anchor="middle" fill="#388bfd" font-size="11" font-family="JetBrains Mono" letter-spacing="1">STAGE 1</text>
+          <text x="270" y="148" text-anchor="middle" fill="#f0f6fc" font-size="16" font-weight="700">AuthN</text>
+          <text x="270" y="170" text-anchor="middle" fill="#c9d1d9" font-size="12">Who are you?</text>
+          <text x="270" y="190" text-anchor="middle" fill="#7d8590" font-size="10">Certs · Tokens</text>
+          <text x="270" y="205" text-anchor="middle" fill="#7d8590" font-size="10">OIDC · Webhooks</text>
+
+          <!-- Arrow 2 -->
+          <path d="M 345 160 L 395 160" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- Stage 2: AuthZ -->
+          <rect x="400" y="100" width="140" height="120" rx="10" fill="#1c2128" stroke="#3fb950" stroke-width="2"/>
+          <text x="470" y="125" text-anchor="middle" fill="#3fb950" font-size="11" font-family="JetBrains Mono" letter-spacing="1">STAGE 2</text>
+          <text x="470" y="148" text-anchor="middle" fill="#f0f6fc" font-size="16" font-weight="700">AuthZ</text>
+          <text x="470" y="170" text-anchor="middle" fill="#c9d1d9" font-size="12">What can you do?</text>
+          <text x="470" y="190" text-anchor="middle" fill="#7d8590" font-size="10">RBAC · ABAC</text>
+          <text x="470" y="205" text-anchor="middle" fill="#7d8590" font-size="10">Node · Webhook</text>
+
+          <!-- Arrow 3 -->
+          <path d="M 545 160 L 595 160" stroke="#d29922" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- Stage 3: Admission -->
+          <rect x="600" y="100" width="160" height="120" rx="10" fill="#1c2128" stroke="#d29922" stroke-width="2"/>
+          <text x="680" y="125" text-anchor="middle" fill="#d29922" font-size="11" font-family="JetBrains Mono" letter-spacing="1">STAGE 3</text>
+          <text x="680" y="148" text-anchor="middle" fill="#f0f6fc" font-size="16" font-weight="700">Admission</text>
+          <text x="680" y="170" text-anchor="middle" fill="#c9d1d9" font-size="12">Is it valid/safe?</text>
+          <text x="680" y="190" text-anchor="middle" fill="#7d8590" font-size="10">Mutating · Validating</text>
+          <text x="680" y="205" text-anchor="middle" fill="#7d8590" font-size="10">PodSecurity · OPA</text>
+
+          <!-- etcd -->
+          <rect x="340" y="270" width="120" height="40" rx="8" fill="#161b22" stroke="#a371f7" stroke-width="2"/>
+          <text x="400" y="295" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="600" font-family="JetBrains Mono">etcd</text>
+
+          <!-- Arrow to etcd -->
+          <path d="M 680 225 Q 680 270 460 280" stroke="#a371f7" stroke-width="2" stroke-dasharray="4" fill="none" marker-end="url(#arrow2)"/>
+          <text x="600" y="265" fill="#a371f7" font-size="10" font-family="JetBrains Mono">✓ persist</text>
+
+          <!-- Arrow defs -->
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#58a6ff"/>
+            </marker>
+            <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#a371f7"/>
+            </marker>
+          </defs>
+        </svg>
+        <div class="diagram-caption">Every request flows: Client → AuthN → AuthZ → Admission → etcd</div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-step">
+          <div class="num">1</div>
+          <div class="body">
+            <h4>Authentication (AuthN) — "Who are you?"</h4>
+            <p>The API server verifies the caller's identity using TLS certificates, bearer tokens, OIDC, or webhooks. If it can't establish identity, the request gets <code>401 Unauthorized</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">2</div>
+          <div class="body">
+            <h4>Authorization (AuthZ) — "What can you do?"</h4>
+            <p>Given the verified identity, can this user perform this verb (get/list/create/delete) on this resource (pods/secrets/nodes) in this namespace? RBAC is the standard mechanism. Fails → <code>403 Forbidden</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">3</div>
+          <div class="body">
+            <h4>Admission Control — "Is it valid and safe?"</h4>
+            <p>Mutating admission controllers can modify the request (inject sidecars, add defaults). Validating controllers can reject it (enforce policies like "no privileged pods"). Only after this does the object reach etcd.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 3. API REQUEST LIFECYCLE ========== -->
+    <section class="section" id="api-flow">
+      <h2>3. API Request Lifecycle (Deep)</h2>
+      <p class="lead">Let's trace what happens when you run <code>kubectl apply -f pod.yaml</code> — from your terminal all the way to etcd.</p>
+
+      <div class="slider" id="reqSlider">
+        <div class="slide-track">
+          <div class="slide">
+            <div class="step-label">STEP 1 OF 7</div>
+            <h3>kubectl reads kubeconfig</h3>
+            <p>kubectl loads <code>~/.kube/config</code>, finds the current context, extracts the cluster URL, your client certificate or token, and the default namespace.</p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">~/.kube/config (excerpt)</span><span class="tag">yaml</span></div>
+              <pre><span class="k">current-context:</span> <span class="s">prod-admin</span>
+<span class="k">contexts:</span>
+- <span class="k">name:</span> <span class="s">prod-admin</span>
+  <span class="k">context:</span>
+    <span class="k">cluster:</span> <span class="s">prod</span>
+    <span class="k">user:</span> <span class="s">ahmed-prod</span>
+    <span class="k">namespace:</span> <span class="s">payments</span></pre>
+            </div>
+          </div>
+          <div class="slide">
+            <div class="step-label">STEP 2 OF 7</div>
+            <h3>HTTPS request to API server</h3>
+            <p>kubectl marshals your YAML into JSON, opens a TLS connection to the API server (validating its server cert), and sends an HTTP POST with your credentials in the request.</p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">request</span><span class="tag">http</span></div>
+              <pre>POST /api/v1/namespaces/payments/pods HTTP/2
+Authorization: Bearer eyJhbGciOi...
+Content-Type: application/json
+
+{"apiVersion":"v1","kind":"Pod",...}</pre>
+            </div>
+          </div>
+          <div class="slide">
+            <div class="step-label">STEP 3 OF 7</div>
+            <h3>TLS termination & AuthN</h3>
+            <p>The API server presents its server certificate, validates your client certificate (or token), and determines the User/Group identity. If multiple authenticators are configured, it tries them in order until one succeeds.</p>
+            <div class="alert info">
+              <strong>Output of AuthN</strong>
+              A canonical identity: <code>username + groups[]</code>. For example: <code>ahmed@jahez.com</code> in groups <code>[engineering, oncall]</code>.
+            </div>
+          </div>
+          <div class="slide">
+            <div class="step-label">STEP 4 OF 7</div>
+            <h3>Authorization decision</h3>
+            <p>The API server asks each configured authorizer (RBAC, Node, Webhook): "Can this identity do <code>create pods</code> in namespace <code>payments</code>?" The first authorizer to return Allow wins; if all return NoOpinion or Deny, request is denied.</p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">authz check</span><span class="tag">trace</span></div>
+              <pre><span class="c"># SubjectAccessReview</span>
+<span class="k">user:</span>      <span class="s">ahmed@jahez.com</span>
+<span class="k">verb:</span>      <span class="s">create</span>
+<span class="k">resource:</span>  <span class="s">pods</span>
+<span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">decision:</span>  <span class="v">ALLOW</span> <span class="c"># via RoleBinding</span></pre>
+            </div>
+          </div>
+          <div class="slide">
+            <div class="step-label">STEP 5 OF 7</div>
+            <h3>Mutating admission</h3>
+            <p>Each configured mutating webhook gets to modify the object. Examples: Istio injects an envoy sidecar, defaults like <code>imagePullPolicy</code> are added, ServiceAccount token is mounted automatically.</p>
+            <div class="alert warn">
+              <strong>Order matters</strong>
+              Mutating webhooks run first (in priority order), then validating webhooks. A validating webhook seeing a "no-sidecar" rule will see the already-injected sidecar.
+            </div>
+          </div>
+          <div class="slide">
+            <div class="step-label">STEP 6 OF 7</div>
+            <h3>Validating admission</h3>
+            <p>Schema validation (kind/apiVersion correct), then Pod Security Admission (no privileged in <code>restricted</code> namespaces), then custom validating webhooks (OPA Gatekeeper, Kyverno). Any rejection here → request fails.</p>
+          </div>
+          <div class="slide">
+            <div class="step-label">STEP 7 OF 7</div>
+            <h3>Persist to etcd & respond</h3>
+            <p>The final object is written to etcd. The API server returns <code>201 Created</code> with the persisted object. Watchers (scheduler, kubelet, controllers) get notified via the watch protocol and the pod starts being scheduled.</p>
+          </div>
+        </div>
+        <div class="slider-controls">
+          <button onclick="slidePrev('reqSlider')">← Prev</button>
+          <div class="slider-dots" id="reqDots"></div>
+          <button onclick="slideNext('reqSlider')">Next →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 4. AUTHENTICATION ========== -->
+    <section class="section" id="authn">
+      <h2>4. Authentication — Who Are You?</h2>
+      <p class="lead">Authentication answers a single question: "Is this request from who it claims to be?" Kubernetes itself does not store user records — it delegates identity to certificates, external providers, and token systems.</p>
+
+      <h3>The Two Identity Types</h3>
+      <div class="card-grid">
+        <div class="card feature blue">
+          <div class="icon">👤</div>
+          <h4>Users (Human)</h4>
+          <p class="text-small">External identities — developers, operators, CI bots. Kubernetes has <strong>no User object</strong>. Identity comes from certificates, OIDC, or bearer tokens issued outside the cluster.</p>
+          <p class="text-small text-muted mt-md">Used by: kubectl, dashboards, CI/CD.</p>
+        </div>
+        <div class="card feature green">
+          <div class="icon">🤖</div>
+          <h4>ServiceAccounts (In-Cluster)</h4>
+          <p class="text-small">Kubernetes-native identities. Stored as objects (<code>kind: ServiceAccount</code>) in a namespace. Pods automatically authenticate as a SA via a mounted token.</p>
+          <p class="text-small text-muted mt-md">Used by: pods, controllers, in-cluster apps.</p>
+        </div>
+      </div>
+
+      <div class="alert danger">
+        <strong>Critical concept</strong>
+        Kubernetes has <strong>no API for managing users</strong>. You cannot <code>kubectl create user</code>. Users only exist as a side effect of valid credentials. This is intentional — Kubernetes leaves identity management to your existing IdP (Okta, Google, AD).
+      </div>
+    </section>
+
+    <!-- ========== 5. USERS & SERVICE ACCOUNTS ========== -->
+    <section class="section" id="users">
+      <h2>5. Users vs ServiceAccounts (Side-by-Side)</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Aspect</th>
+              <th>User</th>
+              <th>ServiceAccount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Stored in cluster</td>
+              <td><span class="pill red">No</span></td>
+              <td><span class="pill green">Yes</span> (namespaced)</td>
+            </tr>
+            <tr>
+              <td>Managed by</td>
+              <td>External IdP / X.509</td>
+              <td><code>kubectl create sa</code></td>
+            </tr>
+            <tr>
+              <td>Scope</td>
+              <td>Cluster-wide identity</td>
+              <td>Namespace-scoped</td>
+            </tr>
+            <tr>
+              <td>Typical credential</td>
+              <td>Client cert, OIDC token</td>
+              <td>JWT projected token</td>
+            </tr>
+            <tr>
+              <td>Identity string format</td>
+              <td><code>ahmed@jahez.com</code></td>
+              <td><code>system:serviceaccount:ns:name</code></td>
+            </tr>
+            <tr>
+              <td>Used by</td>
+              <td>Humans, CI</td>
+              <td>Pods, controllers</td>
+            </tr>
+            <tr>
+              <td>Rotation</td>
+              <td>Re-issue cert/token externally</td>
+              <td>Bound tokens auto-rotate</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Creating a ServiceAccount</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">service-account.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">ServiceAccount</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-orders-api</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+  <span class="k">annotations:</span>
+    <span class="c"># Optional: tie to AWS IAM role for IRSA</span>
+    <span class="k">eks.amazonaws.com/role-arn:</span> <span class="s">arn:aws:iam::123456789:role/orders-api</span>
+<span class="c">---</span>
+<span class="c"># Disable auto-mount on a per-SA basis</span>
+<span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">ServiceAccount</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">no-token-sa</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+<span class="k">automountServiceAccountToken:</span> <span class="v">false</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>apiVersion: v1</code></td><td>ServiceAccount lives in the core API group, so just <code>v1</code> — no group prefix.</td></tr>
+              <tr><td><code>kind: ServiceAccount</code></td><td>Declares this object as an in-cluster machine identity.</td></tr>
+              <tr><td><code>metadata.name</code></td><td>The SA name. Pods reference it via <code>serviceAccountName</code>. Becomes part of the identity string <code>system:serviceaccount:&lt;ns&gt;:&lt;name&gt;</code>.</td></tr>
+              <tr><td><code>metadata.namespace</code></td><td>ServiceAccounts are namespace-scoped — a SA only exists inside one namespace.</td></tr>
+              <tr><td><code>annotations.eks.amazonaws.com/role-arn</code></td><td>IRSA annotation — maps this SA to an AWS IAM role so pods get cloud permissions without static keys.</td></tr>
+              <tr><td><code>automountServiceAccountToken</code></td><td>When <code>false</code>, pods using this SA do <em>not</em> get a token mounted automatically — use for SAs that never call the API.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Assigning a ServiceAccount to a Pod</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">pod-with-sa.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-api</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="y">serviceAccountName:</span> <span class="s">jahez-orders-api</span>  <span class="c"># ← bind identity</span>
+  <span class="y">automountServiceAccountToken:</span> <span class="v">true</span>      <span class="c"># default true</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">api</span>
+    <span class="k">image:</span> <span class="s">jahez/orders-api:v2.1</span>
+    <span class="c"># Token will be at /var/run/secrets/kubernetes.io/serviceaccount/token</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: Pod</code></td><td>The smallest deployable unit — one or more containers sharing network and storage.</td></tr>
+              <tr><td><code>spec.serviceAccountName</code></td><td>Binds the pod to a specific SA. Every API call from inside the pod is authenticated as this identity. Omitting it uses the namespace <code>default</code> SA.</td></tr>
+              <tr><td><code>spec.automountServiceAccountToken</code></td><td>Controls whether the SA token is mounted into the pod's containers. Defaults to <code>true</code>; set <code>false</code> if the app never talks to the API server.</td></tr>
+              <tr><td><code>containers[].name</code></td><td>Unique container name within the pod, used by logs, exec, and probes.</td></tr>
+              <tr><td><code>containers[].image</code></td><td>The container image to run, including tag.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="alert success">
+        <strong>Identity string</strong>
+        This pod will be authenticated by the API server as <code>system:serviceaccount:production:jahez-orders-api</code> and belong to groups <code>system:serviceaccounts</code> and <code>system:serviceaccounts:production</code>.
+      </div>
+    </section>
+
+    <!-- ========== 6. AUTH METHODS ========== -->
+    <section class="section" id="authn-methods">
+      <h2>6. Authentication Methods (Deep Dive)</h2>
+      <p class="lead">The API server supports many authenticators simultaneously. Each request is tried against each authenticator in order; the first one to return a success result wins.</p>
+
+      <div class="tabs">
+        <div class="tab-nav">
+          <button class="tab-btn active" onclick="showTab(this, 'x509')">X.509 Certs</button>
+          <button class="tab-btn" onclick="showTab(this, 'bearer')">Bearer Tokens</button>
+          <button class="tab-btn" onclick="showTab(this, 'sa')">SA Tokens</button>
+          <button class="tab-btn" onclick="showTab(this, 'oidc')">OIDC</button>
+          <button class="tab-btn" onclick="showTab(this, 'webhook')">Webhook</button>
+          <button class="tab-btn" onclick="showTab(this, 'proxy')">Auth Proxy</button>
+        </div>
+        <div class="tab-body">
+          <div class="tab-pane active" id="x509">
+            <h4>X.509 Client Certificates</h4>
+            <p>The most common way to authenticate kubeadm-bootstrapped clusters. The client presents a certificate signed by the cluster's CA. The <strong>Common Name (CN)</strong> becomes the username; <strong>Organization (O)</strong> fields become groups.</p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">create-user-cert.sh</span><span class="tag">bash</span></div>
+              <pre><span class="c"># 1. Generate key + CSR</span>
+openssl genrsa -out ahmed.key 2048
+openssl req -new -key ahmed.key -out ahmed.csr \
+  -subj <span class="s">"/CN=ahmed@jahez.com/O=engineering/O=oncall"</span>
+
+<span class="c"># 2. Submit CSR to Kubernetes</span>
+cat <span class="s">&lt;&lt;EOF | kubectl apply -f -</span>
+<span class="k">apiVersion:</span> <span class="s">certificates.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">CertificateSigningRequest</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">ahmed-csr</span>
+<span class="k">spec:</span>
+  <span class="k">request:</span> <span class="v">$(cat ahmed.csr | base64 | tr -d '\n')</span>
+  <span class="k">signerName:</span> <span class="s">kubernetes.io/kube-apiserver-client</span>
+  <span class="k">usages:</span> [<span class="s">"client auth"</span>]
+EOF
+
+<span class="c"># 3. Approve &amp; extract</span>
+kubectl certificate approve ahmed-csr
+kubectl get csr ahmed-csr -o jsonpath=<span class="s">'{.status.certificate}'</span> | base64 -d &gt; ahmed.crt</pre>
+            </div>
+            <div class="alert warn">
+              <strong>Use sparingly</strong>
+              Client certs can't be revoked individually before expiry. Prefer OIDC for human users. Use certs for break-glass admin access only.
+            </div>
+          </div>
+
+          <div class="tab-pane" id="bearer">
+            <h4>Static Bearer Tokens</h4>
+            <p>The API server can be started with a <code>--token-auth-file=tokens.csv</code> flag. Each line: <code>token,user,uid,"group1,group2"</code>. The client sends <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">tokens.csv</span><span class="tag">csv</span></div>
+              <pre>32a5f7...d1,ahmed,uid-1001,"engineering,oncall"
+b8e2c9...4f,ci-deploy-bot,uid-2002,"automation"</pre>
+            </div>
+            <div class="alert danger">
+              <strong>Not recommended for production</strong>
+              No expiration, no revocation without API server restart. Tokens leak via shell history, env vars, logs. Use OIDC or SA tokens instead.
+            </div>
+          </div>
+
+          <div class="tab-pane" id="sa">
+            <h4>ServiceAccount Tokens (JWT)</h4>
+            <p>Tokens signed by the API server itself. Modern clusters use <strong>Projected Bound Tokens</strong> — short-lived JWTs scoped to a specific pod and audience.</p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">projected-token.yaml</span><span class="tag">yaml</span></div>
+              <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Pod</span>
+<span class="k">spec:</span>
+  <span class="k">serviceAccountName:</span> <span class="s">orders-api</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">jahez/orders</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">vault-token</span>
+      <span class="k">mountPath:</span> <span class="s">/var/run/secrets/vault</span>
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">vault-token</span>
+    <span class="y">projected:</span>
+      <span class="k">sources:</span>
+      - <span class="y">serviceAccountToken:</span>
+          <span class="k">path:</span> <span class="s">token</span>
+          <span class="k">audience:</span> <span class="s">vault.jahez.internal</span>  <span class="c"># scoped!</span>
+          <span class="k">expirationSeconds:</span> <span class="v">3600</span>             <span class="c"># 1 hour</span></pre>
+            </div>
+            <div class="prop-table">
+              <div class="label">Property Reference</div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+                  <tbody>
+                    <tr><td><code>volumes[].projected</code></td><td>A projected volume combines multiple sources (tokens, configmaps, secrets) into one directory.</td></tr>
+                    <tr><td><code>projected.sources[].serviceAccountToken</code></td><td>Requests a freshly minted, bound JWT for the pod's ServiceAccount — not the legacy static secret.</td></tr>
+                    <tr><td><code>serviceAccountToken.path</code></td><td>The filename the token is written as inside the mounted volume directory.</td></tr>
+                    <tr><td><code>serviceAccountToken.audience</code></td><td>Scopes the token to one recipient (e.g. Vault). The token is rejected if presented anywhere else — limits blast radius if leaked.</td></tr>
+                    <tr><td><code>serviceAccountToken.expirationSeconds</code></td><td>Token lifetime. kubelet auto-refreshes it before expiry. Short values (1h) reduce the window of misuse.</td></tr>
+                    <tr><td><code>volumeMounts[].mountPath</code></td><td>Filesystem path inside the container where the projected volume appears.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <p><strong>Decoded token claims:</strong></p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">jwt payload</span><span class="tag">json</span></div>
+              <pre>{
+  <span class="s">"aud"</span>: [<span class="s">"vault.jahez.internal"</span>],
+  <span class="s">"exp"</span>: 1719500000,
+  <span class="s">"iss"</span>: <span class="s">"https://kubernetes.default.svc"</span>,
+  <span class="s">"kubernetes.io"</span>: {
+    <span class="s">"namespace"</span>: <span class="s">"production"</span>,
+    <span class="s">"pod"</span>: { <span class="s">"name"</span>: <span class="s">"orders-api-x7k2"</span>, <span class="s">"uid"</span>: <span class="s">"..."</span> },
+    <span class="s">"serviceaccount"</span>: { <span class="s">"name"</span>: <span class="s">"orders-api"</span>, <span class="s">"uid"</span>: <span class="s">"..."</span> }
+  },
+  <span class="s">"sub"</span>: <span class="s">"system:serviceaccount:production:orders-api"</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="oidc">
+            <h4>OpenID Connect (OIDC) — Recommended for Humans</h4>
+            <p>Delegate authentication to an identity provider (Google, Okta, Azure AD, Keycloak, Dex). The user gets an ID token, sends it as a bearer token. The API server validates it against the IdP's JWKS endpoint.</p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">kube-apiserver flags</span><span class="tag">flags</span></div>
+              <pre>--oidc-issuer-url=https://accounts.google.com
+--oidc-client-id=jahez-k8s.apps.googleusercontent.com
+--oidc-username-claim=email
+--oidc-groups-claim=groups
+--oidc-username-prefix=oidc:
+--oidc-groups-prefix=oidc:</pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span class="file">kubeconfig with oidc</span><span class="tag">yaml</span></div>
+              <pre><span class="k">users:</span>
+- <span class="k">name:</span> <span class="s">ahmed-oidc</span>
+  <span class="k">user:</span>
+    <span class="y">exec:</span>
+      <span class="k">apiVersion:</span> <span class="s">client.authentication.k8s.io/v1beta1</span>
+      <span class="k">command:</span> <span class="s">kubectl-oidc_login</span>
+      <span class="k">args:</span>
+      - <span class="s">get-token</span>
+      - <span class="s">--oidc-issuer-url=https://accounts.google.com</span>
+      - <span class="s">--oidc-client-id=jahez-k8s.apps.googleusercontent.com</span></pre>
+            </div>
+            <div class="alert success">
+              <strong>Why OIDC wins for humans</strong>
+              Centralized user management, SSO, group sync, MFA, instant deactivation when an employee leaves your IdP.
+            </div>
+          </div>
+
+          <div class="tab-pane" id="webhook">
+            <h4>Webhook Token Authentication</h4>
+            <p>The API server POSTs the token to an external webhook, which returns whether it's valid and the username/groups. Used by managed clouds (EKS uses this for IAM authentication).</p>
+            <div class="code-block">
+              <div class="code-header"><span class="file">webhook tokenreview</span><span class="tag">json</span></div>
+              <pre><span class="c">// API server → webhook</span>
+{
+  <span class="s">"apiVersion"</span>: <span class="s">"authentication.k8s.io/v1"</span>,
+  <span class="s">"kind"</span>: <span class="s">"TokenReview"</span>,
+  <span class="s">"spec"</span>: { <span class="s">"token"</span>: <span class="s">"AQICAHj..."</span> }
+}
+
+<span class="c">// webhook → API server</span>
+{
+  <span class="s">"status"</span>: {
+    <span class="s">"authenticated"</span>: true,
+    <span class="s">"user"</span>: {
+      <span class="s">"username"</span>: <span class="s">"arn:aws:iam::123:user/ahmed"</span>,
+      <span class="s">"groups"</span>: [<span class="s">"system:masters"</span>]
+    }
+  }
+}</pre>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="proxy">
+            <h4>Authenticating Proxy</h4>
+            <p>An upstream proxy (oauth2-proxy, nginx) terminates auth and forwards requests with <code>X-Remote-User</code>, <code>X-Remote-Group</code> headers. The API server trusts these headers when the proxy presents a valid client cert.</p>
+            <p>Common for self-hosted dashboards, browser-based kubectl alternatives. Less common in modern setups (OIDC is simpler).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 7. SA TOKENS DEEP ========== -->
+    <section class="section" id="sa-tokens">
+      <h2>7. ServiceAccount Tokens — Lifecycle</h2>
+      <p class="lead">Understanding how SA tokens are issued, projected into pods, and validated is essential for secure pod-to-service authentication.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 780 360" xmlns="http://www.w3.org/2000/svg">
+          <!-- Pod -->
+          <rect x="30" y="50" width="160" height="180" rx="10" fill="#161b22" stroke="#388bfd" stroke-width="2"/>
+          <text x="110" y="75" text-anchor="middle" fill="#388bfd" font-size="12" font-family="JetBrains Mono">POD</text>
+          <text x="110" y="100" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700">orders-api-x7k2</text>
+          <rect x="50" y="120" width="120" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="110" y="138" text-anchor="middle" fill="#c9d1d9" font-size="11">container</text>
+          <text x="110" y="152" text-anchor="middle" fill="#7d8590" font-size="10" font-family="JetBrains Mono">/var/run/...</text>
+          <rect x="50" y="170" width="120" height="40" rx="6" fill="#0d1117" stroke="#3fb950"/>
+          <text x="110" y="188" text-anchor="middle" fill="#3fb950" font-size="11">projected vol</text>
+          <text x="110" y="202" text-anchor="middle" fill="#7d8590" font-size="10" font-family="JetBrains Mono">token (jwt)</text>
+
+          <!-- API server -->
+          <rect x="320" y="50" width="180" height="100" rx="10" fill="#1c2128" stroke="#a371f7" stroke-width="2"/>
+          <text x="410" y="80" text-anchor="middle" fill="#a371f7" font-size="12" font-family="JetBrains Mono">CONTROL PLANE</text>
+          <text x="410" y="105" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700">kube-apiserver</text>
+          <text x="410" y="125" text-anchor="middle" fill="#c9d1d9" font-size="11">TokenRequest API</text>
+          <text x="410" y="140" text-anchor="middle" fill="#7d8590" font-size="10">signs JWT with private key</text>
+
+          <!-- kubelet -->
+          <rect x="320" y="200" width="180" height="80" rx="10" fill="#161b22" stroke="#d29922" stroke-width="2"/>
+          <text x="410" y="225" text-anchor="middle" fill="#d29922" font-size="12" font-family="JetBrains Mono">NODE AGENT</text>
+          <text x="410" y="248" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700">kubelet</text>
+          <text x="410" y="266" text-anchor="middle" fill="#7d8590" font-size="10">requests &amp; refreshes token</text>
+
+          <!-- External svc -->
+          <rect x="620" y="120" width="140" height="80" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+          <text x="690" y="145" text-anchor="middle" fill="#3fb950" font-size="12" font-family="JetBrains Mono">EXTERNAL SERVICE</text>
+          <text x="690" y="168" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700">Vault</text>
+          <text x="690" y="186" text-anchor="middle" fill="#7d8590" font-size="10">validates via JWKS</text>
+
+          <!-- Arrows -->
+          <path d="M 500 220 Q 250 250 200 200" stroke="#d29922" stroke-width="2" fill="none" marker-end="url(#arr3)"/>
+          <text x="320" y="245" fill="#d29922" font-size="10" font-family="JetBrains Mono">1. inject token</text>
+
+          <path d="M 410 200 L 410 150" stroke="#a371f7" stroke-width="2" marker-end="url(#arr3)"/>
+          <text x="425" y="180" fill="#a371f7" font-size="10" font-family="JetBrains Mono">2. request</text>
+
+          <path d="M 190 165 Q 350 320 690 200" stroke="#3fb950" stroke-width="2" fill="none" marker-end="url(#arr3)"/>
+          <text x="430" y="335" fill="#3fb950" font-size="10" font-family="JetBrains Mono">3. pod presents token to vault</text>
+
+          <path d="M 690 120 Q 600 50 500 90" stroke="#79c0ff" stroke-width="2" stroke-dasharray="3" fill="none" marker-end="url(#arr3)"/>
+          <text x="555" y="65" fill="#79c0ff" font-size="10" font-family="JetBrains Mono">4. verify via JWKS</text>
+
+          <defs>
+            <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+        </svg>
+        <div class="diagram-caption">Pod → kubelet → API server → JWT → external service (validated via JWKS)</div>
+      </div>
+
+      <h3>Manually request a token</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">terminal</span><span class="tag">bash</span></div>
+        <pre><span class="c"># Get a 1-hour token for an SA (modern way - bound tokens)</span>
+kubectl create token jahez-orders-api \
+  --namespace production \
+  --audience vault.jahez.internal \
+  --duration 1h
+
+<span class="c"># Decode and inspect</span>
+kubectl create token jahez-orders-api -n production | \
+  cut -d. -f2 | base64 -d | jq</pre>
+      </div>
+
+      <div class="alert info">
+        <strong>Legacy vs Bound Tokens</strong>
+        Before v1.24, every SA had a permanent Secret token that never expired. Since v1.24, tokens are short-lived (1h default) and bound to a specific pod. Auto-rotated by kubelet. <strong>Never create long-lived SA secrets in modern clusters.</strong>
+      </div>
+    </section>
+
+    <!-- ========== 8. AUTHZ ========== -->
+    <section class="section" id="authz">
+      <h2>8. Authorization — What Can You Do?</h2>
+      <p class="lead">After AuthN succeeds, the API server knows <em>who</em> the request is from. Authorization decides whether that identity is allowed to perform the requested action on the requested resource.</p>
+
+      <h3>How Multiple Authorizers Combine</h3>
+      <p>The API server runs <strong>all</strong> configured authorizers in order. Each returns one of three verdicts:</p>
+      <div class="card-grid">
+        <div class="card feature green">
+          <div class="icon">✓</div>
+          <h4>Allow</h4>
+          <p class="text-small text-muted">Request proceeds to admission. No other authorizers consulted.</p>
+        </div>
+        <div class="card feature red">
+          <div class="icon">✗</div>
+          <h4>Deny</h4>
+          <p class="text-small text-muted">Hard reject — request fails immediately with 403, regardless of other authorizers.</p>
+        </div>
+        <div class="card feature amber">
+          <div class="icon">?</div>
+          <h4>NoOpinion</h4>
+          <p class="text-small text-muted">Pass to next authorizer. If <em>all</em> say NoOpinion, request is denied.</p>
+        </div>
+      </div>
+
+      <div class="alert warn">
+        <strong>Default for missing rules</strong>
+        Kubernetes is deny-by-default: if no Allow rule matches, the request is denied. You only need to write Allow rules; you never write Deny rules in RBAC.
+      </div>
+
+      <h3>Available Authorization Modes</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Mode</th><th>Use Case</th><th>How It Works</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="pill blue">RBAC</span></td>
+              <td>Default for human &amp; SA permissions</td>
+              <td>Roles + Bindings stored as cluster objects</td>
+            </tr>
+            <tr>
+              <td><span class="pill purple">Node</span></td>
+              <td>kubelet → API server</td>
+              <td>Auto-authorizes kubelets to read pods on their own node</td>
+            </tr>
+            <tr>
+              <td><span class="pill amber">ABAC</span></td>
+              <td>Legacy, rarely used</td>
+              <td>Policy file loaded at startup; no runtime updates</td>
+            </tr>
+            <tr>
+              <td><span class="pill green">Webhook</span></td>
+              <td>Custom external authorizer</td>
+              <td>API server POSTs SubjectAccessReview to your service</td>
+            </tr>
+            <tr>
+              <td><span class="pill red">AlwaysAllow</span></td>
+              <td>Dev only — never production</td>
+              <td>Every request authorized (no AuthZ)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== 9. RBAC DEEP ========== -->
+    <section class="section" id="rbac">
+      <h2>9. RBAC Deep Dive</h2>
+      <p class="lead">RBAC (Role-Based Access Control) is the standard authorization mechanism in Kubernetes. It composes four resource types into permission grants.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg">
+          <!-- Subjects -->
+          <rect x="30" y="50" width="160" height="260" rx="10" fill="#161b22" stroke="#388bfd" stroke-width="2"/>
+          <text x="110" y="75" text-anchor="middle" fill="#388bfd" font-size="12" font-family="JetBrains Mono" letter-spacing="2">SUBJECTS</text>
+          <rect x="50" y="100" width="120" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="110" y="120" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="600">User</text>
+          <text x="110" y="138" text-anchor="middle" fill="#7d8590" font-size="10" font-family="JetBrains Mono">ahmed@jahez.com</text>
+          <rect x="50" y="160" width="120" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="110" y="180" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="600">Group</text>
+          <text x="110" y="198" text-anchor="middle" fill="#7d8590" font-size="10" font-family="JetBrains Mono">engineering</text>
+          <rect x="50" y="220" width="120" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="110" y="240" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="600">ServiceAccount</text>
+          <text x="110" y="258" text-anchor="middle" fill="#7d8590" font-size="10" font-family="JetBrains Mono">orders-api</text>
+
+          <!-- Binding -->
+          <rect x="270" y="100" width="200" height="160" rx="10" fill="#1c2128" stroke="#a371f7" stroke-width="2"/>
+          <text x="370" y="125" text-anchor="middle" fill="#a371f7" font-size="12" font-family="JetBrains Mono" letter-spacing="2">BINDING</text>
+          <text x="370" y="155" text-anchor="middle" fill="#f0f6fc" font-size="15" font-weight="700">RoleBinding</text>
+          <text x="370" y="180" text-anchor="middle" fill="#c9d1d9" font-size="11">subjects: [...]</text>
+          <text x="370" y="200" text-anchor="middle" fill="#c9d1d9" font-size="11">roleRef: pod-reader</text>
+          <text x="370" y="235" text-anchor="middle" fill="#7d8590" font-size="10">(or ClusterRoleBinding)</text>
+
+          <!-- Role -->
+          <rect x="550" y="50" width="220" height="260" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+          <text x="660" y="75" text-anchor="middle" fill="#3fb950" font-size="12" font-family="JetBrains Mono" letter-spacing="2">ROLE</text>
+          <text x="660" y="100" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700">pod-reader</text>
+          <rect x="570" y="120" width="180" height="70" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="585" y="140" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono">verbs:</text>
+          <text x="595" y="155" fill="#79c0ff" font-size="11" font-family="JetBrains Mono">- get</text>
+          <text x="595" y="170" fill="#79c0ff" font-size="11" font-family="JetBrains Mono">- list</text>
+          <text x="595" y="185" fill="#79c0ff" font-size="11" font-family="JetBrains Mono">- watch</text>
+          <rect x="570" y="200" width="180" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="585" y="220" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono">resources:</text>
+          <text x="595" y="235" fill="#79c0ff" font-size="11" font-family="JetBrains Mono">- pods</text>
+
+          <!-- Arrows -->
+          <path d="M 190 180 L 265 180" stroke="#a371f7" stroke-width="2" marker-end="url(#arr4)"/>
+          <text x="225" y="170" text-anchor="middle" fill="#a371f7" font-size="10" font-family="JetBrains Mono">grants</text>
+
+          <path d="M 470 180 L 545 180" stroke="#3fb950" stroke-width="2" marker-end="url(#arr4)"/>
+          <text x="505" y="170" text-anchor="middle" fill="#3fb950" font-size="10" font-family="JetBrains Mono">→ Role</text>
+
+          <defs>
+            <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+        </svg>
+        <div class="diagram-caption">A Binding glues Subjects (who) to a Role (what they can do)</div>
+      </div>
+
+      <h3>The Four RBAC Objects</h3>
+      <div class="card-grid">
+        <div class="card feature green">
+          <h4><span class="pill green">Role</span></h4>
+          <p class="text-small">Namespaced. Defines permissions <strong>within one namespace</strong> — like "can read pods in <code>payments</code>".</p>
+        </div>
+        <div class="card feature green">
+          <h4><span class="pill green">ClusterRole</span></h4>
+          <p class="text-small">Cluster-wide. Defines permissions on cluster-scoped resources (nodes, PVs, CRDs) or namespace-scoped resources across all namespaces.</p>
+        </div>
+        <div class="card feature purple">
+          <h4><span class="pill purple">RoleBinding</span></h4>
+          <p class="text-small">Namespaced. Grants a Role (or ClusterRole) to subjects, scoped to one namespace.</p>
+        </div>
+        <div class="card feature purple">
+          <h4><span class="pill purple">ClusterRoleBinding</span></h4>
+          <p class="text-small">Cluster-wide. Grants a ClusterRole to subjects across the entire cluster.</p>
+        </div>
+      </div>
+
+      <h3>Mixing &amp; Matching</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Combination</th><th>Effect</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>RoleBinding</code> → <code>Role</code></td><td>Permissions scoped to the binding's namespace.</td></tr>
+            <tr><td><code>RoleBinding</code> → <code>ClusterRole</code></td><td>ClusterRole's permissions applied only within the binding's namespace. Useful for reusing common permission sets.</td></tr>
+            <tr><td><code>ClusterRoleBinding</code> → <code>ClusterRole</code></td><td>Cluster-wide permissions everywhere.</td></tr>
+            <tr><td><code>ClusterRoleBinding</code> → <code>Role</code></td><td><span class="pill red">Invalid</span> — Kubernetes will reject this.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== 10. RBAC YAML ========== -->
+    <section class="section" id="rbac-yaml">
+      <h2>10. Full RBAC YAML Examples</h2>
+      <p class="lead">Real-world RBAC patterns ranging from a read-only developer to a CI deployer to a controller's ServiceAccount.</p>
+
+      <h3>Example 1 — Namespaced Read-Only Developer</h3>
+      <p>Goal: give the <code>engineering</code> group read access (get/list/watch) to pods, services, and deployments in the <code>payments</code> namespace.</p>
+      <div class="code-block">
+        <div class="code-header"><span class="file">01-dev-readonly.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">Role</span>
+<span class="k">metadata:</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+  <span class="k">name:</span> <span class="s">developer-readonly</span>
+<span class="k">rules:</span>
+- <span class="y">apiGroups:</span> [<span class="s">""</span>]                       <span class="c"># core API</span>
+  <span class="y">resources:</span> [<span class="s">"pods"</span>, <span class="s">"services"</span>, <span class="s">"configmaps"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>, <span class="s">"watch"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">"apps"</span>]
+  <span class="y">resources:</span> [<span class="s">"deployments"</span>, <span class="s">"replicasets"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>, <span class="s">"watch"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">""</span>]
+  <span class="y">resources:</span> [<span class="s">"pods/log"</span>]                  <span class="c"># subresource</span>
+  <span class="y">verbs:</span> [<span class="s">"get"</span>]
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">RoleBinding</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">engineering-readonly-payments</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">subjects:</span>
+- <span class="y">kind:</span> <span class="s">Group</span>
+  <span class="y">name:</span> <span class="s">engineering</span>                       <span class="c"># from OIDC group claim</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span>
+<span class="k">roleRef:</span>
+  <span class="y">kind:</span> <span class="s">Role</span>
+  <span class="y">name:</span> <span class="s">developer-readonly</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: Role</code></td><td>Namespaced permission set — only valid inside <code>metadata.namespace</code>.</td></tr>
+              <tr><td><code>rules[].apiGroups</code></td><td>Which API group the resource belongs to. <code>""</code> is the core group (pods, services); <code>"apps"</code> covers deployments/replicasets.</td></tr>
+              <tr><td><code>rules[].resources</code></td><td>The resource types being granted. <code>pods/log</code> is a <em>subresource</em> — needed separately to read logs.</td></tr>
+              <tr><td><code>rules[].verbs</code></td><td>The actions allowed. <code>get/list/watch</code> = read-only. No <code>create/update/delete</code> means this role cannot modify anything.</td></tr>
+              <tr><td><code>kind: RoleBinding</code></td><td>Connects subjects to a Role, scoped to one namespace.</td></tr>
+              <tr><td><code>subjects[].kind</code></td><td>Type of identity: <code>Group</code>, <code>User</code>, or <code>ServiceAccount</code>.</td></tr>
+              <tr><td><code>subjects[].name</code></td><td>The identity value. Here a group name that comes from the OIDC <code>groups</code> claim.</td></tr>
+              <tr><td><code>subjects[].apiGroup</code></td><td>For User/Group it is <code>rbac.authorization.k8s.io</code>; for ServiceAccount it is omitted.</td></tr>
+              <tr><td><code>roleRef</code></td><td>The Role (or ClusterRole) being granted. Immutable — to change it you must delete and recreate the binding.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Example 2 — CI Deployer (scoped, no secrets)</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">02-ci-deployer.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">ServiceAccount</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">ci-deployer</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">Role</span>
+<span class="k">metadata:</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+  <span class="k">name:</span> <span class="s">deployer</span>
+<span class="k">rules:</span>
+<span class="c"># Manage deployments &amp; their pods</span>
+- <span class="y">apiGroups:</span> [<span class="s">"apps"</span>]
+  <span class="y">resources:</span> [<span class="s">"deployments"</span>, <span class="s">"statefulsets"</span>, <span class="s">"daemonsets"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>, <span class="s">"create"</span>, <span class="s">"update"</span>, <span class="s">"patch"</span>, <span class="s">"delete"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">""</span>]
+  <span class="y">resources:</span> [<span class="s">"services"</span>, <span class="s">"configmaps"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>, <span class="s">"create"</span>, <span class="s">"update"</span>, <span class="s">"patch"</span>, <span class="s">"delete"</span>]
+<span class="c"># Explicitly NOT secrets — read or write</span>
+- <span class="y">apiGroups:</span> [<span class="s">"networking.k8s.io"</span>]
+  <span class="y">resources:</span> [<span class="s">"ingresses"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>, <span class="s">"create"</span>, <span class="s">"update"</span>, <span class="s">"patch"</span>, <span class="s">"delete"</span>]
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">RoleBinding</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">ci-deployer-binding</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">subjects:</span>
+- <span class="y">kind:</span> <span class="s">ServiceAccount</span>
+  <span class="y">name:</span> <span class="s">ci-deployer</span>
+  <span class="y">namespace:</span> <span class="s">payments</span>
+<span class="k">roleRef:</span>
+  <span class="y">kind:</span> <span class="s">Role</span>
+  <span class="y">name:</span> <span class="s">deployer</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>ServiceAccount</code> (1st doc)</td><td>Creates the machine identity the CI pipeline authenticates as. No secrets attached — it uses bound tokens.</td></tr>
+              <tr><td><code>rules</code> verbs incl. <code>create/update/patch/delete</code></td><td>This is a write role — CI needs to create and modify workloads, unlike the read-only developer role.</td></tr>
+              <tr><td><code>resources: [deployments, statefulsets, daemonsets]</code></td><td>The workload controllers CI is allowed to manage. Pods are managed indirectly through these.</td></tr>
+              <tr><td>Absence of <code>secrets</code> in any rule</td><td>Deliberate — CI can deploy apps but can never read or write Secrets. Deny-by-default means omitting it is enough.</td></tr>
+              <tr><td><code>networking.k8s.io / ingresses</code></td><td>Lets CI manage Ingress objects to wire up routing for new services.</td></tr>
+              <tr><td><code>subjects[].kind: ServiceAccount</code></td><td>The binding targets a SA, so a <code>namespace</code> field is required and <code>apiGroup</code> is omitted.</td></tr>
+              <tr><td><code>roleRef.name: deployer</code></td><td>Points at the Role above — the CI SA inherits exactly those verbs.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Example 3 — Restricted Resource Names (extreme PoLP)</h3>
+      <p>Sometimes you want an app to only manage <em>specific named</em> objects, not all of a kind. Use <code>resourceNames</code>.</p>
+      <div class="code-block">
+        <div class="code-header"><span class="file">03-named-resources.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">Role</span>
+<span class="k">metadata:</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+  <span class="k">name:</span> <span class="s">leader-election</span>
+<span class="k">rules:</span>
+- <span class="y">apiGroups:</span> [<span class="s">"coordination.k8s.io"</span>]
+  <span class="y">resources:</span> [<span class="s">"leases"</span>]
+  <span class="y">resourceNames:</span> [<span class="s">"orders-leader"</span>]    <span class="c"># ONLY this lease</span>
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"update"</span>, <span class="s">"patch"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">"coordination.k8s.io"</span>]
+  <span class="y">resources:</span> [<span class="s">"leases"</span>]
+  <span class="y">verbs:</span> [<span class="s">"create"</span>]                       <span class="c"># create can't be restricted by name</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>apiGroups: [coordination.k8s.io]</code></td><td>The API group that owns <code>Lease</code> objects, used for leader election.</td></tr>
+              <tr><td><code>resources: [leases]</code></td><td>Lease objects coordinate which replica is the active leader.</td></tr>
+              <tr><td><code>resourceNames: [orders-leader]</code></td><td>Narrows the rule to a single named object — the app can touch <em>only</em> the <code>orders-leader</code> lease, no other lease in the namespace.</td></tr>
+              <tr><td>Second rule with <code>verbs: [create]</code></td><td>Separate rule because <code>create</code> cannot be limited by <code>resourceNames</code> — the object name doesn't exist until creation, so K8s ignores the field for that verb.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Example 4 — ClusterRole Reused via RoleBinding</h3>
+      <p>Define a <code>view</code> ClusterRole once, reuse it per namespace via RoleBindings — no duplication.</p>
+      <div class="code-block">
+        <div class="code-header"><span class="file">04-cluster-reuse.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="c"># Define ONCE at cluster scope</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">ClusterRole</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">app-viewer</span>
+<span class="k">rules:</span>
+- <span class="y">apiGroups:</span> [<span class="s">""</span>, <span class="s">"apps"</span>]
+  <span class="y">resources:</span> [<span class="s">"pods"</span>, <span class="s">"services"</span>, <span class="s">"deployments"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>, <span class="s">"watch"</span>]
+<span class="c">---</span>
+<span class="c"># Apply per-namespace via RoleBinding</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">RoleBinding</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">team-payments-viewers</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">subjects:</span>
+- <span class="y">kind:</span> <span class="s">Group</span>
+  <span class="y">name:</span> <span class="s">team-payments</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span>
+<span class="k">roleRef:</span>
+  <span class="y">kind:</span> <span class="s">ClusterRole</span>           <span class="c"># ← reusing ClusterRole</span>
+  <span class="y">name:</span> <span class="s">app-viewer</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: ClusterRole</code></td><td>A cluster-scoped permission set. Defined once, reusable everywhere — no <code>namespace</code> field.</td></tr>
+              <tr><td><code>apiGroups: ["", "apps"]</code></td><td>A single rule can span multiple API groups when the verbs and resources line up.</td></tr>
+              <tr><td><code>kind: RoleBinding</code> with <code>roleRef.kind: ClusterRole</code></td><td>The key pattern — a namespaced RoleBinding pointing at a ClusterRole. Permissions apply <em>only</em> in the binding's namespace.</td></tr>
+              <tr><td><code>roleRef.kind: ClusterRole</code></td><td>Says "use this cluster-wide role definition" instead of a local Role. Avoids copy-pasting identical Roles into every namespace.</td></tr>
+              <tr><td><code>metadata.namespace</code> (on RoleBinding)</td><td>Scopes the granted permissions. The same ClusterRole can be bound in <code>orders</code>, <code>payments</code>, etc., each time confined to that namespace.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Verbs &amp; Resources Reference</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Verb</th><th>Maps to HTTP</th><th>Example use</th></tr></thead>
+          <tbody>
+            <tr><td><code>get</code></td><td>GET (single)</td><td><code>kubectl get pod orders-x7k2</code></td></tr>
+            <tr><td><code>list</code></td><td>GET (collection)</td><td><code>kubectl get pods</code></td></tr>
+            <tr><td><code>watch</code></td><td>GET + watch</td><td>controllers tracking changes</td></tr>
+            <tr><td><code>create</code></td><td>POST</td><td><code>kubectl apply</code> (new)</td></tr>
+            <tr><td><code>update</code></td><td>PUT</td><td><code>kubectl replace</code></td></tr>
+            <tr><td><code>patch</code></td><td>PATCH</td><td><code>kubectl patch</code></td></tr>
+            <tr><td><code>delete</code></td><td>DELETE</td><td><code>kubectl delete</code></td></tr>
+            <tr><td><code>deletecollection</code></td><td>DELETE collection</td><td><code>kubectl delete pods --all</code></td></tr>
+            <tr><td><code>exec</code></td><td>subresource</td><td><code>kubectl exec -it pod -- bash</code></td></tr>
+            <tr><td><code>portforward</code></td><td>subresource</td><td><code>kubectl port-forward</code></td></tr>
+            <tr><td><code>*</code></td><td>all</td><td><span class="pill red">avoid in production</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Testing RBAC — <code>kubectl auth can-i</code></h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">test-rbac.sh</span><span class="tag">bash</span></div>
+        <pre><span class="c"># Can I do this?</span>
+kubectl auth can-i create deployments -n payments
+<span class="c"># → yes / no</span>
+
+<span class="c"># Can SOMEONE ELSE do this? (great for debugging)</span>
+kubectl auth can-i list secrets \
+  --as=system:serviceaccount:payments:ci-deployer \
+  -n payments
+<span class="c"># → no</span>
+
+<span class="c"># Impersonate full check</span>
+kubectl auth can-i --list \
+  --as=ahmed@jahez.com \
+  --as-group=engineering \
+  -n payments
+
+<span class="c"># Who can do this? (requires kubectl-who-can plugin)</span>
+kubectl who-can create pods -n payments</pre>
+      </div>
+    </section>
+
+    <!-- ========== 11. ABAC & NODE ========== -->
+    <section class="section" id="abac-node">
+      <h2>11. Node Authorizer &amp; ABAC</h2>
+
+      <h3>Node Authorizer (always enabled)</h3>
+      <p>A specialized authorizer that automatically grants kubelets exactly the permissions they need — and nothing more.</p>
+      <ul style="color:#c9d1d9; padding-left: 24px; margin-bottom: 18px;">
+        <li>kubelet on <code>node-A</code> can <strong>only</strong> read pods scheduled to <code>node-A</code></li>
+        <li>It can read Secrets, ConfigMaps, PVCs that are <em>referenced by pods on its node</em></li>
+        <li>It can update only its own Node object status, not other nodes</li>
+        <li>Identifies kubelets by username prefix <code>system:node:</code> and group <code>system:nodes</code></li>
+      </ul>
+
+      <div class="alert success">
+        <strong>Why it's important</strong>
+        Without this, a compromised kubelet could read every Secret in the cluster. Node authorizer is the boundary that contains node breaches.
+      </div>
+
+      <h3>ABAC (legacy)</h3>
+      <p>Attribute-Based Access Control via a static policy file. Each line is a JSON object describing one allow rule. Loaded at API server startup — to change, you must restart the API server.</p>
+      <div class="code-block">
+        <div class="code-header"><span class="file">abac-policy.jsonl</span><span class="tag">jsonl</span></div>
+        <pre>{"apiVersion":"abac.authorization.kubernetes.io/v1beta1","kind":"Policy","spec":{"user":"alice","namespace":"*","resource":"*","apiGroup":"*"}}
+{"apiVersion":"abac.authorization.kubernetes.io/v1beta1","kind":"Policy","spec":{"group":"system:authenticated","namespace":"*","resource":"events","readonly":true}}</pre>
+      </div>
+      <div class="alert warn">
+        <strong>Avoid ABAC for new clusters</strong>
+        Inflexible (no hot reload), no fine-grained verbs, hard to audit. RBAC supersedes it.
+      </div>
+    </section>
+
+    <!-- ========== 12. ADMISSION ========== -->
+    <section class="section" id="admission">
+      <h2>12. Admission Controllers — The Third Gate</h2>
+      <p class="lead">After AuthN and AuthZ pass, the request is still in-flight, not yet persisted. Admission controllers can <strong>mutate</strong> or <strong>reject</strong> it based on cluster-wide policy.</p>
+
+      <h3>Two Phases</h3>
+      <div class="card-grid">
+        <div class="card feature purple">
+          <div class="icon">🔧</div>
+          <h4>Mutating Admission</h4>
+          <p class="text-small">Modifies the object. Examples: inject Istio sidecar, add default labels, set imagePullSecrets, mount ServiceAccount tokens.</p>
+        </div>
+        <div class="card feature blue">
+          <div class="icon">✓</div>
+          <h4>Validating Admission</h4>
+          <p class="text-small">Accept or reject — cannot modify. Examples: enforce "no privileged pods", "image must be from approved registry", "all pods must have resource limits".</p>
+        </div>
+      </div>
+
+      <h3>Built-in Controllers (compiled into API server)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Controller</th><th>Phase</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>NamespaceLifecycle</code></td><td>Validating</td><td>Block requests to terminating/non-existent namespaces</td></tr>
+            <tr><td><code>LimitRanger</code></td><td>Mutating</td><td>Apply default CPU/mem requests from LimitRange</td></tr>
+            <tr><td><code>ServiceAccount</code></td><td>Mutating</td><td>Auto-assign default SA, mount token</td></tr>
+            <tr><td><code>ResourceQuota</code></td><td>Validating</td><td>Enforce per-namespace resource quotas</td></tr>
+            <tr><td><code>PodSecurity</code></td><td>Validating</td><td>Enforce baseline/restricted pod security standards</td></tr>
+            <tr><td><code>DefaultStorageClass</code></td><td>Mutating</td><td>Set default StorageClass on PVCs</td></tr>
+            <tr><td><code>NodeRestriction</code></td><td>Validating</td><td>Limit what kubelets can modify (pairs with Node authorizer)</td></tr>
+            <tr><td><code>MutatingAdmissionWebhook</code></td><td>Mutating</td><td>Call external HTTPS webhooks to mutate</td></tr>
+            <tr><td><code>ValidatingAdmissionWebhook</code></td><td>Validating</td><td>Call external HTTPS webhooks to validate</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== 13. PSA ========== -->
+    <section class="section" id="psa">
+      <h2>13. Pod Security Admission (PSA)</h2>
+      <p class="lead">Modern replacement for the deprecated PodSecurityPolicy. Built-in validating controller that enforces three security profiles at the namespace level.</p>
+
+      <h3>The Three Profiles</h3>
+      <div class="card-grid">
+        <div class="card feature green">
+          <h4><span class="pill green">privileged</span></h4>
+          <p class="text-small text-muted">Unrestricted — anything allowed. Use only for system namespaces.</p>
+        </div>
+        <div class="card feature amber">
+          <h4><span class="pill amber">baseline</span></h4>
+          <p class="text-small text-muted">Minimally restrictive. Prevents known privilege escalation. Easy migration path.</p>
+        </div>
+        <div class="card feature blue">
+          <h4><span class="pill blue">restricted</span></h4>
+          <p class="text-small text-muted">Heavily restricted. Industry-standard hardening. Run-as-non-root, drop capabilities, seccomp, etc.</p>
+        </div>
+      </div>
+
+      <h3>Three Modes per Profile</h3>
+      <p>For each profile, you choose what happens when a pod violates it:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mode</th><th>Behavior</th><th>When to use</th></tr></thead>
+          <tbody>
+            <tr><td><code>enforce</code></td><td>Reject pod creation</td><td>Production lockdown</td></tr>
+            <tr><td><code>audit</code></td><td>Allow, log violation to audit log</td><td>Visibility</td></tr>
+            <tr><td><code>warn</code></td><td>Allow, return warning to user</td><td>Migration / education</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Applying PSA to a Namespace</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">restricted-namespace.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Namespace</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">payments</span>
+  <span class="k">labels:</span>
+    <span class="c"># Enforce restricted — reject violating pods</span>
+    <span class="y">pod-security.kubernetes.io/enforce:</span> <span class="s">restricted</span>
+    <span class="y">pod-security.kubernetes.io/enforce-version:</span> <span class="s">v1.28</span>
+    <span class="c"># Warn for baseline (additional visibility)</span>
+    <span class="y">pod-security.kubernetes.io/warn:</span> <span class="s">restricted</span>
+    <span class="y">pod-security.kubernetes.io/warn-version:</span> <span class="s">v1.28</span>
+    <span class="c"># Audit log all violations</span>
+    <span class="y">pod-security.kubernetes.io/audit:</span> <span class="s">restricted</span>
+    <span class="y">pod-security.kubernetes.io/audit-version:</span> <span class="s">v1.28</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>pod-security.kubernetes.io/enforce</code></td><td>The profile to <em>hard-enforce</em>. A pod violating <code>restricted</code> is rejected at admission.</td></tr>
+              <tr><td><code>pod-security.kubernetes.io/enforce-version</code></td><td>Pins the profile to a specific K8s version so rule changes in newer releases don't silently alter behavior.</td></tr>
+              <tr><td><code>pod-security.kubernetes.io/warn</code></td><td>Profile checked in <em>warn</em> mode — the pod is still created but the user gets a console warning.</td></tr>
+              <tr><td><code>pod-security.kubernetes.io/audit</code></td><td>Profile checked in <em>audit</em> mode — violations are written to the audit log only, no user feedback.</td></tr>
+              <tr><td>All three modes together</td><td>You can run enforce/warn/audit at different profile levels simultaneously — a common migration pattern.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>A Pod That Passes "restricted"</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">compliant-pod.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-api</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="y">securityContext:</span>
+    <span class="k">runAsNonRoot:</span> <span class="v">true</span>
+    <span class="k">runAsUser:</span> <span class="v">10001</span>
+    <span class="k">fsGroup:</span> <span class="v">10001</span>
+    <span class="k">seccompProfile:</span>
+      <span class="k">type:</span> <span class="s">RuntimeDefault</span>
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">jahez/orders-api:v2.1</span>
+    <span class="y">securityContext:</span>
+      <span class="k">allowPrivilegeEscalation:</span> <span class="v">false</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+      <span class="k">capabilities:</span>
+        <span class="k">drop:</span> [<span class="s">"ALL"</span>]
+    <span class="k">resources:</span>
+      <span class="k">limits:</span>
+        <span class="k">memory:</span> <span class="s">"512Mi"</span>
+        <span class="k">cpu:</span> <span class="s">"500m"</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>spec.securityContext.runAsNonRoot</code></td><td>Required by <code>restricted</code> — the container is rejected if its image would run as UID 0.</td></tr>
+              <tr><td><code>spec.securityContext.runAsUser: 10001</code></td><td>Explicit non-zero UID for the process. A high, fixed UID avoids collisions with host users.</td></tr>
+              <tr><td><code>spec.securityContext.fsGroup</code></td><td>GID applied to mounted volumes so the non-root process can read/write them.</td></tr>
+              <tr><td><code>seccompProfile.type: RuntimeDefault</code></td><td>Enables the container runtime's default syscall filter — mandatory under <code>restricted</code>.</td></tr>
+              <tr><td><code>containers[].securityContext.allowPrivilegeEscalation: false</code></td><td>Blocks the process from gaining more privileges via setuid binaries. Required by <code>restricted</code>.</td></tr>
+              <tr><td><code>readOnlyRootFilesystem: true</code></td><td>Makes the container root filesystem immutable — limits what malware can persist.</td></tr>
+              <tr><td><code>capabilities.drop: ["ALL"]</code></td><td>Strips every Linux capability. <code>restricted</code> permits only re-adding <code>NET_BIND_SERVICE</code>.</td></tr>
+              <tr><td><code>resources.limits</code></td><td>CPU/memory ceilings — not a PSA requirement but standard hardening to prevent noisy-neighbor and DoS.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 14. WEBHOOKS ========== -->
+    <section class="section" id="webhooks">
+      <h2>14. Validating &amp; Mutating Webhooks</h2>
+      <p class="lead">When built-in admission isn't enough, you can register external HTTPS endpoints to receive admission reviews. This is how OPA Gatekeeper, Kyverno, Istio, and Linkerd plug in.</p>
+
+      <h3>Registering a Validating Webhook</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">validating-webhook.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">admissionregistration.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">ValidatingWebhookConfiguration</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-image-policy</span>
+<span class="k">webhooks:</span>
+- <span class="k">name:</span> <span class="s">images.jahez.io</span>
+  <span class="y">clientConfig:</span>
+    <span class="k">service:</span>
+      <span class="k">namespace:</span> <span class="s">security</span>
+      <span class="k">name:</span> <span class="s">image-policy</span>
+      <span class="k">path:</span> <span class="s">/validate</span>
+    <span class="k">caBundle:</span> <span class="s">&lt;PEM-base64&gt;</span>
+  <span class="y">rules:</span>
+  - <span class="y">apiGroups:</span> [<span class="s">""</span>]
+    <span class="y">apiVersions:</span> [<span class="s">"v1"</span>]
+    <span class="y">resources:</span> [<span class="s">"pods"</span>]
+    <span class="y">operations:</span> [<span class="s">"CREATE"</span>, <span class="s">"UPDATE"</span>]
+  <span class="y">failurePolicy:</span> <span class="s">Fail</span>          <span class="c"># reject if webhook down</span>
+  <span class="y">sideEffects:</span> <span class="s">None</span>
+  <span class="y">admissionReviewVersions:</span> [<span class="s">"v1"</span>]
+  <span class="y">timeoutSeconds:</span> <span class="v">5</span>
+  <span class="y">namespaceSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">jahez-validate:</span> <span class="s">"true"</span>     <span class="c"># only namespaces labeled this</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: ValidatingWebhookConfiguration</code></td><td>Registers one or more external HTTPS endpoints that the API server calls during the validating admission phase.</td></tr>
+              <tr><td><code>webhooks[].name</code></td><td>Fully-qualified webhook name. Must be a domain-style unique identifier.</td></tr>
+              <tr><td><code>clientConfig.service</code></td><td>The in-cluster Service the API server POSTs the AdmissionReview to (namespace + name + path).</td></tr>
+              <tr><td><code>clientConfig.caBundle</code></td><td>PEM CA bundle the API server uses to verify the webhook server's TLS certificate.</td></tr>
+              <tr><td><code>rules</code></td><td>Which API requests trigger the webhook — matched by group, version, resource, and operation.</td></tr>
+              <tr><td><code>operations: [CREATE, UPDATE]</code></td><td>Only intercept create/update of pods; DELETE and others pass through untouched.</td></tr>
+              <tr><td><code>failurePolicy: Fail</code></td><td>If the webhook is unreachable, <em>reject</em> the request. <code>Ignore</code> would allow it — a security-vs-availability tradeoff.</td></tr>
+              <tr><td><code>sideEffects: None</code></td><td>Declares the webhook doesn't mutate external state, so the API server can safely run dry-run requests.</td></tr>
+              <tr><td><code>admissionReviewVersions</code></td><td>The AdmissionReview API versions the webhook can parse.</td></tr>
+              <tr><td><code>timeoutSeconds</code></td><td>How long the API server waits for a response before applying <code>failurePolicy</code>.</td></tr>
+              <tr><td><code>namespaceSelector</code></td><td>Limits the webhook to namespaces carrying a matching label — keeps system namespaces exempt.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>What the Webhook Receives</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">AdmissionReview request</span><span class="tag">json</span></div>
+        <pre>{
+  <span class="s">"apiVersion"</span>: <span class="s">"admission.k8s.io/v1"</span>,
+  <span class="s">"kind"</span>: <span class="s">"AdmissionReview"</span>,
+  <span class="s">"request"</span>: {
+    <span class="s">"uid"</span>: <span class="s">"abc-123"</span>,
+    <span class="s">"operation"</span>: <span class="s">"CREATE"</span>,
+    <span class="s">"userInfo"</span>: { <span class="s">"username"</span>: <span class="s">"ahmed@jahez.com"</span> },
+    <span class="s">"object"</span>: { <span class="s">"kind"</span>: <span class="s">"Pod"</span>, <span class="s">"spec"</span>: { <span class="s">"containers"</span>: [...] } }
+  }
+}</pre>
+      </div>
+
+      <h3>What the Webhook Returns</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">AdmissionReview response</span><span class="tag">json</span></div>
+        <pre>{
+  <span class="s">"apiVersion"</span>: <span class="s">"admission.k8s.io/v1"</span>,
+  <span class="s">"kind"</span>: <span class="s">"AdmissionReview"</span>,
+  <span class="s">"response"</span>: {
+    <span class="s">"uid"</span>: <span class="s">"abc-123"</span>,
+    <span class="s">"allowed"</span>: false,
+    <span class="s">"status"</span>: {
+      <span class="s">"code"</span>: 403,
+      <span class="s">"message"</span>: <span class="s">"image must come from registry.jahez.com"</span>
+    }
+  }
+}</pre>
+      </div>
+
+      <h3>Real-World Tools That Use Admission Webhooks</h3>
+      <div class="card-grid">
+        <div class="card">
+          <h4>OPA Gatekeeper</h4>
+          <p class="text-small text-muted">Policy-as-code via Rego. Constrain templates per resource type. Most popular in regulated environments.</p>
+        </div>
+        <div class="card">
+          <h4>Kyverno</h4>
+          <p class="text-small text-muted">YAML-native policies. Easier learning curve than Rego. Mutate + validate + generate.</p>
+        </div>
+        <div class="card">
+          <h4>Istio / Linkerd</h4>
+          <p class="text-small text-muted">Mutating webhooks inject sidecars for service mesh transparently.</p>
+        </div>
+        <div class="card">
+          <h4>cert-manager</h4>
+          <p class="text-small text-muted">Validating webhook ensures Certificate/Issuer specs are valid before applying.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 15. KUBECTL CONTEXT ========== -->
+    <section class="section" id="kubeconfig">
+      <h2>15. kubectl Context &amp; kubeconfig</h2>
+      <p class="lead">A "context" is a saved combination of <strong>cluster + user + namespace</strong> that kubectl uses to figure out where and how to send requests. Mastering contexts is the difference between "oops I just deleted prod" and "I'm in dev".</p>
+
+      <h3>kubeconfig Anatomy</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">~/.kube/config</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Config</span>
+<span class="k">current-context:</span> <span class="s">prod-payments</span>     <span class="c"># active context</span>
+
+<span class="y">clusters:</span>                              <span class="c"># where to send requests</span>
+- <span class="k">name:</span> <span class="s">prod</span>
+  <span class="k">cluster:</span>
+    <span class="k">server:</span> <span class="s">https://prod.k8s.jahez.com</span>
+    <span class="k">certificate-authority-data:</span> <span class="s">&lt;base64 CA&gt;</span>
+- <span class="k">name:</span> <span class="s">dev</span>
+  <span class="k">cluster:</span>
+    <span class="k">server:</span> <span class="s">https://dev.k8s.jahez.com</span>
+    <span class="k">insecure-skip-tls-verify:</span> <span class="v">true</span>    <span class="c"># dev only!</span>
+
+<span class="y">users:</span>                                 <span class="c"># how to authenticate</span>
+- <span class="k">name:</span> <span class="s">ahmed-prod</span>
+  <span class="k">user:</span>
+    <span class="k">client-certificate-data:</span> <span class="s">&lt;base64 cert&gt;</span>
+    <span class="k">client-key-data:</span> <span class="s">&lt;base64 key&gt;</span>
+- <span class="k">name:</span> <span class="s">ahmed-oidc</span>
+  <span class="k">user:</span>
+    <span class="y">exec:</span>                              <span class="c"># dynamic credentials</span>
+      <span class="k">command:</span> <span class="s">kubectl-oidc_login</span>
+      <span class="k">apiVersion:</span> <span class="s">client.authentication.k8s.io/v1beta1</span>
+
+<span class="y">contexts:</span>                              <span class="c"># cluster + user + ns combos</span>
+- <span class="k">name:</span> <span class="s">prod-payments</span>
+  <span class="k">context:</span>
+    <span class="k">cluster:</span> <span class="s">prod</span>
+    <span class="k">user:</span> <span class="s">ahmed-prod</span>
+    <span class="k">namespace:</span> <span class="s">payments</span>
+- <span class="k">name:</span> <span class="s">dev-orders</span>
+  <span class="k">context:</span>
+    <span class="k">cluster:</span> <span class="s">dev</span>
+    <span class="k">user:</span> <span class="s">ahmed-oidc</span>
+    <span class="k">namespace:</span> <span class="s">orders</span></pre>
+      </div>
+
+      <div class="diagram">
+        <svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg">
+          <!-- Clusters -->
+          <rect x="30" y="40" width="160" height="200" rx="10" fill="#161b22" stroke="#388bfd" stroke-width="2"/>
+          <text x="110" y="65" text-anchor="middle" fill="#388bfd" font-size="12" font-family="JetBrains Mono">CLUSTERS</text>
+          <rect x="50" y="85" width="120" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="110" y="105" text-anchor="middle" fill="#f0f6fc" font-size="13">prod</text>
+          <text x="110" y="123" text-anchor="middle" fill="#7d8590" font-size="10" font-family="JetBrains Mono">prod.k8s...</text>
+          <rect x="50" y="145" width="120" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="110" y="165" text-anchor="middle" fill="#f0f6fc" font-size="13">dev</text>
+          <text x="110" y="183" text-anchor="middle" fill="#7d8590" font-size="10" font-family="JetBrains Mono">dev.k8s...</text>
+
+          <!-- Users -->
+          <rect x="230" y="40" width="160" height="200" rx="10" fill="#161b22" stroke="#a371f7" stroke-width="2"/>
+          <text x="310" y="65" text-anchor="middle" fill="#a371f7" font-size="12" font-family="JetBrains Mono">USERS</text>
+          <rect x="250" y="85" width="120" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="310" y="105" text-anchor="middle" fill="#f0f6fc" font-size="13">ahmed-prod</text>
+          <text x="310" y="123" text-anchor="middle" fill="#7d8590" font-size="10">x.509 cert</text>
+          <rect x="250" y="145" width="120" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="310" y="165" text-anchor="middle" fill="#f0f6fc" font-size="13">ahmed-oidc</text>
+          <text x="310" y="183" text-anchor="middle" fill="#7d8590" font-size="10">OIDC token</text>
+
+          <!-- Contexts -->
+          <rect x="430" y="40" width="160" height="200" rx="10" fill="#1c2128" stroke="#3fb950" stroke-width="2"/>
+          <text x="510" y="65" text-anchor="middle" fill="#3fb950" font-size="12" font-family="JetBrains Mono">CONTEXTS</text>
+          <rect x="450" y="85" width="120" height="50" rx="6" fill="#0d1117" stroke="#3fb950"/>
+          <text x="510" y="103" text-anchor="middle" fill="#f0f6fc" font-size="12">prod-payments</text>
+          <text x="510" y="120" text-anchor="middle" fill="#7d8590" font-size="9" font-family="JetBrains Mono">prod / ahmed-prod</text>
+          <text x="510" y="132" text-anchor="middle" fill="#7d8590" font-size="9" font-family="JetBrains Mono">ns: payments</text>
+          <rect x="450" y="145" width="120" height="50" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="510" y="163" text-anchor="middle" fill="#f0f6fc" font-size="12">dev-orders</text>
+          <text x="510" y="180" text-anchor="middle" fill="#7d8590" font-size="9" font-family="JetBrains Mono">dev / ahmed-oidc</text>
+          <text x="510" y="192" text-anchor="middle" fill="#7d8590" font-size="9" font-family="JetBrains Mono">ns: orders</text>
+
+          <!-- Active -->
+          <rect x="630" y="100" width="140" height="80" rx="10" fill="#1c2128" stroke="#d29922" stroke-width="2"/>
+          <text x="700" y="125" text-anchor="middle" fill="#d29922" font-size="11" font-family="JetBrains Mono">ACTIVE</text>
+          <text x="700" y="148" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700">kubectl</text>
+          <text x="700" y="168" text-anchor="middle" fill="#7d8590" font-size="10">uses current-context</text>
+
+          <!-- Arrows -->
+          <path d="M 190 110 L 245 110" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="2"/>
+          <path d="M 370 110 L 445 110" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="2"/>
+          <path d="M 590 110 L 625 130" stroke="#3fb950" stroke-width="2" marker-end="url(#arr5)"/>
+
+          <defs>
+            <marker id="arr5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#3fb950"/>
+            </marker>
+          </defs>
+        </svg>
+        <div class="diagram-caption">Clusters define WHERE · Users define HOW · Contexts compose them with a namespace</div>
+      </div>
+
+      <h3>Daily Context Commands</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">terminal</span><span class="tag">bash</span></div>
+        <pre><span class="c"># See what context you're in (CRITICAL before deleting things)</span>
+kubectl config current-context
+
+<span class="c"># List all contexts</span>
+kubectl config get-contexts
+
+<span class="c"># Switch context</span>
+kubectl config use-context dev-orders
+
+<span class="c"># Change default namespace for current context</span>
+kubectl config set-context --current --namespace=payments
+
+<span class="c"># Create a new context</span>
+kubectl config set-context staging-orders \
+  --cluster=staging --user=ahmed-oidc --namespace=orders
+
+<span class="c"># Use a different kubeconfig file</span>
+kubectl --kubeconfig=/path/to/other.config get pods
+
+<span class="c"># Or via env var</span>
+export KUBECONFIG=~/.kube/config:~/.kube/staging.config
+<span class="c"># colons merge multiple files</span></pre>
+      </div>
+
+      <h3>Power Tools: kubectx &amp; kubens</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">terminal</span><span class="tag">bash</span></div>
+        <pre>brew install kubectx          <span class="c"># macOS</span>
+
+kubectx                       <span class="c"># list contexts (interactive)</span>
+kubectx dev-orders            <span class="c"># switch</span>
+kubectx -                     <span class="c"># switch back to previous</span>
+
+kubens                        <span class="c"># list namespaces</span>
+kubens payments               <span class="c"># set namespace in current context</span></pre>
+      </div>
+
+      <div class="alert danger">
+        <strong>Production safety pattern</strong>
+        Set up your shell prompt to show the current context. Color it red when in prod. Many teams use <code>kube-ps1</code>. Saves careers.
+      </div>
+    </section>
+
+    <!-- ========== 16. SECURITY CONTEXT ========== -->
+    <section class="section" id="security-context">
+      <h2>16. Pod &amp; Container SecurityContext</h2>
+      <p class="lead">SecurityContext defines privilege and access control settings for a Pod or Container — UID, capabilities, filesystem mode, SELinux, seccomp. Distinct from RBAC: this controls what happens <em>inside</em> the container at the OS level.</p>
+
+      <h3>Pod-level vs Container-level</h3>
+      <p>Settings can be at <code>spec.securityContext</code> (applies to all containers) or <code>spec.containers[].securityContext</code> (overrides per container).</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Field</th><th>Scope</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td><code>runAsUser</code></td><td>Pod / Container</td><td>UID to run process as (numeric)</td></tr>
+            <tr><td><code>runAsGroup</code></td><td>Pod / Container</td><td>Primary GID</td></tr>
+            <tr><td><code>runAsNonRoot</code></td><td>Pod / Container</td><td>Block container if image runs as UID 0</td></tr>
+            <tr><td><code>fsGroup</code></td><td>Pod only</td><td>GID applied to mounted volumes</td></tr>
+            <tr><td><code>seLinuxOptions</code></td><td>Pod / Container</td><td>SELinux context label</td></tr>
+            <tr><td><code>seccompProfile</code></td><td>Pod / Container</td><td>Linux syscall filter</td></tr>
+            <tr><td><code>privileged</code></td><td>Container only</td><td><span class="pill red">Full host access</span> — never set true</td></tr>
+            <tr><td><code>allowPrivilegeEscalation</code></td><td>Container only</td><td>Block <code>setuid</code> binaries</td></tr>
+            <tr><td><code>readOnlyRootFilesystem</code></td><td>Container only</td><td>Make / read-only</td></tr>
+            <tr><td><code>capabilities</code></td><td>Container only</td><td>Add/drop Linux capabilities</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Production-Grade Hardened Pod</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">hardened-pod.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Pod</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-api</span>
+<span class="k">spec:</span>
+  <span class="y">securityContext:</span>                  <span class="c"># pod-wide defaults</span>
+    <span class="k">runAsNonRoot:</span> <span class="v">true</span>
+    <span class="k">runAsUser:</span> <span class="v">10001</span>
+    <span class="k">runAsGroup:</span> <span class="v">10001</span>
+    <span class="k">fsGroup:</span> <span class="v">10001</span>
+    <span class="k">seccompProfile:</span>
+      <span class="k">type:</span> <span class="s">RuntimeDefault</span>          <span class="c"># enable default seccomp</span>
+    <span class="k">supplementalGroups:</span> [<span class="v">2000</span>]
+
+  <span class="k">containers:</span>
+  - <span class="k">name:</span> <span class="s">app</span>
+    <span class="k">image:</span> <span class="s">registry.jahez.com/orders-api:v2.1</span>
+    <span class="y">securityContext:</span>                <span class="c"># container override</span>
+      <span class="k">allowPrivilegeEscalation:</span> <span class="v">false</span>
+      <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+      <span class="k">privileged:</span> <span class="v">false</span>
+      <span class="k">capabilities:</span>
+        <span class="k">drop:</span> [<span class="s">"ALL"</span>]              <span class="c"># strip all caps</span>
+        <span class="k">add:</span>  [<span class="s">"NET_BIND_SERVICE"</span>]  <span class="c"># only what we need (port &lt; 1024)</span>
+    <span class="k">volumeMounts:</span>
+    - <span class="k">name:</span> <span class="s">tmp</span>                    <span class="c"># app needs writable /tmp</span>
+      <span class="k">mountPath:</span> <span class="s">/tmp</span>
+    <span class="k">resources:</span>
+      <span class="k">limits:</span>   { <span class="k">cpu:</span> <span class="s">500m</span>, <span class="k">memory:</span> <span class="s">512Mi</span> }
+      <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">100m</span>, <span class="k">memory:</span> <span class="s">128Mi</span> }
+
+  <span class="k">volumes:</span>
+  - <span class="k">name:</span> <span class="s">tmp</span>
+    <span class="k">emptyDir:</span> {}</pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>spec.securityContext</code></td><td>Pod-level block — settings here apply to every container unless overridden.</td></tr>
+              <tr><td><code>runAsNonRoot / runAsUser / runAsGroup</code></td><td>Force the process to run as a specific non-root UID/GID instead of whatever the image defaults to.</td></tr>
+              <tr><td><code>fsGroup</code></td><td>Supplementary GID that owns mounted volumes — only valid at pod level.</td></tr>
+              <tr><td><code>supplementalGroups</code></td><td>Extra GIDs added to the process, e.g. to access group-owned shared storage.</td></tr>
+              <tr><td><code>containers[].securityContext</code></td><td>Container-level block — overrides the pod-level settings for this one container.</td></tr>
+              <tr><td><code>allowPrivilegeEscalation: false</code></td><td>Prevents the process from acquiring more privileges than its parent.</td></tr>
+              <tr><td><code>readOnlyRootFilesystem: true</code></td><td>Mounts <code>/</code> read-only; the app must use an explicit writable volume for scratch space.</td></tr>
+              <tr><td><code>privileged: false</code></td><td>Explicitly denies full host access. A privileged container is effectively root on the node.</td></tr>
+              <tr><td><code>capabilities.drop / add</code></td><td>Drop every Linux capability, then re-add only the minimum (here <code>NET_BIND_SERVICE</code> to bind low ports).</td></tr>
+              <tr><td><code>volumes[].emptyDir</code></td><td>An ephemeral writable volume — paired with <code>readOnlyRootFilesystem</code> to give the app a safe <code>/tmp</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="alert success">
+        <strong>Capabilities cheat sheet</strong>
+        <code>NET_BIND_SERVICE</code> (bind &lt;1024), <code>CHOWN</code> (change file ownership), <code>SETUID/SETGID</code> (change UID), <code>SYS_TIME</code> (set clock). Drop ALL, add only what the app demands.
+      </div>
+    </section>
+
+    <!-- ========== 17. NETWORK POLICIES ========== -->
+    <section class="section" id="netpol">
+      <h2>17. Network Policies — L3/L4 Firewall</h2>
+      <p class="lead">By default, all pods in a cluster can talk to each other freely. NetworkPolicies turn this off and let you define explicit allow rules — pod-level firewalls.</p>
+
+      <h3>Default-Deny — The Critical Starting Point</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">default-deny.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">default-deny-all</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="y">podSelector:</span> {}                <span class="c"># all pods in namespace</span>
+  <span class="y">policyTypes:</span>
+  - <span class="s">Ingress</span>
+  - <span class="s">Egress</span>
+  <span class="c"># No ingress: rules → all incoming blocked</span>
+  <span class="c"># No egress: rules → all outgoing blocked</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: NetworkPolicy</code></td><td>An L3/L4 firewall rule applied to pods. Requires a CNI that enforces NetworkPolicy.</td></tr>
+              <tr><td><code>spec.podSelector: {}</code></td><td>An empty selector matches <em>every</em> pod in the namespace — this policy applies cluster-namespace-wide.</td></tr>
+              <tr><td><code>policyTypes: [Ingress, Egress]</code></td><td>Declares which traffic directions this policy governs.</td></tr>
+              <tr><td>No <code>ingress</code> rules listed</td><td>With <code>Ingress</code> in policyTypes but zero rules, <em>all</em> inbound traffic is denied.</td></tr>
+              <tr><td>No <code>egress</code> rules listed</td><td>Same logic — all outbound traffic is denied. This is the deny-by-default baseline.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Targeted Allow — Frontend → Backend Only</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">allow-frontend-to-orders.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-allow-frontend</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="y">podSelector:</span>
+    <span class="k">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">orders-api</span>          <span class="c"># protect these pods</span>
+  <span class="k">policyTypes:</span> [<span class="s">Ingress</span>, <span class="s">Egress</span>]
+  <span class="k">ingress:</span>
+  - <span class="k">from:</span>
+    - <span class="y">podSelector:</span>             <span class="c"># from same namespace</span>
+        <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">frontend</span> }
+    - <span class="y">namespaceSelector:</span>       <span class="c"># or from observability ns</span>
+        <span class="k">matchLabels:</span> { <span class="k">name:</span> <span class="s">monitoring</span> }
+    <span class="k">ports:</span>
+    - <span class="k">protocol:</span> <span class="s">TCP</span>
+      <span class="k">port:</span> <span class="v">8080</span>
+  <span class="k">egress:</span>
+  - <span class="k">to:</span>
+    - <span class="y">podSelector:</span> { <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">postgres</span> } }
+    <span class="k">ports:</span> [{ <span class="k">protocol:</span> <span class="s">TCP</span>, <span class="k">port:</span> <span class="v">5432</span> }]
+  - <span class="k">to:</span>                       <span class="c"># DNS</span>
+    - <span class="y">namespaceSelector:</span> {}
+      <span class="y">podSelector:</span> { <span class="k">matchLabels:</span> { <span class="k">k8s-app:</span> <span class="s">kube-dns</span> } }
+    <span class="k">ports:</span> [{ <span class="k">protocol:</span> <span class="s">UDP</span>, <span class="k">port:</span> <span class="v">53</span> }]</pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>spec.podSelector.matchLabels</code></td><td>Targets only pods labeled <code>app: orders-api</code> — this policy protects the backend, not the whole namespace.</td></tr>
+              <tr><td><code>ingress[].from[].podSelector</code></td><td>Allows traffic from pods (in the same namespace) carrying the matching label — here <code>frontend</code>.</td></tr>
+              <tr><td><code>ingress[].from[].namespaceSelector</code></td><td>Allows traffic from <em>any</em> pod in namespaces with the matching label — here the monitoring namespace.</td></tr>
+              <tr><td><code>ingress[].ports</code></td><td>Restricts allowed inbound traffic to a specific protocol and port (TCP 8080).</td></tr>
+              <tr><td><code>egress[].to[].podSelector</code></td><td>Allows outbound traffic only to matching pods — here the <code>postgres</code> database.</td></tr>
+              <tr><td><code>egress</code> DNS rule</td><td>Explicitly permits UDP 53 to <code>kube-dns</code> — without it, name resolution breaks under a default-deny policy.</td></tr>
+              <tr><td>Multiple list items under <code>from</code></td><td>Items are OR'd — traffic matching <em>any</em> source entry is allowed.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="alert warn">
+        <strong>CNI required</strong>
+        NetworkPolicy is only enforced if your CNI plugin supports it. Calico, Cilium, Antrea, Weave do. Flannel (default) does NOT. Check before relying on it.
+      </div>
+    </section>
+
+    <!-- ========== 18. SECRETS ========== -->
+    <section class="section" id="secrets">
+      <h2>18. Secrets Management</h2>
+      <p class="lead">Kubernetes Secrets store sensitive data, but they're <strong>not encrypted by default</strong> — they're base64 encoded. Treat them as plaintext unless you've enabled encryption at rest.</p>
+
+      <h3>The Five Layers of Secret Hardening</h3>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="num">1</div>
+          <div class="body">
+            <h4>Encryption at Rest (etcd)</h4>
+            <p>Configure <code>--encryption-provider-config</code> on kube-apiserver to encrypt Secrets in etcd with AES-CBC or KMS. Without this, anyone with etcd access reads them.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">2</div>
+          <div class="body">
+            <h4>RBAC on Secrets</h4>
+            <p>Never grant <code>list</code> or <code>get</code> on secrets to humans broadly. Limit Secret access to specific ServiceAccounts with <code>resourceNames</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">3</div>
+          <div class="body">
+            <h4>External Secret Stores</h4>
+            <p>Vault, AWS Secrets Manager, GCP Secret Manager. Pull at runtime via <strong>External Secrets Operator</strong> or <strong>CSI Secret Store driver</strong>. Master secret never lives in etcd.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">4</div>
+          <div class="body">
+            <h4>GitOps with SealedSecrets / SOPS</h4>
+            <p>Need secrets in Git? Use Bitnami SealedSecrets (encrypts with a cluster-side controller key) or Mozilla SOPS (encrypts per-field). Plaintext never reaches Git.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">5</div>
+          <div class="body">
+            <h4>Audit &amp; Rotation</h4>
+            <p>Enable Kubernetes audit logging for Secret operations. Rotate secrets on a schedule (90 days) and on personnel changes.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>Encryption at Rest Config</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">encryption-config.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">apiserver.config.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">EncryptionConfiguration</span>
+<span class="k">resources:</span>
+- <span class="y">resources:</span>
+  - <span class="s">secrets</span>
+  - <span class="s">configmaps</span>
+  <span class="k">providers:</span>
+  - <span class="y">kms:</span>                            <span class="c"># preferred: cloud KMS</span>
+      <span class="k">name:</span> <span class="s">aws-kms</span>
+      <span class="k">endpoint:</span> <span class="s">unix:///var/run/kmsplugin/socket.sock</span>
+      <span class="k">cachesize:</span> <span class="v">1000</span>
+  - <span class="y">aescbc:</span>                          <span class="c"># fallback</span>
+      <span class="k">keys:</span>
+      - <span class="k">name:</span> <span class="s">key1</span>
+        <span class="k">secret:</span> <span class="s">&lt;base64 32-byte key&gt;</span>
+  - <span class="y">identity:</span> {}                     <span class="c"># last = readable (for migration)</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: EncryptionConfiguration</code></td><td>Passed to kube-apiserver via <code>--encryption-provider-config</code> to encrypt objects before they hit etcd.</td></tr>
+              <tr><td><code>resources[].resources</code></td><td>Which object types to encrypt — typically <code>secrets</code> and <code>configmaps</code>.</td></tr>
+              <tr><td><code>providers</code></td><td>An ordered list. For <em>writes</em>, the first provider is used; for <em>reads</em>, each is tried in order until one decrypts.</td></tr>
+              <tr><td><code>providers[].kms</code></td><td>Envelope encryption via an external KMS plugin (AWS/GCP/Azure). Preferred — the key never leaves the KMS.</td></tr>
+              <tr><td><code>kms.cachesize</code></td><td>How many decrypted data-encryption keys to cache in memory to reduce KMS calls.</td></tr>
+              <tr><td><code>providers[].aescbc</code></td><td>Local AES-CBC encryption with a key stored in the config file itself — weaker, used as fallback.</td></tr>
+              <tr><td><code>providers[].identity: {}</code></td><td>No-op "encryption" = plaintext. Placed <em>last</em> so existing unencrypted data is still readable during migration.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>External Secrets Operator Example</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">external-secret.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">external-secrets.io/v1beta1</span>
+<span class="k">kind:</span> <span class="s">ExternalSecret</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">db-credentials</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="y">refreshInterval:</span> <span class="s">1h</span>
+  <span class="y">secretStoreRef:</span>
+    <span class="k">name:</span> <span class="s">vault-backend</span>
+    <span class="k">kind:</span> <span class="s">ClusterSecretStore</span>
+  <span class="y">target:</span>
+    <span class="k">name:</span> <span class="s">db-credentials</span>            <span class="c"># resulting K8s Secret</span>
+  <span class="y">data:</span>
+  - <span class="k">secretKey:</span> <span class="s">password</span>
+    <span class="k">remoteRef:</span>
+      <span class="k">key:</span> <span class="s">jahez/payments/db</span>
+      <span class="k">property:</span> <span class="s">password</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: ExternalSecret</code></td><td>A CRD from the External Secrets Operator — declares that a K8s Secret should be synced from an external store.</td></tr>
+              <tr><td><code>spec.refreshInterval</code></td><td>How often the operator re-fetches the value from the backend, picking up rotations automatically.</td></tr>
+              <tr><td><code>spec.secretStoreRef</code></td><td>Points at a configured backend (Vault, AWS Secrets Manager, etc.) — by name and kind.</td></tr>
+              <tr><td><code>secretStoreRef.kind: ClusterSecretStore</code></td><td>Cluster-scoped store usable by all namespaces; <code>SecretStore</code> would be namespace-local.</td></tr>
+              <tr><td><code>spec.target.name</code></td><td>The name of the native K8s Secret the operator creates and keeps in sync.</td></tr>
+              <tr><td><code>spec.data[].secretKey</code></td><td>The key name inside the resulting K8s Secret.</td></tr>
+              <tr><td><code>data[].remoteRef.key</code></td><td>The path/identifier of the secret in the external backend.</td></tr>
+              <tr><td><code>data[].remoteRef.property</code></td><td>Which field within that remote secret to extract — useful when the backend stores JSON.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 19. FULL PROJECT ========== -->
+    <section class="section" id="project">
+      <h2>19. Full Project — Multi-Tenant Cluster</h2>
+      <p class="lead">A complete, production-style setup for a fictional Jahez cluster: two teams (Payments, Orders), each isolated, with developers, deployers, and apps having distinct least-privilege identities.</p>
+
+      <h3>Architecture Overview</h3>
+      <div class="diagram">
+        <svg viewBox="0 0 820 420" xmlns="http://www.w3.org/2000/svg">
+          <!-- Cluster outline -->
+          <rect x="10" y="10" width="800" height="400" rx="14" fill="none" stroke="#30363d" stroke-width="2" stroke-dasharray="6"/>
+          <text x="30" y="35" fill="#7d8590" font-size="11" font-family="JetBrains Mono">CLUSTER: jahez-prod</text>
+
+          <!-- Platform ns -->
+          <rect x="40" y="60" width="220" height="160" rx="10" fill="#1c2128" stroke="#a371f7" stroke-width="2"/>
+          <text x="150" y="85" text-anchor="middle" fill="#a371f7" font-size="11" font-family="JetBrains Mono">NS: platform</text>
+          <text x="150" y="108" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="700">SRE / Cluster Admins</text>
+          <rect x="60" y="125" width="180" height="35" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="150" y="147" text-anchor="middle" fill="#c9d1d9" font-size="11">cluster-admin (group: sre)</text>
+          <rect x="60" y="170" width="180" height="35" rx="6" fill="#0d1117" stroke="#30363d"/>
+          <text x="150" y="192" text-anchor="middle" fill="#c9d1d9" font-size="11">webhook / OPA / monitoring</text>
+
+          <!-- Payments ns -->
+          <rect x="290" y="60" width="240" height="320" rx="10" fill="#1c2128" stroke="#388bfd" stroke-width="2"/>
+          <text x="410" y="85" text-anchor="middle" fill="#388bfd" font-size="11" font-family="JetBrains Mono">NS: payments</text>
+          <text x="410" y="108" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="700">Team Payments</text>
+          <text x="410" y="125" text-anchor="middle" fill="#7d8590" font-size="10">PSA: restricted</text>
+
+          <rect x="310" y="145" width="200" height="50" rx="6" fill="#0d1117" stroke="#3fb950"/>
+          <text x="410" y="163" text-anchor="middle" fill="#3fb950" font-size="11">payments-developers</text>
+          <text x="410" y="180" text-anchor="middle" fill="#7d8590" font-size="10">read pods/svc/cm, exec, logs</text>
+
+          <rect x="310" y="205" width="200" height="50" rx="6" fill="#0d1117" stroke="#d29922"/>
+          <text x="410" y="223" text-anchor="middle" fill="#d29922" font-size="11">SA: ci-deployer</text>
+          <text x="410" y="240" text-anchor="middle" fill="#7d8590" font-size="10">deploy apps, no secrets</text>
+
+          <rect x="310" y="265" width="200" height="50" rx="6" fill="#0d1117" stroke="#79c0ff"/>
+          <text x="410" y="283" text-anchor="middle" fill="#79c0ff" font-size="11">SA: orders-api</text>
+          <text x="410" y="300" text-anchor="middle" fill="#7d8590" font-size="10">read its own Secret only</text>
+
+          <rect x="310" y="325" width="200" height="40" rx="6" fill="#0d1117" stroke="#f85149"/>
+          <text x="410" y="345" text-anchor="middle" fill="#f85149" font-size="11">NetPol: default-deny</text>
+          <text x="410" y="360" text-anchor="middle" fill="#7d8590" font-size="10">+ allow frontend</text>
+
+          <!-- Orders ns -->
+          <rect x="560" y="60" width="240" height="320" rx="10" fill="#1c2128" stroke="#3fb950" stroke-width="2"/>
+          <text x="680" y="85" text-anchor="middle" fill="#3fb950" font-size="11" font-family="JetBrains Mono">NS: orders</text>
+          <text x="680" y="108" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="700">Team Orders</text>
+          <text x="680" y="125" text-anchor="middle" fill="#7d8590" font-size="10">PSA: baseline</text>
+
+          <rect x="580" y="145" width="200" height="50" rx="6" fill="#0d1117" stroke="#3fb950"/>
+          <text x="680" y="163" text-anchor="middle" fill="#3fb950" font-size="11">orders-developers</text>
+          <text x="680" y="180" text-anchor="middle" fill="#7d8590" font-size="10">read all + create configmaps</text>
+
+          <rect x="580" y="205" width="200" height="50" rx="6" fill="#0d1117" stroke="#d29922"/>
+          <text x="680" y="223" text-anchor="middle" fill="#d29922" font-size="11">SA: orders-ci-deployer</text>
+          <text x="680" y="240" text-anchor="middle" fill="#7d8590" font-size="10">manage workloads only</text>
+
+          <rect x="580" y="265" width="200" height="50" rx="6" fill="#0d1117" stroke="#79c0ff"/>
+          <text x="680" y="283" text-anchor="middle" fill="#79c0ff" font-size="11">SA: menu-service</text>
+          <text x="680" y="300" text-anchor="middle" fill="#7d8590" font-size="10">read own configmap</text>
+
+          <rect x="580" y="325" width="200" height="40" rx="6" fill="#0d1117" stroke="#f85149"/>
+          <text x="680" y="345" text-anchor="middle" fill="#f85149" font-size="11">NetPol: default-deny</text>
+          <text x="680" y="360" text-anchor="middle" fill="#7d8590" font-size="10">cross-namespace blocked</text>
+        </svg>
+        <div class="diagram-caption">Two isolated team namespaces · platform namespace for SRE · default-deny everywhere</div>
+      </div>
+
+      <h3>Step 1 — Bootstrap Namespaces with PSA</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">project/01-namespaces.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Namespace</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">payments</span>
+  <span class="k">labels:</span>
+    <span class="k">name:</span> <span class="s">payments</span>
+    <span class="k">team:</span> <span class="s">payments</span>
+    <span class="k">pod-security.kubernetes.io/enforce:</span> <span class="s">restricted</span>
+    <span class="k">pod-security.kubernetes.io/audit:</span> <span class="s">restricted</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Namespace</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders</span>
+  <span class="k">labels:</span>
+    <span class="k">name:</span> <span class="s">orders</span>
+    <span class="k">team:</span> <span class="s">orders</span>
+    <span class="k">pod-security.kubernetes.io/enforce:</span> <span class="s">baseline</span>
+    <span class="k">pod-security.kubernetes.io/warn:</span> <span class="s">restricted</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Namespace</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">platform</span>
+  <span class="k">labels:</span>
+    <span class="k">name:</span> <span class="s">platform</span>
+    <span class="k">pod-security.kubernetes.io/enforce:</span> <span class="s">privileged</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: Namespace</code></td><td>The unit of multi-tenant isolation — each team gets its own namespace.</td></tr>
+              <tr><td><code>labels.name</code></td><td>A copy of the namespace name as a label, so other objects (NetworkPolicies) can target it via <code>namespaceSelector</code>.</td></tr>
+              <tr><td><code>labels.team</code></td><td>Custom ownership label used for cost attribution and policy targeting.</td></tr>
+              <tr><td><code>enforce: restricted</code> (payments)</td><td>The most sensitive namespace runs the strictest PSA profile with hard enforcement.</td></tr>
+              <tr><td><code>enforce: baseline + warn: restricted</code> (orders)</td><td>A migration setup — baseline is enforced today, while warnings nudge the team toward restricted.</td></tr>
+              <tr><td><code>enforce: privileged</code> (platform)</td><td>The SRE namespace needs unrestricted pods (monitoring agents, CNI) so it runs the permissive profile.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Step 2 — ResourceQuotas &amp; LimitRanges</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">project/02-quotas.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">ResourceQuota</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">payments-quota</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="k">hard:</span>
+    <span class="k">requests.cpu:</span> <span class="s">"20"</span>
+    <span class="k">requests.memory:</span> <span class="s">40Gi</span>
+    <span class="k">limits.cpu:</span> <span class="s">"40"</span>
+    <span class="k">limits.memory:</span> <span class="s">80Gi</span>
+    <span class="k">pods:</span> <span class="s">"100"</span>
+    <span class="k">secrets:</span> <span class="s">"50"</span>
+    <span class="k">services.loadbalancers:</span> <span class="s">"2"</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">LimitRange</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">payments-defaults</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="k">limits:</span>
+  - <span class="y">type:</span> <span class="s">Container</span>
+    <span class="k">default:</span>          { <span class="k">cpu:</span> <span class="s">500m</span>, <span class="k">memory:</span> <span class="s">512Mi</span> }
+    <span class="k">defaultRequest:</span>   { <span class="k">cpu:</span> <span class="s">100m</span>, <span class="k">memory:</span> <span class="s">128Mi</span> }
+    <span class="k">max:</span>              { <span class="k">cpu:</span> <span class="s">"4"</span>,  <span class="k">memory:</span> <span class="s">8Gi</span> }
+    <span class="k">min:</span>              { <span class="k">cpu:</span> <span class="s">10m</span>, <span class="k">memory:</span> <span class="s">32Mi</span> }</pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>kind: ResourceQuota</code></td><td>Caps the total resources a namespace can consume — prevents one team from starving the cluster.</td></tr>
+              <tr><td><code>spec.hard.requests.cpu / requests.memory</code></td><td>Sum of all container <em>requests</em> in the namespace cannot exceed these values.</td></tr>
+              <tr><td><code>spec.hard.limits.cpu / limits.memory</code></td><td>Sum of all container <em>limits</em> ceiling for the namespace.</td></tr>
+              <tr><td><code>spec.hard.pods / secrets</code></td><td>Caps the count of objects — limiting <code>secrets</code> reduces blast radius and curbs sprawl.</td></tr>
+              <tr><td><code>spec.hard.services.loadbalancers</code></td><td>Limits how many cloud load balancers the namespace can provision (each costs money).</td></tr>
+              <tr><td><code>kind: LimitRange</code></td><td>Sets per-container defaults and bounds — works alongside ResourceQuota.</td></tr>
+              <tr><td><code>limits[].default</code></td><td>The <em>limit</em> automatically applied to containers that don't specify one.</td></tr>
+              <tr><td><code>limits[].defaultRequest</code></td><td>The <em>request</em> auto-applied when a container omits it — also satisfies PSA/quota requirements.</td></tr>
+              <tr><td><code>limits[].max / min</code></td><td>Hard bounds — a container requesting outside this range is rejected at admission.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Step 3 — Team RBAC (Developers + CI)</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">project/03-payments-rbac.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="c"># --------- Developers (read + exec) ---------</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">Role</span>
+<span class="k">metadata:</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+  <span class="k">name:</span> <span class="s">payments-developer</span>
+<span class="k">rules:</span>
+- <span class="y">apiGroups:</span> [<span class="s">""</span>, <span class="s">"apps"</span>, <span class="s">"networking.k8s.io"</span>]
+  <span class="y">resources:</span> [<span class="s">"pods"</span>, <span class="s">"services"</span>, <span class="s">"configmaps"</span>, <span class="s">"deployments"</span>, <span class="s">"replicasets"</span>, <span class="s">"ingresses"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>, <span class="s">"watch"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">""</span>]
+  <span class="y">resources:</span> [<span class="s">"pods/log"</span>, <span class="s">"pods/exec"</span>, <span class="s">"pods/portforward"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"create"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">""</span>]
+  <span class="y">resources:</span> [<span class="s">"events"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>]
+<span class="c"># Explicitly NO secrets access</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">RoleBinding</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">payments-developers</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">subjects:</span>
+- <span class="y">kind:</span> <span class="s">Group</span>
+  <span class="y">name:</span> <span class="s">oidc:team-payments</span>         <span class="c"># from OIDC group claim</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span>
+<span class="k">roleRef:</span>
+  <span class="y">kind:</span> <span class="s">Role</span>
+  <span class="y">name:</span> <span class="s">payments-developer</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span>
+<span class="c">---</span>
+<span class="c"># --------- CI Deployer (workloads, no secrets) ---------</span>
+<span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">ServiceAccount</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">ci-deployer</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">Role</span>
+<span class="k">metadata:</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+  <span class="k">name:</span> <span class="s">payments-deployer</span>
+<span class="k">rules:</span>
+- <span class="y">apiGroups:</span> [<span class="s">"apps"</span>]
+  <span class="y">resources:</span> [<span class="s">"deployments"</span>, <span class="s">"statefulsets"</span>, <span class="s">"daemonsets"</span>]
+  <span class="y">verbs:</span> [<span class="s">"*"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">""</span>]
+  <span class="y">resources:</span> [<span class="s">"services"</span>, <span class="s">"configmaps"</span>, <span class="s">"serviceaccounts"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"list"</span>, <span class="s">"watch"</span>, <span class="s">"create"</span>, <span class="s">"update"</span>, <span class="s">"patch"</span>, <span class="s">"delete"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">"networking.k8s.io"</span>]
+  <span class="y">resources:</span> [<span class="s">"ingresses"</span>, <span class="s">"networkpolicies"</span>]
+  <span class="y">verbs:</span> [<span class="s">"*"</span>]
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">RoleBinding</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">payments-ci-deployer</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">subjects:</span>
+- <span class="y">kind:</span> <span class="s">ServiceAccount</span>
+  <span class="y">name:</span> <span class="s">ci-deployer</span>
+  <span class="y">namespace:</span> <span class="s">payments</span>
+<span class="k">roleRef:</span>
+  <span class="y">kind:</span> <span class="s">Role</span>
+  <span class="y">name:</span> <span class="s">payments-deployer</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>Role: payments-developer</code></td><td>Read-only access plus <code>pods/exec</code> and <code>pods/log</code> — enough to debug, not enough to change anything.</td></tr>
+              <tr><td><code>pods/exec, pods/portforward</code> with <code>create</code></td><td>Subresources requiring the <code>create</code> verb — that's how exec and port-forward sessions are opened.</td></tr>
+              <tr><td>Developer role omits <code>secrets</code></td><td>Deliberate — humans get no Secret access; deny-by-default handles the rest.</td></tr>
+              <tr><td><code>subjects[].name: oidc:team-payments</code></td><td>The OIDC group claim, prefixed with <code>oidc:</code> per the API server's username/groups prefix config.</td></tr>
+              <tr><td><code>Role: payments-deployer</code></td><td>The CI write role — full verbs on workloads, scoped strictly to the <code>payments</code> namespace.</td></tr>
+              <tr><td><code>verbs: ["*"]</code> on deployments</td><td>All actions on workload controllers. Acceptable here because the resource set is narrow; avoid <code>*</code> on broad resource sets.</td></tr>
+              <tr><td>Two separate RoleBindings</td><td>Developers (a Group) and CI (a ServiceAccount) get distinct bindings to distinct Roles — separation of human vs machine identity.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Step 4 — App ServiceAccount with Restricted Secret Access</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">project/04-app-sa.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">ServiceAccount</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-api</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">Role</span>
+<span class="k">metadata:</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+  <span class="k">name:</span> <span class="s">orders-api-runtime</span>
+<span class="k">rules:</span>
+<span class="c"># Only its own database secret — not all secrets</span>
+- <span class="y">apiGroups:</span> [<span class="s">""</span>]
+  <span class="y">resources:</span> [<span class="s">"secrets"</span>]
+  <span class="y">resourceNames:</span> [<span class="s">"orders-db-credentials"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>]
+<span class="c"># Read own configmap</span>
+- <span class="y">apiGroups:</span> [<span class="s">""</span>]
+  <span class="y">resources:</span> [<span class="s">"configmaps"</span>]
+  <span class="y">resourceNames:</span> [<span class="s">"orders-api-config"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"watch"</span>]
+<span class="c"># Leader election lease (specific name)</span>
+- <span class="y">apiGroups:</span> [<span class="s">"coordination.k8s.io"</span>]
+  <span class="y">resources:</span> [<span class="s">"leases"</span>]
+  <span class="y">resourceNames:</span> [<span class="s">"orders-api-leader"</span>]
+  <span class="y">verbs:</span> [<span class="s">"get"</span>, <span class="s">"update"</span>, <span class="s">"patch"</span>]
+- <span class="y">apiGroups:</span> [<span class="s">"coordination.k8s.io"</span>]
+  <span class="y">resources:</span> [<span class="s">"leases"</span>]
+  <span class="y">verbs:</span> [<span class="s">"create"</span>]
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">RoleBinding</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-api-runtime</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">subjects:</span>
+- <span class="y">kind:</span> <span class="s">ServiceAccount</span>
+  <span class="y">name:</span> <span class="s">orders-api</span>
+  <span class="y">namespace:</span> <span class="s">payments</span>
+<span class="k">roleRef:</span>
+  <span class="y">kind:</span> <span class="s">Role</span>
+  <span class="y">name:</span> <span class="s">orders-api-runtime</span>
+  <span class="y">apiGroup:</span> <span class="s">rbac.authorization.k8s.io</span></pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>ServiceAccount: orders-api</code></td><td>The runtime identity the application pods authenticate as — distinct from the CI deployer SA.</td></tr>
+              <tr><td><code>secrets</code> rule with <code>resourceNames: [orders-db-credentials]</code></td><td>The app can <code>get</code> exactly one Secret — its own DB credentials — and no other Secret in the namespace.</td></tr>
+              <tr><td><code>configmaps</code> rule with <code>resourceNames</code></td><td>Same tight scoping for the app's config — read-only, single named object.</td></tr>
+              <tr><td><code>leases</code> rule with <code>resourceNames</code></td><td>Leader-election permission limited to one named lease.</td></tr>
+              <tr><td>Separate <code>leases</code> rule for <code>create</code></td><td><code>create</code> ignores <code>resourceNames</code>, so it lives in its own rule — the lease can be created once, then only updated.</td></tr>
+              <tr><td><code>RoleBinding → orders-api-runtime</code></td><td>Grants this minimal runtime Role to the app SA — the tightest least-privilege grant in the project.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Step 5 — NetworkPolicies (default-deny + frontend allow)</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">project/05-netpol.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="c"># Default deny all ingress/egress in payments</span>
+<span class="k">apiVersion:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">default-deny-all</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span> {}
+  <span class="k">policyTypes:</span> [<span class="s">Ingress</span>, <span class="s">Egress</span>]
+<span class="c">---</span>
+<span class="c"># Allow DNS for everyone</span>
+<span class="k">apiVersion:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">allow-dns</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span> {}
+  <span class="k">policyTypes:</span> [<span class="s">Egress</span>]
+  <span class="k">egress:</span>
+  - <span class="k">to:</span>
+    - <span class="y">namespaceSelector:</span>
+        <span class="k">matchLabels:</span> { <span class="k">kubernetes.io/metadata.name:</span> <span class="s">kube-system</span> }
+      <span class="y">podSelector:</span>
+        <span class="k">matchLabels:</span> { <span class="k">k8s-app:</span> <span class="s">kube-dns</span> }
+    <span class="k">ports:</span>
+    - { <span class="k">protocol:</span> <span class="s">UDP</span>, <span class="k">port:</span> <span class="v">53</span> }
+    - { <span class="k">protocol:</span> <span class="s">TCP</span>, <span class="k">port:</span> <span class="v">53</span> }
+<span class="c">---</span>
+<span class="c"># Allow ingress to orders-api from frontend</span>
+<span class="k">apiVersion:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="k">kind:</span> <span class="s">NetworkPolicy</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-api-allow-frontend</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">spec:</span>
+  <span class="k">podSelector:</span>
+    <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">orders-api</span> }
+  <span class="k">policyTypes:</span> [<span class="s">Ingress</span>, <span class="s">Egress</span>]
+  <span class="k">ingress:</span>
+  - <span class="k">from:</span>
+    - <span class="y">podSelector:</span>
+        <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">frontend</span> }
+    <span class="k">ports:</span>
+    - { <span class="k">protocol:</span> <span class="s">TCP</span>, <span class="k">port:</span> <span class="v">8080</span> }
+  <span class="k">egress:</span>
+  - <span class="k">to:</span>
+    - <span class="y">podSelector:</span>
+        <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">postgres</span> }
+    <span class="k">ports:</span>
+    - { <span class="k">protocol:</span> <span class="s">TCP</span>, <span class="k">port:</span> <span class="v">5432</span> }</pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>default-deny-all</code> policy</td><td>Empty <code>podSelector</code> + both policyTypes with no rules — blocks every direction for every pod first.</td></tr>
+              <tr><td><code>allow-dns</code> policy</td><td>A separate egress-only policy re-permitting DNS. Without it, default-deny breaks all name resolution.</td></tr>
+              <tr><td><code>namespaceSelector</code> with <code>kubernetes.io/metadata.name</code></td><td>A built-in label every namespace carries automatically — the reliable way to target <code>kube-system</code>.</td></tr>
+              <tr><td>Combined <code>namespaceSelector</code> + <code>podSelector</code> under one <code>to</code> entry</td><td>Both must match (AND) — traffic is allowed only to kube-dns pods <em>inside</em> kube-system.</td></tr>
+              <tr><td><code>orders-api-allow-frontend</code> policy</td><td>The targeted exception — opens just the paths the app actually needs on top of default-deny.</td></tr>
+              <tr><td><code>ingress</code> from <code>app: frontend</code> on 8080</td><td>Only the frontend may reach the API, and only on its HTTP port.</td></tr>
+              <tr><td><code>egress</code> to <code>app: postgres</code> on 5432</td><td>The API may only reach the database — it cannot make arbitrary outbound connections.</td></tr>
+              <tr><td>Layered policies are additive</td><td>NetworkPolicies combine as a union of allows — multiple small policies build the final allowed set.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Step 6 — Deploy the App with Full Security</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">project/06-orders-api.yaml</span><span class="tag">yaml</span></div>
+        <pre><span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">Secret</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-db-credentials</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">type:</span> <span class="s">Opaque</span>
+<span class="k">data:</span>
+  <span class="k">password:</span> <span class="s">c3VwZXJzZWNyZXQxMjM=</span>     <span class="c"># prefer External Secrets in real life</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">v1</span>
+<span class="k">kind:</span> <span class="s">ConfigMap</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-api-config</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+<span class="k">data:</span>
+  <span class="k">log_level:</span> <span class="s">"info"</span>
+  <span class="k">feature_flag_new_checkout:</span> <span class="s">"true"</span>
+<span class="c">---</span>
+<span class="k">apiVersion:</span> <span class="s">apps/v1</span>
+<span class="k">kind:</span> <span class="s">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">orders-api</span>
+  <span class="k">namespace:</span> <span class="s">payments</span>
+  <span class="k">labels:</span> { <span class="k">app:</span> <span class="s">orders-api</span> }
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="v">3</span>
+  <span class="k">selector:</span>
+    <span class="k">matchLabels:</span> { <span class="k">app:</span> <span class="s">orders-api</span> }
+  <span class="k">template:</span>
+    <span class="k">metadata:</span>
+      <span class="k">labels:</span> { <span class="k">app:</span> <span class="s">orders-api</span> }
+    <span class="k">spec:</span>
+      <span class="y">serviceAccountName:</span> <span class="s">orders-api</span>        <span class="c"># scoped identity</span>
+      <span class="y">automountServiceAccountToken:</span> <span class="v">true</span>
+      <span class="y">securityContext:</span>                       <span class="c"># pod-level</span>
+        <span class="k">runAsNonRoot:</span> <span class="v">true</span>
+        <span class="k">runAsUser:</span> <span class="v">10001</span>
+        <span class="k">fsGroup:</span> <span class="v">10001</span>
+        <span class="k">seccompProfile:</span>
+          <span class="k">type:</span> <span class="s">RuntimeDefault</span>
+      <span class="k">containers:</span>
+      - <span class="k">name:</span> <span class="s">api</span>
+        <span class="k">image:</span> <span class="s">registry.jahez.com/orders-api:v2.1</span>
+        <span class="y">securityContext:</span>                     <span class="c"># container-level</span>
+          <span class="k">allowPrivilegeEscalation:</span> <span class="v">false</span>
+          <span class="k">readOnlyRootFilesystem:</span> <span class="v">true</span>
+          <span class="k">capabilities:</span>
+            <span class="k">drop:</span> [<span class="s">"ALL"</span>]
+        <span class="k">env:</span>
+        - <span class="k">name:</span> <span class="s">DB_PASSWORD</span>
+          <span class="k">valueFrom:</span>
+            <span class="k">secretKeyRef:</span>
+              <span class="k">name:</span> <span class="s">orders-db-credentials</span>
+              <span class="k">key:</span> <span class="s">password</span>
+        - <span class="k">name:</span> <span class="s">LOG_LEVEL</span>
+          <span class="k">valueFrom:</span>
+            <span class="k">configMapKeyRef:</span>
+              <span class="k">name:</span> <span class="s">orders-api-config</span>
+              <span class="k">key:</span> <span class="s">log_level</span>
+        <span class="k">ports:</span>
+        - { <span class="k">containerPort:</span> <span class="v">8080</span>, <span class="k">name:</span> <span class="s">http</span> }
+        <span class="k">resources:</span>
+          <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">100m</span>, <span class="k">memory:</span> <span class="s">128Mi</span> }
+          <span class="k">limits:</span>   { <span class="k">cpu:</span> <span class="s">500m</span>, <span class="k">memory:</span> <span class="s">512Mi</span> }
+        <span class="k">volumeMounts:</span>
+        - { <span class="k">name:</span> <span class="s">tmp</span>, <span class="k">mountPath:</span> <span class="s">/tmp</span> }
+        <span class="k">livenessProbe:</span>
+          <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/healthz</span>, <span class="k">port:</span> <span class="s">http</span> }
+          <span class="k">initialDelaySeconds:</span> <span class="v">15</span>
+        <span class="k">readinessProbe:</span>
+          <span class="k">httpGet:</span> { <span class="k">path:</span> <span class="s">/ready</span>, <span class="k">port:</span> <span class="s">http</span> }
+      <span class="k">volumes:</span>
+      - <span class="k">name:</span> <span class="s">tmp</span>
+        <span class="k">emptyDir:</span> {}</pre>
+      </div>
+      <div class="prop-table">
+        <div class="label">Property Reference</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Explanation</th></tr></thead>
+            <tbody>
+              <tr><td><code>Secret</code> (type <code>Opaque</code>)</td><td>Holds the DB password. <code>data</code> values are base64-encoded — encryption at rest or External Secrets is the real protection.</td></tr>
+              <tr><td><code>ConfigMap</code></td><td>Non-sensitive runtime config (log level, feature flags) consumed by the same Deployment.</td></tr>
+              <tr><td><code>spec.template.spec.serviceAccountName</code></td><td>Runs the pods as the scoped <code>orders-api</code> SA — ties the deployment to the least-privilege Role from Step 4.</td></tr>
+              <tr><td><code>template.spec.securityContext</code></td><td>Pod-level hardening — non-root UID, fsGroup, RuntimeDefault seccomp. Required to pass the namespace's <code>restricted</code> PSA.</td></tr>
+              <tr><td><code>containers[].securityContext</code></td><td>Container hardening — no privilege escalation, read-only root FS, all capabilities dropped.</td></tr>
+              <tr><td><code>env[].valueFrom.secretKeyRef</code></td><td>Injects the DB password from the Secret as an env var — the app never embeds the credential.</td></tr>
+              <tr><td><code>env[].valueFrom.configMapKeyRef</code></td><td>Injects a single key from the ConfigMap as an env var.</td></tr>
+              <tr><td><code>resources.requests / limits</code></td><td>Scheduling guarantees and ceilings — also satisfy the namespace LimitRange and ResourceQuota.</td></tr>
+              <tr><td><code>livenessProbe / readinessProbe</code></td><td>Liveness restarts a hung container; readiness gates traffic until the app is ready.</td></tr>
+              <tr><td><code>volumes[].emptyDir</code> mounted at <code>/tmp</code></td><td>Provides writable scratch space since the root filesystem is read-only.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>Step 7 — Verify Everything</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="file">verify.sh</span><span class="tag">bash</span></div>
+        <pre><span class="c"># Devs CAN read pods</span>
+kubectl auth can-i list pods -n payments \
+  --as=ahmed@jahez.com --as-group=oidc:team-payments
+<span class="c"># → yes</span>
+
+<span class="c"># Devs CANNOT read secrets</span>
+kubectl auth can-i get secrets -n payments \
+  --as=ahmed@jahez.com --as-group=oidc:team-payments
+<span class="c"># → no ✓ (PoLP enforced)</span>
+
+<span class="c"># CI CAN deploy</span>
+kubectl auth can-i create deployments -n payments \
+  --as=system:serviceaccount:payments:ci-deployer
+<span class="c"># → yes</span>
+
+<span class="c"># CI CANNOT read secrets</span>
+kubectl auth can-i get secrets -n payments \
+  --as=system:serviceaccount:payments:ci-deployer
+<span class="c"># → no ✓</span>
+
+<span class="c"># App CAN read its own secret</span>
+kubectl auth can-i get secret/orders-db-credentials -n payments \
+  --as=system:serviceaccount:payments:orders-api
+<span class="c"># → yes</span>
+
+<span class="c"># App CANNOT read other secrets</span>
+kubectl auth can-i get secret/something-else -n payments \
+  --as=system:serviceaccount:payments:orders-api
+<span class="c"># → no ✓</span>
+
+<span class="c"># Verify NetworkPolicy is enforced</span>
+kubectl run net-test --image=busybox --rm -it -n payments -- \
+  wget -qO- --timeout=2 http://orders-api:8080/healthz
+<span class="c"># → connection timeout (no NetPol allow for this pod)</span></pre>
+      </div>
+
+      <div class="alert success">
+        <strong>What this project gives you</strong>
+        Strong namespace isolation, defense in depth (RBAC + PSA + NetPol + SecurityContext), separation of human vs CI vs app identities, and explicit least-privilege secret access. This is the baseline for a regulated production cluster.
+      </div>
+    </section>
+
+    <!-- ========== 20. CHEAT SHEET ========== -->
+    <section class="section" id="cheatsheet">
+      <h2>20. kubectl Security Cheat Sheet</h2>
+
+      <div class="code-block">
+        <div class="code-header"><span class="file">auth-cheatsheet.sh</span><span class="tag">bash</span></div>
+        <pre><span class="c"># ─── CONTEXTS ───────────────────────────────────────</span>
+kubectl config current-context
+kubectl config get-contexts
+kubectl config use-context &lt;name&gt;
+kubectl config set-context --current --namespace=&lt;ns&gt;
+kubectl config view --minify --flatten
+
+<span class="c"># ─── RBAC INSPECTION ────────────────────────────────</span>
+kubectl get roles,rolebindings -A
+kubectl get clusterroles,clusterrolebindings
+kubectl describe rolebinding payments-developers -n payments
+
+<span class="c"># Aggregate: who has cluster-admin?</span>
+kubectl get clusterrolebindings -o json | \
+  jq <span class="s">'.items[] | select(.roleRef.name=="cluster-admin") | {name:.metadata.name, subjects:.subjects}'</span>
+
+<span class="c"># ─── AUTH TESTING ───────────────────────────────────</span>
+kubectl auth can-i create pods -n payments
+kubectl auth can-i --list -n payments
+kubectl auth can-i get secrets --as=&lt;user&gt; --as-group=&lt;group&gt; -n &lt;ns&gt;
+
+<span class="c"># ─── SERVICE ACCOUNTS ───────────────────────────────</span>
+kubectl create serviceaccount &lt;name&gt; -n &lt;ns&gt;
+kubectl create token &lt;sa&gt; -n &lt;ns&gt; --duration=1h
+kubectl get serviceaccount &lt;sa&gt; -n &lt;ns&gt; -o yaml
+
+<span class="c"># ─── CSRs ────────────────────────────────────────────</span>
+kubectl get csr
+kubectl certificate approve &lt;csr-name&gt;
+kubectl certificate deny &lt;csr-name&gt;
+
+<span class="c"># ─── PSA &amp; SECURITY ─────────────────────────────────</span>
+kubectl label namespace &lt;ns&gt; \
+  pod-security.kubernetes.io/enforce=restricted \
+  --overwrite
+
+<span class="c"># ─── NETWORK POLICIES ───────────────────────────────</span>
+kubectl get netpol -A
+kubectl describe netpol &lt;name&gt; -n &lt;ns&gt;
+
+<span class="c"># ─── SECRETS ────────────────────────────────────────</span>
+kubectl create secret generic db --from-literal=password=s3cr3t -n payments
+kubectl get secret db -n payments -o jsonpath=<span class="s">'{.data.password}'</span> | base64 -d
+
+<span class="c"># ─── AUDIT ──────────────────────────────────────────</span>
+<span class="c"># Find pods running as root</span>
+kubectl get pods -A -o json | \
+  jq -r <span class="s">'.items[] | select(.spec.securityContext.runAsNonRoot != true) | "\(.metadata.namespace)/\(.metadata.name)"'</span>
+
+<span class="c"># Find privileged containers</span>
+kubectl get pods -A -o json | \
+  jq -r <span class="s">'.items[] | select(.spec.containers[].securityContext.privileged == true) | .metadata.name'</span>
+
+<span class="c"># Find ClusterRoleBindings to default SA (likely too permissive)</span>
+kubectl get clusterrolebindings -o json | \
+  jq <span class="s">'.items[] | select(.subjects[]?.name=="default")'</span></pre>
+      </div>
+
+      <h3>Final Mental Model</h3>
+      <div class="card-grid">
+        <div class="card feature blue">
+          <div class="icon">①</div>
+          <h4>AuthN — Who?</h4>
+          <p class="text-small text-muted">Certs, OIDC, SA tokens. Don't store users in K8s.</p>
+        </div>
+        <div class="card feature green">
+          <div class="icon">②</div>
+          <h4>AuthZ — What?</h4>
+          <p class="text-small text-muted">RBAC: Role + Binding. Deny by default. Always least privilege.</p>
+        </div>
+        <div class="card feature amber">
+          <div class="icon">③</div>
+          <h4>Admission — Valid?</h4>
+          <p class="text-small text-muted">PSA enforces pod security. Webhooks enforce custom policy.</p>
+        </div>
+        <div class="card feature purple">
+          <div class="icon">④</div>
+          <h4>Runtime — Safe?</h4>
+          <p class="text-small text-muted">SecurityContext locks down the container. NetPol limits traffic.</p>
+        </div>
+      </div>
+
+      <div class="alert info" style="margin-top: 30px;">
+        <strong>Where to go next</strong>
+        Audit logging, KMS encryption providers, IRSA / Workload Identity for cloud IAM, OPA Gatekeeper policies, runtime security (Falco), supply chain (Sigstore/cosign), and CIS Kubernetes Benchmark hardening.
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* Mobile menu */
+function toggleMenu() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeMenu() {
+  if (window.innerWidth <= 900) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+/* Sidebar active link tracking */
+const sections = document.querySelectorAll('.section, .hero');
+const navLinks = document.querySelectorAll('.sidebar nav a');
+function setActiveLink() {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 200) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+window.addEventListener('scroll', setActiveLink);
+setActiveLink();
+
+/* Tabs */
+function showTab(btn, paneId) {
+  const tabs = btn.closest('.tabs');
+  tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  tabs.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  tabs.querySelector('#' + paneId).classList.add('active');
+}
+
+/* Slider */
+const sliderState = {};
+function initSlider(id) {
+  const slider = document.getElementById(id);
+  const track = slider.querySelector('.slide-track');
+  const slides = slider.querySelectorAll('.slide');
+  const dotsContainer = slider.querySelector('.slider-dots');
+  sliderState[id] = { current: 0, total: slides.length };
+
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => slideTo(id, i);
+    dotsContainer.appendChild(dot);
+  });
+}
+function slideTo(id, idx) {
+  const slider = document.getElementById(id);
+  const track = slider.querySelector('.slide-track');
+  const dots = slider.querySelectorAll('.dot');
+  const state = sliderState[id];
+  state.current = (idx + state.total) % state.total;
+  track.style.transform = `translateX(-${state.current * 100}%)`;
+  dots.forEach((d, i) => d.classList.toggle('active', i === state.current));
+}
+function slideNext(id) { slideTo(id, sliderState[id].current + 1); }
+function slidePrev(id) { slideTo(id, sliderState[id].current - 1); }
+initSlider('reqSlider');
+</script>
+
+</body>
+</html>
