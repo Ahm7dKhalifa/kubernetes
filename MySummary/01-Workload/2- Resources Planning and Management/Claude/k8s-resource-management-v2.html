@@ -1,0 +1,3154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#0a0d12" />
+<meta name="supported-color-schemes" content="dark" />
+<title>Kubernetes Resource Management — Volume 04</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS
+============================================================ */
+:root{
+  color-scheme: dark;
+  --bg:#0a0d12;
+  --bg-1:#0f141b;
+  --bg-2:#141a23;
+  --bg-3:#1a2230;
+  --bg-4:#212b3c;
+  --line:#222c3a;
+  --line-2:#2c3a4f;
+  --line-3:#3a4a63;
+  --text:#e6ecf3;
+  --text-2:#a0adbf;
+  --muted:#6c7a90;
+  --accent:#7dd3fc;
+  --accent-2:#a78bfa;
+  --accent-3:#f0abfc;
+  --green:#34d399;
+  --green-soft:rgba(52,211,153,.14);
+  --yellow:#fbbf24;
+  --yellow-soft:rgba(251,191,36,.14);
+  --orange:#fb923c;
+  --orange-soft:rgba(251,146,60,.14);
+  --red:#f87171;
+  --red-soft:rgba(248,113,113,.14);
+  --blue:#60a5fa;
+  --blue-soft:rgba(96,165,250,.14);
+  --pink:#f472b6;
+  --code-bg:#0c1117;
+  --shadow:0 8px 32px rgba(0,0,0,.4);
+  --shadow-lg:0 18px 60px rgba(0,0,0,.5);
+  --radius:14px;
+  --radius-sm:8px;
+  --radius-lg:20px;
+}
+
+/* ============================================================
+   RESET & GLOBAL
+============================================================ */
+*{box-sizing:border-box}
+html{background:#0a0d12 !important;color-scheme:dark}
+html,body{
+  margin:0;padding:0;
+  background:var(--bg);color:var(--text);
+  font-family:'Outfit',sans-serif;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  scroll-behavior:smooth;
+}
+body{overflow-x:hidden;background:#0a0d12 !important;color:#e6ecf3 !important}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+::selection{background:var(--accent-2);color:#0a0d12}
+
+code{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.88em;
+  background:rgba(125,211,252,.1);
+  color:#bae6fd;
+  padding:.15rem .4rem;
+  border-radius:5px;
+  border:1px solid rgba(125,211,252,.18);
+}
+
+/* ============================================================
+   LAYOUT
+============================================================ */
+.layout{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+@media(max-width:980px){.layout{grid-template-columns:1fr}}
+
+/* ============================================================
+   SIDEBAR
+============================================================ */
+.sidebar{
+  background:linear-gradient(180deg,#0c1118,#0a0d12);
+  border-right:1px solid var(--line);
+  padding:1.5rem 1rem 4rem;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  z-index:50;
+}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+.brand{
+  display:flex;align-items:center;gap:.7rem;
+  padding:.5rem .5rem 1.2rem;
+  border-bottom:1px solid var(--line);
+  margin-bottom:1rem;
+}
+.brand-mark{
+  width:38px;height:38px;border-radius:10px;
+  background:conic-gradient(from 220deg,#7dd3fc,#a78bfa,#f472b6,#7dd3fc);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;color:#0a0d12;
+  font-family:'Fraunces',serif;font-size:1.1rem;
+  box-shadow:0 0 24px rgba(167,139,250,.5);
+}
+.brand-text b{
+  display:block;font-size:1.05rem;font-weight:700;
+  background:linear-gradient(135deg,#7dd3fc,#f0abfc);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.brand-text small{font-size:.7rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+
+.nav-section{
+  font-size:.7rem;font-weight:600;
+  color:var(--muted);text-transform:uppercase;letter-spacing:.12em;
+  padding:1.2rem .7rem .4rem;
+}
+.nav-link{
+  display:flex;align-items:center;gap:.6rem;
+  padding:.55rem .7rem;
+  color:var(--text-2);font-size:.88rem;
+  border-radius:8px;margin:1px 0;
+  transition:all .2s;border:1px solid transparent;
+  text-decoration:none;
+}
+.nav-link:hover{background:var(--bg-2);color:var(--text);text-decoration:none}
+.nav-link.active{
+  background:linear-gradient(90deg,rgba(125,211,252,.12),rgba(167,139,250,.08));
+  color:var(--accent);border-color:rgba(125,211,252,.2);
+}
+.nav-link .dot{
+  width:6px;height:6px;border-radius:50%;background:var(--line-2);
+  flex-shrink:0;transition:all .2s;
+}
+.nav-link.active .dot{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+
+/* ============================================================
+   MAIN
+============================================================ */
+main{padding:0;min-width:0}
+.container{max-width:1080px;margin:0 auto;padding:0 32px}
+
+/* ============================================================
+   HERO
+============================================================ */
+.hero{
+  position:relative;
+  padding:80px 32px 100px;
+  overflow:hidden;
+  border-bottom:1px solid var(--line);
+}
+.hero::before{
+  content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse at 20% 0%,rgba(125,211,252,.15),transparent 50%),
+    radial-gradient(ellipse at 80% 100%,rgba(167,139,250,.12),transparent 50%),
+    radial-gradient(ellipse at 50% 50%,rgba(240,171,252,.05),transparent 60%);
+  pointer-events:none;
+}
+.hero::after{
+  content:"";position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(125,211,252,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(125,211,252,.04) 1px,transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%);
+  -webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%);
+  pointer-events:none;
+}
+.hero-inner{position:relative;max-width:1080px;margin:0 auto}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:.5rem;
+  padding:.4rem .9rem;
+  background:rgba(125,211,252,.08);
+  border:1px solid rgba(125,211,252,.22);
+  border-radius:99px;
+  font-size:.78rem;color:var(--accent);
+  letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+  margin-bottom:1.5rem;
+}
+.hero-eyebrow::before{
+  content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 10px var(--accent);
+}
+.hero h1{
+  font-family:'Fraunces',serif;
+  font-size:clamp(2.4rem,6vw,4.4rem);
+  font-weight:600;line-height:1.05;margin:0 0 1.2rem;
+  letter-spacing:-.02em;
+}
+.hero h1 em{
+  font-style:italic;
+  background:linear-gradient(135deg,#7dd3fc 0%,#a78bfa 50%,#f0abfc 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lede{
+  font-size:1.2rem;color:var(--text-2);
+  max-width:680px;line-height:1.6;margin:0 0 2.5rem;
+}
+.hero-meta{
+  display:flex;flex-wrap:wrap;gap:1.5rem;
+  padding-top:2rem;border-top:1px solid var(--line);
+}
+.hero-meta-item{display:flex;flex-direction:column}
+.hero-meta-item .label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem}
+.hero-meta-item .val{font-size:1.05rem;color:var(--text);font-weight:500}
+
+/* ============================================================
+   CHAPTER STRUCTURE
+============================================================ */
+.chapter{
+  padding:80px 32px;
+  max-width:1080px;margin:0 auto;
+  border-bottom:1px solid var(--line);
+}
+.chapter:last-of-type{border-bottom:none}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:.7rem;
+  font-size:.78rem;color:var(--accent);
+  letter-spacing:.14em;text-transform:uppercase;
+  font-weight:600;margin-bottom:1.2rem;
+}
+.num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:8px;
+  background:linear-gradient(135deg,rgba(125,211,252,.15),rgba(167,139,250,.15));
+  border:1px solid rgba(125,211,252,.25);
+  font-family:'Fraunces',serif;font-style:italic;font-size:.95rem;color:var(--accent);
+}
+.chapter h2{
+  font-family:'Fraunces',serif;
+  font-size:clamp(1.8rem,3.5vw,2.6rem);
+  font-weight:600;line-height:1.15;margin:0 0 1rem;
+  letter-spacing:-.015em;color:var(--text);
+}
+.chapter h2 em{
+  font-style:italic;
+  background:linear-gradient(135deg,#7dd3fc,#f0abfc);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.chapter h3{
+  font-family:'Outfit',sans-serif;
+  font-size:1.35rem;font-weight:600;
+  margin:2.5rem 0 1rem;color:var(--text);
+  letter-spacing:-.01em;
+}
+.chapter h4{
+  font-size:1.1rem;font-weight:600;
+  margin:1.8rem 0 .8rem;color:var(--text);
+}
+.lede{font-size:1.1rem;color:var(--text-2);line-height:1.65;margin:0 0 2rem;max-width:780px}
+.chapter p{color:var(--text-2);line-height:1.7;margin:0 0 1.1rem}
+.chapter p strong{color:var(--text);font-weight:600}
+
+/* ============================================================
+   DEFINITION CARD
+============================================================ */
+.def-card{
+  position:relative;
+  background:linear-gradient(135deg,rgba(125,211,252,.08),rgba(167,139,250,.05));
+  border:1px solid rgba(125,211,252,.22);
+  border-radius:var(--radius);
+  padding:1.6rem 1.8rem;
+  margin:0 0 1.8rem;
+}
+.def-card::before{
+  content:"DEFINITION";
+  position:absolute;top:-9px;left:24px;
+  background:var(--bg);
+  padding:0 .7rem;
+  font-size:.65rem;letter-spacing:.18em;font-weight:700;
+  color:var(--accent);
+}
+.def-card .term{
+  font-family:'Fraunces',serif;font-style:italic;
+  font-size:1.3rem;font-weight:600;
+  color:var(--accent);
+  margin-bottom:.5rem;
+}
+.def-card .body{color:var(--text);font-size:1.02rem;line-height:1.6;margin:0}
+
+/* ============================================================
+   PRINCIPLES BLOCK
+============================================================ */
+.principles{
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:1.5rem 1.7rem;
+  margin:0 0 1.8rem;
+}
+.principles-title{
+  display:flex;align-items:center;gap:.6rem;
+  font-size:.78rem;letter-spacing:.16em;font-weight:700;
+  color:var(--accent-2);text-transform:uppercase;
+  margin:0 0 1rem;
+}
+.principles-title::before{
+  content:"";width:24px;height:2px;
+  background:linear-gradient(90deg,var(--accent-2),transparent);
+}
+.principles ol{margin:0;padding:0 0 0 1.3rem;counter-reset:p}
+.principles ol li{
+  list-style:none;position:relative;
+  padding:.7rem 0 .7rem 2.2rem;
+  border-bottom:1px solid rgba(167,139,250,.1);
+  color:var(--text);line-height:1.6;
+  counter-increment:p;
+}
+.principles ol li:last-child{border-bottom:none}
+.principles ol li::before{
+  content:counter(p,decimal-leading-zero);
+  position:absolute;left:-1rem;top:.7rem;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.75rem;font-weight:700;
+  color:var(--accent-2);
+  background:rgba(167,139,250,.12);
+  border:1px solid rgba(167,139,250,.25);
+  border-radius:6px;
+  padding:.15rem .4rem;
+  line-height:1;
+}
+.principles ol li strong{color:var(--accent-3);font-weight:600}
+
+/* ============================================================
+   DIAGRAM WRAPPER
+============================================================ */
+.diagram{
+  background:
+    radial-gradient(ellipse at top,rgba(125,211,252,.04),transparent 70%),
+    var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:1.8rem;
+  margin:0 0 1.8rem;
+  overflow:hidden;
+}
+.diagram-title{
+  display:flex;align-items:center;gap:.6rem;
+  font-size:.78rem;letter-spacing:.16em;font-weight:700;
+  color:var(--accent);text-transform:uppercase;
+  margin:0 0 1.2rem;
+}
+.diagram-title::before{
+  content:"◆";color:var(--accent);font-size:.7rem;
+}
+.diagram svg{width:100%;height:auto;display:block}
+
+/* ============================================================
+   CODE BLOCKS
+============================================================ */
+.code-wrap{
+  background:var(--code-bg);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  margin:0 0 1.5rem;
+  overflow:hidden;
+}
+.code-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.7rem 1.1rem;
+  background:linear-gradient(90deg,rgba(125,211,252,.05),transparent);
+  border-bottom:1px solid var(--line);
+}
+.filename{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.78rem;color:var(--accent);
+}
+.copy-btn{
+  background:rgba(125,211,252,.1);
+  color:var(--accent);
+  border:1px solid rgba(125,211,252,.22);
+  border-radius:6px;
+  padding:.3rem .7rem;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.72rem;font-weight:500;
+  cursor:pointer;
+  transition:all .2s;
+}
+.copy-btn:hover{background:rgba(125,211,252,.2)}
+.copy-btn.copied{background:var(--green-soft);color:var(--green);border-color:rgba(52,211,153,.3)}
+.code-wrap pre{
+  margin:0;padding:1.1rem 1.3rem;
+  overflow-x:auto;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.84rem;line-height:1.65;
+  color:#cbd5e1;
+}
+.code-wrap pre::-webkit-scrollbar{height:6px}
+.code-wrap pre::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+.h{color:#f0abfc;font-weight:600}
+.k{color:#7dd3fc}
+.s{color:#86efac}
+.n{color:#fbbf24}
+.b{color:#fb923c}
+.c{color:#6c7a90;font-style:italic}
+
+/* ============================================================
+   CALLOUTS
+============================================================ */
+.callout{
+  border-radius:var(--radius);
+  padding:1.1rem 1.3rem;
+  margin:1.2rem 0;
+  border-left:3px solid;
+}
+.callout-title{
+  font-weight:600;font-size:.95rem;
+  margin:0 0 .4rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.callout p{margin:0;font-size:.95rem;line-height:1.6;color:var(--text)}
+.callout.tip{background:var(--blue-soft);border-color:var(--blue)}
+.callout.tip .callout-title{color:#bfdbfe}
+.callout.warn{background:var(--yellow-soft);border-color:var(--yellow)}
+.callout.warn .callout-title{color:#fde68a}
+.callout.danger{background:var(--red-soft);border-color:var(--red)}
+.callout.danger .callout-title{color:#fecaca}
+.callout.good{background:var(--green-soft);border-color:var(--green)}
+.callout.good .callout-title{color:#bbf7d0}
+
+/* ============================================================
+   TABLES
+============================================================ */
+.table-wrap{
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  overflow:hidden;overflow-x:auto;
+  margin:1.2rem 0 1.8rem;
+}
+table{
+  width:100%;border-collapse:collapse;
+  font-size:.92rem;
+}
+thead{background:rgba(125,211,252,.06);border-bottom:1px solid var(--line)}
+th{
+  text-align:left;
+  padding:.85rem 1.1rem;
+  font-size:.78rem;color:var(--accent);
+  letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+}
+td{
+  padding:.85rem 1.1rem;
+  color:var(--text-2);
+  border-bottom:1px solid rgba(34,44,58,.6);
+  vertical-align:top;
+}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(125,211,252,.03)}
+td code{font-size:.82em}
+
+/* ============================================================
+   PROPERTY TABLE (for YAML keys)
+============================================================ */
+.prop-table th:first-child,.prop-table td:first-child{
+  font-family:'JetBrains Mono',monospace;
+  color:var(--accent);font-size:.85rem;
+  width:34%;
+}
+
+/* ============================================================
+   PITFALLS
+============================================================ */
+.pitfalls{
+  background:linear-gradient(135deg,rgba(248,113,113,.05),rgba(251,146,60,.03));
+  border:1px solid rgba(248,113,113,.18);
+  border-radius:var(--radius);
+  padding:1.4rem 1.6rem;
+  margin:1.5rem 0;
+}
+.pitfalls-title{
+  display:flex;align-items:center;gap:.5rem;
+  font-size:.78rem;letter-spacing:.16em;font-weight:700;
+  color:var(--red);text-transform:uppercase;
+  margin:0 0 .9rem;
+}
+.pitfalls ul{margin:0;padding:0;list-style:none}
+.pitfalls li{
+  position:relative;padding:.5rem 0 .5rem 1.5rem;
+  border-bottom:1px solid rgba(248,113,113,.08);
+  color:var(--text);font-size:.95rem;line-height:1.55;
+}
+.pitfalls li:last-child{border-bottom:none}
+.pitfalls li::before{
+  content:"✕";position:absolute;left:0;top:.6rem;
+  color:var(--red);font-size:.8rem;font-weight:700;
+}
+.pitfalls li strong{color:#fecaca}
+
+/* ============================================================
+   CHECKLIST
+============================================================ */
+.checklist{
+  background:linear-gradient(135deg,rgba(52,211,153,.05),rgba(125,211,252,.03));
+  border:1px solid rgba(52,211,153,.18);
+  border-radius:var(--radius);
+  padding:1.4rem 1.6rem;
+  margin:1.5rem 0;
+}
+.checklist-title{
+  display:flex;align-items:center;gap:.5rem;
+  font-size:.78rem;letter-spacing:.16em;font-weight:700;
+  color:var(--green);text-transform:uppercase;
+  margin:0 0 .9rem;
+}
+.checklist ul{margin:0;padding:0;list-style:none}
+.checklist li{
+  position:relative;padding:.5rem 0 .5rem 1.7rem;
+  border-bottom:1px solid rgba(52,211,153,.08);
+  color:var(--text);font-size:.95rem;line-height:1.55;
+}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{
+  content:"";position:absolute;left:0;top:.65rem;
+  width:14px;height:14px;border-radius:4px;
+  background:var(--green);
+  box-shadow:inset 0 0 0 2px var(--bg);
+}
+.checklist li::after{
+  content:"✓";position:absolute;left:2px;top:.4rem;
+  color:var(--bg);font-size:.8rem;font-weight:800;
+}
+
+/* ============================================================
+   STRUCTURE BADGES (the 3-pattern markers)
+============================================================ */
+.section-flow{
+  display:flex;gap:.5rem;flex-wrap:wrap;
+  margin:0 0 1.5rem;
+}
+.flow-badge{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.3rem .7rem;
+  font-size:.7rem;font-weight:600;letter-spacing:.06em;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:99px;
+  color:var(--text-2);
+  text-transform:uppercase;
+}
+.flow-badge.def{color:var(--accent);border-color:rgba(125,211,252,.25)}
+.flow-badge.princ{color:var(--accent-2);border-color:rgba(167,139,250,.25)}
+.flow-badge.diag{color:var(--accent-3);border-color:rgba(240,171,252,.25)}
+.flow-badge.yaml{color:var(--green);border-color:rgba(52,211,153,.25)}
+.flow-badge.pit{color:var(--red);border-color:rgba(248,113,113,.25)}
+.flow-badge.check{color:var(--yellow);border-color:rgba(251,191,36,.25)}
+
+/* ============================================================
+   INTERACTIVE: SLIDER
+============================================================ */
+.sim{
+  background:
+    radial-gradient(ellipse at top right,rgba(167,139,250,.06),transparent 70%),
+    var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:1.8rem;
+  margin:1.5rem 0;
+}
+.sim-title{
+  display:flex;align-items:center;gap:.6rem;
+  font-family:'Fraunces',serif;font-style:italic;
+  font-size:1.3rem;color:var(--text);
+  margin:0 0 .4rem;
+}
+.sim-title::before{
+  content:"";width:8px;height:8px;border-radius:50%;
+  background:var(--accent-2);
+  box-shadow:0 0 12px var(--accent-2);
+}
+.sim-sub{color:var(--text-2);font-size:.92rem;margin:0 0 1.5rem}
+.sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:720px){.sim-grid{grid-template-columns:1fr}}
+
+.slider-row{margin-bottom:1.3rem}
+.slider-row label{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:.85rem;color:var(--text-2);
+  margin-bottom:.5rem;
+}
+.slider-row .val{
+  font-family:'JetBrains Mono',monospace;
+  background:rgba(125,211,252,.1);
+  color:var(--accent);
+  padding:.15rem .5rem;border-radius:5px;
+  font-size:.82rem;font-weight:600;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:6px;
+  background:var(--bg-3);border-radius:3px;
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:20px;height:20px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  cursor:pointer;border:3px solid var(--bg);
+  box-shadow:0 0 12px rgba(125,211,252,.5);
+}
+input[type=range]::-moz-range-thumb{
+  width:20px;height:20px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  cursor:pointer;border:3px solid var(--bg);
+}
+
+.sim-output{
+  background:var(--bg);
+  border:1px solid var(--line-2);
+  border-radius:var(--radius-sm);
+  padding:1.2rem;
+}
+.sim-output-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.6rem 0;
+  border-bottom:1px solid var(--line);
+  font-size:.92rem;
+}
+.sim-output-row:last-child{border-bottom:none}
+.sim-output-row .lbl{color:var(--text-2)}
+.sim-output-row .out{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:600;color:var(--text);
+  font-size:.95rem;
+}
+.sim-output-row .out.big{font-size:1.4rem;color:var(--accent)}
+
+/* ============================================================
+   PILL CARDS (QoS, types, etc.)
+============================================================ */
+.pill-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:1rem;margin:1.5rem 0;
+}
+.pill-card{
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:1.3rem;
+  transition:all .25s;
+  position:relative;overflow:hidden;
+}
+.pill-card::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--accent);
+}
+.pill-card.guaranteed::before{background:var(--green)}
+.pill-card.burstable::before{background:var(--yellow)}
+.pill-card.besteffort::before{background:var(--red)}
+.pill-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-2)}
+.pill-card h4{margin:0 0 .5rem;font-size:1.1rem}
+.pill-card .meta{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.78rem;color:var(--muted);margin:0 0 .8rem;
+}
+.pill-card p{font-size:.9rem;line-height:1.55;color:var(--text-2);margin:0}
+
+/* ============================================================
+   PIPELINE STEPS
+============================================================ */
+.pipeline{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:1rem;
+  margin:1.5rem 0;
+}
+.pipe-step{
+  position:relative;
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:1.2rem;
+}
+.pipe-step::after{
+  content:"→";
+  position:absolute;right:-1.1rem;top:50%;
+  transform:translateY(-50%);
+  font-size:1.3rem;color:var(--accent);font-weight:700;
+  z-index:1;
+}
+.pipe-step:last-child::after{content:""}
+@media(max-width:720px){
+  .pipe-step::after{
+    content:"↓";
+    right:50%;top:auto;bottom:-1.4rem;
+    transform:translateX(50%);
+  }
+}
+.pipe-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,rgba(125,211,252,.2),rgba(167,139,250,.15));
+  border:1px solid rgba(125,211,252,.3);
+  font-family:'Fraunces',serif;font-style:italic;font-weight:600;
+  color:var(--accent);font-size:.85rem;
+  margin-bottom:.7rem;
+}
+.pipe-step h4{margin:0 0 .4rem;font-size:1rem}
+.pipe-step p{margin:0;font-size:.85rem;color:var(--text-2);line-height:1.55}
+
+/* ============================================================
+   MOBILE NAV TOGGLE
+============================================================ */
+.menu-toggle{
+  display:none;
+  position:fixed;top:1rem;right:1rem;z-index:100;
+  width:44px;height:44px;border-radius:10px;
+  background:var(--bg-2);border:1px solid var(--line-2);
+  color:var(--text);font-size:1.3rem;cursor:pointer;
+  box-shadow:var(--shadow);
+}
+@media(max-width:980px){
+  .menu-toggle{display:block}
+  .sidebar{
+    position:fixed;top:0;left:-100%;
+    width:280px;
+    transition:left .3s ease;
+  }
+  .sidebar.open{left:0;box-shadow:var(--shadow-lg)}
+  .hero{padding:60px 24px 70px}
+  .chapter{padding:60px 24px}
+  .container{padding:0 24px}
+}
+@media(max-width:520px){
+  .chapter{padding:50px 18px}
+  .hero{padding:50px 18px 60px}
+  .pill-grid{grid-template-columns:1fr}
+}
+
+/* ============================================================
+   PROGRESS BAR
+============================================================ */
+.progress{
+  position:fixed;top:0;left:0;right:0;
+  height:3px;background:transparent;z-index:200;
+}
+.progress-bar{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2),var(--accent-3));
+  transition:width .1s;
+  box-shadow:0 0 10px var(--accent-2);
+}
+
+/* ============================================================
+   TOC GRID ON HERO
+============================================================ */
+.toc-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:.8rem;margin-top:2rem;
+}
+.toc-card{
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:.9rem 1.1rem;
+  display:flex;align-items:center;gap:.7rem;
+  transition:all .2s;
+  color:var(--text);text-decoration:none;
+}
+.toc-card:hover{
+  border-color:var(--accent);
+  background:rgba(125,211,252,.05);
+  text-decoration:none;
+  transform:translateY(-1px);
+}
+.toc-card .toc-num{
+  font-family:'Fraunces',serif;font-style:italic;
+  font-size:1.1rem;color:var(--accent);font-weight:600;
+  min-width:24px;
+}
+.toc-card .toc-text{font-size:.88rem}
+
+/* ============================================================
+   SIMULATOR EVICTION ORDER
+============================================================ */
+.evict-stack{
+  display:flex;flex-direction:column;gap:.5rem;
+  margin:1.2rem 0;
+}
+.evict-pod{
+  display:flex;align-items:center;gap:1rem;
+  padding:.9rem 1.2rem;
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-left:4px solid;
+  border-radius:var(--radius-sm);
+  font-size:.92rem;
+  transition:all .3s;
+}
+.evict-pod.order-1{border-left-color:var(--red);background:linear-gradient(90deg,rgba(248,113,113,.08),var(--bg-1))}
+.evict-pod.order-2{border-left-color:var(--orange)}
+.evict-pod.order-3{border-left-color:var(--green)}
+.evict-pod .rank{
+  font-family:'Fraunces',serif;font-style:italic;
+  font-size:1.5rem;font-weight:700;
+  min-width:30px;
+}
+.evict-pod.order-1 .rank{color:var(--red)}
+.evict-pod.order-2 .rank{color:var(--orange)}
+.evict-pod.order-3 .rank{color:var(--green)}
+.evict-pod .name{font-weight:600;color:var(--text)}
+.evict-pod .qos{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.78rem;color:var(--muted);
+  margin-left:auto;
+}
+
+/* ============================================================
+   FOOTER
+============================================================ */
+.site-foot{
+  padding:60px 32px 80px;
+  border-top:1px solid var(--line);
+  background:linear-gradient(180deg,transparent,rgba(167,139,250,.04));
+  margin-top:40px;
+}
+.foot-inner{
+  max-width:1080px;margin:0 auto;
+  display:flex;justify-content:space-between;
+  gap:32px;flex-wrap:wrap;align-items:flex-start;
+}
+.foot-brand .foot-title{
+  font-family:'Fraunces',serif;font-style:italic;
+  font-size:1.5rem;
+  background:linear-gradient(135deg,#7dd3fc,#f0abfc);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.foot-sub{font-size:.85rem;color:var(--muted);margin-top:.3rem;letter-spacing:.04em}
+.foot-meta{font-size:.85rem;color:var(--muted);text-align:right;max-width:380px;line-height:1.7}
+@media(max-width:720px){.foot-meta{text-align:left}}
+
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+<button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">☰</button>
+
+<div class="layout">
+
+<!-- ================ SIDEBAR ================ -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="brand-mark">K</div>
+    <div class="brand-text">
+      <b>K8s Reference</b>
+      <small>Resource Mgmt · Vol. 04</small>
+    </div>
+  </div>
+
+  <div class="nav-section">Part I · Foundations</div>
+  <a class="nav-link" href="#intro"><span class="dot"></span>What this guide is</a>
+  <a class="nav-link" href="#model"><span class="dot"></span>The mental model</a>
+  <a class="nav-link" href="#units"><span class="dot"></span>Units & quantities</a>
+
+  <div class="nav-section">Part II · Per-pod controls</div>
+  <a class="nav-link" href="#requests-limits"><span class="dot"></span>Requests & limits</a>
+  <a class="nav-link" href="#qos"><span class="dot"></span>QoS classes</a>
+  <a class="nav-link" href="#oom"><span class="dot"></span>OOM & throttling</a>
+
+  <div class="nav-section">Part III · Namespace controls</div>
+  <a class="nav-link" href="#limitrange"><span class="dot"></span>LimitRange</a>
+  <a class="nav-link" href="#quota"><span class="dot"></span>ResourceQuota</a>
+  <a class="nav-link" href="#priority"><span class="dot"></span>PriorityClass & PDB</a>
+
+  <div class="nav-section">Part IV · Autoscaling</div>
+  <a class="nav-link" href="#autoscale"><span class="dot"></span>Three axes</a>
+  <a class="nav-link" href="#hpa"><span class="dot"></span>HPA</a>
+  <a class="nav-link" href="#vpa"><span class="dot"></span>VPA</a>
+  <a class="nav-link" href="#ca"><span class="dot"></span>Cluster Autoscaler</a>
+
+  <div class="nav-section">Part V · Node-level</div>
+  <a class="nav-link" href="#managers"><span class="dot"></span>Resource managers</a>
+  <a class="nav-link" href="#eviction"><span class="dot"></span>Node eviction</a>
+  <a class="nav-link" href="#reserved"><span class="dot"></span>System-reserved</a>
+
+  <div class="nav-section">Part VI · SRE playbook</div>
+  <a class="nav-link" href="#sizing"><span class="dot"></span>Right-sizing</a>
+  <a class="nav-link" href="#patterns"><span class="dot"></span>Patterns</a>
+  <a class="nav-link" href="#troubleshoot"><span class="dot"></span>Troubleshooting</a>
+  <a class="nav-link" href="#checklist"><span class="dot"></span>Production checklist</a>
+</aside>
+
+<main>
+
+<!-- ================ HERO ================ -->
+<section class="hero" id="top">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Volume 04 · K8s Deep Reference Series</div>
+    <h1>Kubernetes <em>Resource<br>Management</em></h1>
+    <p class="hero-lede">
+      A structured field guide to declaring, enforcing, autoscaling, and
+      troubleshooting CPU, memory, and storage in production Kubernetes —
+      organized around four repeating sections per topic: <strong>definition,
+      principles, diagram, YAML, pitfalls, and checklist</strong>.
+    </p>
+
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="label">Parts</span>
+        <span class="val">6</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Chapters</span>
+        <span class="val">19</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Diagrams</span>
+        <span class="val">14</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Simulators</span>
+        <span class="val">4</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Format</span>
+        <span class="val">Def → Diagram → YAML → Pitfalls</span>
+      </div>
+    </div>
+
+    <div class="toc-grid">
+      <a class="toc-card" href="#model"><span class="toc-num">I.</span><span class="toc-text">Mental model</span></a>
+      <a class="toc-card" href="#requests-limits"><span class="toc-num">II.</span><span class="toc-text">Requests &amp; limits</span></a>
+      <a class="toc-card" href="#limitrange"><span class="toc-num">III.</span><span class="toc-text">Namespace governance</span></a>
+      <a class="toc-card" href="#hpa"><span class="toc-num">IV.</span><span class="toc-text">Autoscaling</span></a>
+      <a class="toc-card" href="#managers"><span class="toc-num">V.</span><span class="toc-text">Node managers</span></a>
+      <a class="toc-card" href="#checklist"><span class="toc-num">VI.</span><span class="toc-text">SRE playbook</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 1: INTRO ================ -->
+<section id="intro" class="chapter">
+  <div class="eyebrow"><span class="num">I.1</span> Foundations · What this guide is</div>
+  <h2>Why <em>resource management</em> is the operational core of Kubernetes</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge diag">Diagram</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Resource management (in Kubernetes)</div>
+    <p class="body">
+      The set of mechanisms by which a cluster decides <strong>how much</strong> CPU,
+      memory, storage, and specialized hardware each container may <em>request</em>,
+      <em>consume</em>, and <em>be denied</em> — and how the scheduler, kubelet, and
+      node-level kernel features cooperate to enforce those decisions.
+    </p>
+  </div>
+
+  <p class="lede">
+    Three things break in production: <strong>cost</strong> (you're paying for
+    capacity nobody uses), <strong>reliability</strong> (one workload steals from
+    another), and <strong>capacity planning</strong> (you can't say with confidence
+    how much headroom you have). All three are downstream of resource management.
+    Get this layer right and most other things become tractable.
+  </p>
+
+  <div class="principles">
+    <div class="principles-title">Five Operating Principles</div>
+    <ol>
+      <li><strong>Declare everything.</strong> A container with no resource declarations is BestEffort — first to be evicted, last to be sized correctly. Never ship blank.</li>
+      <li><strong>Requests are for scheduling, limits are for enforcement.</strong> They answer different questions and should be tuned independently.</li>
+      <li><strong>Measure before you size.</strong> p75 of historical usage is a better request than your intuition. VPA in advisor mode is free measurement.</li>
+      <li><strong>Compose the controls.</strong> LimitRange + ResourceQuota + PriorityClass + PDB + HPA work together. Each closes a hole the others can't.</li>
+      <li><strong>Treat sizing as a loop.</strong> Measure → recommend → apply → re-measure. Workloads drift; sizing reviews are quarterly, not one-shot.</li>
+    </ol>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">The Resource Management Stack</div>
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#7dd3fc" stop-opacity=".25"/>
+          <stop offset="1" stop-color="#7dd3fc" stop-opacity=".08"/>
+        </linearGradient>
+        <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#a78bfa" stop-opacity=".25"/>
+          <stop offset="1" stop-color="#a78bfa" stop-opacity=".08"/>
+        </linearGradient>
+        <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#f0abfc" stop-opacity=".25"/>
+          <stop offset="1" stop-color="#f0abfc" stop-opacity=".08"/>
+        </linearGradient>
+        <linearGradient id="g4" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#34d399" stop-opacity=".25"/>
+          <stop offset="1" stop-color="#34d399" stop-opacity=".08"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Layer 1: Pod -->
+      <rect x="60" y="30" width="680" height="60" rx="10" fill="url(#g1)" stroke="#7dd3fc" stroke-width="1.5"/>
+      <text x="80" y="58" fill="#7dd3fc" font-family="JetBrains Mono" font-size="12" font-weight="700">L1 · POD</text>
+      <text x="80" y="78" fill="#e6ecf3" font-family="Outfit" font-size="14">resources.requests · resources.limits · QoS class · PriorityClass</text>
+
+      <!-- Layer 2: Namespace -->
+      <rect x="60" y="110" width="680" height="60" rx="10" fill="url(#g2)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="80" y="138" fill="#a78bfa" font-family="JetBrains Mono" font-size="12" font-weight="700">L2 · NAMESPACE</text>
+      <text x="80" y="158" fill="#e6ecf3" font-family="Outfit" font-size="14">LimitRange (defaults & caps) · ResourceQuota (totals) · NetworkPolicy</text>
+
+      <!-- Layer 3: Autoscaling -->
+      <rect x="60" y="190" width="680" height="60" rx="10" fill="url(#g3)" stroke="#f0abfc" stroke-width="1.5"/>
+      <text x="80" y="218" fill="#f0abfc" font-family="JetBrains Mono" font-size="12" font-weight="700">L3 · AUTOSCALING</text>
+      <text x="80" y="238" fill="#e6ecf3" font-family="Outfit" font-size="14">HPA (replicas) · VPA (per-pod sizing) · Cluster Autoscaler / Karpenter (nodes)</text>
+
+      <!-- Layer 4: Node -->
+      <rect x="60" y="270" width="680" height="60" rx="10" fill="url(#g4)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="80" y="298" fill="#34d399" font-family="JetBrains Mono" font-size="12" font-weight="700">L4 · NODE / KUBELET</text>
+      <text x="80" y="318" fill="#e6ecf3" font-family="Outfit" font-size="14">CPU/Memory/Topology Managers · cgroups · eviction · system-reserved</text>
+
+      <!-- Vertical arrows -->
+      <path d="M400 90 L400 110" stroke="#a0adbf" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <path d="M400 170 L400 190" stroke="#a0adbf" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <path d="M400 250 L400 270" stroke="#a0adbf" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+      <!-- Side label -->
+      <text x="400" y="365" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="12" font-style="italic">
+        Each layer enforces decisions made above &amp; provides signals to the layer below
+      </text>
+
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6" fill="#a0adbf"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <p>
+    This guide walks the stack <strong>top-down</strong>. Pod-level controls come first
+    because they're the unit of declaration; namespace-level controls next because
+    they're how platform teams enforce policy; autoscaling because it operationalizes
+    the declarations; node-level last because it's where the kernel actually does the
+    work; and the SRE playbook closes the loop with patterns, troubleshooting, and a
+    pre-flight checklist.
+  </p>
+</section>
+
+<!-- ================ CHAPTER 2: MENTAL MODEL ================ -->
+<section id="model" class="chapter">
+  <div class="eyebrow"><span class="num">I.2</span> Foundations · The mental model</div>
+  <h2>From <code>kubectl apply</code> to a running container: the <em>five gates</em></h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge diag">Diagram</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">The five gates</div>
+    <p class="body">
+      Every pod's resource declaration is read and re-interpreted by five distinct
+      components before the workload runs. Understanding which component owns which
+      decision is the single most useful debugging skill in Kubernetes operations —
+      because failure messages always tell you which gate the request died at.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Why this matters</div>
+    <ol>
+      <li><strong>Errors are layer-specific.</strong> "Forbidden: exceeded quota" is gate 2. "FailedScheduling: insufficient cpu" is gate 3. "OOMKilled" is gate 5. Knowing the gate halves your debugging time.</li>
+      <li><strong>Each gate has its own config surface.</strong> Admission policies, scheduler profiles, kubelet flags — they live in different files maintained by different teams.</li>
+      <li><strong>Caching and timing matter.</strong> The scheduler caches node allocatable; the kubelet caches cgroup state. Stale caches cause "impossible" placement decisions.</li>
+    </ol>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">The Five-Gate Pipeline</div>
+    <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gateA" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#7dd3fc" stop-opacity=".18"/>
+          <stop offset="1" stop-color="#7dd3fc" stop-opacity=".04"/>
+        </linearGradient>
+        <linearGradient id="gateB" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#a78bfa" stop-opacity=".18"/>
+          <stop offset="1" stop-color="#a78bfa" stop-opacity=".04"/>
+        </linearGradient>
+        <linearGradient id="gateC" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f0abfc" stop-opacity=".18"/>
+          <stop offset="1" stop-color="#f0abfc" stop-opacity=".04"/>
+        </linearGradient>
+        <linearGradient id="gateD" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fbbf24" stop-opacity=".18"/>
+          <stop offset="1" stop-color="#fbbf24" stop-opacity=".04"/>
+        </linearGradient>
+        <linearGradient id="gateE" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#34d399" stop-opacity=".18"/>
+          <stop offset="1" stop-color="#34d399" stop-opacity=".04"/>
+        </linearGradient>
+      </defs>
+
+      <!-- gates as boxes -->
+      <g transform="translate(20,40)">
+        <rect width="150" height="180" rx="12" fill="url(#gateA)" stroke="#7dd3fc" stroke-width="1.5"/>
+        <text x="75" y="30" text-anchor="middle" fill="#7dd3fc" font-family="JetBrains Mono" font-size="11" font-weight="700">GATE 1</text>
+        <text x="75" y="55" text-anchor="middle" fill="#e6ecf3" font-family="Fraunces" font-size="15" font-style="italic" font-weight="600">Author</text>
+        <text x="75" y="85" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">YAML written</text>
+        <text x="75" y="102" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">by developer</text>
+        <text x="75" y="130" text-anchor="middle" fill="#bae6fd" font-family="JetBrains Mono" font-size="10">requests:</text>
+        <text x="75" y="146" text-anchor="middle" fill="#bae6fd" font-family="JetBrains Mono" font-size="10">limits:</text>
+        <text x="75" y="170" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="10" font-style="italic">→ kubectl apply</text>
+      </g>
+
+      <g transform="translate(190,40)">
+        <rect width="150" height="180" rx="12" fill="url(#gateB)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="75" y="30" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="11" font-weight="700">GATE 2</text>
+        <text x="75" y="55" text-anchor="middle" fill="#e6ecf3" font-family="Fraunces" font-size="15" font-style="italic" font-weight="600">Admission</text>
+        <text x="75" y="85" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">API server</text>
+        <text x="75" y="102" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">validates / mutates</text>
+        <text x="75" y="130" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono" font-size="10">LimitRange</text>
+        <text x="75" y="146" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono" font-size="10">ResourceQuota</text>
+        <text x="75" y="170" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="10" font-style="italic">→ etcd store</text>
+      </g>
+
+      <g transform="translate(360,40)">
+        <rect width="150" height="180" rx="12" fill="url(#gateC)" stroke="#f0abfc" stroke-width="1.5"/>
+        <text x="75" y="30" text-anchor="middle" fill="#f0abfc" font-family="JetBrains Mono" font-size="11" font-weight="700">GATE 3</text>
+        <text x="75" y="55" text-anchor="middle" fill="#e6ecf3" font-family="Fraunces" font-size="15" font-style="italic" font-weight="600">Scheduler</text>
+        <text x="75" y="85" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">picks a node</text>
+        <text x="75" y="102" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">using requests</text>
+        <text x="75" y="130" text-anchor="middle" fill="#f5d0fe" font-family="JetBrains Mono" font-size="10">Filter → Score</text>
+        <text x="75" y="146" text-anchor="middle" fill="#f5d0fe" font-family="JetBrains Mono" font-size="10">Bind</text>
+        <text x="75" y="170" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="10" font-style="italic">→ nodeName set</text>
+      </g>
+
+      <g transform="translate(530,40)">
+        <rect width="150" height="180" rx="12" fill="url(#gateD)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="75" y="30" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="11" font-weight="700">GATE 4</text>
+        <text x="75" y="55" text-anchor="middle" fill="#e6ecf3" font-family="Fraunces" font-size="15" font-style="italic" font-weight="600">Kubelet</text>
+        <text x="75" y="85" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">creates cgroups</text>
+        <text x="75" y="102" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">applies QoS</text>
+        <text x="75" y="130" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono" font-size="10">cpu.weight</text>
+        <text x="75" y="146" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono" font-size="10">memory.max</text>
+        <text x="75" y="170" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="10" font-style="italic">→ runtime call</text>
+      </g>
+
+      <g transform="translate(700,40)">
+        <rect width="150" height="180" rx="12" fill="url(#gateE)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="75" y="30" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono" font-size="11" font-weight="700">GATE 5</text>
+        <text x="75" y="55" text-anchor="middle" fill="#e6ecf3" font-family="Fraunces" font-size="15" font-style="italic" font-weight="600">Runtime</text>
+        <text x="75" y="85" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">containerd / cri-o</text>
+        <text x="75" y="102" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="11">+ kernel cgroups</text>
+        <text x="75" y="130" text-anchor="middle" fill="#bbf7d0" font-family="JetBrains Mono" font-size="10">CFS scheduler</text>
+        <text x="75" y="146" text-anchor="middle" fill="#bbf7d0" font-family="JetBrains Mono" font-size="10">OOM killer</text>
+        <text x="75" y="170" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="10" font-style="italic">→ container live</text>
+      </g>
+
+      <!-- arrows between gates -->
+      <g stroke="#6c7a90" stroke-width="1.5" fill="none">
+        <path d="M170 130 L190 130" marker-end="url(#a2)"/>
+        <path d="M340 130 L360 130" marker-end="url(#a2)"/>
+        <path d="M510 130 L530 130" marker-end="url(#a2)"/>
+        <path d="M680 130 L700 130" marker-end="url(#a2)"/>
+      </g>
+
+      <defs>
+        <marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6" fill="#6c7a90"/>
+        </marker>
+      </defs>
+
+      <!-- bottom label -->
+      <text x="440" y="265" text-anchor="middle" fill="#e6ecf3" font-family="Outfit" font-size="13" font-weight="600">Each gate can reject. Errors at each gate look different.</text>
+      <text x="440" y="288" text-anchor="middle" fill="#6c7a90" font-family="JetBrains Mono" font-size="11">G1: linter   ·   G2: 403 Forbidden   ·   G3: FailedScheduling   ·   G4: ContainerCreating   ·   G5: OOMKilled / CrashLoop</text>
+    </svg>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">Common confusions</div>
+    <ul>
+      <li><strong>"My pod is stuck Pending"</strong> — that's gate 3 (scheduler), not gate 4 (kubelet). <code>kubectl describe pod</code> shows the gate 3 verdict in Events.</li>
+      <li><strong>"My quota didn't catch it"</strong> — quota runs at gate 2 against requests, not actual usage. A pod that requests 100m but uses 800m is invisible to quota.</li>
+      <li><strong>"The OOM killer disagreed with my limit"</strong> — gate 5 (kernel) enforces against working-set bytes, not the friendly numbers in your YAML. Page cache counts differently than RSS.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 3: UNITS ================ -->
+<section id="units" class="chapter">
+  <div class="eyebrow"><span class="num">I.3</span> Foundations · Units &amp; quantities</div>
+  <h2>The <em>quantity</em> type: what <code>500m</code>, <code>2Gi</code>, and <code>1e3</code> actually mean</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Quantity</div>
+    <p class="body">
+      A Kubernetes-specific numeric type that combines a number with a suffix
+      indicating its scale and base. Both CPU and memory use the same type, but with
+      completely different conventions. The single most common cause of "my pod has
+      the wrong size" is misreading a quantity.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Three rules for reading quantities</div>
+    <ol>
+      <li><strong>CPU is a rate.</strong> <code>1</code> means one full CPU core / vCPU / hyperthread per second. <code>500m</code> means 0.5 of a core (500 milli-cores). Decimal — base 10.</li>
+      <li><strong>Memory is a capacity.</strong> <code>1Gi</code> means 1 gibibyte = 2³⁰ bytes ≈ 1.074 GB. <code>1G</code> means 1 gigabyte = 10⁹ bytes. The <em>i</em> matters.</li>
+      <li><strong>No floating point.</strong> <code>0.5</code> works but is risky in YAML. Prefer <code>500m</code> for CPU and binary suffixes for memory — they're unambiguous.</li>
+    </ol>
+  </div>
+
+  <h3>CPU units</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Notation</th><th>Meaning</th><th>When to use</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>1 full CPU core (vCPU / hyperthread)</td><td>Beefy single-threaded service, JVM with parallel GC</td></tr>
+        <tr><td>500m</td><td>0.5 of a core — 500 milli-cores</td><td>Typical web service request</td></tr>
+        <tr><td>100m</td><td>0.1 of a core</td><td>Sidecar (envoy, fluent-bit, otel-collector)</td></tr>
+        <tr><td>50m</td><td>0.05 of a core</td><td>Tiny init container, health probe service</td></tr>
+        <tr><td>2</td><td>2 full cores</td><td>Search engine worker, batch processor</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Memory units</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Suffix</th><th>Base · Power</th><th>Bytes</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Ki</td><td>2¹⁰</td><td>1,024</td><td>kibibyte — almost never used</td></tr>
+        <tr><td>Mi</td><td>2²⁰</td><td>1,048,576</td><td>mebibyte — small services</td></tr>
+        <tr><td>Gi</td><td>2³⁰</td><td>1,073,741,824</td><td>gibibyte — most common</td></tr>
+        <tr><td>Ti</td><td>2⁴⁰</td><td>~1.1 × 10¹²</td><td>tebibyte — data stores, ML</td></tr>
+        <tr><td>M</td><td>10⁶</td><td>1,000,000</td><td>megabyte (SI) — avoid; use Mi</td></tr>
+        <tr><td>G</td><td>10⁹</td><td>1,000,000,000</td><td>gigabyte (SI) — avoid; use Gi</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">resources.yaml — canonical declarations</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">resources:</span>
+  <span class="h">requests:</span>
+    <span class="k">cpu:</span> <span class="s">"500m"</span>          <span class="c"># 0.5 vCPU</span>
+    <span class="k">memory:</span> <span class="s">"512Mi"</span>       <span class="c"># 512 mebibytes = 536_870_912 bytes</span>
+    <span class="k">ephemeral-storage:</span> <span class="s">"1Gi"</span>
+  <span class="h">limits:</span>
+    <span class="k">cpu:</span> <span class="s">"2"</span>             <span class="c"># 2 full vCPUs</span>
+    <span class="k">memory:</span> <span class="s">"2Gi"</span>         <span class="c"># 2 gibibytes ≈ 2.147 GB</span>
+    <span class="k">ephemeral-storage:</span> <span class="s">"4Gi"</span></pre>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">Quantity traps</div>
+    <ul>
+      <li><strong><code>1G</code> ≠ <code>1Gi</code>.</strong> The first is 1,000,000,000 bytes; the second is 1,073,741,824. A 1Gi limit gives you ~7.4% more memory than a 1G limit.</li>
+      <li><strong><code>0.5</code> is valid but treacherous.</strong> YAML parsers can quietly convert it to a string or a float. Use <code>500m</code>.</li>
+      <li><strong>No suffix means raw bytes for memory.</strong> <code>memory: 500</code> means 500 bytes — your pod will crash on startup.</li>
+      <li><strong>CPU caps at integer cores at the kernel level.</strong> <code>cpu: 1.5</code> ≠ <code>1500m</code>? Actually they're the same — but YAML stringification can make them look different in <code>kubectl get</code>.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 4: REQUESTS & LIMITS ================ -->
+<section id="requests-limits" class="chapter">
+  <div class="eyebrow"><span class="num">II.1</span> Per-pod controls · Requests &amp; limits</div>
+  <h2><em>Requests</em> are a promise to the scheduler. <em>Limits</em> are a ceiling enforced by the kernel.</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge diag">Diagram</span>
+    <span class="flow-badge yaml">YAML</span>
+    <span class="flow-badge pit">Pitfalls</span>
+    <span class="flow-badge check">Checklist</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Request</div>
+    <p class="body">
+      The amount of CPU or memory a container <em>asks the scheduler to reserve</em>
+      on a node. Used at <strong>gate 3 (scheduling)</strong> to filter and score nodes.
+      The scheduler subtracts the sum of all pod requests from a node's allocatable
+      to decide what fits.
+    </p>
+  </div>
+
+  <div class="def-card" style="background:linear-gradient(135deg,rgba(167,139,250,.08),rgba(240,171,252,.05));border-color:rgba(167,139,250,.22)">
+    <div class="term" style="color:var(--accent-2)">Limit</div>
+    <p class="body">
+      The maximum amount of CPU or memory the container is <em>allowed to use</em> at
+      runtime. Enforced at <strong>gate 4–5 (kubelet + kernel)</strong>. CPU limits
+      throttle via CFS quota; memory limits trigger OOM-kill when exceeded.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Decision Principles</div>
+    <ol>
+      <li><strong>Always set both.</strong> Missing requests = BestEffort QoS = first to evict. Missing limits = unbounded blast radius for a single bad pod.</li>
+      <li><strong>Request = your typical usage.</strong> Aim for p75 of historical usage. Too high wastes capacity; too low causes scheduling failures.</li>
+      <li><strong>Memory limit ≈ request × 1.3.</strong> Leaves headroom for GC, cache warmup, transient allocations without OOM-killing the pod.</li>
+      <li><strong>CPU limit is contextual.</strong> On dedicated nodes for latency-critical services, consider omitting CPU limits. On shared nodes, always set them.</li>
+      <li><strong>Wire the limit into your runtime.</strong> <code>GOMEMLIMIT</code>, <code>-XX:MaxRAMPercentage</code>, <code>--max-old-space-size</code>. The runtime needs to know about the ceiling.</li>
+    </ol>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Requests vs Limits — Visual Model</div>
+    <svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="6" stroke="#f87171" stroke-width="1" opacity="0.4"/>
+        </pattern>
+      </defs>
+
+      <!-- Node container -->
+      <rect x="50" y="40" width="700" height="280" rx="14" fill="#0f141b" stroke="#222c3a" stroke-width="2"/>
+      <text x="70" y="65" fill="#a0adbf" font-family="JetBrains Mono" font-size="11" font-weight="700">NODE · 8 vCPU · 32 Gi</text>
+
+      <!-- Node allocatable bar -->
+      <text x="70" y="95" fill="#7dd3fc" font-family="JetBrains Mono" font-size="10">Allocatable: 7.5 vCPU</text>
+      <rect x="70" y="105" width="660" height="22" rx="4" fill="#1a2230"/>
+      <rect x="70" y="105" width="540" height="22" rx="4" fill="url(#hatch)" stroke="#f87171" stroke-width="1" stroke-dasharray="3,3" opacity="0.7"/>
+      <text x="340" y="121" text-anchor="middle" fill="#fecaca" font-family="JetBrains Mono" font-size="11" font-weight="600">Σ requests of all pods (6.0 vCPU reserved)</text>
+      <text x="690" y="121" text-anchor="end" fill="#a0adbf" font-family="JetBrains Mono" font-size="10">free: 1.5</text>
+
+      <!-- Single pod blowup -->
+      <text x="70" y="170" fill="#a78bfa" font-family="JetBrains Mono" font-size="10" font-weight="700">ONE POD'S VIEW · 500m request, 2 limit</text>
+
+      <!-- Request bar -->
+      <rect x="70" y="185" width="660" height="20" rx="4" fill="#1a2230"/>
+      <rect x="70" y="185" width="50" height="20" rx="4" fill="#7dd3fc" opacity="0.7"/>
+      <text x="95" y="200" text-anchor="middle" fill="#0a0d12" font-family="JetBrains Mono" font-size="10" font-weight="700">req</text>
+      <text x="135" y="200" fill="#7dd3fc" font-family="Outfit" font-size="11" font-style="italic">500m — guaranteed by scheduler</text>
+
+      <!-- Limit bar -->
+      <rect x="70" y="215" width="660" height="20" rx="4" fill="#1a2230"/>
+      <rect x="70" y="215" width="200" height="20" rx="4" fill="#a78bfa" opacity="0.5"/>
+      <text x="170" y="230" text-anchor="middle" fill="#0a0d12" font-family="JetBrains Mono" font-size="10" font-weight="700">limit (ceiling)</text>
+      <text x="285" y="230" fill="#a78bfa" font-family="Outfit" font-size="11" font-style="italic">2 — kernel will throttle / OOM beyond this</text>
+
+      <!-- Burstable zone -->
+      <rect x="120" y="245" width="150" height="20" rx="4" fill="#fbbf24" opacity="0.25" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="195" y="260" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono" font-size="10">burstable zone (best-effort)</text>
+
+      <!-- Annotations -->
+      <text x="70" y="295" fill="#a0adbf" font-family="Outfit" font-size="12">
+        <tspan x="70" dy="0">• Pod is always guaranteed its </tspan><tspan fill="#7dd3fc" font-weight="600">request</tspan><tspan>. Scheduler reserved it.</tspan>
+      </text>
+      <text x="70" y="312" fill="#a0adbf" font-family="Outfit" font-size="12">
+        <tspan x="70" dy="0">• Pod may use up to its </tspan><tspan fill="#a78bfa" font-weight="600">limit</tspan><tspan> — </tspan><tspan font-style="italic">if there's free capacity on the node</tspan><tspan>.</tspan>
+      </text>
+    </svg>
+  </div>
+
+  <h3>Canonical production YAML — Jahez checkout service</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">deployment-checkout.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">apiVersion:</span> apps/v1
+<span class="h">kind:</span> Deployment
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-checkout</span>
+  <span class="k">namespace:</span> <span class="s">jahez-prod</span>
+<span class="h">spec:</span>
+  <span class="k">replicas:</span> <span class="n">4</span>
+  <span class="h">selector:</span>
+    <span class="h">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">checkout</span>
+  <span class="h">template:</span>
+    <span class="h">metadata:</span>
+      <span class="h">labels:</span>
+        <span class="k">app:</span> <span class="s">checkout</span>
+    <span class="h">spec:</span>
+      <span class="h">containers:</span>
+      - <span class="k">name:</span> <span class="s">app</span>
+        <span class="k">image:</span> <span class="s">registry.jahez.com/checkout:v3.4.1</span>
+        <span class="h">resources:</span>
+          <span class="h">requests:</span>
+            <span class="k">cpu:</span> <span class="s">"500m"</span>          <span class="c"># p75 of historical usage</span>
+            <span class="k">memory:</span> <span class="s">"1Gi"</span>         <span class="c"># typical working set</span>
+            <span class="k">ephemeral-storage:</span> <span class="s">"1Gi"</span>
+          <span class="h">limits:</span>
+            <span class="k">cpu:</span> <span class="s">"2"</span>             <span class="c"># burst headroom for spikes</span>
+            <span class="k">memory:</span> <span class="s">"1.5Gi"</span>       <span class="c"># request × 1.5 — GC headroom</span>
+            <span class="k">ephemeral-storage:</span> <span class="s">"2Gi"</span>
+        <span class="h">env:</span>
+        - <span class="k">name:</span> <span class="s">GOMEMLIMIT</span>          <span class="c"># wire limit into Go runtime</span>
+          <span class="h">valueFrom:</span>
+            <span class="h">resourceFieldRef:</span>
+              <span class="k">resource:</span> <span class="s">limits.memory</span>
+              <span class="k">divisor:</span> <span class="s">"1"</span>
+        - <span class="k">name:</span> <span class="s">GOMAXPROCS</span>          <span class="c"># match CPU limit</span>
+          <span class="h">valueFrom:</span>
+            <span class="h">resourceFieldRef:</span>
+              <span class="k">resource:</span> <span class="s">limits.cpu</span></pre>
+  </div>
+
+  <h3>Field reference</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Field</th><th>What it controls</th></tr></thead>
+      <tbody>
+        <tr><td>requests.cpu</td><td>Minimum CPU reserved on the node. Scheduler subtracts this from allocatable. Becomes <code>cpu.weight</code> in cgroup v2.</td></tr>
+        <tr><td>requests.memory</td><td>Minimum memory reserved. Also feeds into OOM kill ranking (Burstable pods exceeding their request rank higher).</td></tr>
+        <tr><td>limits.cpu</td><td>Hard ceiling. Enforced via CFS quota — pods are throttled at 100ms period boundaries when they exceed it.</td></tr>
+        <tr><td>limits.memory</td><td>Hard ceiling. Exceeding it triggers immediate OOM-kill (exit code 137).</td></tr>
+        <tr><td>requests.ephemeral-storage</td><td>Scratch space, container logs, emptyDir volumes. Often forgotten — and then pods get evicted for "DiskPressure".</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">Common mistakes</div>
+    <ul>
+      <li><strong>Setting requests = limits without reason.</strong> Looks disciplined; in practice means no GC headroom and OOMs on the first usage spike. Only do this for genuinely flat-memory workloads.</li>
+      <li><strong>Forgetting <code>GOMEMLIMIT</code> / JVM flags.</strong> A 2 Gi container without runtime awareness will OOM at ~1.9 Gi because the GC didn't know to be aggressive.</li>
+      <li><strong>Using the same request for sidecar and main container.</strong> Envoy sidecar at 500m CPU request is 5× what it needs. Multiply by every pod in your cluster.</li>
+      <li><strong>Setting memory limit without measuring.</strong> 256Mi looks reasonable until your app warms up its connection pool and OOMs. Measure first.</li>
+    </ul>
+  </div>
+
+  <div class="checklist">
+    <div class="checklist-title">Quick checklist before <code>kubectl apply</code></div>
+    <ul>
+      <li>Every container has explicit <code>requests.cpu</code>, <code>requests.memory</code>, <code>limits.cpu</code>, <code>limits.memory</code>.</li>
+      <li>Ephemeral-storage request set (default 100Mi is often too low).</li>
+      <li>Runtime memory flag wired via Downward API — not hardcoded.</li>
+      <li>Memory limit ≥ request × 1.2 for GC'd languages, ≥ × 1.3 for JVM.</li>
+      <li>Sidecar containers sized smaller than main containers (typically 50–100m CPU, 64–128 Mi).</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 5: QoS CLASSES ================ -->
+<section id="qos" class="chapter">
+  <div class="eyebrow"><span class="num">II.2</span> Per-pod controls · QoS classes</div>
+  <h2>QoS classes: <em>how Kubernetes decides who lives and who dies</em> under node pressure</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge diag">Diagram</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Quality of Service class</div>
+    <p class="body">
+      An implicit classification Kubernetes assigns to every pod, derived purely from
+      how its requests and limits relate. You don't set QoS directly — you set
+      requests and limits, and the QoS class falls out automatically. It determines
+      <strong>eviction order under node pressure</strong> and influences OOM-kill
+      ranking.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">How QoS is computed</div>
+    <ol>
+      <li><strong>Guaranteed</strong> — every container has requests == limits for both CPU and memory. The strongest reliability tier.</li>
+      <li><strong>Burstable</strong> — at least one container has a request set, but it doesn't qualify as Guaranteed. The most common class for stateless services.</li>
+      <li><strong>BestEffort</strong> — no requests or limits set anywhere. First to be evicted, last to be scheduled fairly. <em>Never use in production.</em></li>
+    </ol>
+  </div>
+
+  <div class="pill-grid">
+    <div class="pill-card guaranteed">
+      <h4>Guaranteed</h4>
+      <div class="meta">requests == limits</div>
+      <p>Last to be evicted under memory pressure. CPU pinning available via the static CPU manager policy. Use for: databases, payment services, stateful caches.</p>
+    </div>
+    <div class="pill-card burstable">
+      <h4>Burstable</h4>
+      <div class="meta">requests &lt; limits (or partial)</div>
+      <p>Evicted only if exceeding their request, ranked by usage-over-request. Use for: most stateless web services, API gateways, workers behind HPA.</p>
+    </div>
+    <div class="pill-card besteffort">
+      <h4>BestEffort</h4>
+      <div class="meta">no requests or limits</div>
+      <p>First to be killed when the node runs low on memory. Use for: never in production. Acceptable for dev sandboxes only.</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Eviction Order Under Node Memory Pressure</div>
+    <div class="evict-stack">
+      <div class="evict-pod order-1">
+        <div class="rank">1<sup style="font-size:.7rem">st</sup></div>
+        <div>
+          <div class="name">BestEffort pods</div>
+          <div style="font-size:.82rem;color:var(--text-2);margin-top:.2rem">Killed first. Order among themselves: largest memory user goes first.</div>
+        </div>
+        <div class="qos">no requests · no limits</div>
+      </div>
+      <div class="evict-pod order-2">
+        <div class="rank">2<sup style="font-size:.7rem">nd</sup></div>
+        <div>
+          <div class="name">Burstable pods exceeding their request</div>
+          <div style="font-size:.82rem;color:var(--text-2);margin-top:.2rem">Ranked by (usage − request) / request. Higher overcommit = higher in the kill list.</div>
+        </div>
+        <div class="qos">request &lt; usage &lt; limit</div>
+      </div>
+      <div class="evict-pod order-3">
+        <div class="rank">3<sup style="font-size:.7rem">rd</sup></div>
+        <div>
+          <div class="name">Guaranteed pods &amp; Burstable under request</div>
+          <div style="font-size:.82rem;color:var(--text-2);margin-top:.2rem">Only evicted if there's literally nothing else to kill — usually means the node is misconfigured (system-reserved too low).</div>
+        </div>
+        <div class="qos">usage ≤ request</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title"><span>💡</span> What about CPU pressure?</div>
+    <p>CPU pressure doesn't cause eviction — it causes throttling. A pod that exceeds its CPU limit gets paused at the next CFS period boundary; it doesn't get killed. Memory is the only resource whose exhaustion triggers eviction in Kubernetes' default eviction policy.</p>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">QoS pitfalls</div>
+    <ul>
+      <li><strong>Accidental BestEffort.</strong> Forgetting requests on one container in a multi-container pod still drops the whole pod into BestEffort.</li>
+      <li><strong>Guaranteed isn't free.</strong> It forces requests == limits, which means you're paying for peak capacity all the time. Use for genuinely critical workloads only.</li>
+      <li><strong>Burstable masks oversubscription.</strong> If everyone bursts above their request at once, the node runs out of memory and pods start dying. Headroom planning matters.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 6: OOM & THROTTLING ================ -->
+<section id="oom" class="chapter">
+  <div class="eyebrow"><span class="num">II.3</span> Per-pod controls · OOM &amp; throttling</div>
+  <h2>How exceeding limits <em>actually</em> hurts: OOM-kill and CFS throttling</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge diag">Diagram</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Memory OOM-kill</div>
+    <p class="body">
+      When a container's memory cgroup hits <code>memory.max</code>, the kernel
+      synchronously kills the process. There's no grace period. Exit code 137
+      (128 + SIGKILL=9). The kubelet observes it and reports
+      <code>Reason: OOMKilled</code> in the pod status.
+    </p>
+  </div>
+
+  <div class="def-card" style="background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,146,60,.05));border-color:rgba(251,191,36,.22)">
+    <div class="term" style="color:var(--yellow)">CPU throttling</div>
+    <p class="body">
+      When a container exceeds its CPU limit within a CFS period (default 100ms), the
+      kernel <em>pauses</em> it until the next period starts. The process isn't killed —
+      it's just stopped. Surfaces as latency spikes, not crashes.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Mechanical reality</div>
+    <ol>
+      <li><strong>OOM is synchronous and brutal.</strong> The kernel doesn't ask the application to clean up. Connections drop, partial writes happen, in-flight requests fail.</li>
+      <li><strong>Throttling is invisible to <code>kubectl top</code>.</strong> Average CPU looks fine; p99 latency suffers. You need <code>container_cpu_cfs_throttled_seconds_total</code> to see it.</li>
+      <li><strong>GC'd languages amplify both.</strong> A JVM under memory pressure GCs more aggressively, burning CPU — which can hit throttling, slowing GC further, accelerating OOM.</li>
+      <li><strong>Memory pressure ≠ memory usage.</strong> The kernel tracks working-set bytes, which excludes page cache that can be evicted. Your dashboard's "memory usage" number may not match the OOM trigger.</li>
+    </ol>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">CFS Throttling Timeline (100ms periods)</div>
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg">
+      <!-- Period dividers -->
+      <g stroke="#3a4a63" stroke-width="1" stroke-dasharray="2,3">
+        <line x1="100" y1="40" x2="100" y2="200"/>
+        <line x1="200" y1="40" x2="200" y2="200"/>
+        <line x1="300" y1="40" x2="300" y2="200"/>
+        <line x1="400" y1="40" x2="400" y2="200"/>
+        <line x1="500" y1="40" x2="500" y2="200"/>
+        <line x1="600" y1="40" x2="600" y2="200"/>
+        <line x1="700" y1="40" x2="700" y2="200"/>
+      </g>
+
+      <!-- Period labels -->
+      <text x="50" y="35" fill="#6c7a90" font-family="JetBrains Mono" font-size="10">0ms</text>
+      <text x="150" y="35" text-anchor="middle" fill="#6c7a90" font-family="JetBrains Mono" font-size="10">100</text>
+      <text x="250" y="35" text-anchor="middle" fill="#6c7a90" font-family="JetBrains Mono" font-size="10">200</text>
+      <text x="350" y="35" text-anchor="middle" fill="#6c7a90" font-family="JetBrains Mono" font-size="10">300</text>
+      <text x="450" y="35" text-anchor="middle" fill="#6c7a90" font-family="JetBrains Mono" font-size="10">400</text>
+      <text x="550" y="35" text-anchor="middle" fill="#6c7a90" font-family="JetBrains Mono" font-size="10">500</text>
+      <text x="650" y="35" text-anchor="middle" fill="#6c7a90" font-family="JetBrains Mono" font-size="10">600</text>
+
+      <!-- CPU usage bars per period -->
+      <!-- Period 1: under quota -->
+      <rect x="105" y="120" width="90" height="40" rx="3" fill="#34d399" opacity="0.7"/>
+      <text x="150" y="145" text-anchor="middle" fill="#0a0d12" font-family="JetBrains Mono" font-size="10" font-weight="700">60ms work</text>
+
+      <!-- Period 2: over quota -->
+      <rect x="205" y="100" width="50" height="60" rx="3" fill="#34d399" opacity="0.7"/>
+      <text x="230" y="135" text-anchor="middle" fill="#0a0d12" font-family="JetBrains Mono" font-size="10" font-weight="700">50ms</text>
+      <rect x="255" y="100" width="40" height="60" rx="3" fill="#f87171" opacity="0.5" stroke="#f87171" stroke-width="1" stroke-dasharray="2,2"/>
+      <text x="275" y="135" text-anchor="middle" fill="#fecaca" font-family="JetBrains Mono" font-size="9" font-weight="700">THROTTLED</text>
+
+      <!-- Period 3: under -->
+      <rect x="305" y="130" width="40" height="30" rx="3" fill="#34d399" opacity="0.7"/>
+      <text x="325" y="150" text-anchor="middle" fill="#0a0d12" font-family="JetBrains Mono" font-size="10" font-weight="700">30ms</text>
+
+      <!-- Period 4: way over -->
+      <rect x="405" y="80" width="50" height="80" rx="3" fill="#34d399" opacity="0.7"/>
+      <text x="430" y="125" text-anchor="middle" fill="#0a0d12" font-family="JetBrains Mono" font-size="10" font-weight="700">50ms</text>
+      <rect x="455" y="80" width="40" height="80" rx="3" fill="#f87171" opacity="0.5" stroke="#f87171" stroke-width="1" stroke-dasharray="2,2"/>
+      <text x="475" y="125" text-anchor="middle" fill="#fecaca" font-family="JetBrains Mono" font-size="9" font-weight="700">THROTTLED</text>
+
+      <!-- Period 5: under -->
+      <rect x="505" y="140" width="60" height="20" rx="3" fill="#34d399" opacity="0.7"/>
+      <text x="535" y="155" text-anchor="middle" fill="#0a0d12" font-family="JetBrains Mono" font-size="10" font-weight="700">20ms</text>
+
+      <!-- Period 6: over -->
+      <rect x="605" y="110" width="50" height="50" rx="3" fill="#34d399" opacity="0.7"/>
+      <text x="630" y="140" text-anchor="middle" fill="#0a0d12" font-family="JetBrains Mono" font-size="10" font-weight="700">50ms</text>
+      <rect x="655" y="110" width="40" height="50" rx="3" fill="#f87171" opacity="0.5" stroke="#f87171" stroke-width="1" stroke-dasharray="2,2"/>
+
+      <!-- Quota line -->
+      <line x1="100" y1="100" x2="700" y2="100" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="715" y="105" fill="#fbbf24" font-family="JetBrains Mono" font-size="10" font-weight="700">limit (50ms/period = 500m)</text>
+
+      <!-- Labels -->
+      <text x="50" y="105" fill="#fbbf24" font-family="JetBrains Mono" font-size="9">quota →</text>
+      <text x="50" y="200" fill="#a0adbf" font-family="JetBrains Mono" font-size="10" font-weight="700">CPU usage per 100ms CFS period</text>
+
+      <text x="400" y="225" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="12" font-style="italic">
+        Average CPU = 35% — looks fine. But 3 of 6 periods were throttled → p99 latency suffers.
+      </text>
+    </svg>
+  </div>
+
+  <h3>Detecting throttling — the metric that matters</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">PromQL — throttle ratio per pod</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># Anything over 0.05 (5%) is worth investigating</span>
+<span class="c"># Anything over 0.15 is actively hurting your p99 latency</span>
+
+sum by (namespace, pod) (
+  rate(container_cpu_cfs_throttled_seconds_total[<span class="n">5m</span>])
+)
+/
+sum by (namespace, pod) (
+  rate(container_cpu_cfs_periods_total[<span class="n">5m</span>])
+)</pre>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">OOM &amp; throttling traps</div>
+    <ul>
+      <li><strong>Restart loop after OOM.</strong> The pod restarts, warms up its cache, hits OOM again. Cycle repeats. Fix the limit, don't just restart.</li>
+      <li><strong>"Average CPU is 30%, why is it slow?"</strong> Because <em>peaks</em> hit the limit and got throttled. Check throttle ratio, not average.</li>
+      <li><strong>Removing CPU limits "solves" throttling — but creates noisy neighbors.</strong> Acceptable on dedicated nodes for one team; dangerous on shared multi-tenant nodes.</li>
+      <li><strong>The OOM killer can pick the wrong process.</strong> A child PID with high OOM score gets killed instead of the parent. The pod gets restarted regardless, but logs are confusing.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 7: LIMITRANGE ================ -->
+<section id="limitrange" class="chapter">
+  <div class="eyebrow"><span class="num">III.1</span> Namespace controls · LimitRange</div>
+  <h2><em>LimitRange</em>: the namespace-level safety net for forgotten declarations</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">LimitRange</div>
+    <p class="body">
+      A namespace-scoped policy object that <strong>(a)</strong> injects default
+      requests/limits into pods that don't declare them, and <strong>(b)</strong>
+      enforces min/max bounds, rejecting pods outside the allowed range. Acts as a
+      mutating + validating admission policy at gate 2.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Why every namespace needs one</div>
+    <ol>
+      <li><strong>Defaults catch laziness.</strong> Developers will forget to set resources. LimitRange ensures the resulting pod is at least Burstable, not BestEffort.</li>
+      <li><strong>Min bounds prevent absurd requests.</strong> Stops <code>cpu: 1m</code> requests that schedule everywhere but throttle on first packet.</li>
+      <li><strong>Max bounds prevent capacity hoarding.</strong> Stops one team from requesting 64 vCPU per pod and consuming the whole node.</li>
+      <li><strong><code>maxLimitRequestRatio</code> caps oversubscription.</strong> Limits the gap between request and limit, preventing wildly aspirational limits that pods can never actually use.</li>
+    </ol>
+  </div>
+
+  <h3>Production LimitRange — Jahez prod namespace</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">limitrange-jahez-prod.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">apiVersion:</span> v1
+<span class="h">kind:</span> LimitRange
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-prod-limits</span>
+  <span class="k">namespace:</span> <span class="s">jahez-prod</span>
+<span class="h">spec:</span>
+  <span class="h">limits:</span>
+  <span class="c"># ---- Per Container ----</span>
+  - <span class="k">type:</span> <span class="s">Container</span>
+    <span class="h">default:</span>                  <span class="c"># injected if limits not set</span>
+      <span class="k">cpu:</span> <span class="s">"500m"</span>
+      <span class="k">memory:</span> <span class="s">"512Mi"</span>
+    <span class="h">defaultRequest:</span>           <span class="c"># injected if requests not set</span>
+      <span class="k">cpu:</span> <span class="s">"100m"</span>
+      <span class="k">memory:</span> <span class="s">"128Mi"</span>
+    <span class="h">min:</span>                       <span class="c"># reject if below</span>
+      <span class="k">cpu:</span> <span class="s">"50m"</span>
+      <span class="k">memory:</span> <span class="s">"64Mi"</span>
+    <span class="h">max:</span>                       <span class="c"># reject if above</span>
+      <span class="k">cpu:</span> <span class="s">"4"</span>
+      <span class="k">memory:</span> <span class="s">"8Gi"</span>
+    <span class="h">maxLimitRequestRatio:</span>      <span class="c"># reject limit/request &gt; this</span>
+      <span class="k">cpu:</span> <span class="s">"4"</span>                <span class="c"># burst factor cap</span>
+      <span class="k">memory:</span> <span class="s">"2"</span>             <span class="c"># tighter for memory</span>
+
+  <span class="c"># ---- Per Pod (sum of all containers) ----</span>
+  - <span class="k">type:</span> <span class="s">Pod</span>
+    <span class="h">max:</span>
+      <span class="k">cpu:</span> <span class="s">"8"</span>
+      <span class="k">memory:</span> <span class="s">"16Gi"</span>
+
+  <span class="c"># ---- Per PVC ----</span>
+  - <span class="k">type:</span> <span class="s">PersistentVolumeClaim</span>
+    <span class="h">min:</span>
+      <span class="k">storage:</span> <span class="s">"1Gi"</span>
+    <span class="h">max:</span>
+      <span class="k">storage:</span> <span class="s">"100Gi"</span></pre>
+  </div>
+
+  <h3>What each field does</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Field</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td>default</td><td>If a container doesn't set limits, these values are injected. Mutating admission.</td></tr>
+        <tr><td>defaultRequest</td><td>If a container doesn't set requests, these values are injected. Together with default, prevents BestEffort.</td></tr>
+        <tr><td>min</td><td>Reject pods where any container requests less than this. Stops absurd low values.</td></tr>
+        <tr><td>max</td><td>Reject pods where any container requests more than this. Caps individual pod size.</td></tr>
+        <tr><td>maxLimitRequestRatio</td><td>For each resource, reject if <code>limits/requests &gt; ratio</code>. Cap on burst factor.</td></tr>
+        <tr><td>type</td><td>Container | Pod | PersistentVolumeClaim. The scope of the rule.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">LimitRange gotchas</div>
+    <ul>
+      <li><strong>Defaults don't apply retroactively.</strong> Pods that existed before the LimitRange was created keep their original (or missing) values until they restart.</li>
+      <li><strong>Defaults silence developers.</strong> A developer never sees they forgot to set resources — the pod just runs with cluster defaults. Pair with a Kyverno warning policy.</li>
+      <li><strong><code>maxLimitRequestRatio</code> for memory should be tight (≤ 2).</strong> Huge ratios make Burstable QoS unsafe at scale.</li>
+      <li><strong>Multiple LimitRanges in a namespace</strong> are intersected — the most restrictive wins. Confusing in practice; prefer one per namespace.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 8: RESOURCEQUOTA ================ -->
+<section id="quota" class="chapter">
+  <div class="eyebrow"><span class="num">III.2</span> Namespace controls · ResourceQuota</div>
+  <h2><em>ResourceQuota</em>: hard caps on a namespace's total appetite</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">ResourceQuota</div>
+    <p class="body">
+      A namespace-scoped policy that caps the <strong>aggregate</strong>
+      requests, limits, and object counts of all workloads in that namespace.
+      Where LimitRange constrains individual pods, ResourceQuota constrains the
+      <em>total</em>. Enforced at gate 2 — pods that would push the namespace over
+      quota are rejected at <code>kubectl apply</code> time.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Operating principles</div>
+    <ol>
+      <li><strong>Quota acts on requests, not usage.</strong> A pod requesting 100m but using 800m is invisible to quota. This is why right-sizing matters even with quotas in place.</li>
+      <li><strong>Quota requires LimitRange to be useful.</strong> Without LimitRange defaults, every pod must explicitly declare resources or the apply fails. Together they're a complete policy; alone they're a half-measure.</li>
+      <li><strong>Use <code>scopeSelector</code> to separate workload classes.</strong> Production pods (long-running) vs batch jobs (one-shot) should consume from different quota buckets.</li>
+      <li><strong>Object-count quotas catch runaway controllers.</strong> A misconfigured Job can spawn thousands of pods. <code>count/pods</code> caps the damage.</li>
+    </ol>
+  </div>
+
+  <h3>Production quota — split between long-running and batch</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">resourcequota-jahez-prod.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># Quota 1: Long-running production workloads</span>
+<span class="h">apiVersion:</span> v1
+<span class="h">kind:</span> ResourceQuota
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-prod-services</span>
+  <span class="k">namespace:</span> <span class="s">jahez-prod</span>
+<span class="h">spec:</span>
+  <span class="h">hard:</span>
+    <span class="k">requests.cpu:</span> <span class="s">"40"</span>
+    <span class="k">requests.memory:</span> <span class="s">"80Gi"</span>
+    <span class="k">limits.cpu:</span> <span class="s">"100"</span>
+    <span class="k">limits.memory:</span> <span class="s">"160Gi"</span>
+    <span class="k">requests.storage:</span> <span class="s">"500Gi"</span>
+    <span class="k">persistentvolumeclaims:</span> <span class="s">"20"</span>
+    <span class="k">count/services:</span> <span class="s">"30"</span>
+    <span class="k">count/deployments.apps:</span> <span class="s">"50"</span>
+  <span class="h">scopeSelector:</span>
+    <span class="h">matchExpressions:</span>
+    - <span class="k">operator:</span> <span class="s">NotIn</span>
+      <span class="k">scopeName:</span> <span class="s">PriorityClass</span>
+      <span class="h">values:</span> [<span class="s">jahez-batch</span>]
+---
+<span class="c"># Quota 2: Batch jobs — separate budget</span>
+<span class="h">apiVersion:</span> v1
+<span class="h">kind:</span> ResourceQuota
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-prod-batch</span>
+  <span class="k">namespace:</span> <span class="s">jahez-prod</span>
+<span class="h">spec:</span>
+  <span class="h">hard:</span>
+    <span class="k">requests.cpu:</span> <span class="s">"20"</span>
+    <span class="k">requests.memory:</span> <span class="s">"40Gi"</span>
+    <span class="k">count/jobs.batch:</span> <span class="s">"100"</span>
+  <span class="h">scopeSelector:</span>
+    <span class="h">matchExpressions:</span>
+    - <span class="k">operator:</span> <span class="s">In</span>
+      <span class="k">scopeName:</span> <span class="s">PriorityClass</span>
+      <span class="h">values:</span> [<span class="s">jahez-batch</span>]</pre>
+  </div>
+
+  <h3>Quota field reference</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Field</th><th>Caps</th></tr></thead>
+      <tbody>
+        <tr><td>requests.cpu / requests.memory</td><td>Sum of all pod CPU/memory requests in the namespace.</td></tr>
+        <tr><td>limits.cpu / limits.memory</td><td>Sum of all pod CPU/memory limits. Usually 2–4× requests.</td></tr>
+        <tr><td>requests.storage</td><td>Sum of PVC capacity requests.</td></tr>
+        <tr><td>persistentvolumeclaims</td><td>Count of PVCs.</td></tr>
+        <tr><td>count/&lt;resource&gt;</td><td>Generic object count — pods, services, configmaps, secrets, deployments.</td></tr>
+        <tr><td>scopeSelector</td><td>Apply quota only to pods matching a scope (PriorityClass, BestEffort, NotTerminating, etc.).</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Checking current usage</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">$ kubectl describe resourcequota -n jahez-prod</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c">Name:                  jahez-prod-services</span>
+<span class="c">Namespace:             jahez-prod</span>
+<span class="c">Resource               Used   Hard</span>
+<span class="c">--------               ----   ----</span>
+<span class="c">count/deployments.app  18     50</span>
+<span class="c">limits.cpu             62     100</span>
+<span class="c">limits.memory          112Gi  160Gi</span>
+<span class="c">requests.cpu           28     40</span>
+<span class="c">requests.memory        58Gi   80Gi</span></pre>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">Quota traps</div>
+    <ul>
+      <li><strong>Quota without LimitRange = constant apply failures.</strong> Every developer hits "must specify requests.cpu" the first time.</li>
+      <li><strong>Setting quota = sum of all workloads at apply-time.</strong> Leaves zero headroom. New deployments get rejected the first time a service scales out.</li>
+      <li><strong>Mixing batch and long-running in one quota.</strong> A bad cron job at 02:00 fills the quota, blocks production deploys at 09:00. Use scopeSelector.</li>
+      <li><strong>Forgetting <code>count/</code> caps.</strong> A leaking operator can create 10,000 ConfigMaps before anyone notices.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 9: PRIORITY & PDB ================ -->
+<section id="priority" class="chapter">
+  <div class="eyebrow"><span class="num">III.3</span> Namespace controls · PriorityClass &amp; PDB</div>
+  <h2><em>PriorityClass</em> &amp; <em>PodDisruptionBudget</em>: who gets preempted, who stays alive</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">PriorityClass</div>
+    <p class="body">
+      A cluster-wide object that assigns a numeric priority to pods. When a high-priority
+      pod can't fit anywhere, the scheduler will <strong>preempt</strong> (evict)
+      lower-priority pods to make room. Also determines eviction order under
+      node pressure beyond QoS ranking.
+    </p>
+  </div>
+
+  <div class="def-card" style="background:linear-gradient(135deg,rgba(52,211,153,.08),rgba(125,211,252,.05));border-color:rgba(52,211,153,.22)">
+    <div class="term" style="color:var(--green)">PodDisruptionBudget (PDB)</div>
+    <p class="body">
+      A namespace-scoped policy that protects a Deployment from <em>voluntary</em>
+      disruptions (node drains, cluster upgrades, eviction-by-tooling) by guaranteeing
+      a minimum number of pods stay running. Does <strong>not</strong> protect against
+      involuntary disruption (node crash, OOM-kill).
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">How they work together</div>
+    <ol>
+      <li><strong>PriorityClass decides who survives scarcity.</strong> If two pods compete for a slot, the higher-priority one wins.</li>
+      <li><strong>PDB decides what "disruption" means for graceful operations.</strong> <code>kubectl drain</code> respects PDB; node crashes don't.</li>
+      <li><strong>Three classes is the right number.</strong> <em>Critical</em> (payments, checkout), <em>standard</em> (most services), <em>batch</em> (preemptible, low priority). More than three is over-engineering.</li>
+      <li><strong>Every production Deployment needs a PDB.</strong> Without one, <code>kubectl drain</code> can take all replicas down simultaneously.</li>
+    </ol>
+  </div>
+
+  <h3>Three-tier priority + PDB pattern</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">priority-classes.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># Highest — payments, checkout, anything user-blocking</span>
+<span class="h">apiVersion:</span> scheduling.k8s.io/v1
+<span class="h">kind:</span> PriorityClass
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-critical</span>
+<span class="k">value:</span> <span class="n">10000</span>
+<span class="k">globalDefault:</span> <span class="b">false</span>
+<span class="k">description:</span> <span class="s">"Payment / checkout / order placement"</span>
+---
+<span class="c"># Normal services — most workloads</span>
+<span class="h">apiVersion:</span> scheduling.k8s.io/v1
+<span class="h">kind:</span> PriorityClass
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-standard</span>
+<span class="k">value:</span> <span class="n">5000</span>
+<span class="k">globalDefault:</span> <span class="b">true</span>           <span class="c"># pods without priority get this</span>
+<span class="k">description:</span> <span class="s">"Standard production services"</span>
+---
+<span class="c"># Batch — preemptible</span>
+<span class="h">apiVersion:</span> scheduling.k8s.io/v1
+<span class="h">kind:</span> PriorityClass
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-batch</span>
+<span class="k">value:</span> <span class="n">1000</span>
+<span class="k">preemptionPolicy:</span> <span class="s">Never</span>      <span class="c"># won't preempt others</span>
+<span class="k">description:</span> <span class="s">"Batch jobs — first to die"</span></pre>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">pdb-checkout.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">apiVersion:</span> policy/v1
+<span class="h">kind:</span> PodDisruptionBudget
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">checkout-pdb</span>
+  <span class="k">namespace:</span> <span class="s">jahez-prod</span>
+<span class="h">spec:</span>
+  <span class="k">minAvailable:</span> <span class="n">3</span>             <span class="c"># at least 3 pods must stay up</span>
+  <span class="c"># alternative: maxUnavailable: "25%"</span>
+  <span class="h">selector:</span>
+    <span class="h">matchLabels:</span>
+      <span class="k">app:</span> <span class="s">checkout</span></pre>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-title"><span>⚠️</span> PDB pitfall: <code>minAvailable: 100%</code></div>
+    <p>Setting <code>minAvailable</code> equal to the replica count blocks all drains. Cluster upgrades hang forever. Use <code>maxUnavailable: 1</code> instead — explicit about how much disruption you tolerate.</p>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 10: AUTOSCALING OVERVIEW ================ -->
+<section id="autoscale" class="chapter">
+  <div class="eyebrow"><span class="num">IV.1</span> Autoscaling · Three axes</div>
+  <h2>Three independent ways to scale: <em>horizontal, vertical, cluster</em></h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge diag">Diagram</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Autoscaling (in Kubernetes)</div>
+    <p class="body">
+      The automatic adjustment of resources to match demand, performed by three
+      separate controllers operating on three different axes:
+      <strong>more pods</strong> (HPA), <strong>bigger pods</strong> (VPA), or
+      <strong>more nodes</strong> (Cluster Autoscaler / Karpenter). Each solves a
+      different scarcity problem; the three together form a complete elasticity
+      story.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">When to use which</div>
+    <ol>
+      <li><strong>HPA</strong> for stateless services with variable traffic — the workhorse of elasticity. Scales replica count based on CPU, memory, or custom metrics.</li>
+      <li><strong>VPA</strong> for right-sizing recommendations and for stateful services that can't easily be replicated. In <code>Off</code> mode, it's a free advisor.</li>
+      <li><strong>Cluster Autoscaler / Karpenter</strong> for adapting node count to pod pressure. Triggered by unschedulable pods (need more nodes) or persistent under-utilization (drop nodes).</li>
+      <li><strong>Compose them carefully.</strong> HPA + VPA on the same axis fight. HPA + Cluster Autoscaler is the canonical production combination.</li>
+    </ol>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">The Three Axes of Scaling</div>
+    <svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg">
+      <!-- Center node -->
+      <circle cx="400" cy="180" r="42" fill="rgba(125,211,252,.15)" stroke="#7dd3fc" stroke-width="2"/>
+      <text x="400" y="178" text-anchor="middle" fill="#7dd3fc" font-family="Fraunces" font-style="italic" font-size="14" font-weight="600">workload</text>
+      <text x="400" y="195" text-anchor="middle" fill="#a0adbf" font-family="JetBrains Mono" font-size="10">scarcity?</text>
+
+      <!-- HPA branch -->
+      <g>
+        <line x1="400" y1="138" x2="400" y2="60" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <rect x="280" y="20" width="240" height="60" rx="10" fill="rgba(52,211,153,.12)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="400" y="42" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono" font-size="11" font-weight="700">HORIZONTAL · HPA</text>
+        <text x="400" y="62" text-anchor="middle" fill="#e6ecf3" font-family="Outfit" font-size="12">more pods · same size</text>
+        <text x="400" y="76" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="10" font-style="italic">scales replicaCount</text>
+      </g>
+
+      <!-- VPA branch -->
+      <g>
+        <line x1="358" y1="180" x2="190" y2="180" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <rect x="20" y="150" width="170" height="60" rx="10" fill="rgba(167,139,250,.12)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="105" y="172" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="11" font-weight="700">VERTICAL · VPA</text>
+        <text x="105" y="192" text-anchor="middle" fill="#e6ecf3" font-family="Outfit" font-size="12">bigger pods</text>
+        <text x="105" y="206" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="10" font-style="italic">adjusts requests/limits</text>
+      </g>
+
+      <!-- CA branch -->
+      <g>
+        <line x1="442" y1="180" x2="610" y2="180" stroke="#f0abfc" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <rect x="610" y="150" width="170" height="60" rx="10" fill="rgba(240,171,252,.12)" stroke="#f0abfc" stroke-width="1.5"/>
+        <text x="695" y="172" text-anchor="middle" fill="#f0abfc" font-family="JetBrains Mono" font-size="11" font-weight="700">CLUSTER · CA</text>
+        <text x="695" y="192" text-anchor="middle" fill="#e6ecf3" font-family="Outfit" font-size="12">more nodes</text>
+        <text x="695" y="206" text-anchor="middle" fill="#a0adbf" font-family="Outfit" font-size="10" font-style="italic">adjusts node count</text>
+      </g>
+
+      <!-- Compose -->
+      <line x1="400" y1="222" x2="400" y2="290" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arr1)"/>
+      <rect x="220" y="290" width="360" height="60" rx="10" fill="rgba(251,191,36,.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="312" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono" font-size="11" font-weight="700">COMPOSE: HPA + CA = production default</text>
+      <text x="400" y="332" text-anchor="middle" fill="#e6ecf3" font-family="Outfit" font-size="12">HPA scales pods · CA adds nodes when pods can't fit</text>
+
+      <defs>
+        <marker id="arr1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6" fill="#a0adbf"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 11: HPA ================ -->
+<section id="hpa" class="chapter">
+  <div class="eyebrow"><span class="num">IV.2</span> Autoscaling · Horizontal Pod Autoscaler</div>
+  <h2><em>HPA</em>: scale replicas based on metrics</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Horizontal Pod Autoscaler</div>
+    <p class="body">
+      A controller that periodically (default every 15 seconds) compares actual metric
+      values against a target, and adjusts a workload's replica count to bring the
+      ratio toward 1.0. Supports CPU, memory, custom metrics (per-pod), and external
+      metrics (queue depth, RPS).
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">The HPA formula</div>
+    <ol>
+      <li><strong>desiredReplicas = ceil(currentReplicas × (currentMetric / targetMetric))</strong></li>
+      <li><strong>Scale up is aggressive by default</strong> — can double pods in 60s if metrics warrant it.</li>
+      <li><strong>Scale down is conservative</strong> — 5 minute stabilization window prevents thrashing.</li>
+      <li><strong>Per-pod metrics → ratio.</strong> CPU at 80% with target 50% → multiply replicas by 1.6.</li>
+      <li><strong>External metrics → absolute value.</strong> SQS queue depth of 1000 with target 100 → 10 replicas, regardless of current count.</li>
+    </ol>
+  </div>
+
+  <div class="sim">
+    <div class="sim-title">HPA Simulator</div>
+    <p class="sim-sub">Move the sliders to see how the HPA calculates the desired replica count.</p>
+    <div class="sim-grid">
+      <div>
+        <div class="slider-row">
+          <label>Current CPU usage <span class="val" id="val-usage">75%</span></label>
+          <input type="range" id="sim-usage" min="0" max="200" value="75">
+        </div>
+        <div class="slider-row">
+          <label>Target CPU utilization <span class="val" id="val-target">50%</span></label>
+          <input type="range" id="sim-target" min="20" max="100" value="50">
+        </div>
+        <div class="slider-row">
+          <label>Current replicas <span class="val" id="val-replicas">4</span></label>
+          <input type="range" id="sim-replicas" min="1" max="50" value="4">
+        </div>
+        <div class="slider-row">
+          <label>Max replicas <span class="val" id="val-max">20</span></label>
+          <input type="range" id="sim-max" min="1" max="100" value="20">
+        </div>
+      </div>
+      <div class="sim-output">
+        <div class="sim-output-row">
+          <span class="lbl">Usage ÷ target ratio</span>
+          <span class="out" id="sim-ratio">1.50×</span>
+        </div>
+        <div class="sim-output-row">
+          <span class="lbl">Desired replicas</span>
+          <span class="out big" id="sim-desired">6</span>
+        </div>
+        <div class="sim-output-row">
+          <span class="lbl">Action</span>
+          <span class="out" id="sim-direction">scale up ↑</span>
+        </div>
+        <div class="sim-output-row">
+          <span class="lbl">Δ replicas</span>
+          <span class="out" id="sim-delta">+2</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Production HPA — Jahez search engine</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">hpa-search-engine.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">apiVersion:</span> autoscaling/v2
+<span class="h">kind:</span> HorizontalPodAutoscaler
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">search-engine-hpa</span>
+  <span class="k">namespace:</span> <span class="s">jahez-prod</span>
+<span class="h">spec:</span>
+  <span class="h">scaleTargetRef:</span>
+    <span class="k">apiVersion:</span> <span class="s">apps/v1</span>
+    <span class="k">kind:</span> <span class="s">Deployment</span>
+    <span class="k">name:</span> <span class="s">search-engine</span>
+  <span class="k">minReplicas:</span> <span class="n">4</span>             <span class="c"># never below 4 (zone redundancy)</span>
+  <span class="k">maxReplicas:</span> <span class="n">30</span>            <span class="c"># cap on cost</span>
+
+  <span class="h">metrics:</span>
+  <span class="c"># Metric 1: CPU</span>
+  - <span class="k">type:</span> <span class="s">Resource</span>
+    <span class="h">resource:</span>
+      <span class="k">name:</span> <span class="s">cpu</span>
+      <span class="h">target:</span>
+        <span class="k">type:</span> <span class="s">Utilization</span>
+        <span class="k">averageUtilization:</span> <span class="n">70</span>   <span class="c"># scale to keep CPU ≈ 70%</span>
+
+  <span class="c"># Metric 2: custom — requests-per-second</span>
+  - <span class="k">type:</span> <span class="s">Pods</span>
+    <span class="h">pods:</span>
+      <span class="h">metric:</span>
+        <span class="k">name:</span> <span class="s">http_requests_per_second</span>
+      <span class="h">target:</span>
+        <span class="k">type:</span> <span class="s">AverageValue</span>
+        <span class="k">averageValue:</span> <span class="s">"500"</span>      <span class="c"># 500 rps per pod</span>
+
+  <span class="h">behavior:</span>
+    <span class="h">scaleUp:</span>
+      <span class="k">stabilizationWindowSeconds:</span> <span class="n">60</span>
+      <span class="h">policies:</span>
+      - <span class="k">type:</span> <span class="s">Percent</span>
+        <span class="k">value:</span> <span class="n">100</span>          <span class="c"># can double per minute</span>
+        <span class="k">periodSeconds:</span> <span class="n">60</span>
+    <span class="h">scaleDown:</span>
+      <span class="k">stabilizationWindowSeconds:</span> <span class="n">300</span>   <span class="c"># 5 min cool-down</span>
+      <span class="h">policies:</span>
+      - <span class="k">type:</span> <span class="s">Percent</span>
+        <span class="k">value:</span> <span class="n">10</span>           <span class="c"># max 10% scale-down per minute</span>
+        <span class="k">periodSeconds:</span> <span class="n">60</span></pre>
+  </div>
+
+  <h3>Metric types</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Type</th><th>Source</th><th>Target form</th></tr></thead>
+      <tbody>
+        <tr><td>Resource</td><td>metrics-server (CPU/memory)</td><td>Utilization (%) or AverageValue (absolute)</td></tr>
+        <tr><td>Pods</td><td>per-pod custom metric (Prometheus adapter)</td><td>AverageValue — averaged across pods</td></tr>
+        <tr><td>Object</td><td>metric of a single Kubernetes object (e.g., Ingress RPS)</td><td>Value or AverageValue</td></tr>
+        <tr><td>External</td><td>cluster-external (SQS depth, Kafka lag)</td><td>Value or AverageValue</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">HPA pitfalls</div>
+    <ul>
+      <li><strong>HPA on memory for GC'd languages.</strong> JVM and Go hold memory after GC — usage looks flat/rising even when load drops. Use CPU or RPS.</li>
+      <li><strong><code>minReplicas: 1</code>.</strong> Single replica means zero redundancy during rollouts and drains. Use ≥ 2 for any user-facing service.</li>
+      <li><strong>No <code>maxReplicas</code> ceiling.</strong> A bad metric (or a real DoS) burns thousands of dollars before anyone notices.</li>
+      <li><strong>Aggressive scale-down.</strong> Default 5-min stabilization is the floor, not a target. Bursty traffic needs longer windows or HPA will yo-yo.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 12: VPA ================ -->
+<section id="vpa" class="chapter">
+  <div class="eyebrow"><span class="num">IV.3</span> Autoscaling · Vertical Pod Autoscaler</div>
+  <h2><em>VPA</em>: right-size requests automatically (or just recommend them)</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Vertical Pod Autoscaler</div>
+    <p class="body">
+      An add-on (not built into core Kubernetes) that observes pod resource usage
+      over time and either <strong>recommends</strong> better requests/limits
+      (<code>Off</code> mode) or <strong>applies them automatically</strong>
+      (<code>Auto</code> / <code>Recreate</code> / <code>Initial</code> modes).
+      Three components: recommender, updater, admission-controller.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Four update modes</div>
+    <ol>
+      <li><strong>Off</strong> — recommendations only. <em>This is the safe default — use it as a free advisor.</em></li>
+      <li><strong>Initial</strong> — applies recommendations when a pod is created. Existing pods unchanged.</li>
+      <li><strong>Recreate</strong> — kills pods and recreates them with new sizes. Disruptive.</li>
+      <li><strong>Auto</strong> — currently same as Recreate. In future: uses in-place resize once stable.</li>
+    </ol>
+  </div>
+
+  <h3>VPA in advisor mode — recommended starting point</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">vpa-checkout-advisor.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">apiVersion:</span> autoscaling.k8s.io/v1
+<span class="h">kind:</span> VerticalPodAutoscaler
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">checkout-vpa</span>
+  <span class="k">namespace:</span> <span class="s">jahez-prod</span>
+<span class="h">spec:</span>
+  <span class="h">targetRef:</span>
+    <span class="k">apiVersion:</span> <span class="s">apps/v1</span>
+    <span class="k">kind:</span> <span class="s">Deployment</span>
+    <span class="k">name:</span> <span class="s">checkout</span>
+  <span class="h">updatePolicy:</span>
+    <span class="k">updateMode:</span> <span class="s">"Off"</span>          <span class="c"># advisor only</span>
+  <span class="h">resourcePolicy:</span>
+    <span class="h">containerPolicies:</span>
+    - <span class="k">containerName:</span> <span class="s">"*"</span>
+      <span class="h">minAllowed:</span>
+        <span class="k">cpu:</span> <span class="s">"100m"</span>
+        <span class="k">memory:</span> <span class="s">"128Mi"</span>
+      <span class="h">maxAllowed:</span>
+        <span class="k">cpu:</span> <span class="s">"4"</span>
+        <span class="k">memory:</span> <span class="s">"8Gi"</span>
+      <span class="h">controlledResources:</span> [<span class="s">"cpu"</span>, <span class="s">"memory"</span>]</pre>
+  </div>
+
+  <h3>Reading VPA recommendations</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">$ kubectl describe vpa checkout-vpa -n jahez-prod</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c">Recommendation:</span>
+<span class="c">  Container Recommendations:</span>
+<span class="c">    Container Name:  app</span>
+<span class="c">    Lower Bound:        ← scale-up trigger</span>
+<span class="c">      Cpu:     250m</span>
+<span class="c">      Memory:  680Mi</span>
+<span class="c">    Target:             ← apply this</span>
+<span class="c">      Cpu:     420m</span>
+<span class="c">      Memory:  920Mi</span>
+<span class="c">    Uncapped Target:    ← without maxAllowed cap</span>
+<span class="c">      Cpu:     420m</span>
+<span class="c">      Memory:  920Mi</span>
+<span class="c">    Upper Bound:        ← scale-down trigger</span>
+<span class="c">      Cpu:     900m</span>
+<span class="c">      Memory:  1500Mi</span></pre>
+  </div>
+
+  <div class="pitfalls">
+    <div class="pitfalls-title">VPA + HPA conflicts</div>
+    <ul>
+      <li><strong>Never run VPA Auto and HPA on the same resource.</strong> VPA shrinks request → HPA sees higher usage ratio → adds replicas → VPA shrinks again. Infinite loop.</li>
+      <li><strong>Safe combo:</strong> VPA on memory (Auto) + HPA on CPU. Or: VPA in Off mode (advisor) + HPA on anything.</li>
+      <li><strong>Recreate mode disrupts pods.</strong> For stateful workloads, only Off mode is safe until in-place resize is GA-stable in your cluster.</li>
+      <li><strong>VPA recommendations need enough history.</strong> First 24 hours of recommendations are unreliable. Let it bake.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 13: CLUSTER AUTOSCALER ================ -->
+<section id="ca" class="chapter">
+  <div class="eyebrow"><span class="num">IV.4</span> Autoscaling · Cluster Autoscaler &amp; Karpenter</div>
+  <h2><em>Cluster Autoscaler</em>: add nodes when pods can't fit</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Cluster Autoscaler (CA)</div>
+    <p class="body">
+      A controller that watches for unschedulable pods and provisions new nodes from
+      pre-defined node groups. Inversely, it observes underutilized nodes and drains
+      them to reduce cost. Triggered by pod pressure, not metrics.
+    </p>
+  </div>
+
+  <div class="def-card" style="background:linear-gradient(135deg,rgba(240,171,252,.08),rgba(167,139,250,.05));border-color:rgba(240,171,252,.22)">
+    <div class="term" style="color:var(--accent-3)">Karpenter</div>
+    <p class="body">
+      A newer alternative to CA, originally from AWS. Skips the "node group" abstraction
+      and provisions instances directly from EC2 (or other cloud APIs). Picks instance
+      types based on actual pod requirements — faster, more efficient, less config.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">CA vs Karpenter</div>
+    <ol>
+      <li><strong>CA needs pre-defined node groups.</strong> You decide instance types up front; CA scales them up/down.</li>
+      <li><strong>Karpenter picks instances dynamically.</strong> Given pod requirements, it selects the optimal instance type from a NodePool spec.</li>
+      <li><strong>CA is simpler operationally.</strong> Karpenter is more efficient but requires more setup and trust.</li>
+      <li><strong>Both depend on pod requests being accurate.</strong> Bad requests → bad scaling decisions. Right-sizing matters even with autoscaling.</li>
+    </ol>
+  </div>
+
+  <h3>Karpenter NodePool — Jahez default pool</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">karpenter-nodepool.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">apiVersion:</span> karpenter.sh/v1
+<span class="h">kind:</span> NodePool
+<span class="h">metadata:</span>
+  <span class="k">name:</span> <span class="s">jahez-default</span>
+<span class="h">spec:</span>
+  <span class="h">template:</span>
+    <span class="h">spec:</span>
+      <span class="h">requirements:</span>
+      - <span class="k">key:</span> <span class="s">karpenter.k8s.aws/instance-category</span>
+        <span class="k">operator:</span> <span class="s">In</span>
+        <span class="h">values:</span> [<span class="s">c</span>, <span class="s">m</span>, <span class="s">r</span>]
+      - <span class="k">key:</span> <span class="s">karpenter.k8s.aws/instance-cpu</span>
+        <span class="k">operator:</span> <span class="s">In</span>
+        <span class="h">values:</span> [<span class="s">"4"</span>, <span class="s">"8"</span>, <span class="s">"16"</span>]
+      - <span class="k">key:</span> <span class="s">karpenter.k8s.aws/instance-generation</span>
+        <span class="k">operator:</span> <span class="s">Gt</span>
+        <span class="h">values:</span> [<span class="s">"4"</span>]
+      - <span class="k">key:</span> <span class="s">topology.kubernetes.io/zone</span>
+        <span class="k">operator:</span> <span class="s">In</span>
+        <span class="h">values:</span> [<span class="s">me-south-1a</span>, <span class="s">me-south-1b</span>, <span class="s">me-south-1c</span>]
+      - <span class="k">key:</span> <span class="s">karpenter.sh/capacity-type</span>
+        <span class="k">operator:</span> <span class="s">In</span>
+        <span class="h">values:</span> [<span class="s">on-demand</span>, <span class="s">spot</span>]
+
+      <span class="h">nodeClassRef:</span>
+        <span class="k">name:</span> <span class="s">default</span>
+        <span class="k">group:</span> <span class="s">karpenter.k8s.aws</span>
+        <span class="k">kind:</span> <span class="s">EC2NodeClass</span>
+
+  <span class="h">limits:</span>
+    <span class="k">cpu:</span> <span class="s">"1000"</span>           <span class="c"># cluster-wide CPU cap from this pool</span>
+    <span class="k">memory:</span> <span class="s">"2000Gi"</span>
+
+  <span class="h">disruption:</span>
+    <span class="k">consolidationPolicy:</span> <span class="s">WhenEmptyOrUnderutilized</span>
+    <span class="k">consolidateAfter:</span> <span class="s">5m</span>     <span class="c"># wait 5min before consolidating</span></pre>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title"><span>💡</span> The HPA + CA / Karpenter dance</div>
+    <p>HPA increases replicas → some are unschedulable → CA / Karpenter notices → provisions a node → pods bind. Latency from "load arrives" to "new pod serves traffic" is typically 90–180 seconds. Plan headroom accordingly — keep enough buffer in HPA <code>minReplicas</code> that you don't need a new node for every traffic spike.</p>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 14: RESOURCE MANAGERS ================ -->
+<section id="managers" class="chapter">
+  <div class="eyebrow"><span class="num">V.1</span> Node-level · Resource Managers</div>
+  <h2>The kubelet's <em>three managers</em>: CPU, Memory, Topology</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge diag">Diagram</span>
+    <span class="flow-badge yaml">YAML</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Resource managers</div>
+    <p class="body">
+      Kubelet subsystems that coordinate <em>which specific CPUs, memory regions, and
+      NUMA nodes</em> a container's processes are pinned to. By default, the kernel
+      scheduler decides — workloads can land on any CPU and bounce between NUMA nodes.
+      For latency-sensitive or NUMA-aware workloads, this default is wrong.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">When to enable them</div>
+    <ol>
+      <li><strong>Default kubelet (no managers)</strong> works for the vast majority of stateless services. Don't enable the managers unless you have evidence you need them.</li>
+      <li><strong>CPU Manager (static policy)</strong> for Guaranteed pods that need exclusive CPU cores — latency-critical services, ML inference, real-time workloads.</li>
+      <li><strong>Memory Manager</strong> when running large-page workloads or memory-bandwidth-sensitive applications.</li>
+      <li><strong>Topology Manager</strong> coordinates the above + device plugins (GPUs, NICs) to ensure all resources for a pod come from the same NUMA node.</li>
+    </ol>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">NUMA-aware placement vs default</div>
+    <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
+      <!-- Default placement -->
+      <text x="200" y="30" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono" font-size="12" font-weight="700">DEFAULT — pod spread across NUMA nodes</text>
+
+      <!-- NUMA 0 -->
+      <rect x="50" y="50" width="140" height="130" rx="10" fill="#1a2230" stroke="#3a4a63" stroke-width="1.5"/>
+      <text x="120" y="72" text-anchor="middle" fill="#a0adbf" font-family="JetBrains Mono" font-size="11" font-weight="700">NUMA 0</text>
+      <rect x="65" y="85" width="22" height="22" rx="3" fill="rgba(125,211,252,.3)" stroke="#7dd3fc"/>
+      <rect x="92" y="85" width="22" height="22" rx="3" fill="rgba(125,211,252,.3)" stroke="#7dd3fc"/>
+      <rect x="65" y="112" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <rect x="92" y="112" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <text x="120" y="155" text-anchor="middle" fill="#7dd3fc" font-family="Outfit" font-size="10">Memory 0</text>
+      <rect x="80" y="160" width="55" height="14" rx="2" fill="rgba(125,211,252,.2)" stroke="#7dd3fc" stroke-width="0.8"/>
+
+      <!-- NUMA 1 -->
+      <rect x="210" y="50" width="140" height="130" rx="10" fill="#1a2230" stroke="#3a4a63" stroke-width="1.5"/>
+      <text x="280" y="72" text-anchor="middle" fill="#a0adbf" font-family="JetBrains Mono" font-size="11" font-weight="700">NUMA 1</text>
+      <rect x="225" y="85" width="22" height="22" rx="3" fill="rgba(125,211,252,.3)" stroke="#7dd3fc"/>
+      <rect x="252" y="85" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <rect x="225" y="112" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <rect x="252" y="112" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <text x="280" y="155" text-anchor="middle" fill="#7dd3fc" font-family="Outfit" font-size="10">Memory 1</text>
+      <rect x="240" y="160" width="55" height="14" rx="2" fill="#1a2230" stroke="#3a4a63" stroke-width="0.8"/>
+
+      <!-- Cross-NUMA link (bad) -->
+      <path d="M120 165 L280 165" stroke="#f87171" stroke-width="2" stroke-dasharray="4,3"/>
+      <text x="200" y="200" text-anchor="middle" fill="#f87171" font-family="Outfit" font-size="10" font-style="italic">cross-NUMA memory access = ~2× latency penalty</text>
+
+      <!-- Topology Manager placement -->
+      <text x="600" y="30" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono" font-size="12" font-weight="700">WITH TOPOLOGY MANAGER — all on NUMA 0</text>
+
+      <rect x="450" y="50" width="140" height="130" rx="10" fill="#1a2230" stroke="#34d399" stroke-width="2"/>
+      <text x="520" y="72" text-anchor="middle" fill="#a0adbf" font-family="JetBrains Mono" font-size="11" font-weight="700">NUMA 0</text>
+      <rect x="465" y="85" width="22" height="22" rx="3" fill="rgba(52,211,153,.3)" stroke="#34d399"/>
+      <rect x="492" y="85" width="22" height="22" rx="3" fill="rgba(52,211,153,.3)" stroke="#34d399"/>
+      <rect x="465" y="112" width="22" height="22" rx="3" fill="rgba(52,211,153,.3)" stroke="#34d399"/>
+      <rect x="492" y="112" width="22" height="22" rx="3" fill="rgba(52,211,153,.3)" stroke="#34d399"/>
+      <text x="520" y="155" text-anchor="middle" fill="#34d399" font-family="Outfit" font-size="10">Memory 0</text>
+      <rect x="480" y="160" width="55" height="14" rx="2" fill="rgba(52,211,153,.3)" stroke="#34d399"/>
+
+      <rect x="610" y="50" width="140" height="130" rx="10" fill="#1a2230" stroke="#3a4a63" stroke-width="1.5"/>
+      <text x="680" y="72" text-anchor="middle" fill="#a0adbf" font-family="JetBrains Mono" font-size="11" font-weight="700">NUMA 1</text>
+      <rect x="625" y="85" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <rect x="652" y="85" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <rect x="625" y="112" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <rect x="652" y="112" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+      <text x="680" y="155" text-anchor="middle" fill="#7dd3fc" font-family="Outfit" font-size="10">Memory 1</text>
+      <rect x="640" y="160" width="55" height="14" rx="2" fill="#1a2230" stroke="#3a4a63" stroke-width="0.8"/>
+
+      <text x="600" y="200" text-anchor="middle" fill="#34d399" font-family="Outfit" font-size="10" font-style="italic">all CPU + memory local to one NUMA node</text>
+
+      <!-- Legend -->
+      <g transform="translate(50,240)">
+        <rect width="22" height="22" rx="3" fill="rgba(125,211,252,.3)" stroke="#7dd3fc"/>
+        <text x="32" y="16" fill="#a0adbf" font-family="Outfit" font-size="11">= pod's CPU core</text>
+        <rect x="180" width="22" height="22" rx="3" fill="#1a2230" stroke="#3a4a63"/>
+        <text x="212" y="16" fill="#a0adbf" font-family="Outfit" font-size="11">= idle / other pod</text>
+      </g>
+      <text x="400" y="290" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="11" font-style="italic">
+        Topology Manager pins CPU + memory + devices to the same NUMA node — avoids cross-NUMA penalties for latency-critical workloads.
+      </text>
+    </svg>
+  </div>
+
+  <h3>Topology Manager policies</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Policy</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td>none</td><td>Default. No NUMA-aware placement. Kubelet ignores topology hints.</td></tr>
+        <tr><td>best-effort</td><td>Try to align on a NUMA node; admit pod even if can't.</td></tr>
+        <tr><td>restricted</td><td>Reject pod if NUMA alignment can't be achieved. <em>Recommended for production NUMA-sensitive workloads.</em></td></tr>
+        <tr><td>single-numa-node</td><td>Strictest: all resources must come from a single NUMA node, or reject.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Enabling on a kubelet</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">/var/lib/kubelet/config.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">apiVersion:</span> kubelet.config.k8s.io/v1beta1
+<span class="h">kind:</span> KubeletConfiguration
+
+<span class="k">cpuManagerPolicy:</span> <span class="s">static</span>
+<span class="k">memoryManagerPolicy:</span> <span class="s">Static</span>
+<span class="k">topologyManagerPolicy:</span> <span class="s">restricted</span>
+<span class="k">topologyManagerScope:</span> <span class="s">pod</span>            <span class="c"># or container</span>
+
+<span class="h">reservedSystemCPUs:</span> <span class="s">"0,1"</span>           <span class="c"># reserve cores 0-1 for OS/kubelet</span></pre>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 15: EVICTION ================ -->
+<section id="eviction" class="chapter">
+  <div class="eyebrow"><span class="num">V.2</span> Node-level · Node-pressure eviction</div>
+  <h2>Node-pressure <em>eviction</em>: how kubelet protects itself</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Node-pressure eviction</div>
+    <p class="body">
+      A kubelet mechanism that proactively kills pods <strong>before</strong> the
+      kernel runs out of memory or disk space. Different from OOM-kill — eviction is
+      a Kubernetes-aware operation that respects QoS, priority, and grace periods.
+      The kubelet's last line of defense against node-wide failure.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Soft vs hard thresholds</div>
+    <ol>
+      <li><strong>Hard threshold</strong> — when crossed, kubelet kills pods <em>immediately</em>, no grace period. Use for catastrophic conditions.</li>
+      <li><strong>Soft threshold</strong> — when crossed for longer than <code>evictionSoftGracePeriod</code>, kubelet starts evicting <em>gracefully</em> (sends SIGTERM, waits up to <code>evictionMaxPodGracePeriod</code>).</li>
+      <li><strong>Soft + hard pair</strong> — soft at 15% free memory, hard at 5%. Soft gives apps time to exit cleanly; hard prevents kubelet itself from dying.</li>
+      <li><strong>Eviction order respects QoS and priority.</strong> BestEffort first, then Burstable exceeding requests, then by priority.</li>
+    </ol>
+  </div>
+
+  <h3>Eviction signals</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Signal</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>memory.available</td><td>Node memory available. Most common eviction trigger.</td></tr>
+        <tr><td>nodefs.available</td><td>Free space on node filesystem (where logs, container layers live).</td></tr>
+        <tr><td>nodefs.inodesFree</td><td>Free inodes on node filesystem. Often the actual culprit when "disk full" makes no sense.</td></tr>
+        <tr><td>imagefs.available</td><td>Free space on image filesystem if separate from nodefs.</td></tr>
+        <tr><td>pid.available</td><td>Available process IDs. Catches fork bombs.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Production eviction config</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">/var/lib/kubelet/config.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">evictionHard:</span>
+  <span class="k">memory.available:</span> <span class="s">"200Mi"</span>
+  <span class="k">nodefs.available:</span> <span class="s">"10%"</span>
+  <span class="k">nodefs.inodesFree:</span> <span class="s">"5%"</span>
+  <span class="k">imagefs.available:</span> <span class="s">"15%"</span>
+
+<span class="h">evictionSoft:</span>
+  <span class="k">memory.available:</span> <span class="s">"500Mi"</span>
+  <span class="k">nodefs.available:</span> <span class="s">"15%"</span>
+
+<span class="h">evictionSoftGracePeriod:</span>
+  <span class="k">memory.available:</span> <span class="s">"1m30s"</span>
+  <span class="k">nodefs.available:</span> <span class="s">"2m"</span>
+
+<span class="k">evictionMaxPodGracePeriod:</span> <span class="n">60</span>      <span class="c"># cap on pod's terminationGracePeriod during eviction</span>
+<span class="k">evictionPressureTransitionPeriod:</span> <span class="s">"5m"</span>  <span class="c"># debounce flapping</span></pre>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 16: SYSTEM RESERVED ================ -->
+<section id="reserved" class="chapter">
+  <div class="eyebrow"><span class="num">V.3</span> Node-level · system-reserved</div>
+  <h2><em>System-reserved</em>: keeping the kubelet alive</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge yaml">YAML</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Node allocatable</div>
+    <p class="body">
+      The portion of a node's total capacity that Kubernetes can schedule pods into.
+      Computed as: <code>allocatable = capacity − kube-reserved − system-reserved − eviction-hard</code>.
+      Everything else is held back for the kubelet, the container runtime, and the OS.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">Why this matters</div>
+    <ol>
+      <li><strong>Without reservations, the kubelet competes with pods for CPU.</strong> Under load, kubelet itself becomes slow → pod status updates lag → eviction loops fail.</li>
+      <li><strong>System daemons need RAM too.</strong> systemd-journald, ssh, monitoring agents, the runtime — easily 1–2 Gi.</li>
+      <li><strong>Eviction threshold is part of the formula.</strong> <code>evictionHard.memory.available</code> reserves a buffer kubelet keeps untouched.</li>
+      <li><strong>Cloud defaults are often wrong.</strong> Verify what EKS/GKE/AKS reserves on your node sizes — small nodes (4 Gi) are especially prone to under-reservation.</li>
+    </ol>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">Node Capacity Breakdown</div>
+    <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+      <text x="20" y="30" fill="#a0adbf" font-family="JetBrains Mono" font-size="11" font-weight="700">NODE: 8 vCPU, 32 GiB total capacity</text>
+
+      <!-- Capacity bar -->
+      <rect x="20" y="50" width="760" height="50" rx="6" fill="#1a2230"/>
+
+      <!-- system-reserved -->
+      <rect x="20" y="50" width="50" height="50" rx="6" fill="rgba(248,113,113,.4)"/>
+      <text x="45" y="78" text-anchor="middle" fill="#fecaca" font-family="JetBrains Mono" font-size="10" font-weight="700">sys</text>
+      <text x="45" y="92" text-anchor="middle" fill="#fecaca" font-family="JetBrains Mono" font-size="9">1Gi</text>
+
+      <!-- kube-reserved -->
+      <rect x="70" y="50" width="50" height="50" fill="rgba(251,191,36,.4)"/>
+      <text x="95" y="78" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono" font-size="10" font-weight="700">kube</text>
+      <text x="95" y="92" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono" font-size="9">1Gi</text>
+
+      <!-- eviction buffer -->
+      <rect x="120" y="50" width="35" height="50" fill="rgba(167,139,250,.4)"/>
+      <text x="137" y="78" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono" font-size="9" font-weight="700">evict</text>
+      <text x="137" y="92" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono" font-size="9">.5Gi</text>
+
+      <!-- allocatable -->
+      <rect x="155" y="50" width="625" height="50" rx="6" fill="rgba(52,211,153,.3)"/>
+      <text x="467" y="78" text-anchor="middle" fill="#bbf7d0" font-family="JetBrains Mono" font-size="12" font-weight="700">ALLOCATABLE for pods</text>
+      <text x="467" y="93" text-anchor="middle" fill="#bbf7d0" font-family="JetBrains Mono" font-size="10">29.5 GiB (92.2%)</text>
+
+      <!-- Labels -->
+      <g transform="translate(20,130)">
+        <rect width="14" height="14" rx="2" fill="rgba(248,113,113,.4)"/>
+        <text x="22" y="11" fill="#a0adbf" font-family="Outfit" font-size="11">systemReserved (OS daemons)</text>
+      </g>
+      <g transform="translate(220,130)">
+        <rect width="14" height="14" rx="2" fill="rgba(251,191,36,.4)"/>
+        <text x="22" y="11" fill="#a0adbf" font-family="Outfit" font-size="11">kubeReserved (kubelet, runtime)</text>
+      </g>
+      <g transform="translate(440,130)">
+        <rect width="14" height="14" rx="2" fill="rgba(167,139,250,.4)"/>
+        <text x="22" y="11" fill="#a0adbf" font-family="Outfit" font-size="11">evictionHard threshold</text>
+      </g>
+      <g transform="translate(620,130)">
+        <rect width="14" height="14" rx="2" fill="rgba(52,211,153,.3)"/>
+        <text x="22" y="11" fill="#a0adbf" font-family="Outfit" font-size="11">pod-allocatable</text>
+      </g>
+
+      <text x="400" y="180" text-anchor="middle" fill="#6c7a90" font-family="Outfit" font-size="12" font-style="italic">
+        Sum of pod requests on this node can never exceed the allocatable region.
+      </text>
+    </svg>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">/var/lib/kubelet/config.yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">kubeReserved:</span>
+  <span class="k">cpu:</span> <span class="s">"500m"</span>
+  <span class="k">memory:</span> <span class="s">"1Gi"</span>
+  <span class="k">ephemeral-storage:</span> <span class="s">"2Gi"</span>
+
+<span class="h">systemReserved:</span>
+  <span class="k">cpu:</span> <span class="s">"500m"</span>
+  <span class="k">memory:</span> <span class="s">"1Gi"</span>
+  <span class="k">ephemeral-storage:</span> <span class="s">"2Gi"</span>
+
+<span class="h">enforceNodeAllocatable:</span> [<span class="s">pods</span>, <span class="s">kube-reserved</span>, <span class="s">system-reserved</span>]
+<span class="k">kubeReservedCgroup:</span> <span class="s">"/kubepods.slice/kube.slice"</span>
+<span class="k">systemReservedCgroup:</span> <span class="s">"/system.slice"</span></pre>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 17: RIGHT-SIZING ================ -->
+<section id="sizing" class="chapter">
+  <div class="eyebrow"><span class="num">VI.1</span> SRE playbook · Right-sizing</div>
+  <h2>Right-sizing as a <em>closed loop</em>, not a one-shot</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+    <span class="flow-badge diag">Diagram</span>
+    <span class="flow-badge check">Checklist</span>
+  </div>
+
+  <div class="def-card">
+    <div class="term">Right-sizing</div>
+    <p class="body">
+      The continuous process of adjusting pod requests and limits so they match
+      observed usage with appropriate headroom. Not a one-time exercise — workloads
+      drift as features ship, traffic grows, and dependencies change. Treat it as a
+      quarterly engineering ritual.
+    </p>
+  </div>
+
+  <div class="principles">
+    <div class="principles-title">The right-sizing loop</div>
+    <ol>
+      <li><strong>Measure</strong> historical usage over a representative window (2–4 weeks, including peak days).</li>
+      <li><strong>Recommend</strong> new requests at p75–p90 of observed usage; limits with appropriate headroom.</li>
+      <li><strong>Apply</strong> via PR review — sizing changes are code changes, not console tweaks.</li>
+      <li><strong>Verify</strong> after rollout that latency, error rate, and resource consumption look right. Watch for one full traffic cycle.</li>
+    </ol>
+  </div>
+
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-num">01</div>
+      <h4>Measure</h4>
+      <p>Pull 2–4 weeks of <code>container_memory_working_set_bytes</code> and <code>container_cpu_usage_seconds_total</code>. Include weekly peaks.</p>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">02</div>
+      <h4>Recommend</h4>
+      <p>requests = p75 of usage. Limits = p99 × 1.3 for memory, p99 × 2 for CPU. Cross-check with VPA advisor.</p>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">03</div>
+      <h4>Apply</h4>
+      <p>Update Deployment via Git PR. Roll out one workload at a time. Don't batch ten sizing changes into one PR.</p>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">04</div>
+      <h4>Verify</h4>
+      <p>Watch p99 latency, OOM count, CFS throttle ratio for one full traffic cycle (24h minimum). Roll back if anything regresses.</p>
+    </div>
+  </div>
+
+  <h3>Four metrics that actually matter</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Metric</th><th>What it tells you</th></tr></thead>
+      <tbody>
+        <tr><td>container_memory_working_set_bytes</td><td>True memory usage as the OOM killer sees it. The one to use for memory sizing.</td></tr>
+        <tr><td>container_cpu_cfs_throttled_seconds_total</td><td>Time the container was throttled. Anything &gt; 5% of CFS periods means CPU limits are too tight.</td></tr>
+        <tr><td>container_cpu_usage_seconds_total (rate)</td><td>Average CPU usage. Use p75 for requests, p99 for limit sizing.</td></tr>
+        <tr><td>kube_pod_container_status_restarts_total</td><td>Restart count. OOM-kills increment this — a leading indicator that memory is undersized.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Headroom guidance per workload type</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Workload</th><th>Request</th><th>Limit headroom</th></tr></thead>
+      <tbody>
+        <tr><td>Stateless HTTP (Go, Node)</td><td>p75 usage</td><td>Memory: +30%. CPU: 2–4× for burst.</td></tr>
+        <tr><td>JVM service</td><td>p75 usage</td><td>Memory: +50% (GC headroom). CPU: 2× minimum.</td></tr>
+        <tr><td>Batch / cron</td><td>p90 usage</td><td>Memory: +20%. CPU: 3–4× since they tolerate throttling.</td></tr>
+        <tr><td>Stateful / database</td><td>p99 usage</td><td>Memory: requests == limits (Guaranteed QoS). No CPU limit.</td></tr>
+        <tr><td>Sidecar (envoy, fluent-bit)</td><td>Fixed: 50–100m CPU, 64–128Mi</td><td>Memory: ×2. CPU: ×2.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title"><span>🔁</span> Quarterly sizing reviews</div>
+    <p>At Jahez scale, a quarterly review across the top 20 deployments by request-cost typically recovers 15–25% of namespace quota. Pair it with a VPA-Off rollout so the advisor's recommendations are always fresh.</p>
+  </div>
+
+  <div class="checklist">
+    <div class="checklist-title">Right-sizing pre-flight</div>
+    <ul>
+      <li>VPA in Off mode deployed for every production workload (free advisor).</li>
+      <li>Dashboards for working-set, throttle ratio, restart count exist per service.</li>
+      <li>Sizing changes go through PR review, not <code>kubectl edit</code>.</li>
+      <li>Rollouts are one workload at a time, with verification.</li>
+      <li>A quarterly sizing review is on someone's calendar.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 18: PATTERNS ================ -->
+<section id="patterns" class="chapter">
+  <div class="eyebrow"><span class="num">VI.2</span> SRE playbook · Patterns &amp; anti-patterns</div>
+  <h2>What good looks like — and <em>what to never ship</em></h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge princ">Principles</span>
+  </div>
+
+  <p class="lede">
+    Patterns are reusable combinations of the primitives this guide has covered.
+    Anti-patterns are configurations that look reasonable but bite you in production.
+    Both are listed below as <em>concrete</em> setups, not vague advice.
+  </p>
+
+  <h3>Patterns to adopt</h3>
+
+  <div class="callout good">
+    <div class="callout-title"><span>✓</span> LimitRange + ResourceQuota as a pair</div>
+    <p>LimitRange supplies defaults so developers don't have to declare resources for every container. ResourceQuota caps the namespace total. Neither works well alone — quota without defaults causes apply failures; defaults without quota causes runaway namespaces.</p>
+  </div>
+
+  <div class="callout good">
+    <div class="callout-title"><span>✓</span> Runtime-aware environment variables</div>
+    <p>Inject <code>GOMEMLIMIT</code>, <code>-XX:MaxRAMPercentage</code>, or <code>--max-old-space-size</code> via Downward API referencing <code>limits.memory</code>. The runtime now respects the same ceiling the kernel will enforce.</p>
+  </div>
+
+  <div class="callout good">
+    <div class="callout-title"><span>✓</span> CPU requests yes, CPU limits maybe</div>
+    <p>Always set CPU requests (scheduler needs them). CPU limits are optional: on dedicated nodes for latency-critical services, omit them. On shared multi-tenant nodes, set them to control noisy neighbors.</p>
+  </div>
+
+  <div class="callout good">
+    <div class="callout-title"><span>✓</span> HPA + PDB + PriorityClass trio</div>
+    <p>HPA scales replicas to load. PDB protects against voluntary disruption (drains, upgrades). PriorityClass decides who wins under scarcity. Every production Deployment should have all three.</p>
+  </div>
+
+  <div class="callout good">
+    <div class="callout-title"><span>✓</span> VPA-Off as a passive advisor</div>
+    <p>Deploy VPA in <code>updateMode: Off</code> for every workload. It costs nothing, generates real recommendations, and surfaces sizing problems before users complain.</p>
+  </div>
+
+  <h3>Anti-patterns to avoid</h3>
+
+  <div class="callout danger">
+    <div class="callout-title"><span>✕</span> BestEffort QoS in production</div>
+    <p>Pods without any requests or limits are first to evict under node pressure. A traffic spike kills your most popular service first. Always set at least requests; LimitRange should backstop missing values.</p>
+  </div>
+
+  <div class="callout danger">
+    <div class="callout-title"><span>✕</span> Memory limit == request with no headroom</div>
+    <p>Looks disciplined, OOMs at 02:00. Garbage-collected runtimes need at least 20% headroom between request and limit to GC effectively before the kernel kills them.</p>
+  </div>
+
+  <div class="callout danger">
+    <div class="callout-title"><span>✕</span> <code>minReplicas: 1</code> on user-facing services</div>
+    <p>One replica means zero redundancy during rollouts, drains, and node failures. <code>minReplicas: 2</code> is the absolute floor; 3 for anything user-facing in a multi-zone cluster.</p>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-title"><span>⚠</span> HPA on memory for garbage-collected languages</div>
+    <p>JVM and Go runtimes hold onto memory after GC. The HPA sees "memory at 80%" and scales up, but actual demand has dropped. Use CPU or RPS-based custom metrics instead.</p>
+  </div>
+
+  <div class="callout danger">
+    <div class="callout-title"><span>✕</span> VPA Auto + HPA on the same axis</div>
+    <p>VPA shrinks the request → HPA sees higher utilization ratio → adds pods → VPA shrinks further. Thrashing loop. Either VPA on memory + HPA on CPU, or VPA Off-mode + HPA on anything.</p>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-title"><span>⚠</span> ResourceQuota without LimitRange</div>
+    <p>Every developer's first apply fails with "must specify requests.cpu". They'll either give up or copy-paste arbitrary values from Stack Overflow. Pair the two.</p>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 19: TROUBLESHOOTING ================ -->
+<section id="troubleshoot" class="chapter">
+  <div class="eyebrow"><span class="num">VI.3</span> SRE playbook · Troubleshooting</div>
+  <h2>Diagnosing <em>resource failures</em>: a field manual</h2>
+
+  <div class="section-flow">
+    <span class="flow-badge def">Definition</span>
+    <span class="flow-badge pit">Pitfalls</span>
+  </div>
+
+  <p class="lede">
+    Five symptoms cover ~90% of resource-related production incidents. For each, the
+    diagnostic path is straightforward once you know which gate produced the failure.
+  </p>
+
+  <h3>Symptom 1: <code>OOMKilled</code></h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">$ kubectl describe pod &lt;name&gt;</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c">Last State:     Terminated</span>
+<span class="c">  Reason:       OOMKilled</span>
+<span class="c">  Exit Code:    137</span>
+<span class="c">  Started:      Mon, 22 May 2026 04:15:00</span>
+<span class="c">  Finished:     Mon, 22 May 2026 04:38:21</span></pre>
+  </div>
+  <p><strong>Three possibilities:</strong> (1) memory limit too low — check working-set vs limit; (2) memory leak — restart interval shrinks over time; (3) sudden allocation spike — correlate with traffic. Fix the right one; don't just bump the limit.</p>
+
+  <h3>Symptom 2: high latency, low average CPU</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">PromQL — throttle ratio</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>sum by (pod) (rate(container_cpu_cfs_throttled_seconds_total[<span class="n">5m</span>]))
+/
+sum by (pod) (rate(container_cpu_cfs_periods_total[<span class="n">5m</span>]))</pre>
+  </div>
+  <p>If the ratio is &gt; 0.05, you're being throttled. Average CPU looks fine because the kernel pauses you between bursts. Raise CPU limit, or on dedicated nodes consider omitting it.</p>
+
+  <h3>Symptom 3: pod stuck <code>Pending</code></h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">$ kubectl describe pod &lt;name&gt; — Events section</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c">Events:</span>
+<span class="c">  Warning  FailedScheduling  31s  default-scheduler</span>
+<span class="c">    0/8 nodes are available:</span>
+<span class="c">    3 Insufficient cpu, 5 Insufficient memory.</span></pre>
+  </div>
+  <p>Gate 3 (scheduler) verdict. Either request is too large for any node, or all nodes are saturated. Cluster Autoscaler should kick in within 60–90s; if not, check the autoscaler logs.</p>
+
+  <h3>Symptom 4: pod <code>Evicted</code></h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">$ kubectl get pod &lt;name&gt; -o yaml</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="h">status:</span>
+  <span class="k">phase:</span> <span class="s">Failed</span>
+  <span class="k">reason:</span> <span class="s">Evicted</span>
+  <span class="k">message:</span> <span class="s">'The node was low on resource: memory.'</span></pre>
+  </div>
+  <p>Node-pressure eviction (gate 4/5). Node hit a soft or hard threshold. Check node memory/disk usage at the eviction time; check if QoS class was BestEffort or Burstable-over-request.</p>
+
+  <h3>Symptom 5: <code>kubectl apply</code> rejected</h3>
+  <div class="code-wrap">
+    <div class="code-head"><span class="filename">error from quota</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c">Error from server (Forbidden): error when creating "deploy.yaml":</span>
+<span class="c">  pods "checkout-7d9c-xxxx" is forbidden:</span>
+<span class="c">  exceeded quota: jahez-prod-services,</span>
+<span class="c">  requested: requests.cpu=2, used: requests.cpu=39, limited: requests.cpu=40</span></pre>
+  </div>
+  <p>Gate 2 (admission). Quota check failed at apply time. Either raise the quota (with capacity team approval) or right-size existing workloads to free room.</p>
+
+  <h3>Diagnostic command cheat sheet</h3>
+  <div class="table-wrap">
+    <table class="prop-table">
+      <thead><tr><th>Command</th><th>Use for</th></tr></thead>
+      <tbody>
+        <tr><td>kubectl describe pod &lt;name&gt;</td><td>Events, current state, last termination reason, QoS class.</td></tr>
+        <tr><td>kubectl top pod -A --containers</td><td>Live CPU/memory usage by container.</td></tr>
+        <tr><td>kubectl describe node &lt;name&gt;</td><td>Allocated resources, conditions (MemoryPressure, DiskPressure), pod inventory.</td></tr>
+        <tr><td>kubectl describe resourcequota -n &lt;ns&gt;</td><td>Current usage against quota limits.</td></tr>
+        <tr><td>kubectl describe vpa &lt;name&gt; -n &lt;ns&gt;</td><td>VPA recommendations (target, lower, upper bounds).</td></tr>
+        <tr><td>kubectl get events -n &lt;ns&gt; --sort-by=lastTimestamp</td><td>Recent scheduling failures, evictions, scaling events.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================ CHAPTER 20: PRODUCTION CHECKLIST ================ -->
+<section id="checklist" class="chapter">
+  <div class="eyebrow"><span class="num">VI.4</span> SRE playbook · Production checklist</div>
+  <h2>The pre-flight: <em>before this hits prod</em></h2>
+
+  <div class="section-flow">
+    <span class="flow-badge check">Checklist</span>
+  </div>
+
+  <p class="lede">
+    A single page to walk through before promoting a new service — or auditing an
+    existing one. Each item maps to a chapter in this guide.
+  </p>
+
+  <h3>Namespace level</h3>
+  <div class="checklist">
+    <div class="checklist-title">Namespace pre-flight</div>
+    <ul>
+      <li>LimitRange defines defaults, min/max, and <code>maxLimitRequestRatio</code> for both CPU and memory.</li>
+      <li>ResourceQuota caps <code>requests.*</code>, <code>limits.*</code>, and <code>count/*</code>.</li>
+      <li>Batch and long-running workloads have separate quota buckets via <code>scopeSelector</code>.</li>
+      <li>NetworkPolicy default-deny in place (out of scope here, but pair with resource policy).</li>
+    </ul>
+  </div>
+
+  <h3>Per-workload</h3>
+  <div class="checklist">
+    <div class="checklist-title">Workload pre-flight</div>
+    <ul>
+      <li>Explicit <code>requests.cpu</code>, <code>requests.memory</code>, <code>limits.cpu</code>, <code>limits.memory</code> on every container.</li>
+      <li><code>requests.ephemeral-storage</code> set (default 100Mi is usually too low).</li>
+      <li>Runtime memory flag wired via Downward API — <code>GOMEMLIMIT</code> / <code>-XX:MaxRAMPercentage</code> / <code>--max-old-space-size</code>.</li>
+      <li>Liveness + readiness probes defined (out of scope here, but resource sizing without probes is incomplete).</li>
+      <li>PriorityClass assigned — critical / standard / batch.</li>
+      <li>PodDisruptionBudget covers the Deployment with <code>maxUnavailable: 1</code> (not <code>minAvailable: 100%</code>).</li>
+      <li>HPA with <code>minReplicas ≥ 2</code> and a hard <code>maxReplicas</code> ceiling.</li>
+      <li><code>topologySpreadConstraints</code> across zones for redundancy.</li>
+      <li>VPA in <code>Off</code> mode deployed as advisor.</li>
+    </ul>
+  </div>
+
+  <h3>Cluster level</h3>
+  <div class="checklist">
+    <div class="checklist-title">Cluster pre-flight</div>
+    <ul>
+      <li><code>kubeReserved</code> and <code>systemReserved</code> set explicitly on every node — not relying on cloud defaults.</li>
+      <li><code>evictionHard</code> and <code>evictionSoft</code> thresholds configured, with grace periods.</li>
+      <li>Cluster Autoscaler / Karpenter <code>limits</code> set to cap runaway scale-out cost.</li>
+      <li>Topology Manager policy chosen consciously (<code>none</code> is fine for most clusters; <code>restricted</code> for NUMA-sensitive workloads).</li>
+      <li>Cost dashboard showing $/namespace and $/workload — sizing improvements need a feedback loop.</li>
+    </ul>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title"><span>🛡</span> Policy, not vibe</div>
+    <p>The checklist above should be enforced by policy engines (Kyverno, OPA Gatekeeper), not by code review alone. Resource hygiene drifts the moment review attention shifts. A policy that blocks <code>apply</code> on missing requests is worth more than a hundred Slack reminders.</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- ================ FOOTER ================ -->
+<footer class="site-foot">
+  <div class="foot-inner">
+    <div class="foot-brand">
+      <div class="foot-title">Volume 04 · K8s Reference Series</div>
+      <div class="foot-sub">Resource Management · Definition → Diagram → YAML → Pitfalls</div>
+    </div>
+    <div class="foot-meta">
+      Companion volumes: <strong>01 · Storage</strong> · <strong>02 · Services</strong> · <strong>03 · Configurations</strong>.<br>
+      Sources: Kubernetes documentation, KEPs, kubelet source. Field experience from Jahez production clusters on EKS.
+    </div>
+  </div>
+</footer>
+
+<!-- ================ SCRIPTS ================ -->
+<script>
+// Mobile menu toggle
+const menuToggle = document.getElementById('menuToggle');
+const sidebar = document.getElementById('sidebar');
+menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+
+// Auto-close sidebar on nav click (mobile)
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', (e) => {
+    if (window.innerWidth <= 980) sidebar.classList.remove('open');
+    const id = link.getAttribute('href');
+    if (id && id.startsWith('#')) {
+      e.preventDefault();
+      const el = document.querySelector(id);
+      if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  });
+});
+
+// Copy code blocks
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  const txt = pre.innerText;
+  navigator.clipboard.writeText(txt).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove('copied');
+    }, 1400);
+  });
+}
+
+// HPA Simulator
+const simUsage = document.getElementById('sim-usage');
+const simTarget = document.getElementById('sim-target');
+const simReplicas = document.getElementById('sim-replicas');
+const simMax = document.getElementById('sim-max');
+const valUsage = document.getElementById('val-usage');
+const valTarget = document.getElementById('val-target');
+const valReplicas = document.getElementById('val-replicas');
+const valMax = document.getElementById('val-max');
+const outRatio = document.getElementById('sim-ratio');
+const outDesired = document.getElementById('sim-desired');
+const outDir = document.getElementById('sim-direction');
+const outDelta = document.getElementById('sim-delta');
+
+function updateSim() {
+  const usage = parseInt(simUsage.value);
+  const target = parseInt(simTarget.value);
+  const replicas = parseInt(simReplicas.value);
+  const maxRep = parseInt(simMax.value);
+
+  valUsage.textContent = usage + '%';
+  valTarget.textContent = target + '%';
+  valReplicas.textContent = replicas;
+  valMax.textContent = maxRep;
+
+  const ratio = usage / target;
+  let desired = Math.ceil(replicas * ratio);
+  desired = Math.min(Math.max(desired, 1), maxRep);
+  const delta = desired - replicas;
+
+  outRatio.textContent = ratio.toFixed(2) + '×';
+  outDesired.textContent = desired;
+
+  if (delta > 0) {
+    outDir.textContent = 'scale up ↑';
+    outDir.style.color = '#34d399';
+    outDelta.textContent = '+' + delta;
+    outDelta.style.color = '#34d399';
+  } else if (delta < 0) {
+    outDir.textContent = 'scale down ↓';
+    outDir.style.color = '#f87171';
+    outDelta.textContent = delta;
+    outDelta.style.color = '#f87171';
+  } else {
+    outDir.textContent = 'steady →';
+    outDir.style.color = '#7dd3fc';
+    outDelta.textContent = '0';
+    outDelta.style.color = '#7dd3fc';
+  }
+}
+
+[simUsage, simTarget, simReplicas, simMax].forEach(el => {
+  if (el) el.addEventListener('input', updateSim);
+});
+if (simUsage) updateSim();
+
+// Scroll progress bar
+const progressBar = document.getElementById('progressBar');
+window.addEventListener('scroll', () => {
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = (window.scrollY / docHeight) * 100;
+  progressBar.style.width = pct + '%';
+});
+
+// Active nav link via IntersectionObserver
+const sections = document.querySelectorAll('.chapter, .hero');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
