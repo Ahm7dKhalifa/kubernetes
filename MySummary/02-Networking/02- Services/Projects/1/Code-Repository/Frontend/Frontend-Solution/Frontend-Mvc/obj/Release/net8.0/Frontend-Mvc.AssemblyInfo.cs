@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Frontend-Mvc")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b48ee161ea3d3a24ab087be17abe8af2a4e2b5a9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f7c25776f5964a0c3483020f958cc70a68a8794e")]
 [assembly: System.Reflection.AssemblyProductAttribute("Frontend-Mvc")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Frontend-Mvc")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
