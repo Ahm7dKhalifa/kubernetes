@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad-ubuntu-qwfefefwe
+  namespace: ckad-pod-design
+spec:
+  containers:
+  - name: ubuntu-server
+    image: ubuntu
+    command:
+    - sleep
+    - "3600"
