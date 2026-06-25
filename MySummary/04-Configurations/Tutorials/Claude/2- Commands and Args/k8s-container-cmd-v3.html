@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0d1117;color-scheme:dark;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Container command &amp; args in Pods · Complete Guide</title>
+
+<!-- ===== iOS / Safari dark-mode enforcement (from the K8s series) ===== -->
+<meta name="color-scheme" content="dark only">
+<meta name="supported-color-schemes" content="dark">
+<meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===== Reset + dark enforcement ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117; --bg2:#010409; --surface:#161b22; --surface2:#1c2128;
+  --border:#30363d; --border2:#21262d;
+  --text:#e6edf3; --muted:#8b949e; --dim:#6e7681;
+  --blue:#58a6ff; --blue-dim:#1f6feb; --green:#3fb950; --green-dim:#238636;
+  --purple:#bc8cff; --orange:#f0883e; --red:#f85149; --yellow:#d29922; --cyan:#39c5cf; --pink:#f778ba;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --sidebar-w:288px;
+  forced-color-adjust:none;
+}
+html{forced-color-adjust:none;background:#0d1117!important;color-scheme:dark only;-webkit-text-size-adjust:100%}
+body{
+  forced-color-adjust:none;
+  background:#0d1117!important; color:var(--text);
+  font-family:var(--sans); font-size:16px; line-height:1.65;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+/* Re-assert dark even if the OS forces light (iOS Mail / Quick Look) */
+@media (prefers-color-scheme: light){
+  html,body{background:#0d1117!important;color:#e6edf3!important}
+  .surface,.card,.sidebar,.topbar,.slider,.diagram-wrap,table,.callout{background:#161b22!important;color:#e6edf3!important}
+}
+::selection{background:rgba(88,166,255,.30)}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd,pre{font-family:var(--mono)}
+
+/* ===== Layout ===== */
+.layout{display:flex;min-height:100vh}
+.sidebar{
+  forced-color-adjust:none;
+  position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);height:100vh;
+  background:#0b0f14!important;border-right:1px solid var(--border);
+  overflow-y:auto;overscroll-behavior:contain;z-index:60;
+  padding:0 0 40px;
+}
+.sidebar::-webkit-scrollbar{width:9px}
+.sidebar::-webkit-scrollbar-thumb{background:#21262d;border-radius:6px}
+.brand{
+  position:sticky;top:0;background:#0b0f14;z-index:2;
+  padding:20px 22px 16px;border-bottom:1px solid var(--border);
+}
+.brand h1{font-size:16px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.brand .logo{
+  width:26px;height:26px;border-radius:7px;display:grid;place-items:center;flex:none;
+  background:linear-gradient(135deg,#1f6feb,#39c5cf);color:#fff;font-weight:800;font-size:14px;
+  font-family:var(--mono);
+}
+.brand p{font-size:12px;color:var(--muted);margin-top:5px;font-family:var(--mono)}
+.nav{padding:14px 12px 0}
+.nav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);
+  font-weight:700;padding:16px 12px 7px}
+.nav a{
+  display:block;padding:7px 12px;border-radius:7px;color:var(--muted);
+  font-size:13.5px;font-weight:500;line-height:1.4;border:1px solid transparent;
+}
+.nav a:hover{background:#161b22;color:var(--text);text-decoration:none}
+.nav a.active{background:rgba(31,111,235,.16);color:#79b8ff;border-color:rgba(56,139,253,.30);font-weight:600}
+.nav a .ix{font-family:var(--mono);font-size:11px;color:var(--dim);margin-right:8px}
+
+/* ===== Main ===== */
+.main{margin-left:var(--sidebar-w);flex:1;min-width:0;max-width:calc(100vw - var(--sidebar-w))}
+.topbar{
+  position:sticky;top:0;z-index:40;display:none;align-items:center;gap:12px;
+  background:rgba(13,17,23,.86);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);padding:11px 16px;
+}
+.burger{width:38px;height:38px;border-radius:9px;border:1px solid var(--border);background:var(--surface);
+  color:var(--text);display:grid;place-items:center;cursor:pointer;flex:none}
+.burger svg{width:19px;height:19px}
+.wrap{max-width:1000px;margin:0 auto;padding:46px 40px 120px}
+
+/* ===== Hero ===== */
+.hero{margin-bottom:30px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;color:var(--cyan);font-weight:600;letter-spacing:.04em;margin-bottom:14px}
+.hero h2{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.hero .grad{background:linear-gradient(120deg,#58a6ff,#39c5cf 55%,#3fb950);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .lede{font-size:18px;color:var(--muted);margin-top:18px;max-width:70ch;line-height:1.6}
+.hero-cmd{
+  margin-top:24px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:16px 18px;font-family:var(--mono);font-size:14px;overflow-x:auto;
+}
+.hero-cmd .pr{color:var(--green)}
+.hero-cmd .fl{color:var(--orange)}
+.hero-cmd .cm{color:var(--dim)}
+
+/* ===== Sections ===== */
+section{scroll-margin-top:70px;padding-top:34px;margin-top:34px;border-top:1px solid var(--border2)}
+section:first-of-type{border-top:0;margin-top:0}
+.sec-no{font-family:var(--mono);font-size:13px;color:var(--blue);font-weight:600}
+h3.sec{font-size:27px;font-weight:800;letter-spacing:-.02em;margin:8px 0 16px;line-height:1.15}
+h4{font-size:19px;font-weight:700;margin:30px 0 12px;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+h4 .bar{width:4px;height:19px;border-radius:3px;background:var(--blue);flex:none}
+p{margin:13px 0;color:#cdd5df}
+strong{color:var(--text);font-weight:600}
+ul,ol{margin:13px 0 13px 4px;padding-left:22px}
+li{margin:7px 0;color:#cdd5df}
+li::marker{color:var(--dim)}
+.lead{font-size:17px;color:var(--muted)}
+
+/* inline code */
+p code,li code,td code,h4 code{
+  font-family:var(--mono);font-size:.86em;background:rgba(110,118,129,.18);
+  border:1px solid var(--border2);padding:1.5px 6px;border-radius:5px;color:#c9d4e0;white-space:nowrap}
+
+/* ===== Cards ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0}
+.grid{display:grid;gap:14px}
+.grid.c2{grid-template-columns:1fr 1fr}
+.grid.c3{grid-template-columns:repeat(3,1fr)}
+.mini{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:16px 17px}
+.mini h5{font-size:14.5px;font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+.mini p{font-size:13.5px;margin:0;color:var(--muted);line-height:1.55}
+.ic{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-family:var(--mono);
+  font-size:12px;font-weight:700;flex:none}
+
+/* ===== Callouts ===== */
+.callout{border-radius:11px;padding:14px 17px;margin:16px 0;border:1px solid;font-size:14.5px;display:flex;gap:12px}
+.callout .ci{flex:none;font-family:var(--mono);font-weight:700;font-size:13px}
+.callout p{margin:0;color:#cdd5df}
+.callout.tip{background:rgba(35,134,54,.10);border-color:rgba(63,185,80,.35)}
+.callout.tip .ci{color:var(--green)}
+.callout.warn{background:rgba(187,128,9,.10);border-color:rgba(210,153,34,.40)}
+.callout.warn .ci{color:var(--yellow)}
+.callout.danger{background:rgba(248,81,73,.09);border-color:rgba(248,81,73,.38)}
+.callout.danger .ci{color:var(--red)}
+.callout.note{background:rgba(31,111,235,.09);border-color:rgba(56,139,253,.35)}
+.callout.note .ci{color:var(--blue)}
+
+/* ===== Code blocks ===== */
+.code{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:16px 0;overflow:hidden}
+.code-head{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 14px;background:#0a0d12;border-bottom:1px solid var(--border)}
+.code-head .fn{font-family:var(--mono);font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.code-head .tag{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;
+  background:rgba(56,139,253,.15);color:var(--blue);border:1px solid rgba(56,139,253,.3)}
+.code-head .tag.sh{background:rgba(63,185,80,.14);color:var(--green);border-color:rgba(63,185,80,.3)}
+.copy{font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--surface2);
+  border:1px solid var(--border);padding:3px 10px;border-radius:6px;cursor:pointer}
+.copy:hover{color:var(--text);border-color:var(--dim)}
+.copy.done{color:var(--green);border-color:var(--green-dim)}
+pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:13px;line-height:1.7}
+pre code{font-family:var(--mono);white-space:pre}
+pre::-webkit-scrollbar{height:9px}
+pre::-webkit-scrollbar-thumb{background:#21262d;border-radius:6px}
+/* YAML / shell token colors */
+.t-k{color:#79c0ff}    /* keys */
+.t-s{color:#a5d6ff}    /* strings */
+.t-n{color:#79c0ff}    /* numbers */
+.t-c{color:#8b949e;font-style:italic} /* comments */
+.t-b{color:#ff7b72}    /* booleans / keywords */
+.t-d{color:#ffa657}    /* dashes / flags */
+.t-g{color:#3fb950}    /* prompt / good */
+.t-p{color:#d2a8ff}    /* command verb */
+
+/* ===== Tables ===== */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+thead th{background:#0f141b;text-align:left;padding:11px 14px;font-weight:700;color:var(--text);
+  border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0}
+tbody td{padding:10px 14px;border-bottom:1px solid var(--border2);color:#cdd5df;vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:rgba(110,118,129,.06)}
+td code{font-size:12px}
+.pill{font-family:var(--mono);font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;display:inline-block}
+.pill.imp{background:rgba(240,136,62,.16);color:var(--orange)}
+.pill.dec{background:rgba(63,185,80,.16);color:var(--green)}
+.pill.both{background:rgba(188,140,255,.16);color:var(--purple)}
+.pill.ro{background:rgba(56,139,253,.16);color:var(--blue)}
+.pill.rw{background:rgba(248,81,73,.16);color:var(--red)}
+
+/* ===== Slider ===== */
+.slider{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin:18px 0}
+.slider-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;
+  background:#0f141b;border-bottom:1px solid var(--border)}
+.slider-head .st{font-size:13.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:9px}
+.slider-head .ctr{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.stage{padding:20px 22px;min-height:150px}
+.step{display:none;animation:fade .3s ease}
+.step.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.step .badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;
+  font-weight:600;color:var(--cyan);background:rgba(57,197,207,.12);border:1px solid rgba(57,197,207,.3);
+  padding:3px 10px;border-radius:20px;margin-bottom:12px}
+.step h5{font-size:17px;font-weight:700;margin-bottom:8px}
+.step p{font-size:14.5px;margin:8px 0}
+.slider-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:13px 18px;border-top:1px solid var(--border);background:#0c1117}
+.dots{display:flex;gap:7px;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:#30363d;cursor:pointer;border:0;padding:0;transition:.2s}
+.dot.on{background:var(--blue);transform:scale(1.3)}
+.snav{display:flex;gap:9px}
+.btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:7px 15px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--border);background:var(--surface2);color:var(--text);display:flex;align-items:center;gap:6px}
+.btn:hover:not(:disabled){border-color:var(--dim);background:#262c36}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.pri{background:var(--blue-dim);border-color:var(--blue-dim);color:#fff}
+.btn.pri:hover:not(:disabled){background:#2c7eff}
+
+/* ===== Diagram ===== */
+.diagram-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;margin:16px 0;overflow-x:auto}
+.diagram-wrap svg{display:block;margin:0 auto;min-width:520px}
+.dg-cap{text-align:center;font-size:12.5px;color:var(--muted);margin-top:10px;font-family:var(--mono)}
+
+/* ===== Anatomy box ===== */
+.anatomy{font-family:var(--mono);font-size:clamp(12px,2.6vw,16px);background:var(--bg2);
+  border:1px solid var(--border);border-radius:12px;padding:22px 20px;margin:16px 0;
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:flex-start;line-height:1}
+.atom{display:flex;flex-direction:column;align-items:center;gap:9px}
+.atom .tok{padding:8px 12px;border-radius:8px;font-weight:600;border:1px solid}
+.atom .lab{font-size:10.5px;color:var(--muted);font-family:var(--sans);font-weight:600;letter-spacing:.02em}
+.atom.verb .tok{background:rgba(188,140,255,.14);color:var(--purple);border-color:rgba(188,140,255,.4)}
+.atom.type .tok{background:rgba(88,166,255,.14);color:var(--blue);border-color:rgba(88,166,255,.4)}
+.atom.name .tok{background:rgba(63,185,80,.14);color:var(--green);border-color:rgba(63,185,80,.4)}
+.atom.flag .tok{background:rgba(240,136,62,.14);color:var(--orange);border-color:rgba(240,136,62,.4)}
+
+/* ===== Footer ===== */
+.foot{margin-top:60px;padding-top:24px;border-top:1px solid var(--border);color:var(--dim);font-size:13px}
+.foot code{font-family:var(--mono)}
+
+/* ===== Scroll-top ===== */
+#top{position:fixed;right:20px;bottom:20px;width:44px;height:44px;border-radius:12px;
+  background:var(--surface);border:1px solid var(--border);color:var(--text);cursor:pointer;
+  display:none;place-items:center;z-index:50;box-shadow:0 6px 22px rgba(0,0,0,.4)}
+#top.show{display:grid}
+.overlay{display:none;position:fixed;inset:0;background:rgba(1,4,9,.66);z-index:55}
+.overlay.show{display:block}
+
+/* ===== Responsive ===== */
+@media (max-width:980px){
+  .sidebar{transform:translateX(-100%);transition:transform .26s ease;box-shadow:0 0 40px rgba(0,0,0,.5)}
+  .sidebar.open{transform:none}
+  .main{margin-left:0;max-width:100vw}
+  .topbar{display:flex}
+  .wrap{padding:26px 18px 100px}
+  .grid.c2,.grid.c3{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  body{font-size:15px}
+  .wrap{padding:20px 14px 90px}
+  h3.sec{font-size:23px}
+  .hero h2{font-size:30px}
+  pre{font-size:12px}
+  .stage{padding:16px 15px}
+  .card{padding:16px 15px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body style="background:#0d1117;color:#e6edf3;">
+<div class="layout">
+
+<!-- ================= SIDEBAR ================= -->
+<aside class="sidebar" id="sidebar" style="background:#0b0f14;">
+  <div class="brand">
+    <h1><span class="logo">⌘</span> command &amp; args</h1>
+    <p>container entrypoints in Pods</p>
+  </div>
+  <nav class="nav" id="nav">
+    <div class="grp">Start here · Docker</div>
+    <a href="#run-local"><span class="ix">D0</span>By hand vs by machine</a>
+    <a href="#ep-cmd"><span class="ix">D1</span>ENTRYPOINT &amp; CMD</a>
+    <a href="#ep-combine"><span class="ix">D2</span>How they combine</a>
+    <div class="grp">Foundations</div>
+    <a href="#what"><span class="ix">00</span>What command &amp; args are</a>
+    <a href="#why"><span class="ix">01</span>Why they exist · the need</a>
+    <a href="#docker"><span class="ix">02</span>The Docker mapping</a>
+    <a href="#combos"><span class="ix">03</span>The four override combos</a>
+    <div class="grp">How They Behave</div>
+    <a href="#forms"><span class="ix">04</span>Exec form vs shell form</a>
+    <a href="#choose-form"><span class="ix">05</span>Exec vs shell: when &amp; why</a>
+    <a href="#pid1"><span class="ix">06</span>PID 1 &amp; signal handling</a>
+    <a href="#expand"><span class="ix">07</span>Env var expansion $(VAR)</a>
+    <a href="#fields"><span class="ix">08</span>Full field reference</a>
+    <a href="#elsewhere"><span class="ix">09</span>Probes, hooks, initContainers</a>
+    <div class="grp">Examples</div>
+    <a href="#patterns"><span class="ix">10</span>Famous patterns</a>
+    <a href="#cluster"><span class="ix">11</span>The Jahez cluster</a>
+    <a href="#yaml"><span class="ix">12</span>Full YAML: Deploy + Service</a>
+    <a href="#walk"><span class="ix">13</span>Startup walkthrough slider</a>
+    <a href="#debug"><span class="ix">14</span>Debugging command/args</a>
+    <div class="grp">Reference</div>
+    <a href="#best"><span class="ix">15</span>Best practices</a>
+    <a href="#cheat"><span class="ix">16</span>Cheat sheet</a>
+  </nav>
+</aside>
+<div class="overlay" id="overlay"></div>
+
+<!-- ================= MAIN ================= -->
+<main class="main">
+  <div class="topbar">
+    <button class="burger" id="burger" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <strong style="font-size:14px">Container <code style="font-size:12px">command</code> &amp; <code style="font-size:12px">args</code></strong>
+  </div>
+
+  <div class="wrap">
+
+    <!-- HERO -->
+    <header class="hero">
+      <div class="eyebrow">KUBERNETES&nbsp;·&nbsp;THE CONTAINER ENTRYPOINT</div>
+      <h2>What a container <span class="grad">actually runs</span><br>— command &amp; args.</h2>
+      <p class="lede">Every container runs exactly one foreground process, and two small fields in the Pod spec decide what it is: <code>command</code> and <code>args</code>. They override the image's built-in <code>ENTRYPOINT</code> and <code>CMD</code> — so you can change what a container does <strong>without rebuilding the image</strong>. Get them wrong and you get instant <code>CrashLoopBackOff</code>, broken graceful shutdown, or env vars that never expand. This guide takes both fields apart, grounded in the <strong>Jahez</strong> cluster (<code>jahez-prod</code>, <code>me-central-1</code>).</p>
+      <div class="hero-cmd">
+<span class="cm"># the two fields this whole guide is about</span><br>
+<span class="fl">command</span>: [<span class="pr">"dotnet"</span>, <span class="pr">"Jahez.Api.dll"</span>]&nbsp;&nbsp;<span class="cm"># overrides image ENTRYPOINT</span><br>
+<span class="fl">args</span>:&nbsp;&nbsp;&nbsp;&nbsp;[<span class="pr">"--urls"</span>, <span class="pr">"http://0.0.0.0:8080"</span>]&nbsp;<span class="cm"># overrides image CMD</span>
+      </div>
+    </header>
+
+    <!-- D0 RUN LOCAL VS MACHINE -->
+    <section id="run-local">
+      <div class="sec-no">D0</div>
+      <h3 class="sec">Running your app — by hand vs by machine</h3>
+      <p class="lead">Before Kubernetes, before even Docker, there's one question every container must answer: <strong>"what program do I run when I start?"</strong> The cleanest way to see why <code>ENTRYPOINT</code>/<code>CMD</code> exist is to watch what changes when a human stops being in the loop.</p>
+
+      <h4><span class="bar"></span>On your laptop, you run it yourself</h4>
+      <p>You finish building the Jahez API. To run it, <em>you</em> open a terminal and type a command. During development that's usually:</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ your terminal, during dev</span><span class="tag sh">you type this</span></div>
+        <pre><code><span class="t-c"># build + run straight from source while developing</span>
+<span class="t-p">dotnet</span> run
+
+<span class="t-c"># …or, once you've published a release build:</span>
+<span class="t-p">dotnet</span> publish <span class="t-d">-c</span> Release <span class="t-d">-o</span> ./publish
+<span class="t-p">cd</span> publish
+<span class="t-p">dotnet</span> Jahez.Api.dll <span class="t-d">--urls</span> http://0.0.0.0:8080</code></pre>
+      </div>
+      <p>The important part isn't the .NET syntax — it's that <strong>a person decided to run it.</strong> You knew which DLL to launch, which flags to pass, and which directory to be in. That knowledge lived in your head and your fingers.</p>
+
+      <h4><span class="bar"></span>In a container, no one is there to type it</h4>
+      <p>Now you ship the app as a container image to run on the Jahez cluster. Containers don't get started by a developer at a keyboard. They get started <strong>automatically by the machine</strong>:</p>
+      <ul>
+        <li>When you deploy a new version.</li>
+        <li>When the HPA scales <code>jahez-api</code> from 3 to 12 pods during an Iftar rush.</li>
+        <li>When a node reboots at 3am and Kubernetes reschedules its pods elsewhere.</li>
+        <li>When a crashed container is restarted seconds later.</li>
+      </ul>
+      <p>In every one of those, there is no human to type <code>dotnet Jahez.Api.dll --urls …</code>. So the command you <em>would</em> have typed has to be <strong>recorded inside the image ahead of time</strong>, so the machine can run it for you, identically, every single time. That recording is exactly what <code>ENTRYPOINT</code> and <code>CMD</code> are.</p>
+
+      <div class="grid c2">
+        <div class="card" style="border-color:rgba(88,166,255,.4)">
+          <h4 style="margin-top:0"><span class="bar"></span>Human runs it (dev laptop)</h4>
+          <div class="code" style="margin:8px 0"><pre><code><span class="t-c"># you, deciding, at a prompt</span>
+<span class="t-p">dotnet</span> Jahez.Api.dll <span class="t-d">--urls</span> :8080</code></pre></div>
+          <p style="font-size:13.5px;color:var(--muted);margin-bottom:0">Knowledge lives in your head. Works because you're present to type it.</p>
+        </div>
+        <div class="card" style="border-color:rgba(63,185,80,.4)">
+          <h4 style="margin-top:0"><span class="bar" style="background:var(--green)"></span>Machine runs it (container start)</h4>
+          <div class="code" style="margin:8px 0"><pre><code><span class="t-c"># baked into the image — runs with no human</span>
+ENTRYPOINT [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+CMD        [<span class="t-s">"--urls"</span>, <span class="t-s">":8080"</span>]</code></pre></div>
+          <p style="font-size:13.5px;color:var(--muted);margin-bottom:0">Knowledge lives in the image. Works because the start command is pre-recorded.</p>
+        </div>
+      </div>
+
+      <h4><span class="bar"></span>The Dockerfile records the command you'd type</h4>
+      <p>A Dockerfile builds the image. Its last instruction is where you write down that start command — turning "the thing the dev types" into "the thing the machine runs."</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ Dockerfile</span><span class="tag sh">build recipe</span></div>
+        <pre><code><span class="t-b">FROM</span> mcr.microsoft.com/dotnet/aspnet:8.0
+<span class="t-b">WORKDIR</span> /app
+<span class="t-b">COPY</span> ./publish .                     <span class="t-c"># the built app filesystem</span>
+<span class="t-b">EXPOSE</span> 8080
+
+<span class="t-c"># ↓ the command the developer used to type, now recorded</span>
+<span class="t-b">ENTRYPOINT</span> [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+<span class="t-b">CMD</span> [<span class="t-s">"--urls"</span>, <span class="t-s">"http://0.0.0.0:8080"</span>]</code></pre>
+      </div>
+      <p>Now <code>docker run ghcr.io/jahez/api</code> — with nothing after it — runs <code>dotnet Jahez.Api.dll --urls http://0.0.0.0:8080</code> on its own. The machine no longer needs you. That single shift, <em>from a human typing the command to the image carrying it</em>, is the entire reason <code>ENTRYPOINT</code> and <code>CMD</code> exist.</p>
+      <div class="callout note"><span class="ci">CONCEPT CHECK</span><p>A container runs <strong>one</strong> foreground process and stops the instant that process exits. <code>ENTRYPOINT</code>/<code>CMD</code> name that process. So they aren't an optional extra — without them the image has a filesystem but no answer to "what do I run?", and the container would have nothing to do.</p></div>
+    </section>
+
+    <!-- D1 ENTRYPOINT & CMD -->
+    <section id="ep-cmd">
+      <div class="sec-no">D1</div>
+      <h3 class="sec">ENTRYPOINT &amp; CMD — what each one is</h3>
+      <p class="lead">The <strong>final command</strong> that runs the process inside a container is built from <strong>two parts</strong>:</p>
+      <div class="grid c2">
+        <div class="card" style="border-color:rgba(188,140,255,.45)">
+          <h4 style="margin-top:0"><span class="bar" style="background:var(--purple)"></span>ENTRYPOINT — the fixed part</h4>
+          <ul style="margin-bottom:0">
+            <li><strong>Fixed</strong> — the command itself, the same on every run.</li>
+            <li><strong>Required</strong> — something has to run; this is it.</li>
+            <li><strong>Always first</strong> — it leads the final command line.</li>
+            <li><strong>Always runs</strong> — arguments from <code>docker run</code> are added <em>after</em> it, they don't replace it.</li>
+          </ul>
+        </div>
+        <div class="card" style="border-color:rgba(57,197,207,.45)">
+          <h4 style="margin-top:0"><span class="bar" style="background:var(--cyan)"></span>CMD — the arguments</h4>
+          <ul style="margin-bottom:0">
+            <li><strong>Arguments</strong> passed to the ENTRYPOINT.</li>
+            <li><strong>Optional</strong> — an image can have none.</li>
+            <li><strong>Has default values</strong> declared in the Dockerfile.</li>
+            <li><strong>Overridable</strong> — values you pass to <code>docker run</code> replace the defaults.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h4><span class="bar"></span>The components of the final command</h4>
+      <p>Read any container's start command as these two slots. The fixed slot comes from <code>ENTRYPOINT</code>; the argument slot comes from <code>CMD</code> (or from what you type on <code>docker run</code>):</p>
+      <div class="anatomy">
+        <div class="atom verb"><span class="tok">ping</span><span class="lab">ENTRYPOINT — fixed · first · always runs</span></div>
+        <div class="atom type"><span class="tok">jahez.sa</span><span class="lab">CMD — arguments · optional · overridable</span></div>
+      </div>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 700 248" role="img" aria-label="Components of the final command: ENTRYPOINT fixed part plus CMD arguments">
+          <text x="350" y="20" text-anchor="middle" fill="#6e7681" font-family="JetBrains Mono" font-size="11">FINAL COMMAND — the one process that runs as PID 1</text>
+          <!-- the two segments of the command line -->
+          <rect x="156" y="40" width="150" height="56" rx="10" fill="#18131f" stroke="#bc8cff" stroke-width="1.6"/>
+          <text x="231" y="66" text-anchor="middle" fill="#d2a8ff" font-family="JetBrains Mono" font-size="15" font-weight="700">ping</text>
+          <text x="231" y="84" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="9">the fixed part</text>
+          <rect x="316" y="40" width="228" height="56" rx="10" fill="#0e1a1e" stroke="#39c5cf" stroke-width="1.6"/>
+          <text x="430" y="66" text-anchor="middle" fill="#39c5cf" font-family="JetBrains Mono" font-size="15" font-weight="700">jahez.sa</text>
+          <text x="430" y="84" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="9">the arguments</text>
+          <!-- connectors -->
+          <line x1="231" y1="96" x2="205" y2="126" stroke="#bc8cff" stroke-width="1.3"/>
+          <line x1="430" y1="96" x2="520" y2="126" stroke="#39c5cf" stroke-width="1.3"/>
+          <!-- property panels -->
+          <rect x="40" y="128" width="312" height="104" rx="10" fill="#0d1117" stroke="#30363d" stroke-width="1.3"/>
+          <text x="58" y="150" fill="#d2a8ff" font-family="JetBrains Mono" font-size="11.5" font-weight="700">ENTRYPOINT · the FIXED part</text>
+          <text x="58" y="173" fill="#8b949e" font-family="Inter" font-size="10.5">• required — something must run</text>
+          <text x="58" y="193" fill="#8b949e" font-family="Inter" font-size="10.5">• always first · always runs</text>
+          <text x="58" y="213" fill="#8b949e" font-family="Inter" font-size="10.5">• run-time args append to it, never replace</text>
+          <rect x="368" y="128" width="292" height="104" rx="10" fill="#0d1117" stroke="#30363d" stroke-width="1.3"/>
+          <text x="386" y="150" fill="#39c5cf" font-family="JetBrains Mono" font-size="11.5" font-weight="700">CMD · the ARGUMENTS</text>
+          <text x="386" y="173" fill="#8b949e" font-family="Inter" font-size="10.5">• optional</text>
+          <text x="386" y="193" fill="#8b949e" font-family="Inter" font-size="10.5">• default value set in the Dockerfile</text>
+          <text x="386" y="213" fill="#8b949e" font-family="Inter" font-size="10.5">• overridden by docker run values</text>
+        </svg>
+        <div class="dg-cap">final command = ENTRYPOINT (fixed) + CMD (arguments)</div>
+      </div>
+
+      <h4><span class="bar"></span>The two parts side by side</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Property</th><th>ENTRYPOINT <span class="pill both">fixed part</span></th><th>CMD <span class="pill both">arguments</span></th></tr></thead>
+          <tbody>
+            <tr><td>What it is</td><td>The command / executable that runs</td><td>The arguments passed to it</td></tr>
+            <tr><td>Required?</td><td>Yes — something must run</td><td>No — optional</td></tr>
+            <tr><td>Position in final command</td><td>Always first</td><td>Always after the ENTRYPOINT</td></tr>
+            <tr><td>Default in the Dockerfile</td><td>The executable to run</td><td>Default argument values</td></tr>
+            <tr><td>Args on <code>docker run</code></td><td>Appended after it</td><td>Replace the default entirely</td></tr>
+            <tr><td>Changes per run?</td><td>Never (fixed)</td><td>Yes (overridable)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout note"><span class="ci">RULE</span><p>Final command = <span style="color:var(--purple)"><strong>ENTRYPOINT</strong></span> + <span style="color:var(--cyan)"><strong>CMD</strong></span>. The ENTRYPOINT half never moves; the CMD half is whatever you didn't override (the Dockerfile default) or what you did (your <code>docker run</code> value).</p></div>
+
+      <h4><span class="bar"></span>More examples — different images, same two parts</h4>
+      <p>Every image splits the same way. <span class="pill dec">blank "you run"</span> = no override, so the CMD default is used; a value in "you run" replaces the CMD half.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>ENTRYPOINT <span class="pill both">fixed</span></th><th>CMD <span class="pill both">default args</span></th><th>You run</th><th>Final command</th></tr></thead>
+          <tbody>
+            <tr><td><code>ping</code></td><td><code>jahez.sa</code></td><td><code>docker run img</code></td><td><code>ping jahez.sa</code></td></tr>
+            <tr><td><code>ping</code></td><td><code>jahez.sa</code></td><td><code>docker run img keeta.com</code></td><td><code>ping keeta.com</code></td></tr>
+            <tr><td><code>node</code></td><td><code>server.js</code></td><td><code>docker run img</code></td><td><code>node server.js</code></td></tr>
+            <tr><td><code>python</code></td><td><code>app.py</code></td><td><code>docker run img worker.py</code></td><td><code>python worker.py</code></td></tr>
+            <tr><td><code>nginx</code></td><td><code>-g "daemon off;"</code></td><td><code>docker run img</code></td><td><code>nginx -g daemon off;</code></td></tr>
+            <tr><td><code>java -jar app.jar</code></td><td><code>--port=8080</code></td><td><code>docker run img --port=9090</code></td><td><code>java -jar app.jar --port=9090</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><span class="ci">WATCH ROW 4</span><p>Overriding replaces the <strong>whole</strong> CMD: with ENTRYPOINT <code>python</code> and CMD <code>app.py</code>, running <code>docker run img worker.py</code> gives <code>python worker.py</code> — <code>app.py</code> is gone, not kept alongside. Your value <em>replaces</em> the default argument, it doesn't add to it.</p></div>
+      <div class="callout note"><span class="ci">ESCAPE HATCH</span><p>"Fixed" means fixed in normal use. You <em>can</em> replace the ENTRYPOINT for one run with the explicit <code>--entrypoint</code> flag: <code>docker run --entrypoint sh img</code>. It's deliberately awkward because overriding the fixed part is rarely what you want.</p></div>
+    </section>
+
+    <!-- D2 COMBINE -->
+    <section id="ep-combine">
+      <div class="sec-no">D2</div>
+      <h3 class="sec">How they combine — and the bridge to Kubernetes</h3>
+      <p>Now the full picture. Most images use <strong>both</strong> together: <code>ENTRYPOINT</code> is the <strong>fixed</strong> command, and <code>CMD</code> is the <strong>argument</strong> — a default you can override. Below are the <strong>three cases</strong> you'll meet, all using one tiny <code>ping</code> image so the only thing changing is the argument. The <span style="color:var(--purple)">purple</span> part is always fixed; the <span style="color:var(--cyan)">blue</span> part is the argument.</p>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 700 310" role="img" aria-label="Three cases of ENTRYPOINT and CMD decomposed into fixed and argument">
+          <!-- legend -->
+          <rect x="190" y="12" width="13" height="13" rx="3" fill="#161b22" stroke="#bc8cff" stroke-width="1.4"/>
+          <text x="210" y="23" fill="#8b949e" font-family="Inter" font-size="11">fixed = ENTRYPOINT</text>
+          <rect x="360" y="12" width="13" height="13" rx="3" fill="#161b22" stroke="#39c5cf" stroke-width="1.4"/>
+          <text x="380" y="23" fill="#8b949e" font-family="Inter" font-size="11">argument = CMD / your value</text>
+
+          <!-- CASE 1: ENTRYPOINT only -->
+          <text x="14" y="62" fill="#e6edf3" font-family="Inter" font-size="11" font-weight="700">Case 1</text>
+          <text x="14" y="77" fill="#6e7681" font-family="Inter" font-size="9.5">ENTRYPOINT</text>
+          <text x="14" y="89" fill="#6e7681" font-family="Inter" font-size="9.5">only</text>
+          <rect x="96" y="52" width="96" height="44" rx="9" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+          <text x="144" y="72" text-anchor="middle" fill="#d2a8ff" font-family="JetBrains Mono" font-size="12" font-weight="700">ping</text>
+          <text x="144" y="87" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">fixed</text>
+          <text x="212" y="79" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="18" font-weight="700">+</text>
+          <rect x="232" y="52" width="150" height="44" rx="9" fill="#0d1117" stroke="#30363d" stroke-width="1.4" stroke-dasharray="4 3"/>
+          <text x="307" y="72" text-anchor="middle" fill="#6e7681" font-family="JetBrains Mono" font-size="10">(none baked in)</text>
+          <text x="307" y="87" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">you must type it</text>
+          <text x="400" y="79" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="16" font-weight="700">=</text>
+          <rect x="420" y="48" width="266" height="52" rx="9" fill="#0f1f15" stroke="#3fb950" stroke-width="1.4"/>
+          <text x="553" y="70" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="11" font-weight="700">ping &lt;whatever you type&gt;</text>
+          <text x="553" y="86" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8.5">no host given → ping errors</text>
+
+          <!-- CASE 2: ENTRYPOINT + CMD default -->
+          <text x="14" y="156" fill="#e6edf3" font-family="Inter" font-size="11" font-weight="700">Case 2</text>
+          <text x="14" y="171" fill="#6e7681" font-family="Inter" font-size="9.5">+ CMD</text>
+          <text x="14" y="183" fill="#6e7681" font-family="Inter" font-size="9.5">default</text>
+          <rect x="96" y="146" width="96" height="44" rx="9" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+          <text x="144" y="166" text-anchor="middle" fill="#d2a8ff" font-family="JetBrains Mono" font-size="12" font-weight="700">ping</text>
+          <text x="144" y="181" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">fixed</text>
+          <text x="212" y="173" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="18" font-weight="700">+</text>
+          <rect x="232" y="146" width="150" height="44" rx="9" fill="#161b22" stroke="#39c5cf" stroke-width="1.5"/>
+          <text x="307" y="166" text-anchor="middle" fill="#39c5cf" font-family="JetBrains Mono" font-size="11" font-weight="700">jahez.sa</text>
+          <text x="307" y="181" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">CMD default</text>
+          <text x="400" y="173" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="16" font-weight="700">=</text>
+          <rect x="420" y="142" width="266" height="52" rx="9" fill="#0f1f15" stroke="#3fb950" stroke-width="1.4"/>
+          <text x="553" y="166" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="11.5" font-weight="700">ping jahez.sa</text>
+          <text x="553" y="182" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8.5">ran with no args → used the default</text>
+
+          <!-- CASE 3: ENTRYPOINT + CMD overridden -->
+          <text x="14" y="250" fill="#e6edf3" font-family="Inter" font-size="11" font-weight="700">Case 3</text>
+          <text x="14" y="265" fill="#6e7681" font-family="Inter" font-size="9.5">+ CMD</text>
+          <text x="14" y="277" fill="#6e7681" font-family="Inter" font-size="9.5">overridden</text>
+          <rect x="96" y="240" width="96" height="44" rx="9" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+          <text x="144" y="260" text-anchor="middle" fill="#d2a8ff" font-family="JetBrains Mono" font-size="12" font-weight="700">ping</text>
+          <text x="144" y="275" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">fixed</text>
+          <text x="212" y="267" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="18" font-weight="700">+</text>
+          <rect x="232" y="240" width="150" height="44" rx="9" fill="#161b22" stroke="#f0883e" stroke-width="1.5"/>
+          <text x="307" y="260" text-anchor="middle" fill="#f0883e" font-family="JetBrains Mono" font-size="11" font-weight="700">keeta.com</text>
+          <text x="307" y="275" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">your value (replaces default)</text>
+          <text x="400" y="267" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="16" font-weight="700">=</text>
+          <rect x="420" y="236" width="266" height="52" rx="9" fill="#0f1f15" stroke="#3fb950" stroke-width="1.4"/>
+          <text x="553" y="260" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="11.5" font-weight="700">ping keeta.com</text>
+          <text x="553" y="276" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8.5">your arg replaced jahez.sa</text>
+        </svg>
+        <div class="dg-cap">ping (purple) never changes — only the argument does: none → CMD default → your override</div>
+      </div>
+
+      <h4><span class="bar"></span>Case 1 — ENTRYPOINT only</h4>
+      <p>No default argument is baked in. <code>ping</code> always runs, but <em>you</em> must supply the host every time.</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ Dockerfile</span><span class="tag">case 1</span></div>
+        <pre><code><span class="t-b">FROM</span> alpine
+<span class="t-b">ENTRYPOINT</span> [<span class="t-s">"ping"</span>]</code></pre>
+      </div>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ developer terminal</span><span class="tag sh">final command</span></div>
+        <pre><code><span class="t-p">docker</span> run pinger
+<span class="t-c"># final command →  ping</span>
+<span class="t-d"># (no host → ping prints a usage error)</span>
+
+<span class="t-p">docker</span> run pinger jahez.sa
+<span class="t-c"># final command →  ping jahez.sa</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>Case 2 — ENTRYPOINT + CMD (default arguments)</h4>
+      <p>Now we bake a default host into <code>CMD</code>. Run it with <strong>no arguments</strong> and the default is used automatically.</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ Dockerfile</span><span class="tag">case 2</span></div>
+        <pre><code><span class="t-b">FROM</span> alpine
+<span class="t-b">ENTRYPOINT</span> [<span class="t-s">"ping"</span>]        <span class="t-c"># fixed</span>
+<span class="t-b">CMD</span> [<span class="t-s">"jahez.sa"</span>]          <span class="t-c"># default argument</span></code></pre>
+      </div>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ developer terminal</span><span class="tag sh">final command</span></div>
+        <pre><code><span class="t-p">docker</span> run pinger
+<span class="t-c"># final command →  ping jahez.sa</span>
+<span class="t-d"># ENTRYPOINT (ping) + CMD default (jahez.sa)</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>Case 3 — ENTRYPOINT + CMD (override the default)</h4>
+      <p>Same image as Case 2. This time you pass your own host on <code>docker run</code> — it <strong>replaces</strong> the CMD default, but <code>ping</code> still runs.</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ Dockerfile (unchanged from Case 2)</span><span class="tag">case 3</span></div>
+        <pre><code><span class="t-b">FROM</span> alpine
+<span class="t-b">ENTRYPOINT</span> [<span class="t-s">"ping"</span>]        <span class="t-c"># fixed</span>
+<span class="t-b">CMD</span> [<span class="t-s">"jahez.sa"</span>]          <span class="t-c"># default — about to be overridden</span></code></pre>
+      </div>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ developer terminal</span><span class="tag sh">final command</span></div>
+        <pre><code><span class="t-p">docker</span> run pinger keeta.com
+<span class="t-c"># final command →  ping keeta.com</span>
+<span class="t-d"># ENTRYPOINT (ping) stays · your "keeta.com" replaced the CMD default</span></code></pre>
+      </div>
+      <div class="callout tip"><span class="ci">THE TAKEAWAY</span><p>Across all three, <code>ping</code> (the ENTRYPOINT) is <strong>fixed</strong> and never changes. Only the <strong>argument</strong> moves: in Case 1 it comes from you, in Case 2 from the CMD default, in Case 3 your value overrides that default. That is the whole ENTRYPOINT + CMD relationship.</p></div>
+
+      <div class="callout note"><span class="ci">YOUR REAL APP</span><p>The Jahez API image is this exact shape — swap <code>ping</code>/host for <code>dotnet</code>/flags:<br><code>ENTRYPOINT ["dotnet", "Jahez.Api.dll"]</code> &nbsp;(fixed — always the API)<br><code>CMD ["--urls", "http://0.0.0.0:8080"]</code> &nbsp;(default port)<br>So <code>docker run jahez/api</code> → <code>dotnet Jahez.Api.dll --urls http://0.0.0.0:8080</code> (Case 2), and <code>docker run jahez/api --urls :9090</code> → <code>dotnet Jahez.Api.dll --urls :9090</code> (Case 3).</p></div>
+
+      <h4><span class="bar"></span>The two real-world patterns</h4>
+      <div class="grid c2">
+        <div class="mini"><h5 style="color:var(--purple)">ENTRYPOINT-led</h5><p>"This image <em>is</em> this tool." Every run goes through the same executable; users only tweak arguments. Best for apps and CLIs — like <code>jahez-api</code>.</p></div>
+        <div class="mini"><h5 style="color:var(--cyan)">CMD-only</h5><p>"Here's a default, but feel free to replace it." Leaves the image easy to override with a shell for debugging: <code>docker run -it image sh</code>.</p></div>
+      </div>
+
+      <h4><span class="bar"></span>The bridge to everything above</h4>
+      <p>This is the connection to the rest of the guide. Kubernetes uses the <em>same</em> two concepts — it just renames them in the Pod spec:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Where</th><th>"what to run" (fixed)</th><th>"default args" (overridable)</th></tr></thead>
+          <tbody>
+            <tr><td>Dockerfile</td><td><code>ENTRYPOINT</code></td><td><code>CMD</code></td></tr>
+            <tr><td><code>docker run</code></td><td>(ENTRYPOINT) + </td><td>args after the image name</td></tr>
+            <tr><td>Kubernetes Pod</td><td><code>command</code></td><td><code>args</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout note"><span class="ci">CARRY THIS FORWARD</span><p>Everything in §00 onward is just this idea in Kubernetes clothing: a Pod's <code>command</code> overrides the image's <code>ENTRYPOINT</code>, and a Pod's <code>args</code> overrides its <code>CMD</code> — same "fixed executable + overridable arguments" model, applied by the kubelet instead of by <code>docker run</code>.</p></div>
+    </section>
+
+    <!-- 00 WHAT -->
+    <section id="what">
+      <div class="sec-no">00</div>
+      <h3 class="sec">What <code>command</code> &amp; <code>args</code> actually are</h3>
+      <p class="lead">A container is a single foreground process plus its namespaces. <code>command</code> and <code>args</code> together <em>are</em> that process and its arguments.</p>
+      <p>They live in the container block of any Pod spec:</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ where they live</span><span class="tag">Pod spec</span></div>
+        <pre><code><span class="t-k">spec</span>:
+  <span class="t-k">containers</span>:
+  - <span class="t-k">name</span>: <span class="t-s">api</span>
+    <span class="t-k">image</span>: <span class="t-s">ghcr.io/jahez/api:1.8.2</span>
+    <span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>]          <span class="t-c"># the executable (PID 1)</span>
+    <span class="t-k">args</span>:    [<span class="t-s">"Jahez.Api.dll"</span>]   <span class="t-c"># its arguments</span></code></pre>
+      </div>
+      <p>At container start, the runtime joins them into a single argument vector and <code>exec</code>s it. With the example above, the process that runs as <strong>PID 1</strong> inside the container is literally:</p>
+      <div class="anatomy">
+        <div class="atom verb"><span class="tok">dotnet</span><span class="lab">command[0] — the executable</span></div>
+        <div class="atom flag"><span class="tok">Jahez.Api.dll</span><span class="lab">args[0] — first argument</span></div>
+      </div>
+      <div class="grid c2">
+        <div class="mini"><h5 style="color:var(--purple)"><code>command</code> (a list)</h5><p>The executable and any arguments you consider <em>part of the command itself</em>. Overrides the image's <code>ENTRYPOINT</code>. If omitted, the image's ENTRYPOINT is used.</p></div>
+        <div class="mini"><h5 style="color:var(--orange)"><code>args</code> (a list)</h5><p>The arguments passed to the command. Overrides the image's <code>CMD</code>. If omitted, the image's CMD is used.</p></div>
+      </div>
+      <div class="callout note"><span class="ci">KEY</span><p>Neither field is a string — both are <strong>YAML lists of strings</strong>. <code>command: ["dotnet", "app.dll"]</code> is correct; <code>command: "dotnet app.dll"</code> is a single-element list whose one element contains a space, which the runtime tries to exec as a file literally named <code>"dotnet app.dll"</code> → <code>not found</code>.</p></div>
+    </section>
+
+    <!-- 01 WHY -->
+    <section id="why">
+      <div class="sec-no">01</div>
+      <h3 class="sec">Why they exist — the need they fill</h3>
+      <p>Most images already ship with a sensible <code>ENTRYPOINT</code>/<code>CMD</code>, so why override? Because the same image is used in many situations, and rebuilding to change one flag is wasteful and slow. <code>command</code>/<code>args</code> let one image serve many roles:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>The need</th><th>How command/args solves it</th></tr></thead>
+          <tbody>
+            <tr><td>Run the same image as a one-off migration job</td><td>Same <code>ghcr.io/jahez/api</code> image, but <code>command: ["dotnet","Jahez.Api.dll","migrate"]</code></td></tr>
+            <tr><td>Keep a crashing pod alive to debug it</td><td>Override with <code>command: ["sleep","3600"]</code> and exec in</td></tr>
+            <tr><td>Pass an environment-specific flag</td><td>Change only <code>args</code> per environment, image stays identical</td></tr>
+            <tr><td>Run a setup step before the app</td><td>An initContainer with its own <code>command</code></td></tr>
+            <tr><td>Use a generic base image (busybox, alpine)</td><td>Supply the whole command yourself; the image has no useful default</td></tr>
+            <tr><td>Wrap startup in a shell one-liner</td><td><code>command: ["sh","-c","flyway migrate && exec dotnet app.dll"]</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip"><span class="ci">THE PRINCIPLE</span><p>Build the image once; configure behaviour at deploy time. <code>command</code>/<code>args</code> are part of that contract alongside env vars and ConfigMaps — they keep the image immutable and the behaviour declarative in your committed YAML.</p></div>
+    </section>
+    <!-- 02 DOCKER MAPPING -->
+    <section id="docker">
+      <div class="sec-no">02</div>
+      <h3 class="sec">The Docker mapping — the one thing to memorize</h3>
+      <p>The single biggest source of confusion: the Kubernetes field names do <strong>not</strong> match the Dockerfile instruction names. They map across like this:</p>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 700 220" role="img" aria-label="Mapping between Dockerfile and Kubernetes fields">
+          <defs><marker id="m-ar" markerWidth="11" markerHeight="11" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#58a6ff"/></marker></defs>
+          <!-- dockerfile side -->
+          <rect x="40" y="30" width="250" height="160" rx="12" fill="#0f141b" stroke="#f0883e" stroke-width="1.5"/>
+          <text x="165" y="56" text-anchor="middle" fill="#f0883e" font-family="JetBrains Mono" font-size="13" font-weight="700">Dockerfile</text>
+          <rect x="64" y="74" width="202" height="44" rx="8" fill="#161b22" stroke="#bc8cff" stroke-width="1.2"/>
+          <text x="165" y="93" text-anchor="middle" fill="#d2a8ff" font-family="JetBrains Mono" font-size="12" font-weight="700">ENTRYPOINT</text>
+          <text x="165" y="109" text-anchor="middle" fill="#8b949e" font-family="Inter" font-size="9.5">the executable</text>
+          <rect x="64" y="128" width="202" height="44" rx="8" fill="#161b22" stroke="#39c5cf" stroke-width="1.2"/>
+          <text x="165" y="147" text-anchor="middle" fill="#39c5cf" font-family="JetBrains Mono" font-size="12" font-weight="700">CMD</text>
+          <text x="165" y="163" text-anchor="middle" fill="#8b949e" font-family="Inter" font-size="9.5">default arguments</text>
+          <!-- k8s side -->
+          <rect x="410" y="30" width="250" height="160" rx="12" fill="#0f141b" stroke="#58a6ff" stroke-width="1.5"/>
+          <text x="535" y="56" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="13" font-weight="700">Pod container spec</text>
+          <rect x="434" y="74" width="202" height="44" rx="8" fill="#161b22" stroke="#bc8cff" stroke-width="1.2"/>
+          <text x="535" y="93" text-anchor="middle" fill="#d2a8ff" font-family="JetBrains Mono" font-size="12" font-weight="700">command</text>
+          <text x="535" y="109" text-anchor="middle" fill="#8b949e" font-family="Inter" font-size="9.5">overrides ENTRYPOINT</text>
+          <rect x="434" y="128" width="202" height="44" rx="8" fill="#161b22" stroke="#39c5cf" stroke-width="1.2"/>
+          <text x="535" y="147" text-anchor="middle" fill="#39c5cf" font-family="JetBrains Mono" font-size="12" font-weight="700">args</text>
+          <text x="535" y="163" text-anchor="middle" fill="#8b949e" font-family="Inter" font-size="9.5">overrides CMD</text>
+          <!-- arrows -->
+          <line x1="270" y1="96" x2="430" y2="96" stroke="#58a6ff" stroke-width="2" marker-end="url(#m-ar)"/>
+          <line x1="270" y1="150" x2="430" y2="150" stroke="#58a6ff" stroke-width="2" marker-end="url(#m-ar)"/>
+          <text x="350" y="20" text-anchor="middle" fill="#6e7681" font-family="JetBrains Mono" font-size="10">same role, different name</text>
+        </svg>
+        <div class="dg-cap">ENTRYPOINT → command · CMD → args</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Dockerfile</th><th>Kubernetes field</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code>ENTRYPOINT ["dotnet"]</code></td><td><code>command: ["dotnet"]</code></td><td>The executable — what actually runs</td></tr>
+            <tr><td><code>CMD ["app.dll"]</code></td><td><code>args: ["app.dll"]</code></td><td>The default arguments to it</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><span class="ci">THE TRAP</span><p>People expect <code>command</code> to map to <code>CMD</code> because the names look alike. It does <strong>not</strong>. <code>command</code> ↔ <code>ENTRYPOINT</code>, and <code>args</code> ↔ <code>CMD</code>. Burn this in — almost every command/args bug traces back to this one mismatch.</p></div>
+    </section>
+
+    <!-- 03 COMBOS -->
+    <section id="combos">
+      <div class="sec-no">03</div>
+      <h3 class="sec">The four override combinations</h3>
+      <p>What runs depends on which of the two fields you set. Take an image built with <code>ENTRYPOINT ["/app"]</code> and <code>CMD ["--default"]</code>. Here is every case:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>You set <code>command</code></th><th>You set <code>args</code></th><th>What actually runs</th><th>Rule</th></tr></thead>
+          <tbody>
+            <tr><td><span class="pill both">— (omit)</span></td><td><span class="pill both">— (omit)</span></td><td><code>/app --default</code></td><td>Both come from the image</td></tr>
+            <tr><td><span class="pill both">— (omit)</span></td><td><span class="pill dec">["--prod"]</span></td><td><code>/app --prod</code></td><td>Image ENTRYPOINT + your args</td></tr>
+            <tr><td><span class="pill imp">["/other"]</span></td><td><span class="pill both">— (omit)</span></td><td><code>/other</code></td><td>Your command, image CMD is <strong>dropped</strong></td></tr>
+            <tr><td><span class="pill imp">["/other"]</span></td><td><span class="pill dec">["--x"]</span></td><td><code>/other --x</code></td><td>Both come from you; image ignored</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout danger"><span class="ci">CRITICAL ROW 3</span><p>The moment you set <code>command</code> but leave <code>args</code> unset, the image's <code>CMD</code> is <strong>discarded entirely</strong> — it is <em>not</em> appended. If your app needed that CMD argument to run, it now starts with none and may crash. If you override <code>command</code>, you usually must also supply <code>args</code>.</p></div>
+      <h4><span class="bar"></span>The mental shortcut</h4>
+      <ul>
+        <li><strong>Set neither</strong> → trust the image (the common case).</li>
+        <li><strong>Set only <code>args</code></strong> → keep the image's entrypoint, change its arguments (the safe override).</li>
+        <li><strong>Set <code>command</code></strong> → you're replacing the entrypoint; assume the image's CMD is gone and provide your own <code>args</code>.</li>
+      </ul>
+      <div class="grid c2">
+        <div class="card" style="border-color:rgba(63,185,80,.4)">
+          <h4 style="margin-top:0"><span class="bar" style="background:var(--green)"></span>Safe: override args only</h4>
+          <div class="code" style="margin:8px 0"><pre><code><span class="t-c"># image ENTRYPOINT ["dotnet","Jahez.Api.dll"]</span>
+<span class="t-k">args</span>: [<span class="t-s">"--urls"</span>, <span class="t-s">"http://0.0.0.0:8080"</span>]
+<span class="t-c"># runs: dotnet Jahez.Api.dll --urls http://0.0.0.0:8080</span></code></pre></div>
+        </div>
+        <div class="card" style="border-color:rgba(240,136,62,.4)">
+          <h4 style="margin-top:0"><span class="bar" style="background:var(--orange)"></span>Full replace: command + args</h4>
+          <div class="code" style="margin:8px 0"><pre><code><span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+<span class="t-k">args</span>:    [<span class="t-s">"migrate"</span>, <span class="t-s">"--latest"</span>]
+<span class="t-c"># runs: dotnet Jahez.Api.dll migrate --latest</span></code></pre></div>
+        </div>
+      </div>
+    </section>
+    <!-- 04 FORMS -->
+    <section id="forms">
+      <div class="sec-no">04</div>
+      <h3 class="sec">Exec form vs shell form</h3>
+      <p>There are two ways to write a command, and the choice has real consequences for signals, env vars, and what PID 1 ends up being.</p>
+      <div class="grid c2">
+        <div class="card" style="border-color:rgba(63,185,80,.4)">
+          <h4 style="margin-top:0"><span class="bar" style="background:var(--green)"></span>Exec form (preferred)</h4>
+          <p style="margin-top:0">A list where element 0 is the executable. The runtime <code>exec</code>s it directly — <strong>no shell involved</strong>.</p>
+          <div class="code" style="margin:10px 0"><pre><code><span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+<span class="t-c"># OR equivalently:</span>
+<span class="t-k">command</span>:
+  - <span class="t-s">dotnet</span>
+  - <span class="t-s">Jahez.Api.dll</span></code></pre></div>
+          <ul style="font-size:13.5px">
+            <li>Your process is <strong>PID 1</strong> → receives <code>SIGTERM</code> directly.</li>
+            <li>Graceful shutdown works.</li>
+            <li>No shell features (no <code>&amp;&amp;</code>, <code>|</code>, <code>$VAR</code>, globbing).</li>
+          </ul>
+        </div>
+        <div class="card" style="border-color:rgba(240,136,62,.4)">
+          <h4 style="margin-top:0"><span class="bar" style="background:var(--orange)"></span>Shell form</h4>
+          <p style="margin-top:0">You explicitly invoke a shell with <code>-c</code> and pass a command string. The shell interprets it.</p>
+          <div class="code" style="margin:10px 0"><pre><code><span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>]
+<span class="t-k">args</span>: [<span class="t-s">"flyway migrate &amp;&amp; dotnet Jahez.Api.dll"</span>]</code></pre></div>
+          <ul style="font-size:13.5px">
+            <li>Shell features work: <code>&amp;&amp;</code>, pipes, <code>$VAR</code>, redirects.</li>
+            <li><strong><code>sh</code> becomes PID 1</strong>, not your app.</li>
+            <li>Signals may not reach your app → broken shutdown (see §06).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout tip"><span class="ci">RULE OF THUMB</span><p>Use <strong>exec form</strong> by default. Reach for <strong>shell form</strong> only when you genuinely need shell features — chaining commands, expanding a shell variable, or a pipe. When you do use shell form for the main process, prefix the real app with <code>exec</code> so it <em>replaces</em> the shell and reclaims PID 1: <code>sh -c "setup && exec dotnet app.dll"</code>.</p></div>
+      <div class="callout note"><span class="ci">CONVENTION</span><p>With shell form you'll see two styles: <code>command: ["sh","-c","..."]</code> (whole thing in command) or <code>command: ["sh","-c"]</code> + <code>args: ["..."]</code>. Both work. Putting the script in <code>args</code> reads more cleanly and keeps <code>command</code> as just the interpreter.</p></div>
+    </section>
+
+    <!-- 05 CHOOSE FORM -->
+    <section id="choose-form">
+      <div class="sec-no">05</div>
+      <h3 class="sec">Exec vs shell — when to use which, and why</h3>
+      <p>§04 showed <em>what</em> each form is. This is the decision: which one to reach for, and the reason behind it. The short version — <strong>default to exec form; use shell form only when you actually need a shell.</strong></p>
+
+      <h4><span class="bar"></span>Side by side</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Dimension</th><th>Exec form <span class="pill dec">default</span></th><th>Shell form <span class="pill imp">sh -c</span></th></tr></thead>
+          <tbody>
+            <tr><td>Who is PID 1</td><td><strong>Your app</strong></td><td><strong><code>sh</code></strong> (app is a child)</td></tr>
+            <tr><td>Receives SIGTERM directly</td><td>Yes ✓</td><td>No — sh must forward it ✗</td></tr>
+            <tr><td>Graceful shutdown</td><td>Works out of the box</td><td>Breaks unless you use <code>exec</code></td></tr>
+            <tr><td><code>&amp;&amp;</code> <code>;</code> <code>|</code> redirects</td><td>Not available</td><td>Available ✓</td></tr>
+            <tr><td>Shell <code>$VAR</code> expansion</td><td>No (only K8s <code>$(VAR)</code>)</td><td>Yes ✓</td></tr>
+            <tr><td>Globbing (<code>*.log</code>)</td><td>No</td><td>Yes ✓</td></tr>
+            <tr><td>Needs a shell in the image</td><td>No — works on distroless</td><td>Yes — fails if none ✗</td></tr>
+            <tr><td>Extra process / overhead</td><td>None</td><td>An extra <code>sh</code> process</td></tr>
+            <tr><td>Best for</td><td>Running your actual app/binary</td><td>Multi-step or shell-feature startup</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4><span class="bar"></span>Use <span style="color:var(--green)">exec form</span> when… (almost always)</h4>
+      <p>You're just starting one program. There are no pipes, no chaining, no shell variables. This is the default and what you want for <code>jahez-api</code>.</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ start the app — nothing fancy needed</span><span class="tag">exec ✓</span></div>
+        <pre><code><span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+<span class="t-k">args</span>:    [<span class="t-s">"--urls"</span>, <span class="t-s">"http://0.0.0.0:8080"</span>]
+<span class="t-c"># PID 1 = dotnet → SIGTERM lands on the app → clean drain on rollout</span></code></pre>
+      </div>
+      <div class="callout danger"><span class="ci">DISTROLESS</span><p>Many production images (incl. hardened .NET/Go bases) ship <strong>no shell at all</strong>. Shell form there fails instantly with <code>exec: "sh": not found</code>. Exec form is the only option — another reason to make it your default.</p></div>
+
+      <h4><span class="bar"></span>Use <span style="color:var(--orange)">shell form</span> when… (you need a shell feature)</h4>
+      <p>Reach for <code>sh -c</code> only when the startup genuinely requires something a shell provides. The three real cases:</p>
+
+      <p style="margin-bottom:6px"><strong>1. Chaining steps</strong> — run a setup command, then the app:</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ needs &amp;&amp;</span><span class="tag sh">shell ✓</span></div>
+        <pre><code><span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>]
+<span class="t-k">args</span>: [<span class="t-s">"flyway migrate &amp;&amp; exec dotnet Jahez.Api.dll"</span>]
+<span class="t-c">#                            ↑ exec hands PID 1 to dotnet (keeps shutdown working)</span></code></pre>
+      </div>
+
+      <p style="margin-bottom:6px"><strong>2. A shell variable or pipe</strong> — value only the shell can resolve, or a pipe:</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ needs $VAR / a pipe</span><span class="tag sh">shell ✓</span></div>
+        <pre><code><span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>]
+<span class="t-k">args</span>: [<span class="t-s">"echo starting on $HOSTNAME | tee /proc/1/fd/1; exec dotnet Jahez.Api.dll"</span>]</code></pre>
+      </div>
+
+      <p style="margin-bottom:6px"><strong>3. Globbing</strong> — let the shell expand a wildcard:</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ needs * expansion</span><span class="tag sh">shell ✓</span></div>
+        <pre><code><span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>, <span class="t-s">"cat /config/*.json &gt; /app/merged.json &amp;&amp; exec dotnet Jahez.Api.dll"</span>]</code></pre>
+      </div>
+      <div class="callout warn"><span class="ci">ALWAYS exec THE REAL APP</span><p>Whenever shell form launches your long-running process, prefix it with <code>exec</code>. Without it, <code>sh</code> stays PID 1, swallows <code>SIGTERM</code>, and the app gets <code>SIGKILL</code>ed after the grace period — dropping in-flight orders on every rollout. <code>exec</code> replaces the shell with your app so it reclaims PID 1. Full detail in §06.</p></div>
+
+      <h4><span class="bar"></span>The decision in one flow</h4>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 700 210" role="img" aria-label="Decision flow for exec vs shell form">
+          <defs><marker id="cf-ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#6e7681"/></marker></defs>
+          <rect x="200" y="16" width="300" height="48" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+          <text x="350" y="36" text-anchor="middle" fill="#79c0ff" font-family="Inter" font-size="12" font-weight="700">Do you need &amp;&amp;, |, $VAR, a redirect,</text>
+          <text x="350" y="53" text-anchor="middle" fill="#79c0ff" font-family="Inter" font-size="12" font-weight="700">or globbing to start?</text>
+          <!-- NO branch -->
+          <line x1="270" y1="64" x2="170" y2="104" stroke="#6e7681" stroke-width="1.4" marker-end="url(#cf-ar)"/>
+          <text x="196" y="88" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="11" font-weight="700">NO</text>
+          <rect x="40" y="106" width="260" height="74" rx="10" fill="#0e1a13" stroke="#3fb950" stroke-width="1.5"/>
+          <text x="170" y="130" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="12" font-weight="700">exec form</text>
+          <text x="170" y="150" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">command: ["app", "arg"]</text>
+          <text x="170" y="167" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="9.5">app is PID 1 · shutdown just works</text>
+          <!-- YES branch -->
+          <line x1="430" y1="64" x2="530" y2="104" stroke="#6e7681" stroke-width="1.4" marker-end="url(#cf-ar)"/>
+          <text x="504" y="88" text-anchor="middle" fill="#f0883e" font-family="JetBrains Mono" font-size="11" font-weight="700">YES</text>
+          <rect x="400" y="106" width="280" height="74" rx="10" fill="#1a130d" stroke="#f0883e" stroke-width="1.5"/>
+          <text x="540" y="130" text-anchor="middle" fill="#f0883e" font-family="JetBrains Mono" font-size="12" font-weight="700">shell form</text>
+          <text x="540" y="150" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">sh -c "setup &amp;&amp; exec app"</text>
+          <text x="540" y="167" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="9.5">don't forget exec → app reclaims PID 1</text>
+        </svg>
+        <div class="dg-cap">when in doubt, it's exec form</div>
+      </div>
+    </section>
+
+    <!-- 06 PID 1 -->
+    <section id="pid1">
+      <div class="sec-no">06</div>
+      <h3 class="sec">PID 1 &amp; signal handling — why the form matters</h3>
+      <p>When Kubernetes wants to stop a pod (rollout, scale-down, node drain), the kubelet sends <code>SIGTERM</code> to <strong>PID 1</strong> of each container, waits <code>terminationGracePeriodSeconds</code> (default 30s), then sends <code>SIGKILL</code>. Whether your app shuts down gracefully depends entirely on what PID 1 is.</p>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 700 250" role="img" aria-label="SIGTERM delivery in exec form vs shell form">
+          <defs><marker id="s-ar" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#3fb950"/></marker>
+          <marker id="s-arx" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#f85149"/></marker></defs>
+          <!-- exec form -->
+          <text x="175" y="28" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="12" font-weight="700">exec form ✓</text>
+          <rect x="40" y="44" width="80" height="44" rx="9" fill="#161b22" stroke="#8b949e" stroke-width="1.2"/>
+          <text x="80" y="70" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">kubelet</text>
+          <rect x="230" y="44" width="100" height="44" rx="9" fill="#161b22" stroke="#3fb950" stroke-width="1.4"/>
+          <text x="280" y="65" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="10" font-weight="700">dotnet</text>
+          <text x="280" y="79" text-anchor="middle" fill="#8b949e" font-family="Inter" font-size="9">PID 1</text>
+          <line x1="120" y1="66" x2="226" y2="66" stroke="#3fb950" stroke-width="2" marker-end="url(#s-ar)"/>
+          <text x="173" y="58" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="9">SIGTERM</text>
+          <text x="280" y="108" text-anchor="middle" fill="#8b949e" font-family="Inter" font-size="9.5">app catches it → drains → exits</text>
+          <!-- shell form -->
+          <text x="175" y="150" text-anchor="middle" fill="#f85149" font-family="JetBrains Mono" font-size="12" font-weight="700">shell form (naive) ✗</text>
+          <rect x="40" y="166" width="80" height="44" rx="9" fill="#161b22" stroke="#8b949e" stroke-width="1.2"/>
+          <text x="80" y="192" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">kubelet</text>
+          <rect x="230" y="166" width="80" height="44" rx="9" fill="#161b22" stroke="#f85149" stroke-width="1.4"/>
+          <text x="270" y="187" text-anchor="middle" fill="#f85149" font-family="JetBrains Mono" font-size="10" font-weight="700">sh</text>
+          <text x="270" y="201" text-anchor="middle" fill="#8b949e" font-family="Inter" font-size="9">PID 1</text>
+          <rect x="430" y="166" width="100" height="44" rx="9" fill="#161b22" stroke="#6e7681" stroke-width="1.2"/>
+          <text x="480" y="187" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">dotnet</text>
+          <text x="480" y="201" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="9">child</text>
+          <line x1="120" y1="188" x2="226" y2="188" stroke="#f85149" stroke-width="2" marker-end="url(#s-arx)"/>
+          <text x="173" y="180" text-anchor="middle" fill="#f85149" font-family="JetBrains Mono" font-size="9">SIGTERM</text>
+          <line x1="310" y1="188" x2="426" y2="188" stroke="#6e7681" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <text x="368" y="180" text-anchor="middle" fill="#f85149" font-family="JetBrains Mono" font-size="9">✗ not forwarded</text>
+          <text x="430" y="236" text-anchor="middle" fill="#8b949e" font-family="Inter" font-size="9.5" text-anchor="start">app never told → SIGKILL after 30s → abrupt</text>
+        </svg>
+        <div class="dg-cap">A naive <code>sh -c</code> wrapper swallows SIGTERM; the app is killed hard 30s later</div>
+      </div>
+      <p>In the bad case, requests in flight are dropped, connections aren't drained, and you get 502s during every rollout. Three fixes, best first:</p>
+      <ol>
+        <li><strong>Use exec form</strong> — your app is PID 1, done.</li>
+        <li><strong><code>exec</code> in the shell string</strong> — <code>sh -c "migrate && exec dotnet app.dll"</code> replaces <code>sh</code> with your app so it becomes PID 1.</li>
+        <li><strong>Run an init process</strong> — set <code>shareProcessNamespace</code> or use a tiny init like <code>tini</code> to reap and forward signals (mostly handled by modern runtimes, but relevant for multi-process containers).</li>
+      </ol>
+      <div class="callout warn"><span class="ci">JAHEZ IMPACT</span><p>For <code>jahez-api</code>, broken SIGTERM handling means every deploy and every autoscale-down drops live order requests. The Deployment's <code>maxUnavailable: 0</code> only helps if old pods drain cleanly — which requires PID 1 to actually receive SIGTERM.</p></div>
+    </section>
+
+    <!-- 06 EXPANSION -->
+    <section id="expand">
+      <div class="sec-no">07</div>
+      <h3 class="sec">Environment variable expansion — <code>$(VAR)</code></h3>
+      <p class="lead">This trips up almost everyone, because there are really <strong>two different expansion systems</strong> and people mix them up.</p>
+      <p>In exec-form <code>command</code>/<code>args</code> (no shell), only <code>$(VAR)</code> is expanded, and <strong>Kubernetes itself</strong> (the kubelet) does it — before the process starts, looking <code>VAR</code> up in this container's own <code>env</code>/<code>envFrom</code>. By contrast <code>$VAR</code> and <code>${VAR}</code> are <strong>shell</strong> syntax; there is no shell in exec form, so Kubernetes leaves them as literal text. The whole topic comes down to one question:</p>
+      <div class="callout note"><span class="ci">THE QUESTION</span><p><strong>Who is doing the expanding?</strong> If it's <span style="color:var(--blue)">Kubernetes</span> → use <code>$(VAR)</code>. If it's a <span style="color:var(--green)">shell</span> → use <code>$VAR</code>, and you must actually be running one (<code>sh -c</code>).</p></div>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 700 210" role="img" aria-label="Who expands which syntax">
+          <defs><marker id="ex-ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#6e7681"/></marker></defs>
+          <!-- exec form branch -->
+          <rect x="20" y="20" width="320" height="170" rx="12" fill="#0d1117" stroke="#58a6ff" stroke-width="1.4"/>
+          <text x="180" y="44" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="12" font-weight="700">exec form (no shell)</text>
+          <text x="180" y="60" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="9.5">command/args as a plain list</text>
+          <rect x="40" y="76" width="280" height="42" rx="8" fill="#0e1a24" stroke="#3fb950" stroke-width="1.3"/>
+          <text x="56" y="94" fill="#3fb950" font-family="JetBrains Mono" font-size="11" font-weight="700">$(VAR)</text>
+          <text x="56" y="110" fill="#8b949e" font-family="Inter" font-size="9.5">→ Kubernetes expands it ✓</text>
+          <rect x="40" y="128" width="280" height="42" rx="8" fill="#1d1416" stroke="#f85149" stroke-width="1.3"/>
+          <text x="56" y="146" fill="#f85149" font-family="JetBrains Mono" font-size="11" font-weight="700">$VAR  ${VAR}</text>
+          <text x="56" y="162" fill="#8b949e" font-family="Inter" font-size="9.5">→ left literal, never expands ✗</text>
+          <!-- shell form branch -->
+          <rect x="360" y="20" width="320" height="170" rx="12" fill="#0d1117" stroke="#3fb950" stroke-width="1.4"/>
+          <text x="520" y="44" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="12" font-weight="700">shell form (sh -c)</text>
+          <text x="520" y="60" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="9.5">a real shell interprets the string</text>
+          <rect x="380" y="76" width="280" height="42" rx="8" fill="#0e1a24" stroke="#3fb950" stroke-width="1.3"/>
+          <text x="396" y="94" fill="#3fb950" font-family="JetBrains Mono" font-size="11" font-weight="700">$VAR  ${VAR}</text>
+          <text x="396" y="110" fill="#8b949e" font-family="Inter" font-size="9.5">→ the shell expands it ✓</text>
+          <rect x="380" y="128" width="280" height="42" rx="8" fill="#0e1a24" stroke="#58a6ff" stroke-width="1.3"/>
+          <text x="396" y="146" fill="#79c0ff" font-family="JetBrains Mono" font-size="11" font-weight="700">$(VAR)</text>
+          <text x="396" y="162" fill="#8b949e" font-family="Inter" font-size="9.5">→ K8s still expands it first ✓</text>
+        </svg>
+        <div class="dg-cap">pick the syntax that matches who's expanding — Kubernetes ($(VAR)) or the shell ($VAR)</div>
+      </div>
+
+      <h4><span class="bar"></span>✅ Correct — <code>$(VAR)</code> in exec form</h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ Kubernetes expands before exec</span><span class="tag">correct</span></div>
+        <pre><code><span class="t-k">env</span>:
+- <span class="t-k">name</span>: <span class="t-s">HOST</span>
+  <span class="t-k">value</span>: <span class="t-s">"0.0.0.0"</span>
+- <span class="t-k">name</span>: <span class="t-s">PORT</span>
+  <span class="t-k">value</span>: <span class="t-s">"8080"</span>
+<span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+<span class="t-k">args</span>:    [<span class="t-s">"--urls"</span>, <span class="t-s">"http://$(HOST):$(PORT)"</span>]</code></pre>
+      </div>
+      <p><strong>What happens:</strong> the kubelet substitutes before exec, so the process runs as <code>dotnet Jahez.Api.dll --urls http://0.0.0.0:8080</code>. <strong>Why:</strong> <code>$(VAR)</code> is Kubernetes' own syntax, resolved against the container's <code>env</code>.</p>
+
+      <h4><span class="bar"></span>❌ Wrong #1 — <code>$VAR</code> in exec form</h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ shell syntax with no shell</span><span class="tag">wrong</span></div>
+        <pre><code><span class="t-k">args</span>: [<span class="t-s">"--urls"</span>, <span class="t-s">"http://$HOST:$PORT"</span>]</code></pre>
+      </div>
+      <p><strong>What happens:</strong> the app receives the <strong>literal</strong> string <code>http://$HOST:$PORT</code> and tries to bind to a host literally named <code>$HOST</code> — it fails or binds to garbage. <strong>Why:</strong> <code>$HOST</code> is <em>shell</em> expansion. No shell is running in exec form, and Kubernetes only does <code>$(VAR)</code>, never <code>$VAR</code>.</p>
+
+      <h4><span class="bar"></span>❌ Wrong #2 — referencing a variable that isn't defined</h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ typo: PROT, not PORT</span><span class="tag">wrong</span></div>
+        <pre><code><span class="t-k">args</span>: [<span class="t-s">"--urls"</span>, <span class="t-s">"http://0.0.0.0:$(PROT)"</span>]</code></pre>
+      </div>
+      <p><strong>What happens:</strong> the process runs with the literal text <code>--urls http://0.0.0.0:$(PROT)</code> — the broken reference is left <strong>as-is</strong>. <strong>Why:</strong> this is the surprising part — an undefined <code>$(VAR)</code> is <strong>not</strong> replaced with an empty string; Kubernetes leaves the original text unchanged. (A shell does the opposite: undefined <code>$VAR</code> becomes empty.) A typo'd variable silently leaks <code>$(...)</code> into your arguments.</p>
+      <div class="callout danger"><span class="ci">#1 BUG</span><p>The two failures you'll actually hit: using <code>$VAR</code> where you needed <code>$(VAR)</code> (Wrong #1), and a typo'd <code>$(VAR)</code> leaking through as literal text instead of erroring (Wrong #2). Both pass YAML validation and only show up at runtime — check the resolved <code>Args:</code> in <code>kubectl describe pod</code>.</p></div>
+
+      <h4><span class="bar"></span>The escape — when you want a literal <code>$(...)</code></h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ double-dollar escapes expansion</span><span class="tag">escape</span></div>
+        <pre><code><span class="t-k">args</span>: [<span class="t-s">"--pattern"</span>, <span class="t-s">"$$(date)"</span>]   <span class="t-c"># app receives literal: $(date)</span></code></pre>
+      </div>
+      <p><strong>What happens:</strong> <code>$$</code> collapses to a single <code>$</code>, so the app receives the literal <code>$(date)</code>. <strong>Why:</strong> <code>$$(VAR)</code> tells Kubernetes "don't expand this" — needed when your <em>own</em> program uses <code>$(...)</code> syntax.</p>
+
+      <h4><span class="bar"></span>✅ When you genuinely need <code>$VAR</code> → use shell form</h4>
+      <p><code>$(VAR)</code> only reads this container's env. If you need a real shell variable, shell features, or the shell's undefined-→-empty behaviour, run a shell explicitly:</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ shell form does $VAR</span><span class="tag sh">shell form</span></div>
+        <pre><code><span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>]
+<span class="t-k">args</span>: [<span class="t-s">"exec dotnet Jahez.Api.dll --urls http://0.0.0.0:$PORT"</span>]</code></pre>
+      </div>
+      <p>Now a shell expands <code>$PORT</code>. Note the <code>exec</code> — it hands PID 1 back to <code>dotnet</code> so <code>SIGTERM</code> still works (the §06 issue).</p>
+
+      <h4><span class="bar"></span>Variables can chain</h4>
+      <p><code>$(VAR)</code> in an env <em>value</em> can reference an <strong>earlier</strong> env var (not a later one):</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ build values from earlier ones</span><span class="tag">chaining</span></div>
+        <pre><code><span class="t-k">env</span>:
+- <span class="t-k">name</span>: <span class="t-s">HOST</span>
+  <span class="t-k">value</span>: <span class="t-s">"0.0.0.0"</span>
+- <span class="t-k">name</span>: <span class="t-s">PORT</span>
+  <span class="t-k">value</span>: <span class="t-s">"8080"</span>
+- <span class="t-k">name</span>: <span class="t-s">ADDRESS</span>
+  <span class="t-k">value</span>: <span class="t-s">"$(HOST):$(PORT)"</span>       <span class="t-c"># references the two above</span>
+<span class="t-k">args</span>: [<span class="t-s">"--urls"</span>, <span class="t-s">"http://$(ADDRESS)"</span>]   <span class="t-c"># → http://0.0.0.0:8080</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>Summary</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>You write</th><th>Who expands it</th><th>In exec form (<code>command</code>/<code>args</code>)</th></tr></thead>
+          <tbody>
+            <tr><td><code>$(VAR)</code></td><td>Kubernetes</td><td><span class="pill dec">✓</span> expands from container env</td></tr>
+            <tr><td><code>$(UNDEFINED)</code></td><td>Kubernetes</td><td><span class="pill both">⚠</span> left literal (not emptied)</td></tr>
+            <tr><td><code>$VAR</code> / <code>${VAR}</code></td><td>a shell</td><td><span class="pill rw">✗</span> literal passthrough — no shell present</td></tr>
+            <tr><td><code>$$(VAR)</code></td><td>Kubernetes (escape)</td><td><span class="pill dec">✓</span> becomes literal <code>$(VAR)</code></td></tr>
+            <tr><td><code>$VAR</code> inside <code>sh -c "…"</code></td><td>the shell</td><td><span class="pill dec">✓</span> shell expands it</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout note"><span class="ci">SCOPE</span><p><code>$(VAR)</code> only sees variables declared in this container's <code>env</code>/<code>envFrom</code> <em>before</em> the one referencing them. It cannot see arbitrary node or shell variables — for those you need shell form.</p></div>
+    </section>
+    <!-- 07 FIELDS -->
+    <section id="fields">
+      <div class="sec-no">08</div>
+      <h3 class="sec">Full field reference</h3>
+      <p>The complete set of container fields that govern <em>what runs and where</em>, all siblings of <code>command</code> and <code>args</code>.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Field</th><th>Type</th><th>Maps to</th><th>What it controls</th></tr></thead>
+          <tbody>
+            <tr><td><code>command</code></td><td>[]string</td><td>ENTRYPOINT</td><td>The executable (+ leading args) — PID 1</td></tr>
+            <tr><td><code>args</code></td><td>[]string</td><td>CMD</td><td>Arguments appended to the command</td></tr>
+            <tr><td><code>workingDir</code></td><td>string</td><td>WORKDIR</td><td>Directory the process starts in</td></tr>
+            <tr><td><code>env</code></td><td>[]EnvVar</td><td>ENV</td><td>Variables (referenceable as <code>$(VAR)</code>)</td></tr>
+            <tr><td><code>envFrom</code></td><td>[]EnvFromSource</td><td>—</td><td>Bulk-import a ConfigMap/Secret as env</td></tr>
+            <tr><td><code>stdin</code> / <code>tty</code></td><td>bool</td><td>—</td><td>Keep stdin open / allocate a TTY</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout note"><span class="ci">workingDir</span><p>Relative paths in your <code>args</code> resolve against <code>workingDir</code> (or the image's WORKDIR if unset). For a config file passed as <code>args: ["--config","appsettings.json"]</code>, set <code>workingDir: /app</code> so the runtime looks in <code>/app/appsettings.json</code>.</p></div>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ inspect what the image already defines</span><span class="tag sh">discover</span></div>
+        <pre><code><span class="t-c"># before overriding, check the image's baked-in ENTRYPOINT/CMD</span>
+docker inspect ghcr.io/jahez/api:1.8.2 <span class="t-d">\</span>
+  <span class="t-d">--format</span> <span class="t-s">'ENTRYPOINT={{.Config.Entrypoint}} CMD={{.Config.Cmd}}'</span></code></pre>
+      </div>
+    </section>
+
+    <!-- 08 ELSEWHERE -->
+    <section id="elsewhere">
+      <div class="sec-no">09</div>
+      <h3 class="sec">Where else exec commands appear</h3>
+      <p><code>command</code>/<code>args</code> aren't the only place you supply commands to a container. The same exec-list pattern shows up in three other spots — and the same rules apply.</p>
+
+      <h4><span class="bar"></span>initContainers — run a command, then exit</h4>
+      <p>An init container runs to completion <em>before</em> the app container starts. Its whole purpose is its <code>command</code> — a setup step like waiting for a dependency or running a migration.</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ initContainer</span><span class="tag">init</span></div>
+        <pre><code><span class="t-k">initContainers</span>:
+- <span class="t-k">name</span>: <span class="t-s">wait-for-postgres</span>
+  <span class="t-k">image</span>: <span class="t-s">busybox:1.36</span>
+  <span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>]
+  <span class="t-k">args</span>:
+  - <span class="t-s">until nc -z postgres-rw.jahez-prod.svc 5432; do echo waiting; sleep 2; done</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>Probes with <code>exec</code> — health by running a command</h4>
+      <p>A liveness/readiness probe can run a command inside the container; exit code 0 = healthy. Same exec-list shape under <code>exec.command</code>.</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ exec probe</span><span class="tag">probe</span></div>
+        <pre><code><span class="t-k">livenessProbe</span>:
+  <span class="t-k">exec</span>:
+    <span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>, <span class="t-s">"curl -fsS localhost:8080/healthz/live"</span>]
+  <span class="t-k">periodSeconds</span>: <span class="t-n">20</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>Lifecycle hooks — preStop for graceful drain</h4>
+      <p>A <code>preStop</code> hook runs <em>before</em> SIGTERM. The classic use: a small sleep so the load balancer stops routing before the app exits — directly relevant to the shutdown story in §06.</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ preStop hook</span><span class="tag">lifecycle</span></div>
+        <pre><code><span class="t-k">lifecycle</span>:
+  <span class="t-k">preStop</span>:
+    <span class="t-k">exec</span>:
+      <span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>, <span class="t-s">"sleep 5"</span>]   <span class="t-c"># let endpoints drain first</span></code></pre>
+      </div>
+      <div class="callout tip"><span class="ci">ONE PATTERN</span><p>Learn the exec-list shape once and it transfers everywhere: container <code>command</code>, <code>initContainers[].command</code>, <code>livenessProbe.exec.command</code>, and <code>lifecycle.preStop.exec.command</code> are all the same <code>[]string</code> with the same exec-vs-shell rules.</p></div>
+
+      <h4><span class="bar"></span>Where each command lives in the Pod spec</h4>
+      <p>All four sit in the same Pod spec, but at different paths. The structure tells you the role:</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ the command fields of a Pod</span><span class="tag">structure</span></div>
+        <pre><code><span class="t-k">spec</span>:
+  <span class="t-k">initContainers</span>:
+  - <span class="t-k">command</span> + <span class="t-k">args</span>            <span class="t-c"># ① setup — own container, runs first, to completion</span>
+  <span class="t-k">containers</span>:
+  - <span class="t-k">command</span> + <span class="t-k">args</span>            <span class="t-c"># ② the main app — this container's PID 1, runs for life</span>
+    <span class="t-k">startupProbe</span>:   { <span class="t-k">exec</span>: { <span class="t-k">command</span> } }   <span class="t-c"># ③ health checks — run INSIDE</span>
+    <span class="t-k">readinessProbe</span>: { <span class="t-k">exec</span>: { <span class="t-k">command</span> } }   <span class="t-c">#    the already-running</span>
+    <span class="t-k">livenessProbe</span>:  { <span class="t-k">exec</span>: { <span class="t-k">command</span> } }   <span class="t-c">#    container, repeatedly</span>
+    <span class="t-k">lifecycle</span>:
+      <span class="t-k">postStart</span>: { <span class="t-k">exec</span>: { <span class="t-k">command</span> } }  <span class="t-c"># ④ once, right after start</span>
+      <span class="t-k">preStop</span>:   { <span class="t-k">exec</span>: { <span class="t-k">command</span> } }  <span class="t-c"># ④ once, just before SIGTERM</span></code></pre>
+      </div>
+      <div class="callout warn"><span class="ci">THE BIG STRUCTURAL SPLIT</span><p>Notice it: <strong>container &amp; initContainer have TWO fields — <code>command</code> + <code>args</code></strong> (they override the image's <code>ENTRYPOINT</code>/<code>CMD</code> and <em>start a new container</em>). <strong>Probes &amp; lifecycle hooks have ONE field — <code>exec.command</code></strong> (no separate <code>args</code>, no ENTRYPOINT/CMD concept; you write the whole command in the list, and it runs <em>inside the container that's already running</em>).</p></div>
+
+      <h4><span class="bar"></span>Full comparison</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Place</th><th>Structure (path)</th><th><code>args</code> too?</th><th>Used for</th><th>Where it runs</th><th>Run by</th><th>When / how often</th><th>On non-zero exit</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Container</strong></td>
+              <td><code>containers[].command</code> + <code>args</code></td>
+              <td><span class="pill dec">yes</span></td>
+              <td>The main long-running app (PID 1)</td>
+              <td>A new container from its image</td>
+              <td>kubelet → runtime</td>
+              <td>Once at start; runs for the container's life</td>
+              <td>Container restarts per <code>restartPolicy</code></td>
+            </tr>
+            <tr>
+              <td><strong>initContainer</strong></td>
+              <td><code>initContainers[].command</code> + <code>args</code></td>
+              <td><span class="pill dec">yes</span></td>
+              <td>Setup before the app: wait for deps, migrate, fetch config</td>
+              <td>A new container (own image)</td>
+              <td>kubelet → runtime</td>
+              <td>Once each, in order, <em>before</em> app containers</td>
+              <td>Retried until success — <strong>blocks the whole pod</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Probe</strong> (liveness / readiness / startup)</td>
+              <td><code>containers[].&lt;probe&gt;.exec.command</code></td>
+              <td><span class="pill rw">no — command only</span></td>
+              <td>Health check: exit 0 = pass, non-zero = fail</td>
+              <td><strong>Inside</strong> the already-running container</td>
+              <td>kubelet</td>
+              <td>Repeatedly, every <code>periodSeconds</code></td>
+              <td>liveness → restart · readiness → pulled from Service endpoints</td>
+            </tr>
+            <tr>
+              <td><strong>Lifecycle hook</strong> (postStart / preStop)</td>
+              <td><code>containers[].lifecycle.{postStart,preStop}.exec.command</code></td>
+              <td><span class="pill rw">no — command only</span></td>
+              <td>postStart: just after start · preStop: graceful drain before stop</td>
+              <td><strong>Inside</strong> the running container</td>
+              <td>kubelet</td>
+              <td>Once, at that lifecycle moment</td>
+              <td>postStart fail → container killed · preStop bounded by grace period</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4><span class="bar"></span>When each one runs — a pod's lifetime</h4>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 700 220" role="img" aria-label="Timeline of when each command runs over a pod's life">
+          <!-- axis -->
+          <line x1="40" y1="120" x2="664" y2="120" stroke="#30363d" stroke-width="2"/>
+          <!-- init phase -->
+          <rect x="40" y="96" width="120" height="48" rx="8" fill="#18131f" stroke="#bc8cff" stroke-width="1.4"/>
+          <text x="100" y="116" text-anchor="middle" fill="#d2a8ff" font-family="JetBrains Mono" font-size="9.5" font-weight="700">initContainer</text>
+          <text x="100" y="130" text-anchor="middle" fill="#6e7681" font-family="JetBrains Mono" font-size="8">command → exits</text>
+          <text x="100" y="86" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8.5">runs first, to completion</text>
+          <!-- app running band -->
+          <rect x="172" y="104" width="400" height="32" rx="8" fill="#0e1a13" stroke="#3fb950" stroke-width="1.4"/>
+          <text x="372" y="124" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono" font-size="9.5" font-weight="700">container command = PID 1  (runs the whole life)</text>
+          <!-- postStart -->
+          <circle cx="190" cy="120" r="6" fill="#0e1a1e" stroke="#39c5cf" stroke-width="1.6"/>
+          <text x="190" y="160" text-anchor="middle" fill="#39c5cf" font-family="JetBrains Mono" font-size="8.5" font-weight="700">postStart</text>
+          <text x="190" y="172" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">right after start</text>
+          <!-- probe ticks -->
+          <g fill="#f0883e">
+            <rect x="250" y="142" width="3" height="14"/><rect x="305" y="142" width="3" height="14"/>
+            <rect x="360" y="142" width="3" height="14"/><rect x="415" y="142" width="3" height="14"/>
+            <rect x="470" y="142" width="3" height="14"/>
+          </g>
+          <text x="360" y="184" text-anchor="middle" fill="#f0883e" font-family="JetBrains Mono" font-size="8.5" font-weight="700">probe.exec.command — repeats every periodSeconds</text>
+          <!-- preStop -->
+          <circle cx="556" cy="120" r="6" fill="#1d1416" stroke="#f85149" stroke-width="1.6"/>
+          <text x="556" y="92" text-anchor="middle" fill="#f85149" font-family="JetBrains Mono" font-size="8.5" font-weight="700">preStop</text>
+          <text x="556" y="80" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">before SIGTERM</text>
+          <!-- SIGTERM end -->
+          <line x1="600" y1="100" x2="600" y2="140" stroke="#f85149" stroke-width="2"/>
+          <text x="628" y="116" text-anchor="middle" fill="#f85149" font-family="JetBrains Mono" font-size="9" font-weight="700">SIGTERM</text>
+          <text x="628" y="130" text-anchor="middle" fill="#6e7681" font-family="Inter" font-size="8">→ app exits</text>
+          <!-- legend of who -->
+          <text x="40" y="208" fill="#6e7681" font-family="Inter" font-size="9.5">All of them are launched by the <tspan fill="#8b949e" font-weight="700">kubelet</tspan> — container/init via the runtime as new containers; probes &amp; hooks run inside the live one.</text>
+        </svg>
+        <div class="dg-cap">init → app (PID 1) + postStart → probes repeat → preStop → SIGTERM</div>
+      </div>
+
+      <div class="callout note"><span class="ci">SO, THE DIFFERENCE IN ONE LINE</span><p>A <strong>container/initContainer</strong> command <em>is</em> a process the container exists to run (with <code>command</code> + <code>args</code>, overriding the image). A <strong>probe/hook</strong> command is an <em>extra</em> command (just <code>exec.command</code>) that the kubelet runs <em>inside</em> that container at health-check time or a lifecycle moment — it doesn't define the container, it observes or nudges it.</p></div>
+    </section>
+
+    <!-- 09 PATTERNS -->
+    <section id="patterns">
+      <div class="sec-no">10</div>
+      <h3 class="sec">Famous patterns</h3>
+
+      <h4><span class="bar"></span>Keep a pod alive to debug it</h4>
+      <p>When a pod crashes instantly you can't exec in. Override the command to do nothing but sleep, then exec a shell and investigate.</p>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ debug override</span><span class="tag">pattern</span></div>
+        <pre><code><span class="t-k">command</span>: [<span class="t-s">"sleep"</span>, <span class="t-s">"infinity"</span>]   <span class="t-c"># or ["sh","-c","sleep 3600"]</span>
+<span class="t-c"># then: kubectl exec -it POD -- sh   →  poke at the filesystem, env, deps</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>Run a migration as a Job (same image, different command)</h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ migration Job</span><span class="tag">Job</span></div>
+        <pre><code><span class="t-k">apiVersion</span>: <span class="t-s">batch/v1</span>
+<span class="t-k">kind</span>: <span class="t-s">Job</span>
+<span class="t-k">metadata</span>: { <span class="t-k">name</span>: <span class="t-s">jahez-api-migrate</span>, <span class="t-k">namespace</span>: <span class="t-s">jahez-prod</span> }
+<span class="t-k">spec</span>:
+  <span class="t-k">template</span>:
+    <span class="t-k">spec</span>:
+      <span class="t-k">restartPolicy</span>: <span class="t-s">Never</span>
+      <span class="t-k">containers</span>:
+      - <span class="t-k">name</span>: <span class="t-s">migrate</span>
+        <span class="t-k">image</span>: <span class="t-s">ghcr.io/jahez/api:1.8.2</span>   <span class="t-c"># SAME image as the Deployment</span>
+        <span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+        <span class="t-k">args</span>:    [<span class="t-s">"migrate"</span>, <span class="t-s">"--latest"</span>]   <span class="t-c"># different behaviour</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>Setup-then-run with a shell, keeping PID 1</h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ exec to reclaim PID 1</span><span class="tag">shell form</span></div>
+        <pre><code><span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>]
+<span class="t-k">args</span>:
+- <span class="t-s">cp /config/appsettings.json /app/ &amp;&amp; exec dotnet Jahez.Api.dll</span>
+<span class="t-c"># 'exec' makes dotnet replace sh → becomes PID 1 → SIGTERM works</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>Generic base image with no useful default</h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ supply everything</span><span class="tag">pattern</span></div>
+        <pre><code><span class="t-k">image</span>: <span class="t-s">alpine:3.20</span>
+<span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>, <span class="t-s">"echo ready &amp;&amp; sleep 3600"</span>]</code></pre>
+      </div>
+    </section>
+    <!-- 10 CLUSTER -->
+    <section id="cluster">
+      <div class="sec-no">11</div>
+      <h3 class="sec">The Jahez cluster — three nodes</h3>
+      <p>The examples deploy onto this cluster: one control plane, three workers across the <code>me-central-1</code> zones in Riyadh. Every pod below is just an image plus a <code>command</code>/<code>args</code> deciding what its PID 1 runs.</p>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 720 360" role="img" aria-label="Three-node Jahez cluster with each pod's command">
+          <defs><marker id="cc-ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#58a6ff"/></marker></defs>
+          <rect x="250" y="12" width="220" height="56" rx="11" fill="#0f141b" stroke="#bc8cff" stroke-width="1.5"/>
+          <text x="360" y="35" text-anchor="middle" fill="#d2a8ff" font-family="JetBrains Mono" font-size="12" font-weight="700">Control Plane</text>
+          <text x="360" y="52" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">apiserver · scheduler · etcd</text>
+          <!-- nodes -->
+          <g>
+            <rect x="20" y="98" width="216" height="248" rx="12" fill="#0d1117" stroke="#30363d" stroke-width="1.4"/>
+            <rect x="20" y="98" width="216" height="30" rx="12" fill="#161b22"/>
+            <text x="34" y="118" fill="#58a6ff" font-family="JetBrains Mono" font-size="10.5" font-weight="700">worker-1</text>
+            <text x="226" y="118" text-anchor="end" fill="#6e7681" font-family="JetBrains Mono" font-size="8">me-central-1a</text>
+            <rect x="32" y="140" width="192" height="56" rx="8" fill="#161b22" stroke="#3fb950" stroke-width="1.2"/>
+            <text x="44" y="158" fill="#3fb950" font-family="JetBrains Mono" font-size="9.5" font-weight="700">jahez-api 1/3</text>
+            <text x="44" y="174" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: dotnet</text>
+            <text x="44" y="186" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: Jahez.Api.dll</text>
+            <rect x="32" y="206" width="192" height="56" rx="8" fill="#161b22" stroke="#f0883e" stroke-width="1.2"/>
+            <text x="44" y="224" fill="#f0883e" font-family="JetBrains Mono" font-size="9.5" font-weight="700">orders 1/2</text>
+            <text x="44" y="240" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: dotnet</text>
+            <text x="44" y="252" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: Orders.dll</text>
+            <rect x="32" y="272" width="192" height="56" rx="8" fill="#161b22" stroke="#39c5cf" stroke-width="1.2"/>
+            <text x="44" y="290" fill="#39c5cf" font-family="JetBrains Mono" font-size="9.5" font-weight="700">redis-cache 1/1</text>
+            <text x="44" y="306" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: redis-server</text>
+            <text x="44" y="318" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: /etc/redis.conf</text>
+          </g>
+          <g>
+            <rect x="252" y="98" width="216" height="248" rx="12" fill="#0d1117" stroke="#30363d" stroke-width="1.4"/>
+            <rect x="252" y="98" width="216" height="30" rx="12" fill="#161b22"/>
+            <text x="266" y="118" fill="#58a6ff" font-family="JetBrains Mono" font-size="10.5" font-weight="700">worker-2</text>
+            <text x="458" y="118" text-anchor="end" fill="#6e7681" font-family="JetBrains Mono" font-size="8">me-central-1b</text>
+            <rect x="264" y="140" width="192" height="56" rx="8" fill="#161b22" stroke="#3fb950" stroke-width="1.2"/>
+            <text x="276" y="158" fill="#3fb950" font-family="JetBrains Mono" font-size="9.5" font-weight="700">jahez-api 2/3</text>
+            <text x="276" y="174" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: dotnet</text>
+            <text x="276" y="186" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: Jahez.Api.dll</text>
+            <rect x="264" y="206" width="192" height="56" rx="8" fill="#161b22" stroke="#f0883e" stroke-width="1.2"/>
+            <text x="276" y="224" fill="#f0883e" font-family="JetBrains Mono" font-size="9.5" font-weight="700">orders 2/2</text>
+            <text x="276" y="240" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: dotnet</text>
+            <text x="276" y="252" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: Orders.dll</text>
+            <rect x="264" y="272" width="192" height="56" rx="8" fill="#161b22" stroke="#bc8cff" stroke-width="1.2"/>
+            <text x="276" y="290" fill="#d2a8ff" font-family="JetBrains Mono" font-size="9.5" font-weight="700">search-es 1/2</text>
+            <text x="276" y="306" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: (image default)</text>
+            <text x="276" y="318" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: -ExpES_JAVA…</text>
+          </g>
+          <g>
+            <rect x="484" y="98" width="216" height="248" rx="12" fill="#0d1117" stroke="#30363d" stroke-width="1.4"/>
+            <rect x="484" y="98" width="216" height="30" rx="12" fill="#161b22"/>
+            <text x="498" y="118" fill="#58a6ff" font-family="JetBrains Mono" font-size="10.5" font-weight="700">worker-3</text>
+            <text x="690" y="118" text-anchor="end" fill="#6e7681" font-family="JetBrains Mono" font-size="8">me-central-1c</text>
+            <rect x="496" y="140" width="192" height="56" rx="8" fill="#161b22" stroke="#3fb950" stroke-width="1.2"/>
+            <text x="508" y="158" fill="#3fb950" font-family="JetBrains Mono" font-size="9.5" font-weight="700">jahez-api 3/3</text>
+            <text x="508" y="174" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: dotnet</text>
+            <text x="508" y="186" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: Jahez.Api.dll</text>
+            <rect x="496" y="206" width="192" height="56" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.2"/>
+            <text x="508" y="224" fill="#d29922" font-family="JetBrains Mono" font-size="9.5" font-weight="700">migrate (Job)</text>
+            <text x="508" y="240" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: dotnet Jahez.Api.dll</text>
+            <text x="508" y="252" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: migrate --latest</text>
+            <rect x="496" y="272" width="192" height="56" rx="8" fill="#161b22" stroke="#f85149" stroke-width="1.2"/>
+            <text x="508" y="290" fill="#f85149" font-family="JetBrains Mono" font-size="9.5" font-weight="700">postgres-0</text>
+            <text x="508" y="306" fill="#8b949e" font-family="JetBrains Mono" font-size="8">cmd: (image default)</text>
+            <text x="508" y="318" fill="#8b949e" font-family="JetBrains Mono" font-size="8">args: -c max_conn=200</text>
+          </g>
+          <line x1="300" y1="68" x2="128" y2="94" stroke="#30363d" stroke-width="1.1" stroke-dasharray="3 3"/>
+          <line x1="360" y1="68" x2="360" y2="94" stroke="#30363d" stroke-width="1.1" stroke-dasharray="3 3"/>
+          <line x1="420" y1="68" x2="592" y2="94" stroke="#30363d" stroke-width="1.1" stroke-dasharray="3 3"/>
+        </svg>
+        <div class="dg-cap">Same images, different command/args → the migrate Job reuses the jahez-api image with a different command</div>
+      </div>
+      <div class="grid c3">
+        <div class="mini"><h5 style="color:var(--green)">jahez-api ×3</h5><p>Image's ENTRYPOINT runs; only <code>args</code> tweak the listen URL per env.</p></div>
+        <div class="mini"><h5 style="color:var(--yellow)">migrate Job</h5><p>Same image, <code>command</code>+<code>args</code> changed to run schema migrations once.</p></div>
+        <div class="mini"><h5 style="color:var(--red)">postgres-0</h5><p>Image default entrypoint; <code>args</code> tune Postgres flags.</p></div>
+      </div>
+    </section>
+
+    <!-- 11 YAML -->
+    <section id="yaml">
+      <div class="sec-no">12</div>
+      <h3 class="sec">Full YAML — Deployment + Service (with command &amp; args)</h3>
+      <p>A complete <code>kubectl apply</code>-ready pair for <code>jahez-api</code>, showing <code>command</code>/<code>args</code> in their real context — env expansion, exec form, and a preStop drain hook.</p>
+
+      <h4><span class="bar"></span>① deployment.yaml</h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ deployment.yaml</span><span class="tag">Deployment</span><button class="copy">copy</button></div>
+        <pre><code><span class="t-k">apiVersion</span>: <span class="t-s">apps/v1</span>
+<span class="t-k">kind</span>: <span class="t-s">Deployment</span>
+<span class="t-k">metadata</span>:
+  <span class="t-k">name</span>: <span class="t-s">jahez-api</span>
+  <span class="t-k">namespace</span>: <span class="t-s">jahez-prod</span>
+<span class="t-k">spec</span>:
+  <span class="t-k">replicas</span>: <span class="t-n">3</span>
+  <span class="t-k">selector</span>:
+    <span class="t-k">matchLabels</span>: { <span class="t-k">app</span>: <span class="t-s">jahez-api</span> }
+  <span class="t-k">template</span>:
+    <span class="t-k">metadata</span>:
+      <span class="t-k">labels</span>: { <span class="t-k">app</span>: <span class="t-s">jahez-api</span> }
+    <span class="t-k">spec</span>:
+      <span class="t-k">terminationGracePeriodSeconds</span>: <span class="t-n">30</span>   <span class="t-c"># time for SIGTERM drain</span>
+      <span class="t-k">containers</span>:
+      - <span class="t-k">name</span>: <span class="t-s">api</span>
+        <span class="t-k">image</span>: <span class="t-s">ghcr.io/jahez/api:1.8.2</span>
+        <span class="t-k">workingDir</span>: <span class="t-s">/app</span>
+        <span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]  <span class="t-c"># exec form → PID 1 = dotnet</span>
+        <span class="t-k">args</span>:    [<span class="t-s">"--urls"</span>, <span class="t-s">"http://0.0.0.0:$(PORT)"</span>]  <span class="t-c"># $(PORT) = K8s expansion</span>
+        <span class="t-k">env</span>:
+        - <span class="t-k">name</span>: <span class="t-s">PORT</span>
+          <span class="t-k">value</span>: <span class="t-s">"8080"</span>
+        - <span class="t-k">name</span>: <span class="t-s">ASPNETCORE_ENVIRONMENT</span>
+          <span class="t-k">value</span>: <span class="t-s">"Production"</span>
+        <span class="t-k">ports</span>:
+        - <span class="t-k">containerPort</span>: <span class="t-n">8080</span>
+        <span class="t-k">lifecycle</span>:
+          <span class="t-k">preStop</span>:                          <span class="t-c"># let LB stop routing before exit</span>
+            <span class="t-k">exec</span>:
+              <span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>, <span class="t-s">"sleep 5"</span>]
+        <span class="t-k">readinessProbe</span>:
+          <span class="t-k">httpGet</span>: { <span class="t-k">path</span>: <span class="t-s">/healthz/ready</span>, <span class="t-k">port</span>: <span class="t-n">8080</span> }
+          <span class="t-k">initialDelaySeconds</span>: <span class="t-n">5</span>
+        <span class="t-k">livenessProbe</span>:
+          <span class="t-k">httpGet</span>: { <span class="t-k">path</span>: <span class="t-s">/healthz/live</span>, <span class="t-k">port</span>: <span class="t-n">8080</span> }
+          <span class="t-k">initialDelaySeconds</span>: <span class="t-n">15</span></code></pre>
+      </div>
+
+      <h4><span class="bar"></span>② service.yaml</h4>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ service.yaml</span><span class="tag">Service</span><button class="copy">copy</button></div>
+        <pre><code><span class="t-k">apiVersion</span>: <span class="t-s">v1</span>
+<span class="t-k">kind</span>: <span class="t-s">Service</span>
+<span class="t-k">metadata</span>:
+  <span class="t-k">name</span>: <span class="t-s">jahez-api</span>
+  <span class="t-k">namespace</span>: <span class="t-s">jahez-prod</span>
+<span class="t-k">spec</span>:
+  <span class="t-k">type</span>: <span class="t-s">ClusterIP</span>
+  <span class="t-k">selector</span>: { <span class="t-k">app</span>: <span class="t-s">jahez-api</span> }   <span class="t-c"># matches the pods' label</span>
+  <span class="t-k">ports</span>:
+  - <span class="t-k">port</span>: <span class="t-n">80</span>
+    <span class="t-k">targetPort</span>: <span class="t-n">8080</span>            <span class="t-c"># the port your command listens on</span></code></pre>
+      </div>
+      <div class="callout note"><span class="ci">THE THREAD</span><p>Notice how <code>command</code>/<code>args</code> tie everything together: <code>args</code> makes the app listen on <code>$(PORT)</code>=8080, the container exposes <code>8080</code>, the probes hit <code>8080</code>, and the Service's <code>targetPort</code> is <code>8080</code>. Change the port in <code>args</code> and you must change all four.</p></div>
+    </section>
+    <!-- 12 WALKTHROUGH -->
+    <section id="walk">
+      <div class="sec-no">13</div>
+      <h3 class="sec">Startup walkthrough — command to PID 1</h3>
+      <p>Press <strong>Next</strong> (or ← → arrow keys) to follow exactly how <code>command</code> and <code>args</code> turn into the running process inside a <code>jahez-api</code> container.</p>
+
+      <div class="slider" id="sl-start">
+        <div class="slider-head">
+          <span class="st"><span class="ic" style="background:rgba(57,197,207,.16);color:var(--cyan)">▸</span> image → PID 1 → SIGTERM</span>
+          <span class="ctr"><span class="cur">1</span> / <span class="tot">7</span></span>
+        </div>
+        <div class="stage">
+          <div class="step on">
+            <span class="badge">STEP 1 · scheduled</span>
+            <h5>The pod lands on a node</h5>
+            <p>The scheduler assigns the pod to <code>worker-2</code>. Its kubelet now owns starting the container. Nothing has run yet — the kubelet first needs the image.</p>
+          </div>
+          <div class="step">
+            <span class="badge">STEP 2 · image pulled</span>
+            <h5>kubelet pulls the image &amp; reads its defaults</h5>
+            <p>The runtime pulls <code>ghcr.io/jahez/api:1.8.2</code> and inspects its config: the baked-in <code>ENTRYPOINT</code> and <code>CMD</code>. These are the fallbacks if your spec omits <code>command</code>/<code>args</code>.</p>
+            <div class="code" style="margin:8px 0"><pre><code><span class="t-c"># image ships with:</span>
+ENTRYPOINT [<span class="t-s">"dotnet"</span>]
+CMD        [<span class="t-s">"Jahez.Api.dll"</span>]</code></pre></div>
+          </div>
+          <div class="step">
+            <span class="badge">STEP 3 · merge</span>
+            <h5>Spec overrides are merged with image defaults</h5>
+            <p>The kubelet applies the override rules from §03. Our spec sets <strong>both</strong> <code>command</code> and <code>args</code>, so the image's ENTRYPOINT and CMD are fully replaced.</p>
+            <div class="code" style="margin:8px 0"><pre><code><span class="t-c"># from the Pod spec:</span>
+<span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+<span class="t-k">args</span>:    [<span class="t-s">"--urls"</span>, <span class="t-s">"http://0.0.0.0:$(PORT)"</span>]</code></pre></div>
+          </div>
+          <div class="step">
+            <span class="badge">STEP 4 · env expansion</span>
+            <h5>Kubernetes expands <code>$(VAR)</code> references</h5>
+            <p>Before exec, the kubelet substitutes <code>$(PORT)</code> using the container's <code>env</code> (<code>PORT=8080</code>). This is Kubernetes' own expansion — no shell is involved because we used exec form.</p>
+            <div class="code" style="margin:8px 0"><pre><code><span class="t-c"># final argument vector after expansion:</span>
+[<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>, <span class="t-s">"--urls"</span>, <span class="t-s">"http://0.0.0.0:8080"</span>]</code></pre></div>
+          </div>
+          <div class="step">
+            <span class="badge">STEP 5 · exec → PID 1</span>
+            <h5>The runtime exec()s the vector</h5>
+            <p>The container runtime calls <code>execve()</code> with that vector in the container's namespaces, starting in <code>workingDir: /app</code>. Because we used exec form, <strong><code>dotnet</code> is PID 1</strong> — there is no shell wrapper between it and the kernel.</p>
+          </div>
+          <div class="step">
+            <span class="badge">STEP 6 · ready → serving</span>
+            <h5>App listens, readiness passes, traffic flows</h5>
+            <p>The app binds <code>0.0.0.0:8080</code> (from our args). Its readiness probe on <code>/healthz/ready</code> succeeds, its IP joins the Service's endpoints, and <code>kube-proxy</code> starts routing order traffic to it.</p>
+          </div>
+          <div class="step">
+            <span class="badge">STEP 7 · graceful stop</span>
+            <h5>On stop, SIGTERM reaches PID 1 directly</h5>
+            <p>When the pod is told to terminate, the <code>preStop</code> hook sleeps 5s (so the LB stops routing), then the kubelet sends <code>SIGTERM</code> to PID 1 — which <em>is</em> <code>dotnet</code>. The app drains in-flight orders and exits cleanly, all within the 30s grace period. This only works because of the exec-form choice in step 3.</p>
+          </div>
+        </div>
+        <div class="slider-foot">
+          <div class="dots"></div>
+          <div class="snav">
+            <button class="btn prev" disabled>← Back</button>
+            <button class="btn pri next">Next →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13 DEBUG -->
+    <section id="debug">
+      <div class="sec-no">14</div>
+      <h3 class="sec">Debugging command/args issues</h3>
+      <p>Almost every command/args failure shows up as the container exiting immediately. Here's the symptom-to-cause map.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td><code>exec: "dotnet app.dll": not found</code></td><td>Passed a string, not a list — the space is part of one filename</td><td>Use a YAML list: <code>["dotnet","app.dll"]</code></td></tr>
+            <tr><td><code>CrashLoopBackOff</code>, exits instantly</td><td>Set <code>command</code> but dropped the image's needed CMD (§03 row 3)</td><td>Add the missing <code>args</code></td></tr>
+            <tr><td>App listens on wrong/no port</td><td><code>$VAR</code> used in exec form — never expanded</td><td>Use <code>$(VAR)</code> or shell form</td></tr>
+            <tr><td>Pod ignores SIGTERM, killed after 30s</td><td>Naive <code>sh -c</code> — shell is PID 1, app is a child</td><td>Exec form, or <code>exec</code> in the shell string (§06)</td></tr>
+            <tr><td><code>OCI: exec format error</code></td><td>Command isn't executable / wrong arch / missing shebang</td><td>Check the binary exists &amp; is executable in the image</td></tr>
+            <tr><td><code>&amp;&amp;</code> / <code>|</code> treated as literal args</td><td>Shell operators in exec form — no shell to interpret</td><td>Wrap in <code>sh -c "..."</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ confirm what actually ran</span><span class="tag sh">debug</span></div>
+        <pre><code><span class="t-c"># see the resolved command + the exit reason / events</span>
+kubectl describe pod jahez-api-7d4-aa <span class="t-d">-n</span> jahez-prod   <span class="t-c"># look at Command/Args + Events</span>
+
+<span class="t-c"># the crash's actual output</span>
+kubectl logs jahez-api-7d4-aa <span class="t-d">-n</span> jahez-prod <span class="t-d">--previous</span>
+
+<span class="t-c"># override to keep it alive and inspect from inside</span>
+kubectl run debug <span class="t-d">--image=</span>ghcr.io/jahez/api:1.8.2 <span class="t-d">-it</span> <span class="t-d">--</span> sh
+<span class="t-c"># then manually: ls /app; cat /app/appsettings.json; which dotnet</span></code></pre>
+      </div>
+      <div class="callout tip"><span class="ci">describe shows the truth</span><p><code>kubectl describe pod</code> prints the <strong>resolved</strong> <code>Command:</code> and <code>Args:</code> the container was started with — after merging and expansion. If they don't look the way you expect, your YAML override didn't do what you thought.</p></div>
+    </section>
+    <!-- 14 BEST -->
+    <section id="best">
+      <div class="sec-no">15</div>
+      <h3 class="sec">Best practices</h3>
+      <div class="grid c2">
+        <div class="mini"><h5><span class="ic" style="background:rgba(63,185,80,.16);color:var(--green)">✓</span> Prefer exec form</h5><p>Use the list form so your app is PID 1 and receives signals. Reach for <code>sh -c</code> only when you need real shell features.</p></div>
+        <div class="mini"><h5><span class="ic" style="background:rgba(63,185,80,.16);color:var(--green)">✓</span> Override <code>args</code>, not <code>command</code></h5><p>When you only need to change flags, set <code>args</code> alone and keep the image's trusted ENTRYPOINT.</p></div>
+        <div class="mini"><h5><span class="ic" style="background:rgba(63,185,80,.16);color:var(--green)">✓</span> If you set <code>command</code>, set <code>args</code> too</h5><p>Remember the image's CMD is dropped. Supply your own args so the process starts correctly.</p></div>
+        <div class="mini"><h5><span class="ic" style="background:rgba(63,185,80,.16);color:var(--green)">✓</span> Use <code>$(VAR)</code> for K8s env</h5><p>Inside exec-form command/args, only <code>$(VAR)</code> expands. Save <code>$VAR</code> for inside <code>sh -c</code>.</p></div>
+        <div class="mini"><h5><span class="ic" style="background:rgba(63,185,80,.16);color:var(--green)">✓</span> <code>exec</code> in shell wrappers</h5><p><code>sh -c "setup &amp;&amp; exec app"</code> hands PID 1 to your app so shutdown works.</p></div>
+        <div class="mini"><h5><span class="ic" style="background:rgba(63,185,80,.16);color:var(--green)">✓</span> Keep behaviour in YAML, not images</h5><p>One image, many roles. Configure command/args at deploy time and commit it to git.</p></div>
+        <div class="mini"><h5><span class="ic" style="background:rgba(248,81,73,.16);color:var(--red)">✗</span> Never use string form</h5><p><code>command: "dotnet app.dll"</code> is a single filename with a space. Always a list.</p></div>
+        <div class="mini"><h5><span class="ic" style="background:rgba(248,81,73,.16);color:var(--red)">✗</span> Don't put secrets in args</h5><p>Args are visible in <code>describe</code>, events, and process listings. Use env from a Secret instead.</p></div>
+      </div>
+    </section>
+
+    <!-- 15 CHEAT -->
+    <section id="cheat">
+      <div class="sec-no">16</div>
+      <h3 class="sec">Cheat sheet</h3>
+      <div class="code">
+        <div class="code-head"><span class="fn">▸ command &amp; args, every form</span><span class="tag">copy-paste</span><button class="copy">copy</button></div>
+        <pre><code><span class="t-c"># ── MAPPING ──────────────────────────────</span>
+<span class="t-c"># Dockerfile ENTRYPOINT  →  k8s command</span>
+<span class="t-c"># Dockerfile CMD         →  k8s args</span>
+
+<span class="t-c"># ── OVERRIDE ARGS ONLY (safe) ────────────</span>
+<span class="t-k">args</span>: [<span class="t-s">"--urls"</span>, <span class="t-s">"http://0.0.0.0:8080"</span>]
+
+<span class="t-c"># ── FULL REPLACE (exec form, preferred) ──</span>
+<span class="t-k">command</span>: [<span class="t-s">"dotnet"</span>, <span class="t-s">"Jahez.Api.dll"</span>]
+<span class="t-k">args</span>:    [<span class="t-s">"migrate"</span>, <span class="t-s">"--latest"</span>]
+
+<span class="t-c"># ── SHELL FORM (needs && | $VAR) ─────────</span>
+<span class="t-k">command</span>: [<span class="t-s">"sh"</span>, <span class="t-s">"-c"</span>]
+<span class="t-k">args</span>:    [<span class="t-s">"flyway migrate &amp;&amp; exec dotnet Jahez.Api.dll"</span>]
+
+<span class="t-c"># ── K8S ENV EXPANSION ────────────────────</span>
+<span class="t-k">env</span>:  [{ <span class="t-k">name</span>: <span class="t-s">PORT</span>, <span class="t-k">value</span>: <span class="t-s">"8080"</span> }]
+<span class="t-k">args</span>: [<span class="t-s">"--urls=http://0.0.0.0:$(PORT)"</span>]   <span class="t-c"># $(VAR) not $VAR</span>
+
+<span class="t-c"># ── KEEP-ALIVE FOR DEBUG ─────────────────</span>
+<span class="t-k">command</span>: [<span class="t-s">"sleep"</span>, <span class="t-s">"infinity"</span>]
+
+<span class="t-c"># ── SAME SHAPE ELSEWHERE ─────────────────</span>
+initContainers[].command          <span class="t-c"># setup step</span>
+livenessProbe.exec.command        <span class="t-c"># health check</span>
+lifecycle.preStop.exec.command    <span class="t-c"># graceful drain</span>
+
+<span class="t-c"># ── VERIFY WHAT RAN ──────────────────────</span>
+kubectl describe pod POD     <span class="t-c"># shows resolved Command:/Args:</span>
+kubectl logs POD --previous  <span class="t-c"># the crash output</span></code></pre>
+      </div>
+      <div class="callout note"><span class="ci">REMEMBER</span><p>The two bugs behind 90% of command/args pain: (1) <code>command</code>↔ENTRYPOINT, <code>args</code>↔CMD — not what the names suggest; and (2) <code>$(VAR)</code> is Kubernetes, <code>$VAR</code> is shell. Get those two right and the rest follows.</p></div>
+    </section>
+
+    <footer class="foot">
+      <p><strong>Container command &amp; args</strong> · part of the Jahez Kubernetes reference series.</p>
+      <p style="margin-top:6px">Tested against Kubernetes <code>v1.30</code> · cluster <code>me-central-1</code> · namespace <code>jahez-prod</code>. Single-file, offline-capable, dark-mode enforced for iOS Safari.</p>
+    </footer>
+  </div><!-- /wrap -->
+</main>
+</div><!-- /layout -->
+
+<button id="top" aria-label="Scroll to top">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- Mobile drawer ----
+  var sb=document.getElementById('sidebar'),ov=document.getElementById('overlay'),bg=document.getElementById('burger');
+  function openNav(){sb.classList.add('open');ov.classList.add('show');}
+  function closeNav(){sb.classList.remove('open');ov.classList.remove('show');}
+  if(bg)bg.addEventListener('click',openNav);
+  if(ov)ov.addEventListener('click',closeNav);
+
+  // ---- Nav: smooth scroll + close drawer + active highlight ----
+  var links=[].slice.call(document.querySelectorAll('#nav a'));
+  links.forEach(function(a){
+    a.addEventListener('click',function(){ if(window.innerWidth<=980) closeNav(); });
+  });
+  var sections=[].slice.call(document.querySelectorAll('section[id]'));
+  var byId={}; links.forEach(function(a){ byId[a.getAttribute('href').slice(1)]=a; });
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){l.classList.remove('active');});
+        var act=byId[e.target.id]; if(act){act.classList.add('active');
+          act.scrollIntoView({block:'nearest'});}
+      }
+    });
+  },{rootMargin:'-15% 0px -75% 0px',threshold:0});
+  sections.forEach(function(s){obs.observe(s);});
+
+  // ---- Scroll-to-top ----
+  var top=document.getElementById('top');
+  window.addEventListener('scroll',function(){
+    if(window.scrollY>600)top.classList.add('show');else top.classList.remove('show');
+  },{passive:true});
+  top.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+
+  // ---- Copy buttons ----
+  [].slice.call(document.querySelectorAll('.copy')).forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var pre=btn.closest('.code').querySelector('pre');
+      var txt=pre ? pre.innerText : '';
+      navigator.clipboard.writeText(txt).then(function(){
+        var old=btn.textContent; btn.textContent='copied ✓'; btn.classList.add('done');
+        setTimeout(function(){btn.textContent=old;btn.classList.remove('done');},1400);
+      }).catch(function(){});
+    });
+  });
+
+  // ---- Slider engine (reusable) ----
+  function initSlider(root){
+    var steps=[].slice.call(root.querySelectorAll('.step'));
+    var prev=root.querySelector('.prev'),next=root.querySelector('.next');
+    var dotsWrap=root.querySelector('.dots'),cur=root.querySelector('.cur'),tot=root.querySelector('.tot');
+    var i=0;
+    if(tot)tot.textContent=steps.length;
+    // build dots
+    steps.forEach(function(_,ix){
+      var d=document.createElement('button');d.className='dot'+(ix===0?' on':'');
+      d.setAttribute('aria-label','Step '+(ix+1));
+      d.addEventListener('click',function(){go(ix);});
+      dotsWrap.appendChild(d);
+    });
+    var dots=[].slice.call(dotsWrap.querySelectorAll('.dot'));
+    function go(n){
+      i=Math.max(0,Math.min(steps.length-1,n));
+      steps.forEach(function(s,ix){s.classList.toggle('on',ix===i);});
+      dots.forEach(function(d,ix){d.classList.toggle('on',ix===i);});
+      if(cur)cur.textContent=i+1;
+      if(prev)prev.disabled=(i===0);
+      if(next){next.disabled=(i===steps.length-1);
+        next.textContent=(i===steps.length-1)?'Done ✓':'Next →';}
+    }
+    if(prev)prev.addEventListener('click',function(){go(i-1);});
+    if(next)next.addEventListener('click',function(){go(i+1);});
+    // keyboard when slider in view
+    root.setAttribute('tabindex','0');
+    root.addEventListener('keydown',function(e){
+      if(e.key==='ArrowLeft'){go(i-1);e.preventDefault();}
+      if(e.key==='ArrowRight'){go(i+1);e.preventDefault();}
+    });
+    go(0);
+  }
+  [].slice.call(document.querySelectorAll('.slider')).forEach(initSlider);
+
+  // ---- Global arrow keys drive the visible slider ----
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;
+    if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
+    var sliders=[].slice.call(document.querySelectorAll('.slider'));
+    for(var k=0;k<sliders.length;k++){
+      var r=sliders[k].getBoundingClientRect();
+      if(r.top<window.innerHeight*0.6 && r.bottom>window.innerHeight*0.2){
+        var b=sliders[k].querySelector(e.key==='ArrowLeft'?'.prev':'.next');
+        if(b&&!b.disabled)b.click();
+        break;
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
