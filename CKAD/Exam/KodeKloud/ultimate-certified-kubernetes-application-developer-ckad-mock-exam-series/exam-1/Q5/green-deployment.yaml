@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: green-apd
+  labels:
+    type-two: green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      type-two: green
+      version: v1
+  template:
+    metadata:
+      labels:
+        type-two: green
+        version: v1
+    spec:
+      containers:
+      - name: webapp-color-green
+        image: "kodekloud/webapp-color:v2"
+        ports:
+        - containerPort: 8080

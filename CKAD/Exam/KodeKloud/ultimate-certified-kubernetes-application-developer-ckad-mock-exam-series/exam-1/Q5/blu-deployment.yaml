@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blue-apd
+  labels:
+    type-one: blue
+spec:
+  replicas: 7
+  selector:
+    matchLabels:
+      type-one: blue
+      version: v1
+  template:
+    metadata:
+      labels:
+        type-one: blue
+        version: v1
+    spec:
+      containers:
+      - name: webapp-color-blue
+        image: "kodekloud/webapp-color:v1"
+        ports:
+        - containerPort: 8080
