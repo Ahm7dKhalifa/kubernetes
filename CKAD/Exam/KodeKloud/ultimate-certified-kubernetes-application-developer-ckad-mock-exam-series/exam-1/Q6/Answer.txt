@@ -1,0 +1,18 @@
+kubectl get deployment -n=dev-001
+
+kubectl describe deployment  news-apd -n=dev-001
+
+
+kubectl get pods -n=dev-001
+
+kubectl describe pod news-apd-74945cfbd-z69q2 -n=dev-001
+
+kubectl logs news-apd-74945cfbd-z69q2 -n dev-001
+
+
+
+kubectl get deployment news-apd -n dev-001 -o yaml > news-apd.yaml
+
+kubectl apply -f news-apd.yaml
+
+kubectl get pods  -n=dev-001
