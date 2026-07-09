@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0d1117;color:#e6edf3;color-scheme:dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#0d1117" />
+<title>Kubernetes Helm Charts — The Deep Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;
+  --bg-2:#010409;
+  --panel:#161b22;
+  --panel-2:#1c2129;
+  --panel-3:#21262d;
+  --ink:#e6edf3;
+  --ink-dim:#9aa7b8;
+  --ink-faint:#6e7a8a;
+  --line:#21262d;
+  --line-2:#30363d;
+
+  /* topic accents */
+  --c-helm:#58a6ff;        /* helm CLI / core — blue */
+  --c-chart:#ffa657;       /* chart package — amber */
+  --c-release:#7ee787;     /* release / running state — green */
+  --c-values:#d2a8ff;      /* values / configuration — violet */
+  --c-tpl:#79c0ff;         /* templates / rendering — light blue */
+  --c-repo:#f7c948;        /* repositories — yellow */
+  --c-cluster:#ff9eb1;     /* cluster / api-server — pink */
+
+  --danger:#ff6b6b;
+  --warn:#f7c948;
+  --ok:#34d399;
+
+  --code-bg:#0a0e14;
+  --chip:#1b2331;
+  --radius:14px;
+  --radius-sm:8px;
+  --shadow:0 10px 30px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.3);
+
+  --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans:'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --sidebar-w:288px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.7;-webkit-font-smoothing:antialiased;font-size:15px}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+
+h1,h2,h3,h4{color:#f0f6fc;line-height:1.25;font-weight:700;margin:0 0 14px}
+h1{font-size:clamp(30px,6vw,52px);letter-spacing:-1.4px;font-weight:800}
+h2{font-size:clamp(22px,4vw,32px);letter-spacing:-.5px}
+h3{font-size:19px;margin-top:28px;color:var(--c-helm)}
+h4{font-size:15.5px;margin-top:20px}
+p{color:#c9d1d9;margin:0 0 14px}
+p strong,li strong{color:#f0f6fc;font-weight:600}
+ul,ol{color:#c9d1d9;padding-left:22px;margin:0 0 14px}
+li{margin-bottom:7px}
+a{color:var(--c-helm);text-decoration:none}
+code{font-family:var(--mono);font-size:.86em;background:var(--chip);border:1px solid var(--line-2);border-radius:5px;padding:1.5px 6px;color:#e6edf3;word-break:break-word}
+pre code{background:none;border:none;padding:0;font-size:12.6px;line-height:1.75;color:#dbe4ee}
+pre{background:var(--code-bg);border:1px solid var(--line-2);border-radius:var(--radius-sm);padding:16px 18px;overflow-x:auto;margin:0 0 16px;-webkit-overflow-scrolling:touch}
+
+/* syntax accents used inside pre via spans */
+.k{color:#ff7b72}      /* yaml keys / keywords */
+.s{color:#a5d6ff}      /* strings */
+.v{color:#79c0ff}      /* values / numbers */
+.c{color:#8b949e;font-style:italic} /* comments */
+.fn{color:#d2a8ff}     /* template functions */
+.tp{color:#ffa657}     /* {{ .Values.* }} template expressions */
+.cmd{color:#7ee787}    /* shell commands */
+.flag{color:#f7c948}   /* cli flags */
+
+/* ============ LAYOUT ============ */
+.app{display:flex;min-height:100vh;background:var(--bg)}
+
+.sidebar{
+  width:var(--sidebar-w);background:var(--bg-2);border-right:1px solid var(--line);
+  position:fixed;top:0;left:0;height:100vh;height:100dvh;overflow-y:auto;z-index:200;
+  padding:22px 0 40px;transition:transform .28s ease;
+}
+.sidebar::-webkit-scrollbar{width:8px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+.brand{padding:0 20px 18px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.brand .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:1.6px;color:var(--c-chart);text-transform:uppercase}
+.brand h2{font-size:17px;margin:6px 0 2px;letter-spacing:-.3px}
+.brand .sub{font-size:12px;color:var(--ink-faint);font-family:var(--mono)}
+.nav-group{padding:10px 12px 2px}
+.nav-group-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);padding:6px 10px 4px}
+.nav-link{
+  display:flex;align-items:center;gap:9px;padding:7.5px 10px;border-radius:8px;color:var(--ink-dim);
+  font-size:13.4px;font-weight:500;cursor:pointer;border:1px solid transparent;
+}
+.nav-link:hover{background:var(--panel);color:var(--ink)}
+.nav-link.active{background:var(--panel-2);color:#f0f6fc;border-color:var(--line-2)}
+.nav-num{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);min-width:22px}
+.nav-link.active .nav-num{color:var(--c-chart)}
+
+.menu-btn{
+  display:none;position:fixed;top:14px;left:14px;z-index:300;background:var(--panel);
+  border:1px solid var(--line-2);color:var(--ink);border-radius:10px;padding:9px 12px;
+  font-family:var(--mono);font-size:13px;cursor:pointer;box-shadow:var(--shadow);
+}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150}
+
+.main{margin-left:var(--sidebar-w);flex:1;min-width:0;background:var(--bg)}
+.wrap{max-width:980px;margin:0 auto;padding:0 34px 90px}
+section{padding-top:64px}
+
+/* ============ HERO ============ */
+.hero{padding:78px 0 22px;border-bottom:1px solid var(--line)}
+.hero .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:2.2px;text-transform:uppercase;color:var(--c-chart);margin-bottom:14px}
+.hero p.lede{font-size:17.5px;color:var(--ink-dim);max-width:720px;line-height:1.75}
+.hero-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.chip{font-family:var(--mono);font-size:11.5px;background:var(--chip);border:1px solid var(--line-2);color:var(--ink-dim);border-radius:999px;padding:5px 12px}
+.chip b{color:var(--c-helm);font-weight:600}
+
+/* ============ CARDS / CALLOUTS ============ */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin:0 0 18px}
+.card h4{margin-top:0}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+
+.callout{border-left:3px solid var(--c-helm);background:var(--panel);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:14px 18px;margin:0 0 16px;font-size:14.2px}
+.callout.warn{border-left-color:var(--warn)}
+.callout.danger{border-left-color:var(--danger)}
+.callout.ok{border-left-color:var(--ok)}
+.callout .co-title{font-family:var(--mono);font-size:11px;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:6px;color:var(--c-helm)}
+.callout.warn .co-title{color:var(--warn)}
+.callout.danger .co-title{color:var(--danger)}
+.callout.ok .co-title{color:var(--ok)}
+
+.def-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:14px}
+.def-term{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.def-term .dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.def-term h4{margin:0;font-size:16px}
+.def-what{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-bottom:10px;letter-spacing:.4px}
+
+.file-row{display:flex;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel);margin-bottom:10px;align-items:flex-start}
+.file-name{font-family:var(--mono);font-size:12.8px;color:var(--c-chart);min-width:170px;flex:0 0 auto;padding-top:2px}
+.file-desc{font-size:13.8px;color:#c9d1d9;line-height:1.65}
+.req{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;border-radius:4px;padding:2px 7px;margin-left:8px;vertical-align:2px}
+.req.yes{background:rgba(255,107,107,.12);color:var(--danger);border:1px solid rgba(255,107,107,.35)}
+.req.no{background:rgba(52,211,153,.1);color:var(--ok);border:1px solid rgba(52,211,153,.3)}
+
+/* property tables */
+table{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:13.4px}
+th{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);color:#c9d1d9;vertical-align:top;line-height:1.6}
+td code{font-size:12px}
+tr:last-child td{border-bottom:none}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:18px;background:var(--panel)}
+.table-scroll table{margin:0;min-width:640px}
+
+/* code block header */
+.code-block{margin:0 0 18px}
+.code-head{display:flex;justify-content:space-between;align-items:center;background:var(--panel-3);border:1px solid var(--line-2);border-bottom:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;padding:8px 14px}
+.code-head .fname{font-family:var(--mono);font-size:12px;color:var(--c-chart)}
+.code-head .ftag{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-faint)}
+.code-block pre{border-radius:0 0 var(--radius-sm) var(--radius-sm);margin:0}
+
+/* section divider (part markers) */
+.part{margin-top:70px;padding:26px 28px;border:1px solid var(--line-2);border-radius:var(--radius);background:linear-gradient(135deg,var(--panel) 0%,var(--bg) 100%)}
+.part .p-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--c-chart)}
+.part h2{margin:8px 0 6px}
+.part p{margin:0;color:var(--ink-dim);font-size:14.5px}
+
+/* ============ SLIDER ============ */
+.slider{background:var(--panel);border:1px solid var(--line-2);border-radius:var(--radius);overflow:hidden;margin:22px 0;box-shadow:var(--shadow)}
+.slider-head{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;background:var(--panel-3);border-bottom:1px solid var(--line-2);gap:10px}
+.slider-title{font-family:var(--mono);font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-dim)}
+.slider-count{font-family:var(--mono);font-size:12px;color:var(--c-chart);white-space:nowrap}
+.slide-stage{padding:18px 16px 6px;background:var(--bg-2)}
+.slide{display:none}
+.slide.on{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){
+  .slide.on{animation:none}
+  html{scroll-behavior:auto}
+}
+.slide svg{width:100%;height:auto;display:block}
+.slide-caption{padding:14px 20px 18px;border-top:1px solid var(--line);background:var(--panel)}
+.slide-caption .sc-step{font-family:var(--mono);font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--c-helm);margin-bottom:5px}
+.slide-caption p{margin:0;font-size:14px;color:#c9d1d9}
+.slider-ctrl{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--panel-3);border-top:1px solid var(--line-2)}
+.sbtn{background:var(--panel);border:1px solid var(--line-2);color:var(--ink);font-family:var(--mono);font-size:12.5px;border-radius:8px;padding:9px 18px;cursor:pointer;min-width:96px}
+.sbtn:hover:not(:disabled){background:var(--panel-2);border-color:var(--c-helm)}
+.sbtn:disabled{opacity:.35;cursor:default}
+.sbtn:focus-visible{outline:2px solid var(--c-helm);outline-offset:2px}
+.dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.dot-i{width:8px;height:8px;border-radius:50%;background:var(--line-2);cursor:pointer;border:none;padding:0}
+.dot-i.on{background:var(--c-chart)}
+
+/* diagram text defaults */
+svg text{font-family:var(--mono)}
+
+/* compare panels */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.vs .card{margin:0}
+.vs-badge{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;padding:3px 10px;border-radius:999px;display:inline-block;margin-bottom:10px}
+.vs-badge.manual{background:rgba(255,158,177,.12);color:var(--c-cluster);border:1px solid rgba(255,158,177,.3)}
+.vs-badge.helm{background:rgba(88,166,255,.12);color:var(--c-helm);border:1px solid rgba(88,166,255,.3)}
+
+/* footer */
+.footer{border-top:1px solid var(--line);margin-top:70px;padding-top:26px;color:var(--ink-faint);font-size:12.5px;font-family:var(--mono)}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 1020px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .menu-btn{display:block}
+  .overlay.show{display:block}
+  .main{margin-left:0}
+  .wrap{padding:0 18px 70px}
+  .grid-2,.grid-3,.vs{grid-template-columns:1fr}
+  section{padding-top:52px}
+  .hero{padding-top:74px}
+  .file-row{flex-direction:column;gap:6px}
+  .file-name{min-width:0}
+  pre code{font-size:11.8px}
+  .sbtn{min-width:80px;padding:9px 14px}
+}
+</style>
+</head>
+<body style="background:#0d1117;color:#e6edf3">
+
+<button class="menu-btn" id="menuBtn" aria-label="Open navigation">☰ Menu</button>
+<div class="overlay" id="overlay"></div>
+
+<div class="app">
+
+<!-- ================= SIDEBAR ================= -->
+<nav class="sidebar" id="sidebar" aria-label="Guide navigation">
+  <div class="brand">
+    <div class="eyebrow">K8s Series · Packaging</div>
+    <h2>Helm Charts</h2>
+    <div class="sub">jahez-prod · me-central-1</div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Foundations</div>
+    <a class="nav-link" href="#definitions"><span class="nav-num">01</span> Definitions</a>
+    <a class="nav-link" href="#manual"><span class="nav-num">02</span> Manual deployment</a>
+    <a class="nav-link" href="#why-helm"><span class="nav-num">03</span> Why Helm exists</a>
+    <a class="nav-link" href="#architecture"><span class="nav-num">04</span> Helm architecture</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">The Chart</div>
+    <a class="nav-link" href="#install-helm"><span class="nav-num">05</span> Installing Helm</a>
+    <a class="nav-link" href="#structure"><span class="nav-num">06</span> Chart structure</a>
+    <a class="nav-link" href="#chart-yaml"><span class="nav-num">07</span> Chart.yaml properties</a>
+    <a class="nav-link" href="#full-chart"><span class="nav-num">08</span> Full chart example</a>
+    <a class="nav-link" href="#templating"><span class="nav-num">09</span> Template language</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Operating</div>
+    <a class="nav-link" href="#using"><span class="nav-num">10</span> Using Helm</a>
+    <a class="nav-link" href="#lifecycle"><span class="nav-num">11</span> Release lifecycle</a>
+    <a class="nav-link" href="#best-practices"><span class="nav-num">12</span> Best practices</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Ecosystem</div>
+    <a class="nav-link" href="#alternatives"><span class="nav-num">13</span> Alternatives</a>
+    <a class="nav-link" href="#cheatsheet"><span class="nav-num">14</span> Cheat sheet</a>
+  </div>
+</nav>
+
+<!-- ================= MAIN ================= -->
+<main class="main">
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Kubernetes Deep Reference · Package Management</div>
+  <h1>Helm Charts</h1>
+  <p class="lede">
+    Deploying one service means writing a Deployment, a Service, a ConfigMap, and applying them by hand.
+    Deploying <strong>forty microservices across dev, staging, and prod</strong> means templating, versioning,
+    and releasing them as one unit. Helm is Kubernetes' package manager — this guide covers what a chart
+    physically is, every file inside it, the full render-and-release pipeline, and the tools that compete with it —
+    grounded in the <code>jahez-prod</code> cluster.
+  </p>
+  <div class="hero-chips">
+    <span class="chip"><b>helm</b> v3.x</span>
+    <span class="chip">Chart.yaml <b>apiVersion: v2</b></span>
+    <span class="chip">Go templates + Sprig</span>
+    <span class="chip">3-node cluster diagrams</span>
+    <span class="chip">Kustomize · ytt · cdk8s · Timoni</span>
+  </div>
+</header>
+
+<!-- ================= 01 DEFINITIONS ================= -->
+<section id="definitions">
+<div class="part">
+  <div class="p-eyebrow">Part 01 · Foundations</div>
+  <h2>Definitions — what each thing physically is</h2>
+  <p>Before commands and templates: what Helm's core nouns actually are on disk, in etcd, and in memory.</p>
+</div>
+
+<div class="def-card">
+  <div class="def-term"><span class="dot" style="background:var(--c-helm)"></span><h4>Helm</h4></div>
+  <div class="def-what">WHAT IT IS · a single client-side Go binary on your machine / CI runner</div>
+  <p>Helm is <strong>not a cluster component</strong>. Since v3 there is no server-side agent (v2's Tiller is gone).
+  <code>helm</code> is one static binary that: reads a chart from disk or a repository, merges your values,
+  renders Go templates into plain Kubernetes YAML, and sends those manifests to the <strong>kube-apiserver</strong>
+  using the same kubeconfig credentials <code>kubectl</code> uses. If you can <code>kubectl apply</code>, you can <code>helm install</code> — same RBAC, same API path.</p>
+</div>
+
+<div class="def-card">
+  <div class="def-term"><span class="dot" style="background:var(--c-chart)"></span><h4>Chart</h4></div>
+  <div class="def-what">WHAT IT IS · a directory (or its .tgz archive) with a defined layout</div>
+  <p>A chart is the <strong>package format</strong>: a folder containing <code>Chart.yaml</code> (metadata),
+  <code>values.yaml</code> (default configuration), and a <code>templates/</code> directory of YAML files with
+  <code>{{ }}</code> template expressions. Packaged, it becomes <code>menu-api-1.4.2.tgz</code> — the K8s
+  analogue of a <code>.deb</code>, an <code>apt</code> package, or a NuGet package for your .NET services.
+  A chart describes <em>everything one application needs</em>: Deployment, Service, ConfigMap, HPA, ServiceAccount…</p>
+</div>
+
+<div class="def-card">
+  <div class="def-term"><span class="dot" style="background:var(--c-release)"></span><h4>Release</h4></div>
+  <div class="def-what">WHAT IT IS · one named installation of a chart, stored as Secrets in the target namespace</div>
+  <p>Installing a chart creates a <strong>release</strong>: chart + values + a name, rendered and applied at a point in time.
+  The same chart can be installed many times (<code>menu-api-dev</code>, <code>menu-api-prod</code>).
+  Helm persists each release revision as a Kubernetes <strong>Secret</strong> named
+  <code>sh.helm.release.v1.&lt;release&gt;.v&lt;revision&gt;</code> in the release namespace — a gzipped, base64-encoded
+  blob holding the chart, the values used, and the fully rendered manifests. That Secret chain is what makes
+  <code>helm rollback</code> and <code>helm history</code> possible.</p>
+</div>
+
+<div class="def-card">
+  <div class="def-term"><span class="dot" style="background:var(--c-values)"></span><h4>Values</h4></div>
+  <div class="def-what">WHAT IT IS · a YAML tree merged into the template render context as <code>.Values</code></div>
+  <p>Values are the chart's <strong>public configuration surface</strong>. Defaults live in the chart's
+  <code>values.yaml</code>; you override them per environment with <code>-f values-prod.yaml</code> and per flag with
+  <code>--set image.tag=2.7.1</code>. Helm deep-merges them (later sources win) and exposes the result to every
+  template as <code>.Values</code>.</p>
+</div>
+
+<div class="def-card">
+  <div class="def-term"><span class="dot" style="background:var(--c-tpl)"></span><h4>Template</h4></div>
+  <div class="def-what">WHAT IT IS · a YAML file containing Go text/template expressions, rendered client-side</div>
+  <p>Files under <code>templates/</code> are not valid Kubernetes YAML until rendered. Helm executes them with
+  Go's <code>text/template</code> engine plus the <strong>Sprig</strong> function library, substituting
+  <code>{{ .Values.replicaCount }}</code>, <code>{{ .Release.Name }}</code>, conditionals, and loops.
+  The output — plain manifests — is what actually reaches the API server.</p>
+</div>
+
+<div class="def-card">
+  <div class="def-term"><span class="dot" style="background:var(--c-repo)"></span><h4>Repository</h4></div>
+  <div class="def-what">WHAT IT IS · an HTTP server hosting an index.yaml + chart .tgz files (or an OCI registry)</div>
+  <p>A chart repository is just static hosting: an <code>index.yaml</code> listing chart names/versions and the
+  <code>.tgz</code> archives themselves. Since Helm 3.8, charts can also live in <strong>OCI registries</strong>
+  (the same registries that hold your container images — ECR, GHCR, Harbor), pulled with
+  <code>oci://</code> URLs. Bitnami, prometheus-community, and ingress-nginx all publish this way.</p>
+</div>
+
+<div class="def-card">
+  <div class="def-term"><span class="dot" style="background:var(--c-cluster)"></span><h4>Revision</h4></div>
+  <div class="def-what">WHAT IT IS · a monotonically increasing integer per release; one Secret per revision</div>
+  <p>Every <code>helm install</code> starts at revision 1; every <code>helm upgrade</code> or
+  <code>helm rollback</code> increments it. Rolling back to revision 3 doesn't delete history — it creates a
+  <em>new</em> revision whose content equals revision 3. Default retention is 10 revisions
+  (<code>--history-max</code>).</p>
+</div>
+
+<div class="callout">
+  <div class="co-title">Mental model</div>
+  <strong>Chart</strong> = the recipe (versioned, parameterized). <strong>Values</strong> = the ingredients you chose.
+  <strong>Release</strong> = the cooked meal running in a namespace. <strong>Revision</strong> = each time you re-cooked it.
+  Helm itself is just the chef's knife — a local binary; the cluster never runs any Helm software.
+</div>
+</section>
+
+<!-- ================= 02 MANUAL ================= -->
+<section id="manual">
+<div class="part">
+  <div class="p-eyebrow">Part 02 · The baseline</div>
+  <h2>Manual deployment — the raw kubectl method</h2>
+  <p>Deploying <code>menu-api</code> to <code>jahez-prod</code> with nothing but hand-written manifests. Every file is complete and <code>kubectl apply</code>-ready.</p>
+</div>
+
+<p>The application: <code>Menu.API.dll</code>, an ASP.NET Core service reading PostgreSQL + Redis connection info
+from configuration, exposing HTTP on 8080. It needs <strong>four objects</strong>: a Namespace, a ConfigMap,
+a Deployment, and a Service.</p>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">00-namespace.yaml</span><span class="ftag">manual · file 1/4</span></div>
+<pre><code><span class="k">apiVersion</span>: <span class="s">v1</span>
+<span class="k">kind</span>: <span class="s">Namespace</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">jahez-prod</span>
+  <span class="k">labels</span>:
+    <span class="k">environment</span>: <span class="s">production</span>
+    <span class="k">team</span>: <span class="s">platform</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">01-configmap.yaml</span><span class="ftag">manual · file 2/4</span></div>
+<pre><code><span class="k">apiVersion</span>: <span class="s">v1</span>
+<span class="k">kind</span>: <span class="s">ConfigMap</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">menu-api-config</span>
+  <span class="k">namespace</span>: <span class="s">jahez-prod</span>
+<span class="k">data</span>:
+  <span class="k">ASPNETCORE_ENVIRONMENT</span>: <span class="s">"Production"</span>
+  <span class="k">TZ</span>: <span class="s">"Asia/Riyadh"</span>
+  <span class="k">Redis__Endpoint</span>: <span class="s">"redis-master.jahez-prod.svc.cluster.local:6379"</span>
+  <span class="k">Postgres__Host</span>: <span class="s">"pg-menu.jahez-prod.svc.cluster.local"</span>
+  <span class="k">Elasticsearch__Url</span>: <span class="s">"http://es-http.jahez-prod.svc.cluster.local:9200"</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">02-deployment.yaml</span><span class="ftag">manual · file 3/4</span></div>
+<pre><code><span class="k">apiVersion</span>: <span class="s">apps/v1</span>
+<span class="k">kind</span>: <span class="s">Deployment</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">menu-api</span>
+  <span class="k">namespace</span>: <span class="s">jahez-prod</span>
+  <span class="k">labels</span>:
+    <span class="k">app</span>: <span class="s">menu-api</span>
+    <span class="k">version</span>: <span class="s">"2.7.0"</span>
+<span class="k">spec</span>:
+  <span class="k">replicas</span>: <span class="v">3</span>
+  <span class="k">selector</span>:
+    <span class="k">matchLabels</span>:
+      <span class="k">app</span>: <span class="s">menu-api</span>
+  <span class="k">strategy</span>:
+    <span class="k">type</span>: <span class="s">RollingUpdate</span>
+    <span class="k">rollingUpdate</span>:
+      <span class="k">maxSurge</span>: <span class="v">1</span>
+      <span class="k">maxUnavailable</span>: <span class="v">0</span>
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app</span>: <span class="s">menu-api</span>
+        <span class="k">version</span>: <span class="s">"2.7.0"</span>
+    <span class="k">spec</span>:
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: <span class="s">menu-api</span>
+          <span class="k">image</span>: <span class="s">ghcr.io/jahez/menu-api:2.7.0</span>
+          <span class="k">command</span>: [<span class="s">"dotnet"</span>, <span class="s">"Menu.API.dll"</span>]
+          <span class="k">ports</span>:
+            - <span class="k">name</span>: <span class="s">http</span>
+              <span class="k">containerPort</span>: <span class="v">8080</span>
+          <span class="k">envFrom</span>:
+            - <span class="k">configMapRef</span>:
+                <span class="k">name</span>: <span class="s">menu-api-config</span>
+          <span class="k">resources</span>:
+            <span class="k">requests</span>: { <span class="k">cpu</span>: <span class="s">250m</span>, <span class="k">memory</span>: <span class="s">512Mi</span> }
+            <span class="k">limits</span>:   { <span class="k">cpu</span>: <span class="s">"1"</span>,  <span class="k">memory</span>: <span class="s">1Gi</span> }
+          <span class="k">readinessProbe</span>:
+            <span class="k">httpGet</span>: { <span class="k">path</span>: <span class="s">/healthz/ready</span>, <span class="k">port</span>: <span class="s">http</span> }
+            <span class="k">initialDelaySeconds</span>: <span class="v">5</span>
+            <span class="k">periodSeconds</span>: <span class="v">10</span>
+          <span class="k">livenessProbe</span>:
+            <span class="k">httpGet</span>: { <span class="k">path</span>: <span class="s">/healthz/live</span>, <span class="k">port</span>: <span class="s">http</span> }
+            <span class="k">initialDelaySeconds</span>: <span class="v">15</span>
+            <span class="k">periodSeconds</span>: <span class="v">20</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">03-service.yaml</span><span class="ftag">manual · file 4/4</span></div>
+<pre><code><span class="k">apiVersion</span>: <span class="s">v1</span>
+<span class="k">kind</span>: <span class="s">Service</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="s">menu-api</span>
+  <span class="k">namespace</span>: <span class="s">jahez-prod</span>
+  <span class="k">labels</span>:
+    <span class="k">app</span>: <span class="s">menu-api</span>
+<span class="k">spec</span>:
+  <span class="k">type</span>: <span class="s">ClusterIP</span>
+  <span class="k">selector</span>:
+    <span class="k">app</span>: <span class="s">menu-api</span>
+  <span class="k">ports</span>:
+    - <span class="k">name</span>: <span class="s">http</span>
+      <span class="k">port</span>: <span class="v">80</span>
+      <span class="k">targetPort</span>: <span class="s">http</span>
+</code></pre>
+</div>
+
+<h3>Deploying it — and updating it — by hand</h3>
+<div class="code-block">
+<div class="code-head"><span class="fname">terminal</span><span class="ftag">manual workflow</span></div>
+<pre><code><span class="c"># first deploy — order matters: namespace, then config, then workload</span>
+<span class="cmd">kubectl apply</span> <span class="flag">-f</span> 00-namespace.yaml
+<span class="cmd">kubectl apply</span> <span class="flag">-f</span> 01-configmap.yaml
+<span class="cmd">kubectl apply</span> <span class="flag">-f</span> 02-deployment.yaml
+<span class="cmd">kubectl apply</span> <span class="flag">-f</span> 03-service.yaml
+
+<span class="c"># releasing v2.7.1 — edit the image tag in TWO places (spec + labels), re-apply</span>
+<span class="cmd">sed -i</span> <span class="s">'s/2.7.0/2.7.1/g'</span> 02-deployment.yaml
+<span class="cmd">kubectl apply</span> <span class="flag">-f</span> 02-deployment.yaml
+
+<span class="c"># rollback? hope you kept the old file in git and re-apply it,</span>
+<span class="c"># or fall back to Deployment-only history:</span>
+<span class="cmd">kubectl rollout undo</span> deployment/menu-api <span class="flag">-n</span> jahez-prod
+</code></pre>
+</div>
+
+<div class="callout warn">
+  <div class="co-title">Where this breaks down</div>
+  It works for one service in one environment. But <code>jahez-prod</code> runs home, search, menu, and orders —
+  each needing dev/staging/prod variants. That's <strong>4 files × 4 services × 3 environments = 48 hand-maintained YAMLs</strong>
+  that differ only in replicas, image tags, hostnames, and resource sizes. <code>kubectl rollout undo</code> only
+  rolls back the Deployment — never the ConfigMap that changed with it (the exact coupling that bit you in the
+  time-slot CMS incident: config and workload versions drifting independently).
+</div>
+</section>
+
+<!-- ================= 03 WHY HELM ================= -->
+<section id="why-helm">
+<div class="part">
+  <div class="p-eyebrow">Part 03 · The problem</div>
+  <h2>Why Helm exists — the four gaps in raw kubectl</h2>
+  <p>Helm answers four operational questions that <code>kubectl apply</code> cannot.</p>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h4 style="color:var(--c-values)">1 · Parametrization</h4>
+    <p style="margin:0;font-size:14px">The same Deployment differs across environments only in a handful of fields
+    (replicas, tag, resources, hostnames). Raw YAML forces full-file duplication; templates extract the differences
+    into one <code>values-&lt;env&gt;.yaml</code> each.</p>
+  </div>
+  <div class="card">
+    <h4 style="color:var(--c-release)">2 · Atomic release units</h4>
+    <p style="margin:0;font-size:14px">Deployment + Service + ConfigMap belong together. Helm installs, upgrades,
+    and — critically — <strong>rolls back all of them as one unit</strong>. <code>kubectl rollout undo</code> covers
+    only the Deployment.</p>
+  </div>
+  <div class="card">
+    <h4 style="color:var(--c-cluster)">3 · Versioned history</h4>
+    <p style="margin:0;font-size:14px">Each release revision (chart + values + rendered manifests) is stored in-cluster
+    as a Secret. <code>helm history</code> shows exactly what was live at 02:00 during an incident; git alone can't
+    prove what was applied.</p>
+  </div>
+  <div class="card">
+    <h4 style="color:var(--c-repo)">4 · Distribution & reuse</h4>
+    <p style="margin:0;font-size:14px">Installing Redis, ingress-nginx, or Datadog's agent should not mean
+    hand-writing 30 manifests. Repositories let you consume community charts with two commands — and publish your
+    own internal <code>jahez-service</code> library chart.</p>
+  </div>
+</div>
+</section>
+
+<!-- ================= 04 ARCHITECTURE ================= -->
+<section id="architecture">
+<div class="part">
+  <div class="p-eyebrow">Part 04 · The pipeline</div>
+  <h2>Helm architecture — from chart to running pods</h2>
+  <p>What actually happens during <code>helm install menu-api ./menu-api -n jahez-prod -f values-prod.yaml</code>. Step through it — the cluster below has one control plane and three worker nodes.</p>
+</div>
+
+<div class="slider" data-slider>
+  <div class="slider-head">
+    <span class="slider-title">helm install — end to end</span>
+    <span class="slider-count"><span data-cur>1</span> / <span data-total>6</span></span>
+  </div>
+  <div class="slide-stage">
+
+    <!-- SLIDE 1: chart source -->
+    <div class="slide on">
+      <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart source on the workstation">
+        <rect x="20" y="30" width="330" height="280" rx="14" fill="#161b22" stroke="#30363d"/>
+        <text x="40" y="60" fill="#9aa7b8" font-size="11" letter-spacing="1.5">WORKSTATION / CI RUNNER</text>
+        <rect x="40" y="80" width="290" height="150" rx="10" fill="#0a0e14" stroke="#ffa657" stroke-width="1.2"/>
+        <text x="56" y="106" fill="#ffa657" font-size="12" font-weight="600">menu-api/  (the chart)</text>
+        <text x="70" y="130" fill="#e6edf3" font-size="11">Chart.yaml</text>
+        <text x="70" y="150" fill="#d2a8ff" font-size="11">values.yaml</text>
+        <text x="70" y="170" fill="#79c0ff" font-size="11">templates/deployment.yaml</text>
+        <text x="70" y="190" fill="#79c0ff" font-size="11">templates/service.yaml</text>
+        <text x="70" y="210" fill="#79c0ff" font-size="11">templates/configmap.yaml</text>
+        <rect x="40" y="244" width="290" height="46" rx="10" fill="#0a0e14" stroke="#d2a8ff"/>
+        <text x="56" y="272" fill="#d2a8ff" font-size="11.5">values-prod.yaml   +   --set image.tag=2.7.1</text>
+        <rect x="420" y="110" width="300" height="120" rx="14" fill="#161b22" stroke="#58a6ff" stroke-width="1.4"/>
+        <text x="440" y="145" fill="#58a6ff" font-size="13" font-weight="700">helm  (client binary)</text>
+        <text x="440" y="170" fill="#9aa7b8" font-size="10.5">reads kubeconfig → same identity as kubectl</text>
+        <text x="440" y="190" fill="#9aa7b8" font-size="10.5">no server-side agent since Helm v3</text>
+        <line x1="350" y1="170" x2="414" y2="170" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <polygon points="414,170 404,165 404,175" fill="#58a6ff"/>
+      </svg>
+    </div>
+
+    <!-- SLIDE 2: values merge -->
+    <div class="slide">
+      <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Values merge order">
+        <text x="30" y="40" fill="#9aa7b8" font-size="11" letter-spacing="1.5">STEP A — DEEP-MERGE VALUES (later wins)</text>
+        <rect x="30" y="60" width="200" height="72" rx="10" fill="#161b22" stroke="#30363d"/>
+        <text x="46" y="88" fill="#d2a8ff" font-size="11.5" font-weight="600">1 · values.yaml</text>
+        <text x="46" y="110" fill="#9aa7b8" font-size="10.5">chart defaults · replicas: 2</text>
+        <rect x="280" y="60" width="200" height="72" rx="10" fill="#161b22" stroke="#30363d"/>
+        <text x="296" y="88" fill="#d2a8ff" font-size="11.5" font-weight="600">2 · -f values-prod.yaml</text>
+        <text x="296" y="110" fill="#9aa7b8" font-size="10.5">env override · replicas: 6</text>
+        <rect x="530" y="60" width="200" height="72" rx="10" fill="#161b22" stroke="#30363d"/>
+        <text x="546" y="88" fill="#d2a8ff" font-size="11.5" font-weight="600">3 · --set image.tag=2.7.1</text>
+        <text x="546" y="110" fill="#9aa7b8" font-size="10.5">CLI flag · highest priority</text>
+        <line x1="230" y1="96" x2="274" y2="96" stroke="#d2a8ff" stroke-width="1.5"/>
+        <polygon points="274,96 264,91 264,101" fill="#d2a8ff"/>
+        <line x1="480" y1="96" x2="524" y2="96" stroke="#d2a8ff" stroke-width="1.5"/>
+        <polygon points="524,96 514,91 514,101" fill="#d2a8ff"/>
+        <line x1="380" y1="132" x2="380" y2="176" stroke="#d2a8ff" stroke-width="1.5"/>
+        <polygon points="380,176 375,166 385,166" fill="#d2a8ff"/>
+        <rect x="180" y="180" width="400" height="130" rx="12" fill="#0a0e14" stroke="#d2a8ff" stroke-width="1.4"/>
+        <text x="200" y="210" fill="#d2a8ff" font-size="12" font-weight="700">.Values  (final render context)</text>
+        <text x="216" y="236" fill="#e6edf3" font-size="11">replicaCount: 6</text>
+        <text x="216" y="256" fill="#e6edf3" font-size="11">image: { repository: ghcr.io/jahez/menu-api, tag: "2.7.1" }</text>
+        <text x="216" y="276" fill="#e6edf3" font-size="11">redis.endpoint: redis-master…:6379</text>
+        <text x="216" y="296" fill="#8b949e" font-size="10.5"># exposed to every template as {{ .Values.* }}</text>
+      </svg>
+    </div>
+
+    <!-- SLIDE 3: render -->
+    <div class="slide">
+      <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Template rendering">
+        <text x="30" y="40" fill="#9aa7b8" font-size="11" letter-spacing="1.5">STEP B — RENDER (CLIENT-SIDE, GO TEMPLATES + SPRIG)</text>
+        <rect x="30" y="70" width="300" height="110" rx="10" fill="#161b22" stroke="#79c0ff"/>
+        <text x="46" y="96" fill="#79c0ff" font-size="11.5" font-weight="600">templates/deployment.yaml</text>
+        <text x="60" y="122" fill="#e6edf3" font-size="10.5">replicas: {{ .Values.replicaCount }}</text>
+        <text x="60" y="142" fill="#e6edf3" font-size="10.5">image: "{{ .Values.image.repository }}</text>
+        <text x="60" y="160" fill="#e6edf3" font-size="10.5">        :{{ .Values.image.tag }}"</text>
+        <rect x="30" y="196" width="300" height="60" rx="10" fill="#161b22" stroke="#d2a8ff"/>
+        <text x="46" y="222" fill="#d2a8ff" font-size="11.5" font-weight="600">.Values · .Release · .Chart</text>
+        <text x="46" y="242" fill="#9aa7b8" font-size="10.5">render context objects</text>
+        <line x1="330" y1="160" x2="418" y2="160" stroke="#79c0ff" stroke-width="1.5"/>
+        <polygon points="418,160 408,155 408,165" fill="#79c0ff"/>
+        <text x="342" y="150" fill="#79c0ff" font-size="10">render</text>
+        <rect x="424" y="70" width="306" height="200" rx="12" fill="#0a0e14" stroke="#7ee787" stroke-width="1.4"/>
+        <text x="440" y="98" fill="#7ee787" font-size="12" font-weight="700">Plain Kubernetes manifests</text>
+        <text x="456" y="126" fill="#e6edf3" font-size="11">kind: Deployment</text>
+        <text x="456" y="146" fill="#e6edf3" font-size="11">  replicas: 6</text>
+        <text x="456" y="166" fill="#e6edf3" font-size="11">  image: ghcr.io/jahez/menu-api:2.7.1</text>
+        <text x="456" y="192" fill="#e6edf3" font-size="11">kind: Service …</text>
+        <text x="456" y="212" fill="#e6edf3" font-size="11">kind: ConfigMap …</text>
+        <text x="440" y="248" fill="#8b949e" font-size="10.5"># preview without installing: helm template</text>
+      </svg>
+    </div>
+
+    <!-- SLIDE 4: apply to api server -->
+    <div class="slide">
+      <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Manifests sent to the API server">
+        <text x="30" y="40" fill="#9aa7b8" font-size="11" letter-spacing="1.5">STEP C — SUBMIT TO THE CLUSTER</text>
+        <rect x="30" y="90" width="220" height="130" rx="12" fill="#161b22" stroke="#58a6ff" stroke-width="1.4"/>
+        <text x="46" y="120" fill="#58a6ff" font-size="12.5" font-weight="700">helm</text>
+        <text x="46" y="145" fill="#9aa7b8" font-size="10.5">POSTs rendered manifests</text>
+        <text x="46" y="163" fill="#9aa7b8" font-size="10.5">over HTTPS, ordered by kind:</text>
+        <text x="46" y="185" fill="#e6edf3" font-size="10.5">Namespace → ConfigMap →</text>
+        <text x="46" y="203" fill="#e6edf3" font-size="10.5">Service → Deployment</text>
+        <line x1="250" y1="155" x2="338" y2="155" stroke="#ff9eb1" stroke-width="1.8"/>
+        <polygon points="338,155 328,150 328,160" fill="#ff9eb1"/>
+        <text x="258" y="145" fill="#ff9eb1" font-size="10">kubeconfig auth</text>
+        <rect x="344" y="60" width="386" height="240" rx="14" fill="#161b22" stroke="#30363d"/>
+        <text x="364" y="90" fill="#9aa7b8" font-size="11" letter-spacing="1.5">CONTROL PLANE</text>
+        <rect x="364" y="106" width="160" height="70" rx="10" fill="#0a0e14" stroke="#ff9eb1" stroke-width="1.3"/>
+        <text x="380" y="134" fill="#ff9eb1" font-size="11.5" font-weight="600">kube-apiserver</text>
+        <text x="380" y="156" fill="#9aa7b8" font-size="10">authN · authZ (RBAC)</text>
+        <rect x="556" y="106" width="150" height="70" rx="10" fill="#0a0e14" stroke="#79c0ff"/>
+        <text x="572" y="134" fill="#79c0ff" font-size="11.5" font-weight="600">etcd</text>
+        <text x="572" y="156" fill="#9aa7b8" font-size="10">desired state stored</text>
+        <line x1="524" y1="141" x2="550" y2="141" stroke="#79c0ff" stroke-width="1.5"/>
+        <polygon points="550,141 540,136 540,146" fill="#79c0ff"/>
+        <rect x="364" y="200" width="342" height="76" rx="10" fill="#0a0e14" stroke="#f7c948"/>
+        <text x="380" y="228" fill="#f7c948" font-size="11.5" font-weight="600">controller-manager · scheduler</text>
+        <text x="380" y="250" fill="#9aa7b8" font-size="10.5">Deployment → ReplicaSet → 6 Pods,</text>
+        <text x="380" y="266" fill="#9aa7b8" font-size="10.5">scheduler assigns each Pod to a node</text>
+      </svg>
+    </div>
+
+    <!-- SLIDE 5: release secret -->
+    <div class="slide">
+      <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Release secret stored in the namespace">
+        <text x="30" y="40" fill="#9aa7b8" font-size="11" letter-spacing="1.5">STEP D — RELEASE STATE PERSISTED IN-CLUSTER</text>
+        <rect x="30" y="66" width="700" height="240" rx="14" fill="#161b22" stroke="#30363d"/>
+        <text x="50" y="96" fill="#9aa7b8" font-size="11">namespace: jahez-prod</text>
+        <rect x="50" y="112" width="420" height="80" rx="10" fill="#0a0e14" stroke="#7ee787" stroke-width="1.4"/>
+        <text x="66" y="140" fill="#7ee787" font-size="11.5" font-weight="600">Secret · sh.helm.release.v1.menu-api.v1</text>
+        <text x="66" y="162" fill="#9aa7b8" font-size="10.5">gzip+b64 blob: chart + merged values +</text>
+        <text x="66" y="178" fill="#9aa7b8" font-size="10.5">rendered manifests + status: deployed</text>
+        <rect x="50" y="208" width="200" height="76" rx="10" fill="#0a0e14" stroke="#58a6ff"/>
+        <text x="66" y="234" fill="#58a6ff" font-size="11" font-weight="600">Deployment</text>
+        <text x="66" y="254" fill="#9aa7b8" font-size="10">menu-api · 6 replicas</text>
+        <rect x="270" y="208" width="200" height="76" rx="10" fill="#0a0e14" stroke="#58a6ff"/>
+        <text x="286" y="234" fill="#58a6ff" font-size="11" font-weight="600">Service · ConfigMap</text>
+        <text x="286" y="254" fill="#9aa7b8" font-size="10">labeled: managed-by=Helm</text>
+        <rect x="500" y="112" width="210" height="172" rx="10" fill="#0a0e14" stroke="#f7c948"/>
+        <text x="516" y="140" fill="#f7c948" font-size="11.5" font-weight="600">Why it matters</text>
+        <text x="516" y="164" fill="#e6edf3" font-size="10.5">helm history menu-api</text>
+        <text x="516" y="184" fill="#e6edf3" font-size="10.5">helm rollback menu-api 1</text>
+        <text x="516" y="208" fill="#9aa7b8" font-size="10">every upgrade adds .v2, .v3…</text>
+        <text x="516" y="226" fill="#9aa7b8" font-size="10">rollback restores the whole</text>
+        <text x="516" y="242" fill="#9aa7b8" font-size="10">set — Deployment AND its</text>
+        <text x="516" y="258" fill="#9aa7b8" font-size="10">ConfigMap together</text>
+      </svg>
+    </div>
+
+    <!-- SLIDE 6: 3-node cluster -->
+    <div class="slide">
+      <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pods scheduled across three worker nodes">
+        <text x="30" y="36" fill="#9aa7b8" font-size="11" letter-spacing="1.5">STEP E — RESULT: 6 PODS ACROSS 3 WORKER NODES</text>
+        <rect x="30" y="52" width="700" height="66" rx="12" fill="#161b22" stroke="#ff9eb1"/>
+        <text x="50" y="80" fill="#ff9eb1" font-size="11.5" font-weight="600">control plane</text>
+        <text x="50" y="100" fill="#9aa7b8" font-size="10">apiserver · etcd · scheduler · controller-manager</text>
+        <text x="420" y="90" fill="#7ee787" font-size="10.5">release: menu-api · revision 1 · deployed</text>
+        <g>
+          <rect x="30" y="140" width="220" height="200" rx="12" fill="#161b22" stroke="#30363d"/>
+          <text x="48" y="168" fill="#e6edf3" font-size="11.5" font-weight="600">node-1</text>
+          <text x="48" y="186" fill="#6e7a8a" font-size="9.5">kubelet · containerd · kube-proxy</text>
+          <rect x="48" y="200" width="184" height="52" rx="8" fill="#0a0e14" stroke="#7ee787"/>
+          <text x="62" y="222" fill="#7ee787" font-size="10.5">menu-api-7d4f…-a1</text>
+          <text x="62" y="240" fill="#6e7a8a" font-size="9.5">dotnet Menu.API.dll :8080</text>
+          <rect x="48" y="262" width="184" height="52" rx="8" fill="#0a0e14" stroke="#7ee787"/>
+          <text x="62" y="284" fill="#7ee787" font-size="10.5">menu-api-7d4f…-b2</text>
+          <text x="62" y="302" fill="#6e7a8a" font-size="9.5">dotnet Menu.API.dll :8080</text>
+        </g>
+        <g>
+          <rect x="270" y="140" width="220" height="200" rx="12" fill="#161b22" stroke="#30363d"/>
+          <text x="288" y="168" fill="#e6edf3" font-size="11.5" font-weight="600">node-2</text>
+          <text x="288" y="186" fill="#6e7a8a" font-size="9.5">kubelet · containerd · kube-proxy</text>
+          <rect x="288" y="200" width="184" height="52" rx="8" fill="#0a0e14" stroke="#7ee787"/>
+          <text x="302" y="222" fill="#7ee787" font-size="10.5">menu-api-7d4f…-c3</text>
+          <text x="302" y="240" fill="#6e7a8a" font-size="9.5">dotnet Menu.API.dll :8080</text>
+          <rect x="288" y="262" width="184" height="52" rx="8" fill="#0a0e14" stroke="#7ee787"/>
+          <text x="302" y="284" fill="#7ee787" font-size="10.5">menu-api-7d4f…-d4</text>
+          <text x="302" y="302" fill="#6e7a8a" font-size="9.5">dotnet Menu.API.dll :8080</text>
+        </g>
+        <g>
+          <rect x="510" y="140" width="220" height="200" rx="12" fill="#161b22" stroke="#30363d"/>
+          <text x="528" y="168" fill="#e6edf3" font-size="11.5" font-weight="600">node-3</text>
+          <text x="528" y="186" fill="#6e7a8a" font-size="9.5">kubelet · containerd · kube-proxy</text>
+          <rect x="528" y="200" width="184" height="52" rx="8" fill="#0a0e14" stroke="#7ee787"/>
+          <text x="542" y="222" fill="#7ee787" font-size="10.5">menu-api-7d4f…-e5</text>
+          <text x="542" y="240" fill="#6e7a8a" font-size="9.5">dotnet Menu.API.dll :8080</text>
+          <rect x="528" y="262" width="184" height="52" rx="8" fill="#0a0e14" stroke="#7ee787"/>
+          <text x="542" y="284" fill="#7ee787" font-size="10.5">menu-api-7d4f…-f6</text>
+          <text x="542" y="302" fill="#6e7a8a" font-size="9.5">dotnet Menu.API.dll :8080</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="slide-caption">
+    <div class="sc-step" data-cap-step>Step 1 · The inputs</div>
+    <p data-cap-text>Everything starts on the workstation or CI runner: the chart directory, environment value files, and CLI flags. The <code>helm</code> binary is the only Helm software involved — the cluster runs nothing Helm-specific.</p>
+  </div>
+
+  <div class="slider-ctrl">
+    <button class="sbtn" data-prev>← Back</button>
+    <div class="dots" data-dots></div>
+    <button class="sbtn" data-next>Next →</button>
+  </div>
+
+  <script type="application/json" data-captions>
+  [
+    {"s":"Step 1 · The inputs","t":"Everything starts on the workstation or CI runner: the chart directory, environment value files, and CLI flags. The helm binary is the only Helm software involved — the cluster runs nothing Helm-specific."},
+    {"s":"Step 2 · Values merge","t":"Helm deep-merges configuration in priority order: chart values.yaml → -f files (left to right) → --set flags. The result becomes .Values, the single configuration tree every template sees."},
+    {"s":"Step 3 · Client-side render","t":"Templates are executed locally with Go's template engine plus Sprig functions. Output is plain Kubernetes YAML. helm template runs only this step — the standard way to preview or debug a chart with zero cluster impact."},
+    {"s":"Step 4 · Submit to the API server","t":"Helm authenticates with your kubeconfig — identical identity and RBAC as kubectl — and POSTs manifests in a kind-aware order (Namespace before ConfigMap before Deployment), so dependencies exist before consumers."},
+    {"s":"Step 5 · Release state persisted","t":"Helm writes a Secret sh.helm.release.v1.menu-api.v1 into jahez-prod containing the chart, merged values, and rendered manifests. This in-cluster ledger is what powers helm history, helm get values, and whole-set rollback."},
+    {"s":"Step 6 · Pods land on nodes","t":"From here it is standard Kubernetes: controller-manager expands the Deployment into a ReplicaSet and 6 Pods; the scheduler spreads them across node-1, node-2, node-3; kubelets pull ghcr.io/jahez/menu-api:2.7.1 and start dotnet Menu.API.dll."}
+  ]
+  </script>
+</div>
+
+<div class="callout">
+  <div class="co-title">Key architectural fact</div>
+  Helm v3 is <strong>purely client-side</strong>. There is no controller reconciling releases — if someone
+  <code>kubectl edit</code>s a Helm-managed Deployment, Helm won't revert it (that's what GitOps controllers like
+  Argo CD add on top). Helm's only in-cluster footprint is the release Secrets.
+</div>
+</section>
+
+<!-- ================= 05 INSTALL HELM ================= -->
+<section id="install-helm">
+<div class="part">
+  <div class="p-eyebrow">Part 05 · Setup</div>
+  <h2>Installing Helm (the CLI)</h2>
+  <p>One binary. Three common installation paths, then verification.</p>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">terminal</span><span class="ftag">install options</span></div>
+<pre><code><span class="c"># macOS</span>
+<span class="cmd">brew install</span> helm
+
+<span class="c"># Windows</span>
+<span class="cmd">winget install</span> Helm.Helm        <span class="c"># or: choco install kubernetes-helm</span>
+
+<span class="c"># Linux / CI (official script)</span>
+<span class="cmd">curl</span> -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | <span class="cmd">bash</span>
+
+<span class="c"># Debian/Ubuntu apt repo</span>
+<span class="cmd">curl</span> -fsSL https://baltocdn.com/helm/signing.asc | sudo gpg --dearmor -o /usr/share/keyrings/helm.gpg
+<span class="cmd">echo</span> <span class="s">"deb [signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main"</span> \
+  | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+<span class="cmd">sudo apt update && sudo apt install</span> helm
+
+<span class="c"># verify — helm talks to whatever cluster your kubeconfig points at</span>
+<span class="cmd">helm version</span> <span class="flag">--short</span>          <span class="c"># v3.x.y</span>
+<span class="cmd">kubectl config</span> current-context  <span class="c"># make sure it is NOT prod when experimenting</span>
+</code></pre>
+</div>
+
+<h3>First contact with a repository</h3>
+<div class="code-block">
+<div class="code-head"><span class="fname">terminal</span><span class="ftag">repo workflow</span></div>
+<pre><code><span class="c"># classic HTTP repositories</span>
+<span class="cmd">helm repo add</span> bitnami https://charts.bitnami.com/bitnami
+<span class="cmd">helm repo update</span>
+<span class="cmd">helm search repo</span> redis <span class="flag">--versions</span> | head
+
+<span class="c"># install a community chart (Redis for the menu cache layer)</span>
+<span class="cmd">helm install</span> redis bitnami/redis <span class="flag">-n</span> jahez-prod \
+  <span class="flag">--set</span> auth.enabled=true <span class="flag">--set</span> replica.replicaCount=2
+
+<span class="c"># OCI registries (Helm ≥3.8) — charts live next to your images</span>
+<span class="cmd">helm registry login</span> ghcr.io
+<span class="cmd">helm pull</span> oci://ghcr.io/jahez/charts/menu-api <span class="flag">--version</span> 1.4.2
+<span class="cmd">helm install</span> menu-api oci://ghcr.io/jahez/charts/menu-api <span class="flag">--version</span> 1.4.2 <span class="flag">-n</span> jahez-prod
+</code></pre>
+</div>
+</section>
+
+<!-- ================= 06 STRUCTURE ================= -->
+<section id="structure">
+<div class="part">
+  <div class="p-eyebrow">Part 06 · Anatomy</div>
+  <h2>Chart structure — every file and folder</h2>
+  <p><code>helm create menu-api</code> scaffolds this layout. Here is what each entry is for, and whether Helm requires it.</p>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">menu-api/</span><span class="ftag">chart layout</span></div>
+<pre><code>menu-api/
+├── <span class="k">Chart.yaml</span>            <span class="c"># REQUIRED · chart identity + versions</span>
+├── <span class="k">values.yaml</span>           <span class="c"># default configuration surface</span>
+├── <span class="k">values.schema.json</span>    <span class="c"># optional JSON Schema validating values</span>
+├── <span class="k">Chart.lock</span>            <span class="c"># pinned dependency versions (generated)</span>
+├── <span class="k">.helmignore</span>           <span class="c"># paths excluded from the packaged .tgz</span>
+├── <span class="k">README.md</span>             <span class="c"># human docs for chart consumers</span>
+├── <span class="k">charts/</span>               <span class="c"># vendored dependency charts (subcharts)</span>
+├── <span class="k">crds/</span>                 <span class="c"># CustomResourceDefinitions (installed first, never templated)</span>
+└── <span class="k">templates/</span>            <span class="c"># everything rendered by the engine</span>
+    ├── <span class="k">_helpers.tpl</span>      <span class="c"># named template definitions (no output itself)</span>
+    ├── <span class="k">deployment.yaml</span>
+    ├── <span class="k">service.yaml</span>
+    ├── <span class="k">configmap.yaml</span>
+    ├── <span class="k">hpa.yaml</span>
+    ├── <span class="k">serviceaccount.yaml</span>
+    ├── <span class="k">NOTES.txt</span>         <span class="c"># rendered + printed after install/upgrade</span>
+    └── <span class="k">tests/</span>
+        └── <span class="k">test-connection.yaml</span>  <span class="c"># pods run by `helm test`</span>
+</code></pre>
+</div>
+
+<div class="file-row"><div class="file-name">Chart.yaml <span class="req yes">required</span></div><div class="file-desc">The chart's identity card: name, SemVer chart <code>version</code>, the packaged app's <code>appVersion</code>, dependencies, maintainers. The only file Helm refuses to work without. Full property table in the next section.</div></div>
+<div class="file-row"><div class="file-name">values.yaml <span class="req no">optional</span></div><div class="file-desc">Default values for every template expression. This is the chart's <strong>API</strong>: anything a consumer should be able to change belongs here with a sane default; anything not exposed here is effectively hard-coded.</div></div>
+<div class="file-row"><div class="file-name">values.schema.json <span class="req no">optional</span></div><div class="file-desc">JSON Schema applied to the final merged values on <code>install</code>/<code>upgrade</code>/<code>lint</code>. Rejects typos like <code>replicaCont: 6</code> before anything reaches the cluster — the Helm equivalent of DTO validation attributes.</div></div>
+<div class="file-row"><div class="file-name">templates/ <span class="req yes">required*</span></div><div class="file-desc">Every <code>.yaml</code>/<code>.tpl</code> file here goes through the render engine. Files starting with <code>_</code> produce no output — they only define reusable named templates. (*Required in practice; a chart with no templates deploys nothing.)</div></div>
+<div class="file-row"><div class="file-name">templates/_helpers.tpl</div><div class="file-desc">Convention home for <code>{{ define }}</code> blocks: standardized names, label sets, image strings. Called via <code>{{ include "menu-api.labels" . }}</code>. Keeps every manifest's metadata identical — the same role your C# base classes and extension methods play.</div></div>
+<div class="file-row"><div class="file-name">templates/NOTES.txt</div><div class="file-desc">A template whose rendered output is <em>printed to the terminal</em> after install/upgrade instead of being applied. Used for "your release is live at…" instructions, port-forward hints, credential retrieval commands.</div></div>
+<div class="file-row"><div class="file-name">templates/tests/</div><div class="file-desc">Pod manifests annotated <code>helm.sh/hook: test</code>. <code>helm test menu-api</code> runs them post-deploy — e.g. a curl pod asserting <code>/healthz/ready</code> returns 200. Smoke tests as part of the package.</div></div>
+<div class="file-row"><div class="file-name">charts/</div><div class="file-desc">Vendored subcharts pulled by <code>helm dependency update</code> from the <code>dependencies:</code> list in Chart.yaml (arrives as <code>.tgz</code> files). Lets <code>menu-api</code> ship with, say, a Redis chart it depends on.</div></div>
+<div class="file-row"><div class="file-name">crds/</div><div class="file-desc">Plain (non-templated) CustomResourceDefinitions. Helm installs these <em>before</em> templates render so CRs in <code>templates/</code> have their types registered. Caveat: Helm never upgrades or deletes CRDs — that's deliberate data-safety behavior.</div></div>
+<div class="file-row"><div class="file-name">Chart.lock</div><div class="file-desc">Generated pin-file recording exact resolved dependency versions — the <code>packages.lock.json</code> of the chart world. Commit it; <code>helm dependency build</code> reproduces <code>charts/</code> from it byte-for-byte.</div></div>
+<div class="file-row"><div class="file-name">.helmignore</div><div class="file-desc">Glob patterns (like <code>.gitignore</code>) excluded when packaging: <code>.git/</code>, <code>*.md~</code>, CI configs — keeps the published <code>.tgz</code> minimal.</div></div>
+</section>
+
+<!-- ================= 07 CHART.YAML ================= -->
+<section id="chart-yaml">
+<div class="part">
+  <div class="p-eyebrow">Part 07 · Metadata</div>
+  <h2>Chart.yaml — every property explained</h2>
+  <p>The full <code>apiVersion: v2</code> (Helm 3) property set.</p>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">Chart.yaml</span><span class="ftag">annotated · all fields</span></div>
+<pre><code><span class="k">apiVersion</span>: <span class="s">v2</span>                       <span class="c"># v2 = Helm 3 chart format (v1 = legacy Helm 2)</span>
+<span class="k">name</span>: <span class="s">menu-api</span>                       <span class="c"># chart name; must match the directory name</span>
+<span class="k">version</span>: <span class="s">1.4.2</span>                       <span class="c"># CHART version (SemVer) — bumps when templates change</span>
+<span class="k">appVersion</span>: <span class="s">"2.7.1"</span>                  <span class="c"># APP version being packaged — informational default tag</span>
+<span class="k">kubeVersion</span>: <span class="s">"&gt;=1.27.0-0"</span>            <span class="c"># SemVer constraint on target cluster version</span>
+<span class="k">description</span>: <span class="s">Menu catalog service for the Jahez platform</span>
+<span class="k">type</span>: <span class="s">application</span>                    <span class="c"># application (deployable) | library (helpers only)</span>
+<span class="k">keywords</span>: [<span class="s">menu</span>, <span class="s">catalog</span>, <span class="s">dotnet</span>]   <span class="c"># search terms for repo indexes</span>
+<span class="k">home</span>: <span class="s">https://github.com/jahez/menu-api</span>
+<span class="k">sources</span>:
+  - <span class="s">https://github.com/jahez/menu-api</span>
+<span class="k">icon</span>: <span class="s">https://cdn.jahez.sa/charts/menu-api.png</span>
+<span class="k">maintainers</span>:
+  - <span class="k">name</span>: <span class="s">Ahmed</span>
+    <span class="k">email</span>: <span class="s">platform@jahez.sa</span>
+<span class="k">deprecated</span>: <span class="v">false</span>                    <span class="c"># mark true when retiring a published chart</span>
+<span class="k">annotations</span>:                         <span class="c"># free-form metadata (used by tools like Artifact Hub)</span>
+  <span class="k">jahez.sa/tier</span>: <span class="s">"core"</span>
+<span class="k">dependencies</span>:                        <span class="c"># subcharts resolved by `helm dependency update`</span>
+  - <span class="k">name</span>: <span class="s">redis</span>
+    <span class="k">version</span>: <span class="s">"19.x.x"</span>                <span class="c"># version range → pinned exactly in Chart.lock</span>
+    <span class="k">repository</span>: <span class="s">https://charts.bitnami.com/bitnami</span>
+    <span class="k">condition</span>: <span class="s">redis.enabled</span>         <span class="c"># values path toggling the subchart on/off</span>
+    <span class="k">tags</span>: [<span class="s">cache</span>]                    <span class="c"># group-toggle several deps via tags</span>
+    <span class="k">alias</span>: <span class="s">menu-cache</span>                <span class="c"># install under a different name</span>
+    <span class="k">import-values</span>: []                <span class="c"># lift child values into the parent scope</span>
+</code></pre>
+</div>
+
+<div class="callout warn">
+  <div class="co-title">version vs appVersion — the classic confusion</div>
+  <strong><code>version</code></strong> is the <em>chart's</em> SemVer: bump it when templates, defaults, or structure change,
+  even if the app didn't. <strong><code>appVersion</code></strong> is the <em>application's</em> version and is what
+  well-written charts use as the default image tag (<code>tag: .Values.image.tag | default .Chart.AppVersion</code>).
+  Shipping <code>menu-api</code> 2.7.1 with unchanged templates → bump <code>appVersion</code> only… but since a repo
+  can't republish the same chart version, in practice you bump both: <code>version: 1.4.3</code>, <code>appVersion: "2.7.1"</code>.
+</div>
+</section>
+
+<!-- ================= 08 FULL CHART ================= -->
+<section id="full-chart">
+<div class="part">
+  <div class="p-eyebrow">Part 08 · The payoff</div>
+  <h2>The same app as a Helm chart — complete files</h2>
+  <p>Everything from Part 02 rebuilt as a chart. Same four Kubernetes objects — but one command, per-environment value files, and whole-set rollback.</p>
+</div>
+
+<div class="vs">
+  <div class="card">
+    <span class="vs-badge manual">Manual</span>
+    <p style="font-size:13.5px;margin:0">4 static files <strong>per environment</strong> · edit tags by hand in multiple places · <code>rollout undo</code> covers only the Deployment · no record of what was applied when.</p>
+  </div>
+  <div class="card">
+    <span class="vs-badge helm">Helm chart</span>
+    <p style="font-size:13.5px;margin:0">1 chart + 1 small values file per environment · <code>helm upgrade --install</code> is the whole pipeline step · atomic rollback of Deployment+Service+ConfigMap · full revision history in-cluster.</p>
+  </div>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">menu-api/Chart.yaml</span><span class="ftag">chart · 1/7</span></div>
+<pre><code><span class="k">apiVersion</span>: <span class="s">v2</span>
+<span class="k">name</span>: <span class="s">menu-api</span>
+<span class="k">description</span>: <span class="s">Menu catalog service (ASP.NET Core) for the Jahez platform</span>
+<span class="k">type</span>: <span class="s">application</span>
+<span class="k">version</span>: <span class="s">1.4.2</span>
+<span class="k">appVersion</span>: <span class="s">"2.7.1"</span>
+<span class="k">kubeVersion</span>: <span class="s">"&gt;=1.27.0-0"</span>
+<span class="k">maintainers</span>:
+  - <span class="k">name</span>: <span class="s">Ahmed</span>
+    <span class="k">email</span>: <span class="s">platform@jahez.sa</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">menu-api/values.yaml</span><span class="ftag">chart · 2/7 · defaults (≈ dev)</span></div>
+<pre><code><span class="k">replicaCount</span>: <span class="v">2</span>
+
+<span class="k">image</span>:
+  <span class="k">repository</span>: <span class="s">ghcr.io/jahez/menu-api</span>
+  <span class="k">tag</span>: <span class="s">""</span>            <span class="c"># empty → falls back to Chart.appVersion</span>
+  <span class="k">pullPolicy</span>: <span class="s">IfNotPresent</span>
+
+<span class="k">service</span>:
+  <span class="k">type</span>: <span class="s">ClusterIP</span>
+  <span class="k">port</span>: <span class="v">80</span>
+
+<span class="k">containerPort</span>: <span class="v">8080</span>
+
+<span class="k">env</span>:
+  <span class="k">aspnetcoreEnvironment</span>: <span class="s">Development</span>
+  <span class="k">timezone</span>: <span class="s">Asia/Riyadh</span>
+  <span class="k">redisEndpoint</span>: <span class="s">redis-master.jahez-dev.svc.cluster.local:6379</span>
+  <span class="k">postgresHost</span>: <span class="s">pg-menu.jahez-dev.svc.cluster.local</span>
+  <span class="k">elasticsearchUrl</span>: <span class="s">http://es-http.jahez-dev.svc.cluster.local:9200</span>
+
+<span class="k">resources</span>:
+  <span class="k">requests</span>: { <span class="k">cpu</span>: <span class="s">100m</span>, <span class="k">memory</span>: <span class="s">256Mi</span> }
+  <span class="k">limits</span>:   { <span class="k">cpu</span>: <span class="s">500m</span>, <span class="k">memory</span>: <span class="s">512Mi</span> }
+
+<span class="k">autoscaling</span>:
+  <span class="k">enabled</span>: <span class="v">false</span>
+  <span class="k">minReplicas</span>: <span class="v">2</span>
+  <span class="k">maxReplicas</span>: <span class="v">8</span>
+  <span class="k">targetCPUUtilizationPercentage</span>: <span class="v">70</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">values-prod.yaml</span><span class="ftag">chart · 3/7 · prod overrides only</span></div>
+<pre><code><span class="c"># everything not listed here inherits values.yaml — the whole point</span>
+<span class="k">replicaCount</span>: <span class="v">6</span>
+
+<span class="k">env</span>:
+  <span class="k">aspnetcoreEnvironment</span>: <span class="s">Production</span>
+  <span class="k">redisEndpoint</span>: <span class="s">redis-master.jahez-prod.svc.cluster.local:6379</span>
+  <span class="k">postgresHost</span>: <span class="s">pg-menu.jahez-prod.svc.cluster.local</span>
+  <span class="k">elasticsearchUrl</span>: <span class="s">http://es-http.jahez-prod.svc.cluster.local:9200</span>
+
+<span class="k">resources</span>:
+  <span class="k">requests</span>: { <span class="k">cpu</span>: <span class="s">250m</span>, <span class="k">memory</span>: <span class="s">512Mi</span> }
+  <span class="k">limits</span>:   { <span class="k">cpu</span>: <span class="s">"1"</span>,  <span class="k">memory</span>: <span class="s">1Gi</span> }
+
+<span class="k">autoscaling</span>:
+  <span class="k">enabled</span>: <span class="v">true</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">templates/_helpers.tpl</span><span class="ftag">chart · 4/7 · named templates</span></div>
+<pre><code><span class="tp">{{- define "menu-api.fullname" -}}</span>
+<span class="tp">{{ .Release.Name }}</span>
+<span class="tp">{{- end }}</span>
+
+<span class="tp">{{- define "menu-api.labels" -}}</span>
+app.kubernetes.io/name: <span class="tp">{{ .Chart.Name }}</span>
+app.kubernetes.io/instance: <span class="tp">{{ .Release.Name }}</span>
+app.kubernetes.io/version: <span class="tp">{{ .Values.image.tag | default .Chart.AppVersion | quote }}</span>
+app.kubernetes.io/managed-by: <span class="tp">{{ .Release.Service }}</span>
+helm.sh/chart: <span class="tp">{{ printf "%s-%s" .Chart.Name .Chart.Version }}</span>
+<span class="tp">{{- end }}</span>
+
+<span class="tp">{{- define "menu-api.selectorLabels" -}}</span>
+app.kubernetes.io/name: <span class="tp">{{ .Chart.Name }}</span>
+app.kubernetes.io/instance: <span class="tp">{{ .Release.Name }}</span>
+<span class="tp">{{- end }}</span>
+
+<span class="tp">{{- define "menu-api.image" -}}</span>
+<span class="tp">{{ printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) }}</span>
+<span class="tp">{{- end }}</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">templates/configmap.yaml</span><span class="ftag">chart · 5/7</span></div>
+<pre><code><span class="k">apiVersion</span>: <span class="s">v1</span>
+<span class="k">kind</span>: <span class="s">ConfigMap</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="tp">{{ include "menu-api.fullname" . }}</span><span class="s">-config</span>
+  <span class="k">labels</span>:
+    <span class="tp">{{- include "menu-api.labels" . | nindent 4 }}</span>
+<span class="k">data</span>:
+  <span class="k">ASPNETCORE_ENVIRONMENT</span>: <span class="tp">{{ .Values.env.aspnetcoreEnvironment | quote }}</span>
+  <span class="k">TZ</span>: <span class="tp">{{ .Values.env.timezone | quote }}</span>
+  <span class="k">Redis__Endpoint</span>: <span class="tp">{{ .Values.env.redisEndpoint | quote }}</span>
+  <span class="k">Postgres__Host</span>: <span class="tp">{{ .Values.env.postgresHost | quote }}</span>
+  <span class="k">Elasticsearch__Url</span>: <span class="tp">{{ .Values.env.elasticsearchUrl | quote }}</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">templates/deployment.yaml</span><span class="ftag">chart · 6/7</span></div>
+<pre><code><span class="k">apiVersion</span>: <span class="s">apps/v1</span>
+<span class="k">kind</span>: <span class="s">Deployment</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="tp">{{ include "menu-api.fullname" . }}</span>
+  <span class="k">labels</span>:
+    <span class="tp">{{- include "menu-api.labels" . | nindent 4 }}</span>
+<span class="k">spec</span>:
+  <span class="tp">{{- if not .Values.autoscaling.enabled }}</span>
+  <span class="k">replicas</span>: <span class="tp">{{ .Values.replicaCount }}</span>
+  <span class="tp">{{- end }}</span>
+  <span class="k">selector</span>:
+    <span class="k">matchLabels</span>:
+      <span class="tp">{{- include "menu-api.selectorLabels" . | nindent 6 }}</span>
+  <span class="k">strategy</span>:
+    <span class="k">type</span>: <span class="s">RollingUpdate</span>
+    <span class="k">rollingUpdate</span>: { <span class="k">maxSurge</span>: <span class="v">1</span>, <span class="k">maxUnavailable</span>: <span class="v">0</span> }
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="tp">{{- include "menu-api.selectorLabels" . | nindent 8 }}</span>
+      <span class="k">annotations</span>:
+        <span class="c"># restart pods automatically when the ConfigMap content changes:</span>
+        <span class="k">checksum/config</span>: <span class="tp">{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}</span>
+    <span class="k">spec</span>:
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: <span class="tp">{{ .Chart.Name }}</span>
+          <span class="k">image</span>: <span class="tp">{{ include "menu-api.image" . | quote }}</span>
+          <span class="k">imagePullPolicy</span>: <span class="tp">{{ .Values.image.pullPolicy }}</span>
+          <span class="k">command</span>: [<span class="s">"dotnet"</span>, <span class="s">"Menu.API.dll"</span>]
+          <span class="k">ports</span>:
+            - <span class="k">name</span>: <span class="s">http</span>
+              <span class="k">containerPort</span>: <span class="tp">{{ .Values.containerPort }}</span>
+          <span class="k">envFrom</span>:
+            - <span class="k">configMapRef</span>:
+                <span class="k">name</span>: <span class="tp">{{ include "menu-api.fullname" . }}</span><span class="s">-config</span>
+          <span class="k">resources</span>:
+            <span class="tp">{{- toYaml .Values.resources | nindent 12 }}</span>
+          <span class="k">readinessProbe</span>:
+            <span class="k">httpGet</span>: { <span class="k">path</span>: <span class="s">/healthz/ready</span>, <span class="k">port</span>: <span class="s">http</span> }
+            <span class="k">initialDelaySeconds</span>: <span class="v">5</span>
+          <span class="k">livenessProbe</span>:
+            <span class="k">httpGet</span>: { <span class="k">path</span>: <span class="s">/healthz/live</span>, <span class="k">port</span>: <span class="s">http</span> }
+            <span class="k">initialDelaySeconds</span>: <span class="v">15</span>
+</code></pre>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">templates/service.yaml + templates/NOTES.txt</span><span class="ftag">chart · 7/7</span></div>
+<pre><code><span class="c"># templates/service.yaml</span>
+<span class="k">apiVersion</span>: <span class="s">v1</span>
+<span class="k">kind</span>: <span class="s">Service</span>
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="tp">{{ include "menu-api.fullname" . }}</span>
+  <span class="k">labels</span>:
+    <span class="tp">{{- include "menu-api.labels" . | nindent 4 }}</span>
+<span class="k">spec</span>:
+  <span class="k">type</span>: <span class="tp">{{ .Values.service.type }}</span>
+  <span class="k">selector</span>:
+    <span class="tp">{{- include "menu-api.selectorLabels" . | nindent 4 }}</span>
+  <span class="k">ports</span>:
+    - <span class="k">name</span>: <span class="s">http</span>
+      <span class="k">port</span>: <span class="tp">{{ .Values.service.port }}</span>
+      <span class="k">targetPort</span>: <span class="s">http</span>
+
+<span class="c"># templates/NOTES.txt — printed to the terminal after install</span>
+<span class="tp">{{ .Release.Name }}</span> deployed to <span class="tp">{{ .Release.Namespace }}</span> (chart <span class="tp">{{ .Chart.Version }}</span>, app <span class="tp">{{ .Values.image.tag | default .Chart.AppVersion }}</span>).
+Test it:
+  kubectl port-forward svc/<span class="tp">{{ include "menu-api.fullname" . }}</span> 8080:<span class="tp">{{ .Values.service.port }}</span> -n <span class="tp">{{ .Release.Namespace }}</span>
+  curl http://localhost:8080/healthz/ready
+</code></pre>
+</div>
+
+<h3>Deploying with the chart</h3>
+<div class="code-block">
+<div class="code-head"><span class="fname">terminal</span><span class="ftag">helm workflow — replaces the whole manual sequence</span></div>
+<pre><code><span class="c"># validate before touching any cluster</span>
+<span class="cmd">helm lint</span> ./menu-api
+<span class="cmd">helm template</span> menu-api ./menu-api <span class="flag">-f</span> values-prod.yaml | less   <span class="c"># see rendered YAML</span>
+
+<span class="c"># install OR upgrade — same idempotent command in CI</span>
+<span class="cmd">helm upgrade --install</span> menu-api ./menu-api \
+  <span class="flag">-n</span> jahez-prod <span class="flag">--create-namespace</span> \
+  <span class="flag">-f</span> values-prod.yaml \
+  <span class="flag">--set</span> image.tag=2.7.1 \
+  <span class="flag">--atomic --wait --timeout</span> 5m      <span class="c"># auto-rollback if pods never go Ready</span>
+
+<span class="c"># release v2.7.2 → one flag changes, nothing edited by hand</span>
+<span class="cmd">helm upgrade</span> menu-api ./menu-api <span class="flag">-n</span> jahez-prod <span class="flag">-f</span> values-prod.yaml <span class="flag">--set</span> image.tag=2.7.2 <span class="flag">--atomic</span>
+
+<span class="c"># bad release at 02:00? whole set back in one command</span>
+<span class="cmd">helm rollback</span> menu-api 1 <span class="flag">-n</span> jahez-prod <span class="flag">--wait</span>
+</code></pre>
+</div>
+</section>
+
+<!-- ================= 09 TEMPLATING ================= -->
+<section id="templating">
+<div class="part">
+  <div class="p-eyebrow">Part 09 · The engine</div>
+  <h2>Template language — objects, functions, control flow</h2>
+  <p>Helm templates are Go <code>text/template</code> plus the Sprig function library plus a few Helm-specific additions.</p>
+</div>
+
+<h3>Built-in objects available in every template</h3>
+<div class="table-scroll"><table>
+  <tr><th>Object</th><th>What it holds</th><th>Examples</th></tr>
+  <tr><td><code>.Values</code></td><td>The merged values tree</td><td><code>.Values.image.tag</code>, <code>.Values.env.redisEndpoint</code></td></tr>
+  <tr><td><code>.Release</code></td><td>This installation's identity</td><td><code>.Release.Name</code>, <code>.Release.Namespace</code>, <code>.Release.Revision</code>, <code>.Release.IsUpgrade</code></td></tr>
+  <tr><td><code>.Chart</code></td><td>Chart.yaml contents</td><td><code>.Chart.Name</code>, <code>.Chart.Version</code>, <code>.Chart.AppVersion</code></td></tr>
+  <tr><td><code>.Capabilities</code></td><td>Target cluster facts</td><td><code>.Capabilities.KubeVersion</code>, <code>.Capabilities.APIVersions.Has "autoscaling/v2"</code></td></tr>
+  <tr><td><code>.Files</code></td><td>Non-template files in the chart</td><td><code>.Files.Get "config/appsettings.json"</code></td></tr>
+  <tr><td><code>.Template</code></td><td>Current template info</td><td><code>.Template.BasePath</code> (used in the checksum/config trick)</td></tr>
+</table></div>
+
+<h3>The functions you'll actually use</h3>
+<div class="code-block">
+<div class="code-head"><span class="fname">templates — patterns</span><span class="ftag">pipelines · control flow</span></div>
+<pre><code><span class="c"># pipelines: value | function | function (like PowerShell / LINQ chaining)</span>
+tag: <span class="tp">{{ .Values.image.tag | default .Chart.AppVersion | quote }}</span>
+
+<span class="c"># required: fail render with a message if a value is missing</span>
+host: <span class="tp">{{ required "env.postgresHost is mandatory" .Values.env.postgresHost }}</span>
+
+<span class="c"># toYaml + nindent: inject whole value subtrees with correct indentation</span>
+resources:
+  <span class="tp">{{- toYaml .Values.resources | nindent 2 }}</span>
+
+<span class="c"># if / else — note the dash in {{- trims whitespace/newlines</span>
+<span class="tp">{{- if .Values.autoscaling.enabled }}</span>
+<span class="c"># …HPA manifest…</span>
+<span class="tp">{{- else }}</span>
+replicas: <span class="tp">{{ .Values.replicaCount }}</span>
+<span class="tp">{{- end }}</span>
+
+<span class="c"># range: loop over maps and lists</span>
+<span class="tp">{{- range $key, $val := .Values.extraEnv }}</span>
+- name: <span class="tp">{{ $key }}</span>
+  value: <span class="tp">{{ $val | quote }}</span>
+<span class="tp">{{- end }}</span>
+
+<span class="c"># with: rescope . to a subtree (inside, . means .Values.service)</span>
+<span class="tp">{{- with .Values.service }}</span>
+port: <span class="tp">{{ .port }}</span>
+<span class="tp">{{- end }}</span>
+
+<span class="c"># include (helper) vs template: include returns a string → pipeable</span>
+labels:
+  <span class="tp">{{- include "menu-api.labels" . | nindent 4 }}</span>
+
+<span class="c"># tpl: render a string FROM values as a template (values referencing values)</span>
+url: <span class="tp">{{ tpl .Values.callbackUrlTemplate . }}</span>
+</code></pre>
+</div>
+
+<div class="callout">
+  <div class="co-title">Whitespace control</div>
+  <code>{{-</code> eats whitespace (including the newline) <em>before</em> the expression; <code>-}}</code> eats it after.
+  Forgetting them is the #1 source of broken YAML indentation. Debug with
+  <code>helm template --debug</code>, which prints the rendered output even when it's invalid YAML.
+</div>
+</section>
+
+<!-- ================= 10 USING ================= -->
+<section id="using">
+<div class="part">
+  <div class="p-eyebrow">Part 10 · Operations</div>
+  <h2>Using Helm — the command surface</h2>
+  <p>Grouped by what you're doing, with the flags that matter in production.</p>
+</div>
+
+<h3>Authoring & validating</h3>
+<div class="code-block">
+<div class="code-head"><span class="fname">terminal</span><span class="ftag">author loop</span></div>
+<pre><code><span class="cmd">helm create</span> menu-api                    <span class="c"># scaffold a new chart</span>
+<span class="cmd">helm lint</span> ./menu-api <span class="flag">-f</span> values-prod.yaml <span class="c"># static checks + schema validation</span>
+<span class="cmd">helm template</span> menu-api ./menu-api        <span class="c"># render locally, zero cluster contact</span>
+<span class="cmd">helm template</span> ./menu-api <span class="flag">--show-only</span> templates/deployment.yaml
+<span class="cmd">helm install</span> menu-api ./menu-api <span class="flag">--dry-run --debug</span>  <span class="c"># render + server-side validation</span>
+<span class="cmd">helm package</span> ./menu-api                  <span class="c"># → menu-api-1.4.2.tgz</span>
+<span class="cmd">helm push</span> menu-api-1.4.2.tgz oci://ghcr.io/jahez/charts
+</code></pre>
+</div>
+
+<h3>Installing & upgrading</h3>
+<div class="code-block">
+<div class="code-head"><span class="fname">terminal</span><span class="ftag">deploy loop</span></div>
+<pre><code><span class="cmd">helm install</span> menu-api ./menu-api <span class="flag">-n</span> jahez-prod <span class="flag">--create-namespace</span> <span class="flag">-f</span> values-prod.yaml
+<span class="cmd">helm upgrade</span> menu-api ./menu-api <span class="flag">-n</span> jahez-prod <span class="flag">-f</span> values-prod.yaml <span class="flag">--set</span> image.tag=2.7.2
+<span class="cmd">helm upgrade --install</span> …                 <span class="c"># idempotent — THE command for CI/CD</span>
+
+<span class="c"># the safety trio for production upgrades:</span>
+  <span class="flag">--atomic</span>       <span class="c"># failure → automatic rollback to previous revision</span>
+  <span class="flag">--wait</span>         <span class="c"># block until Deployments Ready / Services have endpoints</span>
+  <span class="flag">--timeout</span> 5m   <span class="c"># bound the wait (default 5m)</span>
+
+<span class="c"># values precedence (lowest → highest):</span>
+<span class="c">#   chart values.yaml → parent-chart overrides → -f file1 -f file2 → --set</span>
+<span class="cmd">helm upgrade</span> … <span class="flag">--reuse-values</span>            <span class="c"># start from live values, then apply changes (careful)</span>
+</code></pre>
+</div>
+
+<h3>Inspecting & recovering</h3>
+<div class="code-block">
+<div class="code-head"><span class="fname">terminal</span><span class="ftag">day-2 loop</span></div>
+<pre><code><span class="cmd">helm list</span> <span class="flag">-n</span> jahez-prod                  <span class="c"># releases, revisions, statuses</span>
+<span class="cmd">helm status</span> menu-api <span class="flag">-n</span> jahez-prod
+<span class="cmd">helm history</span> menu-api <span class="flag">-n</span> jahez-prod      <span class="c"># the incident-review command</span>
+<span class="cmd">helm get values</span> menu-api <span class="flag">-n</span> jahez-prod   <span class="c"># exactly what config is live NOW</span>
+<span class="cmd">helm get manifest</span> menu-api <span class="flag">-n</span> jahez-prod <span class="c"># exactly what YAML was applied</span>
+<span class="cmd">helm diff upgrade</span> menu-api ./menu-api <span class="flag">-f</span> values-prod.yaml   <span class="c"># plugin: preview change</span>
+<span class="cmd">helm rollback</span> menu-api 3 <span class="flag">-n</span> jahez-prod <span class="flag">--wait</span>
+<span class="cmd">helm uninstall</span> menu-api <span class="flag">-n</span> jahez-prod    <span class="c"># removes objects + history (--keep-history to retain)</span>
+<span class="cmd">helm test</span> menu-api <span class="flag">-n</span> jahez-prod         <span class="c"># run templates/tests/ pods</span>
+</code></pre>
+</div>
+</section>
+
+<!-- ================= 11 LIFECYCLE ================= -->
+<section id="lifecycle">
+<div class="part">
+  <div class="p-eyebrow">Part 11 · Revisions</div>
+  <h2>Release lifecycle — install, upgrade, failure, rollback</h2>
+  <p>How the revision chain evolves through a realistic sequence, including a failed upgrade caught by <code>--atomic</code>.</p>
+</div>
+
+<div class="slider" data-slider>
+  <div class="slider-head">
+    <span class="slider-title">revision chain · menu-api @ jahez-prod</span>
+    <span class="slider-count"><span data-cur>1</span> / <span data-total>4</span></span>
+  </div>
+  <div class="slide-stage">
+
+    <!-- L1: install -->
+    <div class="slide on">
+      <svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Install creates revision 1">
+        <text x="30" y="40" fill="#9aa7b8" font-size="11" letter-spacing="1.5">helm install menu-api … --set image.tag=2.7.0</text>
+        <rect x="30" y="70" width="180" height="110" rx="12" fill="#161b22" stroke="#7ee787" stroke-width="1.6"/>
+        <text x="50" y="100" fill="#7ee787" font-size="12" font-weight="700">revision 1</text>
+        <text x="50" y="124" fill="#e6edf3" font-size="10.5">tag 2.7.0 · replicas 6</text>
+        <text x="50" y="144" fill="#7ee787" font-size="10.5">status: deployed</text>
+        <text x="50" y="164" fill="#6e7a8a" font-size="9.5">…release.v1.menu-api.v1</text>
+        <text x="240" y="130" fill="#6e7a8a" font-size="10.5">history: [ v1 ]  ·  one Secret in jahez-prod</text>
+      </svg>
+    </div>
+
+    <!-- L2: upgrade -->
+    <div class="slide">
+      <svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Upgrade creates revision 2">
+        <text x="30" y="40" fill="#9aa7b8" font-size="11" letter-spacing="1.5">helm upgrade … --set image.tag=2.7.1</text>
+        <rect x="30" y="70" width="180" height="110" rx="12" fill="#161b22" stroke="#30363d"/>
+        <text x="50" y="100" fill="#9aa7b8" font-size="12" font-weight="700">revision 1</text>
+        <text x="50" y="124" fill="#6e7a8a" font-size="10.5">tag 2.7.0</text>
+        <text x="50" y="144" fill="#6e7a8a" font-size="10.5">status: superseded</text>
+        <line x1="210" y1="125" x2="264" y2="125" stroke="#58a6ff" stroke-width="1.6"/>
+        <polygon points="264,125 254,120 254,130" fill="#58a6ff"/>
+        <rect x="270" y="70" width="180" height="110" rx="12" fill="#161b22" stroke="#7ee787" stroke-width="1.6"/>
+        <text x="290" y="100" fill="#7ee787" font-size="12" font-weight="700">revision 2</text>
+        <text x="290" y="124" fill="#e6edf3" font-size="10.5">tag 2.7.1</text>
+        <text x="290" y="144" fill="#7ee787" font-size="10.5">status: deployed</text>
+        <text x="30" y="220" fill="#6e7a8a" font-size="10.5">v1's Secret stays — that's the rollback target inventory</text>
+      </svg>
+    </div>
+
+    <!-- L3: failed upgrade -->
+    <div class="slide">
+      <svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Failed upgrade with atomic auto-rollback">
+        <text x="30" y="40" fill="#9aa7b8" font-size="11" letter-spacing="1.5">helm upgrade … tag=2.8.0 --atomic --wait   (readiness probe never passes)</text>
+        <rect x="30" y="70" width="160" height="110" rx="12" fill="#161b22" stroke="#30363d"/>
+        <text x="48" y="100" fill="#9aa7b8" font-size="11.5" font-weight="700">revision 2</text>
+        <text x="48" y="124" fill="#6e7a8a" font-size="10">tag 2.7.1 · superseded</text>
+        <rect x="220" y="70" width="160" height="110" rx="12" fill="#161b22" stroke="#ff6b6b" stroke-width="1.6"/>
+        <text x="238" y="100" fill="#ff6b6b" font-size="11.5" font-weight="700">revision 3</text>
+        <text x="238" y="124" fill="#e6edf3" font-size="10">tag 2.8.0</text>
+        <text x="238" y="144" fill="#ff6b6b" font-size="10">status: failed</text>
+        <text x="238" y="164" fill="#6e7a8a" font-size="9.5">CrashLoopBackOff</text>
+        <line x1="380" y1="125" x2="434" y2="125" stroke="#f7c948" stroke-width="1.6" stroke-dasharray="5 4"/>
+        <polygon points="434,125 424,120 424,130" fill="#f7c948"/>
+        <text x="384" y="112" fill="#f7c948" font-size="9.5">--atomic</text>
+        <rect x="440" y="70" width="180" height="110" rx="12" fill="#161b22" stroke="#7ee787" stroke-width="1.6"/>
+        <text x="458" y="100" fill="#7ee787" font-size="11.5" font-weight="700">revision 4 (auto)</text>
+        <text x="458" y="124" fill="#e6edf3" font-size="10">content = revision 2</text>
+        <text x="458" y="144" fill="#7ee787" font-size="10">status: deployed</text>
+        <text x="30" y="220" fill="#6e7a8a" font-size="10.5">traffic never fully cut over: maxUnavailable 0 kept 2.7.1 pods serving during the failed rollout</text>
+      </svg>
+    </div>
+
+    <!-- L4: manual rollback -->
+    <div class="slide">
+      <svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rollback creates a new revision">
+        <text x="30" y="40" fill="#9aa7b8" font-size="11" letter-spacing="1.5">helm history menu-api  →  helm rollback menu-api 2</text>
+        <g font-size="10.5">
+          <text x="30" y="84"  fill="#6e7a8a">REV  STATUS       DESCRIPTION</text>
+          <text x="30" y="110" fill="#9aa7b8">1    superseded   Install complete    (tag 2.7.0)</text>
+          <text x="30" y="134" fill="#9aa7b8">2    superseded   Upgrade complete    (tag 2.7.1)</text>
+          <text x="30" y="158" fill="#ff6b6b">3    failed       Upgrade failed      (tag 2.8.0)</text>
+          <text x="30" y="182" fill="#9aa7b8">4    superseded   Rollback to 2</text>
+          <text x="30" y="206" fill="#7ee787">5    deployed     Rollback to 2       ← rollback = NEW revision</text>
+        </g>
+        <rect x="480" y="70" width="250" height="140" rx="12" fill="#0a0e14" stroke="#f7c948"/>
+        <text x="498" y="98" fill="#f7c948" font-size="11.5" font-weight="600">History is append-only</text>
+        <text x="498" y="122" fill="#9aa7b8" font-size="10">Rolling back never rewrites the</text>
+        <text x="498" y="140" fill="#9aa7b8" font-size="10">past — it appends a revision whose</text>
+        <text x="498" y="158" fill="#9aa7b8" font-size="10">content equals the target. The audit</text>
+        <text x="498" y="176" fill="#9aa7b8" font-size="10">trail of the 02:00 incident survives</text>
+        <text x="498" y="194" fill="#9aa7b8" font-size="10">for the post-mortem.</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="slide-caption">
+    <div class="sc-step" data-cap-step>Stage 1 · Install</div>
+    <p data-cap-text>First install creates revision 1 with status deployed, persisted as Secret sh.helm.release.v1.menu-api.v1 in jahez-prod.</p>
+  </div>
+
+  <div class="slider-ctrl">
+    <button class="sbtn" data-prev>← Back</button>
+    <div class="dots" data-dots></div>
+    <button class="sbtn" data-next>Next →</button>
+  </div>
+
+  <script type="application/json" data-captions>
+  [
+    {"s":"Stage 1 · Install","t":"First install creates revision 1 with status deployed, persisted as Secret sh.helm.release.v1.menu-api.v1 in jahez-prod."},
+    {"s":"Stage 2 · Upgrade","t":"Upgrading to tag 2.7.1 appends revision 2 (deployed) and marks revision 1 superseded. Its Secret remains — that is your rollback inventory, capped by --history-max (default 10)."},
+    {"s":"Stage 3 · Failed upgrade + --atomic","t":"2.8.0 never passes its readiness probe. --wait detects it, --atomic auto-rolls back: revision 3 is recorded as failed, revision 4 (a copy of 2) becomes deployed. Because the RollingUpdate had maxUnavailable: 0, healthy 2.7.1 pods kept serving throughout."},
+    {"s":"Stage 4 · Manual rollback & audit trail","t":"helm history shows the full append-only ledger. A rollback is itself a new revision — nothing is erased, so during incident review you can prove exactly which chart, values, and manifests were live at any moment."}
+  ]
+  </script>
+</div>
+</section>
+
+<!-- ================= 12 BEST PRACTICES ================= -->
+<section id="best-practices">
+<div class="part">
+  <div class="p-eyebrow">Part 12 · Discipline</div>
+  <h2>Principles & best practices</h2>
+  <p>What separates a chart you can trust in <code>jahez-prod</code> from one that pages you.</p>
+</div>
+
+<div class="card">
+  <h4 style="color:var(--c-values)">1 · values.yaml is a public API — design it like one</h4>
+  <p style="margin:0">Flat where possible, grouped by concern (<code>image.*</code>, <code>service.*</code>, <code>resources.*</code>), every key with a working default, documented with comments. Ship <code>values.schema.json</code> so typos fail at lint time, not at 2 AM. Breaking a values key is a breaking change — bump the chart's major version.</p>
+</div>
+<div class="card">
+  <h4 style="color:var(--c-release)">2 · Make CI deploys idempotent and self-healing</h4>
+  <p style="margin:0"><code>helm upgrade --install --atomic --wait --timeout 5m</code> as the single pipeline command. It installs on first run, upgrades after, blocks until pods are actually Ready, and rolls back automatically on failure — your probes become the release gate.</p>
+</div>
+<div class="card">
+  <h4 style="color:var(--c-tpl)">3 · Roll pods when config changes</h4>
+  <p style="margin:0">Updating a ConfigMap does <strong>not</strong> restart consumers of <code>envFrom</code>. The <code>checksum/config</code> annotation (sha256 of the rendered ConfigMap in pod-template annotations) forces a rolling update whenever config content changes — killing the config/workload drift class of incident.</p>
+</div>
+<div class="card">
+  <h4 style="color:var(--c-chart)">4 · Pin everything</h4>
+  <p style="margin:0">Never <code>tag: latest</code>; deploy explicit tags via <code>--set image.tag=$GIT_SHA</code> or CI-written values. Pin dependency versions and commit <code>Chart.lock</code>. Pin community chart versions in install commands — an unpinned <code>helm repo update && helm upgrade</code> is a supply-chain surprise waiting to happen.</p>
+</div>
+<div class="card">
+  <h4 style="color:var(--c-cluster)">5 · Keep real secrets out of values files</h4>
+  <p style="margin:0">Values end up in git, CI logs, and the release Secret. Reference secrets instead of embedding them: External Secrets Operator / Vault injection, or encrypt values with <code>helm-secrets</code> + SOPS. The chart should template <em>the reference</em> (<code>secretKeyRef</code>), not the Mada merchant key itself.</p>
+</div>
+<div class="card">
+  <h4 style="color:var(--c-repo)">6 · One library chart to rule your microservices</h4>
+  <p style="margin:0">Home, search, menu, orders share 95% of their manifests. Publish an internal <code>type: library</code> chart (<code>jahez-service</code>) holding the common Deployment/Service/HPA templates; each service's chart becomes a thin wrapper: a Chart.yaml, a values.yaml, and includes. One fix propagates everywhere — the platform-team pattern used by most large orgs.</p>
+</div>
+<div class="card">
+  <h4 style="color:var(--c-helm)">7 · Lint, template, diff — in that order, in CI</h4>
+  <p style="margin:0"><code>helm lint</code> catches structural errors, <code>helm template | kubeconform</code> validates against real API schemas, <code>helm diff upgrade</code> posts the change preview to the PR. Rendered-manifest review catches the <code>nindent 4</code>-vs-<code>nindent 8</code> bugs that lint can't.</p>
+</div>
+
+<div class="callout danger">
+  <div class="co-title">Anti-patterns</div>
+  <strong>Templating the untemplatable:</strong> if a chart needs 40 <code>if</code> branches, it's two charts.
+  <strong>--force in prod:</strong> it deletes-and-recreates resources on conflicts — downtime by flag.
+  <strong>Editing Helm-managed objects with kubectl:</strong> the next upgrade may silently revert or conflict
+  (three-way merge confusion). <strong>CRDs in templates/:</strong> ordering breaks; use <code>crds/</code>.
+</div>
+</section>
+
+<!-- ================= 13 ALTERNATIVES ================= -->
+<section id="alternatives">
+<div class="part">
+  <div class="p-eyebrow">Part 13 · Ecosystem</div>
+  <h2>Tools like Helm — and how they differ</h2>
+  <p>Helm's competitors attack the same problem — "raw YAML doesn't scale" — from four different philosophies: patching, templating, real programming languages, and typed configuration languages.</p>
+</div>
+
+<h3 style="color:var(--c-release)">Kustomize — patch, don't template</h3>
+<p><strong>Philosophy:</strong> keep manifests as plain, valid YAML and layer <em>overlays</em> of patches on a common
+<em>base</em>. No template syntax, no curly braces — every file is always parseable. It's built into kubectl
+(<code>kubectl apply -k</code>), so there is nothing to install.</p>
+<div class="code-block">
+<div class="code-head"><span class="fname">kustomize layout + overlay</span><span class="ftag">base/overlays pattern</span></div>
+<pre><code>menu-api/
+├── base/
+│   ├── deployment.yaml        <span class="c"># complete, valid manifests (the dev shape)</span>
+│   ├── service.yaml
+│   └── kustomization.yaml     <span class="c"># resources: [deployment.yaml, service.yaml]</span>
+└── overlays/
+    ├── staging/kustomization.yaml
+    └── prod/
+        ├── kustomization.yaml
+        └── patch-replicas.yaml
+
+<span class="c"># overlays/prod/kustomization.yaml</span>
+<span class="k">apiVersion</span>: <span class="s">kustomize.config.k8s.io/v1beta1</span>
+<span class="k">kind</span>: <span class="s">Kustomization</span>
+<span class="k">namespace</span>: <span class="s">jahez-prod</span>
+<span class="k">resources</span>: [<span class="s">../../base</span>]
+<span class="k">images</span>:
+  - <span class="k">name</span>: <span class="s">ghcr.io/jahez/menu-api</span>
+    <span class="k">newTag</span>: <span class="s">"2.7.1"</span>
+<span class="k">patches</span>:
+  - <span class="k">path</span>: <span class="s">patch-replicas.yaml</span>       <span class="c"># strategic-merge: just {spec: {replicas: 6}}</span>
+<span class="k">configMapGenerator</span>:
+  - <span class="k">name</span>: <span class="s">menu-api-config</span>
+    <span class="k">literals</span>: [<span class="s">ASPNETCORE_ENVIRONMENT=Production</span>]
+    <span class="c"># generated name gets a content hash suffix → pods roll on config change automatically</span>
+
+<span class="c"># deploy</span>
+<span class="cmd">kubectl apply -k</span> overlays/prod
+</code></pre>
+</div>
+<p><strong>Strengths:</strong> zero install, always-valid YAML, content-hashed ConfigMaps solve the restart-on-change
+problem natively, favored by GitOps purists. <strong>Trade-offs:</strong> no packaging/versioning/distribution,
+no release history or rollback (git is your history), no conditionals — complex variation across many environments
+becomes a maze of patch files. Kustomize and Helm are often <strong>combined</strong>: Helm renders, Kustomize
+applies org-wide patches on top (Argo CD supports this natively).</p>
+
+<h3 style="color:var(--c-repo)">Helmfile — orchestrating many Helm releases</h3>
+<p>Not a Helm replacement but a layer above it: one declarative <code>helmfile.yaml</code> describing <em>all</em>
+releases in an environment — the whole <code>jahez-prod</code> stack — with shared values, ordering, and diffing.
+<code>helmfile apply</code> diffs and converges everything. The answer to "we have 25 <code>helm upgrade</code>
+commands in a shell script."</p>
+<div class="code-block">
+<div class="code-head"><span class="fname">helmfile.yaml</span><span class="ftag">stack as one file</span></div>
+<pre><code><span class="k">environments</span>:
+  <span class="k">prod</span>:
+    <span class="k">values</span>: [<span class="s">env/prod.yaml</span>]
+
+<span class="k">releases</span>:
+  - <span class="k">name</span>: <span class="s">menu-api</span>
+    <span class="k">namespace</span>: <span class="s">jahez-prod</span>
+    <span class="k">chart</span>: <span class="s">oci://ghcr.io/jahez/charts/menu-api</span>
+    <span class="k">version</span>: <span class="s">1.4.2</span>
+    <span class="k">values</span>: [<span class="s">values/menu-api/prod.yaml</span>]
+  - <span class="k">name</span>: <span class="s">orders-api</span>
+    <span class="k">namespace</span>: <span class="s">jahez-prod</span>
+    <span class="k">chart</span>: <span class="s">oci://ghcr.io/jahez/charts/orders-api</span>
+    <span class="k">version</span>: <span class="s">2.1.0</span>
+    <span class="k">needs</span>: [<span class="s">jahez-prod/menu-api</span>]   <span class="c"># ordering between releases</span>
+</code></pre>
+</div>
+
+<h3 style="color:var(--c-helm)">cdk8s — manifests in a real programming language</h3>
+<p>Define resources in <strong>TypeScript, Python, Java, or Go</strong> with typed constructs; <code>cdk8s synth</code>
+emits plain YAML you apply with kubectl/Argo. You get compiler type-checking, IDE autocomplete, refactoring, unit
+tests, loops and abstraction as ordinary code — no template whitespace debugging ever. Trade-offs: output is static
+YAML (no release lifecycle — pair with GitOps), and it adds a toolchain + synth step; the team must treat infra as a
+software project.</p>
+<div class="code-block">
+<div class="code-head"><span class="fname">main.ts</span><span class="ftag">cdk8s · typed constructs</span></div>
+<pre><code><span class="k">import</span> { App, Chart } <span class="k">from</span> <span class="s">'cdk8s'</span>;
+<span class="k">import</span> { Deployment, Service, EnvValue } <span class="k">from</span> <span class="s">'cdk8s-plus-30'</span>;
+
+<span class="k">class</span> <span class="fn">MenuApi</span> <span class="k">extends</span> Chart {
+  <span class="fn">constructor</span>(scope: App, id: <span class="k">string</span>, replicas: <span class="k">number</span>, tag: <span class="k">string</span>) {
+    <span class="k">super</span>(scope, id, { namespace: <span class="s">'jahez-prod'</span> });
+    <span class="k">const</span> deploy = <span class="k">new</span> <span class="fn">Deployment</span>(<span class="k">this</span>, <span class="s">'deploy'</span>, {
+      replicas,
+      containers: [{
+        image: <span class="s">`ghcr.io/jahez/menu-api:${tag}`</span>,
+        command: [<span class="s">'dotnet'</span>, <span class="s">'Menu.API.dll'</span>],
+        portNumber: 8080,
+        envVariables: { TZ: EnvValue.fromValue(<span class="s">'Asia/Riyadh'</span>) },
+      }],
+    });
+    deploy.exposeViaService({ ports: [{ port: 80, targetPort: 8080 }] });
+  }
+}
+<span class="k">const</span> app = <span class="k">new</span> <span class="fn">App</span>();
+<span class="k">new</span> <span class="fn">MenuApi</span>(app, <span class="s">'menu-api'</span>, 6, <span class="s">'2.7.1'</span>);
+app.<span class="fn">synth</span>();   <span class="c">// → dist/menu-api.k8s.yaml</span>
+</code></pre>
+</div>
+
+<h3 style="color:var(--c-values)">Carvel ytt + kapp — structure-aware templating + a real apply engine</h3>
+<p><strong>ytt</strong> templates YAML as a <em>data structure</em> (annotations in comments, Starlark/Python-like
+logic), so it can never emit indentation-broken output the way text templating can; it also does overlays like
+Kustomize. <strong>kapp</strong> replaces the apply side: groups resources into an "app", shows a diff before
+changing anything, orders operations by dependency, and waits on actual readiness. Powerful and composable;
+smaller community than Helm and its own syntax to learn.</p>
+
+<h3 style="color:var(--c-tpl)">Jsonnet / Tanka & Timoni (CUE)</h3>
+<p><strong>Jsonnet</strong> (with Grafana's <strong>Tanka</strong>) is a functional configuration language generating
+JSON/YAML — deep composition and inheritance, beloved for large monitoring stacks (the kube-prometheus library),
+with a real learning curve. <strong>Timoni</strong> uses <strong>CUE</strong>, where types and constraints are
+first-class: invalid config (a negative replica count, a malformed URL) fails <em>at evaluation</em>, not in the
+cluster. Timoni deliberately mirrors Helm's UX (modules ≈ charts, instances ≈ releases, OCI distribution) and is the
+most direct "modern Helm" candidate, but the ecosystem is young — you'll write your own modules rather than pull
+community ones.</p>
+
+<h3>Choosing — comparison</h3>
+<div class="table-scroll"><table>
+  <tr><th>Tool</th><th>Approach</th><th>Release history / rollback</th><th>Packaging & sharing</th><th>Best when</th></tr>
+  <tr><td><strong>Helm</strong></td><td>Text templating (Go + Sprig)</td><td>✅ built-in revisions</td><td>✅ repos + OCI, huge ecosystem</td><td>Default choice; consuming community software; per-service packaging</td></tr>
+  <tr><td><strong>Kustomize</strong></td><td>Base + overlay patching</td><td>— (git + GitOps)</td><td>— (remote bases only)</td><td>GitOps-first orgs; env variation is small; hatred of curly braces</td></tr>
+  <tr><td><strong>Helmfile</strong></td><td>Declarative multi-release layer over Helm</td><td>inherits Helm's</td><td>uses Helm's</td><td>Managing a whole stack of many charts per environment</td></tr>
+  <tr><td><strong>cdk8s</strong></td><td>Real languages → synth YAML</td><td>— (pair with GitOps)</td><td>language pkg managers (npm/pip)</td><td>Dev-heavy teams wanting types, tests, IDE tooling</td></tr>
+  <tr><td><strong>ytt + kapp</strong></td><td>Structure-aware templates + diff-first apply</td><td>kapp app grouping</td><td>Carvel imgpkg bundles</td><td>Correctness-critical YAML; wanting a better apply than kubectl</td></tr>
+  <tr><td><strong>Jsonnet/Tanka</strong></td><td>Functional config language</td><td>—</td><td>jsonnet-bundler libs</td><td>Large composed stacks (observability); Grafana ecosystem</td></tr>
+  <tr><td><strong>Timoni</strong></td><td>CUE typed configuration</td><td>✅ instances + OCI</td><td>✅ OCI modules</td><td>Greenfield platform teams wanting validation-first config</td></tr>
+</table></div>
+
+<div class="callout ok">
+  <div class="co-title">The pragmatic stack in 2026</div>
+  Most production platforms converge on: <strong>Helm charts</strong> for packaging (yours + community),
+  <strong>values files per environment</strong> in git, and a <strong>GitOps controller (Argo CD or Flux)</strong>
+  doing the actual applying and drift correction — with Kustomize occasionally layered for org-wide patches.
+  The tools are complements more than rivals.
+</div>
+</section>
+
+<!-- ================= 14 CHEATSHEET ================= -->
+<section id="cheatsheet">
+<div class="part">
+  <div class="p-eyebrow">Part 14 · Quick reference</div>
+  <h2>Cheat sheet</h2>
+  <p>The 90% of Helm you use daily.</p>
+</div>
+
+<div class="code-block">
+<div class="code-head"><span class="fname">helm — daily driver</span><span class="ftag">copy-paste ready</span></div>
+<pre><code><span class="c"># --- author ---</span>
+<span class="cmd">helm create</span> name                          <span class="cmd">helm lint</span> ./chart
+<span class="cmd">helm template</span> rel ./chart -f vals.yaml    <span class="cmd">helm package</span> ./chart
+
+<span class="c"># --- repos ---</span>
+<span class="cmd">helm repo add</span> bitnami https://charts.bitnami.com/bitnami
+<span class="cmd">helm repo update</span>                          <span class="cmd">helm search repo</span> redis --versions
+<span class="cmd">helm show values</span> bitnami/redis            <span class="c"># inspect a chart's config surface</span>
+
+<span class="c"># --- deploy (CI-safe) ---</span>
+<span class="cmd">helm upgrade --install</span> rel ./chart -n ns --create-namespace \
+  -f values-prod.yaml --set image.tag=$SHA --atomic --wait --timeout 5m
+
+<span class="c"># --- inspect ---</span>
+<span class="cmd">helm list</span> -A                              <span class="cmd">helm status</span> rel -n ns
+<span class="cmd">helm history</span> rel -n ns                    <span class="cmd">helm get values</span> rel -n ns
+<span class="cmd">helm get manifest</span> rel -n ns
+
+<span class="c"># --- recover / remove ---</span>
+<span class="cmd">helm rollback</span> rel REV -n ns --wait        <span class="cmd">helm uninstall</span> rel -n ns
+</code></pre>
+</div>
+
+<div class="grid-2">
+  <div class="card"><h4>Values precedence (low → high)</h4>
+    <p style="font-size:13.5px;margin:0"><code>values.yaml</code> → subchart/parent overrides → <code>-f a.yaml -f b.yaml</code> (left→right) → <code>--set</code> / <code>--set-string</code> / <code>--set-file</code></p></div>
+  <div class="card"><h4>Release Secret</h4>
+    <p style="font-size:13.5px;margin:0"><code>sh.helm.release.v1.&lt;name&gt;.v&lt;rev&gt;</code> in the release namespace — chart + values + manifests, gzip/b64. <code>--history-max</code> caps retention (default 10).</p></div>
+  <div class="card"><h4>Template context</h4>
+    <p style="font-size:13.5px;margin:0"><code>.Values</code> · <code>.Release.Name/Namespace/Revision</code> · <code>.Chart.Name/Version/AppVersion</code> · <code>.Capabilities</code> · <code>.Files</code></p></div>
+  <div class="card"><h4>Debug order</h4>
+    <p style="font-size:13.5px;margin:0"><code>helm lint</code> → <code>helm template --debug</code> → <code>helm install --dry-run --debug</code> → <code>helm get manifest</code> vs live state.</p></div>
+</div>
+
+<div class="footer">
+  K8s Deep Reference Series · Helm Charts · built for the jahez-prod context · single-file, offline-ready
+</div>
+</section>
+
+</div><!-- /wrap -->
+</main>
+</div><!-- /app -->
+
+<script>
+(function(){
+  // ---------- sidebar (mobile drawer) ----------
+  var sb=document.getElementById('sidebar'),
+      btn=document.getElementById('menuBtn'),
+      ov=document.getElementById('overlay');
+  function closeNav(){sb.classList.remove('open');ov.classList.remove('show');}
+  btn.addEventListener('click',function(){sb.classList.toggle('open');ov.classList.toggle('show');});
+  ov.addEventListener('click',closeNav);
+  document.querySelectorAll('.nav-link').forEach(function(a){a.addEventListener('click',closeNav);});
+
+  // ---------- scroll spy ----------
+  var links=Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  function spy(){
+    var y=window.scrollY+140,idx=0;
+    for(var i=0;i<secs.length;i++){if(secs[i]&&secs[i].offsetTop<=y)idx=i;}
+    links.forEach(function(a,i){a.classList.toggle('active',i===idx);});
+  }
+  window.addEventListener('scroll',spy,{passive:true});
+  spy();
+
+  // ---------- sliders ----------
+  document.querySelectorAll('[data-slider]').forEach(function(sl){
+    var slides=sl.querySelectorAll('.slide'),
+        prev=sl.querySelector('[data-prev]'),
+        next=sl.querySelector('[data-next]'),
+        cur=sl.querySelector('[data-cur]'),
+        tot=sl.querySelector('[data-total]'),
+        dots=sl.querySelector('[data-dots]'),
+        capStep=sl.querySelector('[data-cap-step]'),
+        capText=sl.querySelector('[data-cap-text]'),
+        capsEl=sl.querySelector('[data-captions]'),
+        caps=capsEl?JSON.parse(capsEl.textContent):[],
+        n=slides.length,i=0;
+    tot.textContent=n;
+    for(var d=0;d<n;d++){
+      var b=document.createElement('button');
+      b.className='dot-i'+(d===0?' on':'');
+      b.setAttribute('aria-label','Go to step '+(d+1));
+      (function(k){b.addEventListener('click',function(){go(k);});})(d);
+      dots.appendChild(b);
+    }
+    function go(k){
+      i=Math.max(0,Math.min(n-1,k));
+      slides.forEach(function(s,j){s.classList.toggle('on',j===i);});
+      dots.querySelectorAll('.dot-i').forEach(function(dd,j){dd.classList.toggle('on',j===i);});
+      cur.textContent=i+1;
+      prev.disabled=(i===0);
+      next.disabled=(i===n-1);
+      if(caps[i]){capStep.textContent=caps[i].s;capText.textContent=caps[i].t;}
+    }
+    prev.addEventListener('click',function(){go(i-1);});
+    next.addEventListener('click',function(){go(i+1);});
+    sl.setAttribute('tabindex','0');
+    sl.addEventListener('keydown',function(e){
+      if(e.key==='ArrowLeft'){go(i-1);e.preventDefault();}
+      if(e.key==='ArrowRight'){go(i+1);e.preventDefault();}
+    });
+    // swipe on mobile
+    var x0=null;
+    sl.addEventListener('touchstart',function(e){x0=e.touches[0].clientX;},{passive:true});
+    sl.addEventListener('touchend',function(e){
+      if(x0===null)return;
+      var dx=e.changedTouches[0].clientX-x0;
+      if(Math.abs(dx)>48){dx<0?go(i+1):go(i-1);}
+      x0=null;
+    },{passive:true});
+    go(0);
+  });
+})();
+</script>
+</body>
+</html>
