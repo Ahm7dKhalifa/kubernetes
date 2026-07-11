@@ -1,0 +1,6 @@
+kubectl expose pod pod22-ckad-svcn --name=svc22-ckad-svcn --port=6335 --target-port=6335
+--------
+kubectl expose pod <POD_NAME> \
+  --name=<SERVICE_NAME> \
+  --port=<SERVICE_PORT> \
+  --target-port=<POD_PORT>
