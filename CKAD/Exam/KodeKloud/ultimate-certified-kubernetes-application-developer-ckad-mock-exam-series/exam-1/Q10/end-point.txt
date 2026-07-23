@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-webserver-ckad01-svcn
+  namespace: default
+subsets:
+- addresses:
+  - ip: 10.244.116.154
+  ports:
+  - port: 9999
+    protocol: TCP
