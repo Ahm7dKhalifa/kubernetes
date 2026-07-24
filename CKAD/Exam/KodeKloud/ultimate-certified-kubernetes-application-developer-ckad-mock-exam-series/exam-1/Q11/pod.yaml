@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webapp-svcn
+  labels:
+    tier: msg
+spec:
+  containers:
+  - name: webapp-color
+    image: kodekloud/webapp-color

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service-svcn
+spec:
+  type: ClusterIP
+  selector:
+    tier: msg
+  ports:
+  - port: 6379
+    targetPort: 8080
