@@ -1,0 +1,10 @@
+wrong -> kubectl create cm ckad04-config-multi-env-files-aecs --from-file=/root/ckad04-multi-cm
+
+
+correct : 
+kubectl create cm ckad04-config-multi-env-files-aecs \
+  --from-env-file=/root/ckad04-multi-cm/file1.properties \
+  --from-env-file=/root/ckad04-multi-cm/file2.properties
+
+
+kubectl describe configmap ckad04-config-multi-env-files-aecs

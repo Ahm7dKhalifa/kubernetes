@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad17-qos-aecs-3
+  namespace: ckad17-nqoss-aecs
+spec:
+  containers:
+  - name: ckad17-qos-ctr-3-aecs
+    image: nginx
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

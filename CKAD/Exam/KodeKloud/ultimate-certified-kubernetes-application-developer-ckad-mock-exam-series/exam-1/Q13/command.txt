@@ -1,0 +1,7 @@
+kubectl get pods -n ckad17-nqoss-aecs \
+  -o custom-columns="NAME:.metadata.name,QOS:.status.qosClass" \
+  > /root/qos_status_aecs
+
+
+
+cat /root/qos_status_aecs
