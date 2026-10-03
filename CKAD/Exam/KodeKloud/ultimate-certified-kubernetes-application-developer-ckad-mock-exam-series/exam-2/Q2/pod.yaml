@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dos-containers-pod
+  namespace: ckad-multi-containers
+spec:
+  containers:
+  - name: alpha
+    image: "nginx:1.17"
+    env:
+    - name: ROLE
+      value: SERVER
+  - name: beta
+    image: "busybox:1.28"
+    command:
+    - /bin/sh
+    - "-c"
+    - echo Hello multi-containers; sleep 3600
