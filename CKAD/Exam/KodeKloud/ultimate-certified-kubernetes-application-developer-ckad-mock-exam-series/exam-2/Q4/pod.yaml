@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad-redis-wiipwlznjy
+  namespace: ckad-pod-design
+  annotations:
+    KKE: "https://engineer.kodekloud.com/"
+spec:
+  containers:
+  - name: redis-custom-annotation
+    image: redis
