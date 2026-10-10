@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ocean-apd
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webapp-color
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: "55%"
+      maxUnavailable: "45%"
+  template:
+    metadata:
+      labels:
+        app: webapp-color
+    spec:
+      containers:
+      - name: webapp-color
+        image: "kodekloud/webapp-color:v2"
