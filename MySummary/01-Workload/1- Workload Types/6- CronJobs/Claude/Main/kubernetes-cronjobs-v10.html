@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes CronJobs — Complete Deep-Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090c10;--sf:#10151e;--sf2:#171f2e;--bd:#1e2a3c;--tx:#c5cdd8;--dm:#5f7090;--ac:#9333ea;--ac2:#0891b2;--gn:#16a34a;--rd:#dc2626;--og:#ea580c;--yl:#ca8a04;--pp:#9333ea;--bl:#2563eb;--tl:#0d9488;--cb:#0b1018;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.82;font-size:14.5px}
+nav{position:fixed;top:0;left:0;width:254px;height:100vh;background:var(--sf);border-right:1px solid var(--bd);padding:14px 10px;overflow-y:auto;z-index:100;scrollbar-width:thin;scrollbar-color:#171f2e transparent}
+nav::-webkit-scrollbar{width:3px}nav::-webkit-scrollbar-thumb{background:#171f2e;border-radius:3px}
+nav .logo{font-family:'Fraunces',serif;font-weight:900;font-size:16px;background:linear-gradient(135deg,var(--ac),var(--tl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1px}
+nav .sub{font-size:7px;color:var(--dm);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+nav ul{list-style:none}nav ul li a{display:block;padding:2.5px 7px;border-radius:4px;color:var(--dm);text-decoration:none;font-size:10px;font-weight:500;transition:.1s}
+nav ul li a:hover{color:#fff;background:var(--sf2)}
+nav .sl{font-size:7px;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin:9px 0 2px 7px;font-weight:700}
+main{margin-left:254px;max-width:1010px;padding:24px 38px 80px}
+.hero{text-align:center;padding:28px 0 20px;position:relative}
+.hero::before{content:'';position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(147,51,234,.05) 0%,transparent 55%);pointer-events:none}
+.hero h1{font-family:'Fraunces',serif;font-size:38px;font-weight:900;background:linear-gradient(135deg,#fff,var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.08;margin-bottom:8px}
+.hero p{color:var(--dm);font-size:13px;max-width:640px;margin:0 auto}
+section{margin-bottom:34px;scroll-margin-top:16px}
+h2{font-family:'Fraunces',serif;font-size:21px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);margin-right:5px;background:rgba(147,51,234,.12);padding:1px 6px;border-radius:4px}
+h3{font-size:14.5px;font-weight:700;color:#dde2ea;margin:14px 0 5px}
+p{margin-bottom:7px}strong{color:#eee}
+.def{background:rgba(147,51,234,.03);border:1px solid rgba(147,51,234,.1);border-radius:var(--r);padding:9px 12px;margin:7px 0;font-size:13px}
+.def b{color:var(--ac);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
+.c{background:var(--sf);border-left:3px solid var(--ac);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;margin:8px 0;font-size:13px}
+.c.g{border-left-color:var(--gn)}.c.o{border-left-color:var(--og)}.c.r{border-left-color:var(--rd)}.c.b{border-left-color:var(--bl)}.c.p{border-left-color:var(--pp)}
+.c .l{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px}
+.c.g .l{color:var(--gn)}.c.o .l{color:var(--og)}.c.r .l{color:var(--rd)}.c.b .l{color:var(--bl)}.c.p .l{color:var(--pp)}
+.sre{background:linear-gradient(135deg,rgba(147,51,234,.03),rgba(8,145,178,.02));border:1px solid rgba(147,51,234,.12);border-radius:var(--r);padding:9px 12px;margin:9px 0;font-size:13px}
+.sre .tag{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(147,51,234,.12);color:var(--ac);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+pre{background:var(--cb);border:1px solid var(--bd);border-radius:var(--r);padding:9px 12px;overflow-x:auto;margin:5px 0 8px;font-size:10.5px;line-height:1.48}
+code{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+p code,td code,li code{background:var(--sf2);padding:1px 4px;border-radius:3px;color:var(--ac2);font-size:10px}
+.cm{color:#3f4d65}.k{color:#0ea472}.v{color:var(--gn)}.s{color:var(--yl)}.nm{color:var(--og)}
+.T{background:#070a0e;border:1px solid #141c28;border-radius:var(--r);padding:8px 12px;margin:5px 0 8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.42;color:#6d7b90;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:5px 0 10px;font-size:11.5px}
+th{background:var(--sf2);color:var(--ac2);font-weight:600;text-align:left;padding:5px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bg{display:inline-block;padding:1px 6px;border-radius:10px;font-size:8.5px;font-weight:700;text-transform:uppercase}
+.bg.gn{background:rgba(22,163,74,.15);color:var(--gn)}.bg.rd{background:rgba(220,38,38,.15);color:var(--rd)}.bg.og{background:rgba(234,88,12,.15);color:var(--og)}.bg.yl{background:rgba(202,138,4,.15);color:var(--yl)}.bg.bl{background:rgba(37,99,235,.15);color:var(--bl)}.bg.pp{background:rgba(147,51,234,.15);color:var(--pp)}
+.W{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.W .bar{display:flex;gap:0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.W .tab{padding:6px 10px;font-size:9px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.1s;font-family:'JetBrains Mono',monospace}
+.W .tab:hover{color:var(--tx);background:var(--sf2)}
+.W .tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(147,51,234,.04)}
+.W .body{padding:12px}
+.W .pnl{display:none}.W .pnl.on{display:block}
+.W .nav{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:7px;border-top:1px solid var(--bd)}
+.W .btn{padding:4px 12px;border-radius:5px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:.1s}
+.W .btn:hover{background:rgba(147,51,234,.1);border-color:var(--ac);color:#fff}
+.W .btn:disabled{opacity:.25;cursor:not-allowed}
+.W .cnt{font-size:9px;color:var(--dm);font-family:'JetBrains Mono',monospace}
+.W .vis{background:var(--cb);border:1px solid var(--bd);border-radius:7px;padding:11px;margin:7px 0;min-height:40px;font-size:12px;line-height:1.7}
+.W .tl{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.W .ds{font-size:12.5px;color:var(--tx);line-height:1.7}
+.bx{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;margin:1px}
+.bx.run{background:rgba(14,164,114,.1);color:#0ea472;border:1px solid rgba(14,164,114,.25)}
+.bx.ok{background:rgba(22,163,74,.12);color:var(--gn);border:1px solid rgba(22,163,74,.3)}
+.bx.ded{background:rgba(220,38,38,.08);color:var(--rd);border:1px solid rgba(220,38,38,.25)}
+.bx.new{background:rgba(37,99,235,.1);color:var(--bl);border:1px solid rgba(37,99,235,.25)}
+.bx.pen{background:rgba(202,138,4,.1);color:var(--yl);border:1px solid rgba(202,138,4,.25)}
+.bx.job{background:rgba(22,163,74,.1);color:var(--gn);border:1px solid rgba(22,163,74,.25)}
+.bx.cron{background:rgba(147,51,234,.1);color:var(--pp);border:1px solid rgba(147,51,234,.25)}
+.ar{display:inline-block;color:var(--bd);margin:0 3px;font-size:12px}
+@media(max-width:960px){nav{display:none}main{margin-left:0;padding:14px 10px 60px}.hero h1{font-size:28px}}
+
+nav .pt{display:block;margin:14px 0 2px;padding:6px 8px;border-radius:6px;background:linear-gradient(135deg,rgba(147,51,234,.14),rgba(13,148,136,.08));border:1px solid rgba(147,51,234,.22);color:#fff;font-family:'Fraunces',serif;font-weight:700;font-size:12.5px;text-decoration:none}
+nav .pt span{display:block;font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:var(--ac);font-weight:600}
+nav ul li a code{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac2);background:none;padding:0}
+nav ul li a.on{color:#fff;background:var(--sf2);box-shadow:inset 2px 0 0 var(--ac)}
+.part{margin:34px 0 18px;padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,rgba(147,51,234,.10),rgba(13,148,136,.05));border:1px solid rgba(147,51,234,.22);scroll-margin-top:16px}
+.part .pk{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--ac);font-weight:600}
+.part h1{font-family:'Fraunces',serif;font-size:28px;font-weight:900;color:#fff;line-height:1.15;margin:2px 0 3px}
+.part p{margin:0;color:var(--dm);font-size:12.5px}
+.grp{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--tl);font-weight:600;margin:24px 0 10px;display:flex;align-items:center;gap:10px}
+.grp::after{content:'';flex:1;height:1px;background:var(--bd)}
+#mb{display:none;position:fixed;top:12px;left:12px;z-index:120;width:42px;height:42px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}
+@media(max-width:960px){
+nav{display:block;transform:translateX(-100%);transition:transform .22s ease;width:280px;box-shadow:8px 0 30px rgba(0,0,0,.5);padding-top:64px}
+body.open nav{transform:none}body.open #ov{display:block}
+#mb{display:block}main{padding-top:64px}
+nav ul li a{font-size:13px;padding:6px 9px}nav ul li a code{font-size:11.5px}nav .sl{font-size:9px}nav .sub{font-size:9px}
+.part h1{font-size:23px}
+}
+
+.prop{font-family:'Fraunces',serif;font-size:19px;font-weight:700;color:#fff;margin:26px 0 12px;padding:10px 14px;border-radius:10px;background:var(--sf);border:1px solid var(--bd);border-left:3px solid var(--tl);scroll-margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.prop code,h2 .pn code{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--ac2);background:none;padding:0}
+.prop .n,h2 .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ac);background:rgba(147,51,234,.12);padding:1px 6px;border-radius:4px}
+.prop .n{font-size:12px;padding:2px 8px}
+nav ul li a .no{display:inline-block;min-width:22px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);opacity:.85}
+nav ul li.ch a{padding-left:22px}
+nav ul li.ch a .no{min-width:26px;opacity:.6}
+@media(max-width:960px){nav ul li a .no{font-size:11px;min-width:26px}nav ul li.ch a{padding-left:26px}.prop{font-size:17px}.prop code,h2 .pn code{font-size:13px}}
+
+.pp{background:var(--sf);border:1px solid var(--bd);border-radius:12px;margin:10px 0 14px;overflow:hidden}
+.pp-h{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:var(--tl);padding:9px 14px;border-bottom:1px solid var(--bd);background:rgba(13,148,136,.05)}
+.pp-h code{text-transform:none;letter-spacing:0;color:var(--ac2);background:none;font-size:10.5px}
+.pp-r{display:grid;grid-template-columns:76px 1fr;gap:12px;padding:11px 14px;border-bottom:1px solid var(--bd)}
+.pp-k{align-self:start;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:1px;padding:3px 0;border-radius:5px}
+.pp-k.w{background:rgba(37,99,235,.13);color:#5b8def}.pp-k.y{background:rgba(234,88,12,.13);color:var(--og)}.pp-k.p{background:rgba(147,51,234,.13);color:#b57bf5}.pp-k.h{background:rgba(22,163,74,.13);color:var(--gn)}
+.pp-b{font-size:13px;line-height:1.7;min-width:0}
+.pp-b ul{margin:2px 0 6px 18px}.pp-b li{margin:1px 0}
+.pp-s{font-size:9.5px;text-transform:uppercase;letter-spacing:1px;font-weight:700;color:#8fa0bb;margin-top:1px}
+.pp-s.pr{color:var(--rd);margin-top:6px}
+.pp-t{overflow-x:auto}.pp-t table{margin:0}
+.pp-f{display:block}
+.pp-f>div{padding:11px 14px;font-size:12.5px;line-height:1.7}
+.pp-f>div+div{border-left:1px solid var(--bd)}
+.pp-tag{display:block;font-size:9px;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;color:var(--ac);margin-bottom:2px}
+.pp-tag.jz{color:var(--yl)}
+@media(max-width:700px){.pp-r{grid-template-columns:1fr;gap:6px}.pp-k{justify-self:start;padding:3px 10px}.pp-f{grid-template-columns:1fr}.pp-f>div+div{border-left:none;border-top:1px solid var(--bd)}}
+main{overflow-x:clip}
+.pp-g{position:relative;margin:10px 0 2px;padding:11px 14px 11px 16px;border-radius:9px;background:linear-gradient(135deg,rgba(147,51,234,.16),rgba(13,148,136,.10));border:1px solid rgba(181,123,245,.35);box-shadow:0 0 0 1px rgba(147,51,234,.06),0 6px 22px -10px rgba(147,51,234,.55);color:#e6dcf7;font-size:13px;line-height:1.7}
+.pp-g::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:linear-gradient(180deg,#b57bf5,var(--tl))}
+.pp-gt{display:block;margin-bottom:4px;font-family:'Fraunces',serif;font-size:12.5px;font-weight:700;letter-spacing:.3px;background:linear-gradient(90deg,#d8b4fe,#5eead4);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.pp-g strong{color:#fff}.pp-g code{color:#5eead4}
+.pp-gg{display:grid;grid-template-columns:1fr 1.35fr;gap:16px;margin-top:4px}
+.pp-gh{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px}
+.pp-gh.go{color:#5eead4}.pp-gh.pr{color:#d8b4fe}
+.pp-g ul.pp-gl{list-style:none;margin:0;padding:0}
+.pp-g ul.pp-gl li{position:relative;padding:4px 0 4px 16px;border-bottom:1px dashed rgba(94,234,212,.15)}
+.pp-g ul.pp-gl li:last-child{border-bottom:none}
+.pp-g ul.pp-gl li::before{content:'';position:absolute;left:2px;top:12px;width:6px;height:6px;border-radius:50%;background:#5eead4;box-shadow:0 0 8px #5eead4}
+.pp-g ol.pp-pl{list-style:none;margin:0;padding:0;counter-reset:pr}
+.pp-g ol.pp-pl li{counter-increment:pr;position:relative;padding:4px 0 4px 28px;border-bottom:1px dashed rgba(216,180,254,.15)}
+.pp-g ol.pp-pl li:last-child{border-bottom:none}
+.pp-g ol.pp-pl li::before{content:counter(pr);position:absolute;left:0;top:6px;width:19px;height:19px;border-radius:50%;background:rgba(181,123,245,.2);border:1px solid rgba(216,180,254,.45);color:#e9d5ff;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:17px;text-align:center}
+@media(max-width:700px){.pp-gg{grid-template-columns:1fr;gap:10px}}
+</style>
+</head>
+<body>
+<button id="mb" aria-label="Menu" aria-expanded="false">☰</button>
+<div id="ov"></div>
+<nav id="sb">
+<div class="logo">⬡ K8s CronJobs</div>
+<div class="sub">Complete Deep-Dive</div>
+<a class="pt" href="#part1"><span>Part 1</span>High Level</a>
+<div class="sl">1.1 Definitions</div><ul>
+<li><a href="#s01">What &amp; Why</a></li>
+</ul>
+<div class="sl">1.2 Comparisons</div><ul>
+<li><a href="#s02">CronJob vs Job</a></li>
+</ul>
+<div class="sl">1.3 Architecture</div><ul>
+<li><a href="#s03">Architecture ▶</a></li>
+</ul>
+<div class="sl">1.4 Workflow</div><ul>
+<li><a href="#s04">Creating a CronJob ▶</a></li>
+<li><a href="#s05">Lifecycle ▶</a></li>
+</ul>
+<a class="pt" href="#part2"><span>Part 2</span>Low Level Details</a>
+<div class="sl">2.1 The Full YAML</div><ul>
+<li><a href="#s06">Full CronJob YAML</a></li>
+</ul>
+<div class="sl">2.2 Property by Property</div><ul>
+<li><a href="#p1"><span class="no">1</span><code>schedule</code></a></li>
+<li class="ch"><a href="#s07"><span class="no">1.1</span>Cron Syntax ▶</a></li>
+<li class="ch"><a href="#s08"><span class="no">1.2</span>Common Examples</a></li>
+<li><a href="#s09"><span class="no">2</span><code>timeZone</code></a></li>
+<li><a href="#p3"><span class="no">3</span><code>concurrencyPolicy</code></a></li>
+<li class="ch"><a href="#s10"><span class="no">3.1</span>Allow / Forbid / Replace ▶</a></li>
+<li class="ch"><a href="#s11"><span class="no">3.2</span>Overlapping Runs ▶</a></li>
+<li><a href="#p4"><span class="no">4</span><code>startingDeadlineSeconds</code></a></li>
+<li class="ch"><a href="#s12"><span class="no">4.1</span>How It Works ▶</a></li>
+<li class="ch"><a href="#s13"><span class="no">4.2</span>Missed Schedules ▶</a></li>
+<li><a href="#s14"><span class="no">5</span><code>suspend</code> ▶</a></li>
+<li><a href="#s15"><span class="no">6</span><code>*JobsHistoryLimit</code> ▶</a></li>
+<li><a href="#s16"><span class="no">7</span><code>backoffLimit</code> / <code>activeDeadlineSeconds</code></a></li>
+<li><a href="#s17"><span class="no">8</span><code>ttlSecondsAfterFinished</code></a></li>
+</ul>
+<div class="sl">2.3 Operations &amp; Reference</div><ul>
+<li><a href="#s18">Manual Trigger</a></li>
+<li><a href="#s19">Monitoring</a></li>
+<li><a href="#s20">Commands</a></li>
+</ul>
+</nav>
+
+<main>
+<div class="hero"><h1>Kubernetes CronJobs</h1><p>The complete guide — cron syntax, concurrency policies, missed schedules, history limits, and SRE operations. Interactive step-by-step workflows.</p></div>
+
+<!-- ═════════════ PART 1 ═════════════ -->
+<div class="part" id="part1"><span class="pk">Part 1</span><h1>High Level</h1><p>definitions · comparisons · architecture · workflow</p></div>
+<div class="grp">1.1 Definitions</div>
+
+<!-- ═════════════ S01 (was S01) ═════════════ -->
+<section id="s01"><h2>What Is a CronJob &amp; Why?</h2>
+<div class="def"><b>Definition — CronJob</b>A CronJob creates <strong>Jobs on a time-based schedule</strong>. It's like a cron daemon in Linux but for Kubernetes. At each scheduled time, the CronJob controller creates a new Job object, which creates Pods that run to completion. The CronJob is the scheduler; the Job is the execution; the Pod does the work.</div>
+
+<div class="def"><b>Definition — Three-Level Chain</b><strong>CronJob → Job → Pod.</strong> CronJob creates Jobs on schedule. Each Job creates one or more Pods. Pods run the actual command and exit. After completion, Jobs and Pods are kept (for logs) until cleanup.</div>
+
+<table>
+<tr><th>Use Case</th><th>Schedule</th><th>Example</th></tr>
+<tr><td>Database backup</td><td>Daily 2 AM</td><td><code>0 2 * * *</code></td></tr>
+<tr><td>Log rotation</td><td>Hourly</td><td><code>0 * * * *</code></td></tr>
+<tr><td>Report generation</td><td>Monday 9 AM</td><td><code>0 9 * * 1</code></td></tr>
+<tr><td>Cache cleanup</td><td>Every 15 min</td><td><code>*/15 * * * *</code></td></tr>
+<tr><td>SSL cert renewal</td><td>Monthly 1st</td><td><code>0 0 1 * *</code></td></tr>
+<tr><td>Health check ping</td><td>Every 5 min</td><td><code>*/5 * * * *</code></td></tr>
+<tr><td>ETL data sync</td><td>Nightly midnight</td><td><code>0 0 * * *</code></td></tr>
+<tr><td>Invoice generation</td><td>Last day of month</td><td><code>0 0 28-31 * *</code></td></tr>
+</table>
+
+<div class="c g"><div class="l">Analogy</div><p style="margin:0">A CronJob is an <strong>alarm clock</strong>. At the set time, it rings (creates a Job). The Job does the task (Pod runs). When done, the alarm resets and waits for the next scheduled time. If the alarm is snoozed (suspended), it doesn't ring until un-snoozed.</p></div>
+</section>
+<div class="grp">1.2 Comparisons</div>
+
+<!-- ═════════════ S02 (was S03) ═════════════ -->
+<section id="s02"><h2>CronJob vs Job</h2>
+<table>
+<tr><th></th><th>Job</th><th>CronJob</th></tr>
+<tr><td><strong>When it runs</strong></td><td>Once — immediately when created</td><td>Repeatedly — on a cron schedule</td></tr>
+<tr><td><strong>Creates</strong></td><td>Pods directly</td><td>Jobs (which create Pods)</td></tr>
+<tr><td><strong>API</strong></td><td><code>batch/v1 Job</code></td><td><code>batch/v1 CronJob</code></td></tr>
+<tr><td><strong>After completion</strong></td><td>Job stays (until TTL/manual delete)</td><td>CronJob stays, creates new Jobs on schedule</td></tr>
+<tr><td><strong>Lifecycle</strong></td><td>One-shot</td><td>Infinite (until deleted/suspended)</td></tr>
+<tr><td><strong>Extra fields</strong></td><td>completions, parallelism, backoffLimit</td><td>schedule, concurrencyPolicy, history limits + all Job fields</td></tr>
+<tr><td><strong>Use for</strong></td><td>One-time migration, manual task</td><td>Recurring backup, report, cleanup</td></tr>
+</table></section>
+<div class="grp">1.3 Architecture</div>
+
+<!-- ═════════════ S03 (was S02) ═════════════ -->
+<section id="s03"><h2>Architecture ▶</h2>
+<div class="W" id="w-arch"><div class="bar"><div class="tab on" data-i="0">Ownership Chain</div><div class="tab" data-i="1">Timeline</div><div class="tab" data-i="2">After Multiple Runs</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Three-Level Ownership</div>
+<div class="vis"><span class="bx cron">CronJob: nightly-backup</span><br>
+<span class="ar">└──</span> <span class="bx job">Job: nightly-backup-28432560 (created at 02:00)</span><br>
+<span class="ar">&nbsp;&nbsp;&nbsp;&nbsp;└──</span> <span class="bx run">Pod: nightly-backup-28432560-abc12</span><br><br>
+<span style="color:var(--dm);font-size:10px">CronJob owns Jobs. Jobs own Pods. CronJob is the scheduler, Job is the execution unit, Pod does the work.</span></div>
+<div class="ds">The Job name includes a timestamp hash (<code>28432560</code>) derived from the schedule time. Each run creates a uniquely named Job. The CronJob controller manages the lifecycle of all its child Jobs.</div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Timeline — CronJob Running Every Hour</div>
+<div class="vis">
+<span class="bx cron">CronJob (schedule: 0 * * * *)</span><br><br>
+<strong>01:00</strong> → creates <span class="bx job">Job-01</span> → <span class="bx run">Pod runs</span> → <span class="bx ok">Complete ✓</span><br>
+<strong>02:00</strong> → creates <span class="bx job">Job-02</span> → <span class="bx run">Pod runs</span> → <span class="bx ok">Complete ✓</span><br>
+<strong>03:00</strong> → creates <span class="bx job">Job-03</span> → <span class="bx run">Pod runs</span> → <span class="bx ok">Complete ✓</span><br>
+<strong>04:00</strong> → creates <span class="bx job">Job-04</span> → <span class="bx run">Pod runs</span> → <span class="bx ok">Complete ✓</span><br><br>
+<span style="color:var(--dm);font-size:10px">Each hour: new Job → new Pod → runs → completes. CronJob never stops — keeps creating Jobs on schedule.</span></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">After Multiple Runs — History Accumulates</div>
+<div class="vis">
+<span class="bx cron">CronJob (successfulJobsHistoryLimit: 3)</span><br><br>
+<span class="bx ok">Job-02 (Complete)</span> ← kept (history #1)<br>
+<span class="bx ok">Job-03 (Complete)</span> ← kept (history #2)<br>
+<span class="bx ok">Job-04 (Complete)</span> ← kept (history #3)<br>
+<span style="color:var(--dm);text-decoration:line-through">Job-01 (deleted — exceeded limit of 3)</span><br><br>
+<span style="color:var(--yl);font-size:10px">Without history limits → completed Jobs accumulate forever → etcd bloat!</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 3</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+<div class="grp">1.4 Workflow</div>
+
+<!-- ═════════════ S04 (was S08) ═════════════ -->
+<section id="s04"><h2>Creating a CronJob ▶</h2>
+<div class="W" id="w-create"><div class="bar"><div class="tab on" data-i="0">Imperative</div><div class="tab" data-i="1">YAML</div><div class="tab" data-i="2">Hybrid</div><div class="tab" data-i="3">What happens</div></div><div class="body">
+<div class="pnl on" data-i="0">
+<pre><code>kubectl create cronjob backup --image=busybox --schedule="*/5 * * * *" -- /bin/sh -c "echo backup at $(date)"</code></pre></div>
+<div class="pnl" data-i="1">
+<pre><code>kubectl apply -f cronjob.yaml</code></pre></div>
+<div class="pnl" data-i="2">
+<pre><code>kubectl create cronjob backup --image=busybox --schedule="*/5 * * * *" --dry-run=client -o yaml -- echo hi > cron.yaml
+<span class="cm"># Edit: add concurrencyPolicy, history limits, resources</span>
+kubectl apply -f cron.yaml</code></pre></div>
+<div class="pnl" data-i="3"><div class="tl">What happens after creation</div>
+<div class="vis">① <span class="bx cron">CronJob created</span> — controller registers the schedule<br>
+② Controller checks schedule every 10 seconds<br>
+③ When schedule matches current time:<br>
+&nbsp;&nbsp;&nbsp;→ <span class="bx job">Job created</span> (name: backup-28432560)<br>
+&nbsp;&nbsp;&nbsp;→ <span class="bx run">Pod created</span> → command runs → exits<br>
+&nbsp;&nbsp;&nbsp;→ <span class="bx ok">Job Complete</span><br>
+④ Controller waits for next schedule match<br>
+⑤ Repeat forever (or until CronJob is deleted/suspended)</div>
+<div class="T">$ kubectl get cronjob backup
+NAME     SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+backup   */5 * * * *   False     0        2m              10m
+
+$ kubectl get jobs
+NAME               COMPLETIONS   DURATION   AGE
+backup-28432560    1/1           5s         2m
+backup-28432620    1/1           5s         7m</div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S05 (was S18) ═════════════ -->
+<section id="s05"><h2>CronJob Lifecycle ▶</h2>
+<div class="W" id="w-life"><div class="bar"><div class="tab on" data-i="0">Normal cycle</div><div class="tab" data-i="1">With failure</div><div class="tab" data-i="2">With overlap</div><div class="tab" data-i="3">Full day</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Normal — Job succeeds each run</div>
+<div class="vis">① <span class="bx cron">Schedule fires</span> (e.g., 02:00)<br>
+② CronJob controller creates <span class="bx job">Job-X</span><br>
+③ Job creates <span class="bx run">Pod</span> → command runs → <span class="bx ok">exit 0</span><br>
+④ <span class="bx ok">Job Complete</span><br>
+⑤ Controller updates <code>lastScheduleTime</code><br>
+⑥ Waits for next schedule (03:00)<br>
+⑦ Repeat ∞</div></div>
+<div class="pnl" data-i="1"><div class="tl">Job fails — CronJob creates fresh Job next time</div>
+<div class="vis">① 02:00 → <span class="bx job">Job-1</span> → <span class="bx ded">FAILED (all retries exhausted)</span><br>
+② CronJob does NOT retry Job-1. It's done.<br>
+③ Failed Job kept (up to failedJobsHistoryLimit)<br>
+④ 03:00 → <span class="bx job">Job-2</span> → <span class="bx ok">Complete ✓</span> (fresh start)<br><br>
+<span style="color:var(--dm);font-size:10px">Each schedule = brand new Job. Previous failures don't affect next run.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">Overlap with Forbid policy</div>
+<div class="vis">01:00 → <span class="bx run">Job-1 (takes 90 min)</span><br>
+02:00 → <span class="bx pen">SKIPPED (Forbid + Job-1 active)</span><br>
+02:30 → <span class="bx ok">Job-1 done</span><br>
+03:00 → <span class="bx run">Job-2 starts</span><br><br>
+<span style="color:var(--dm);font-size:10px">The 02:00 run is permanently lost. Forbid skips — it doesn't queue.</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">Full day timeline — daily backup at 02:30</div>
+<div class="vis"><span class="bx cron">CronJob: daily-backup (30 2 * * *, Forbid, history=3)</span><br><br>
+<strong>Mon 02:30</strong> → <span class="bx job">Job-1</span> → <span class="bx ok">✓ 5 min</span><br>
+<strong>Tue 02:30</strong> → <span class="bx job">Job-2</span> → <span class="bx ok">✓ 5 min</span><br>
+<strong>Wed 02:30</strong> → <span class="bx job">Job-3</span> → <span class="bx ded">✗ Failed</span><br>
+<strong>Thu 02:30</strong> → <span class="bx job">Job-4</span> → <span class="bx ok">✓ 5 min</span><br><br>
+<span style="color:var(--dm)">Kept: Job-2 ✓, Job-4 ✓ (2 of 3 successful limit) + Job-3 ✗ (1 of 1 failed limit)</span><br>
+<span style="color:var(--dm)">Job-1 auto-deleted (oldest, exceeded successfulJobsHistoryLimit=3)</span></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ PART 2 ═════════════ -->
+<div class="part" id="part2"><span class="pk">Part 2</span><h1>Low Level Details</h1><p>full YAML · every property explained</p></div>
+<div class="grp">2.1 The Full YAML</div>
+
+<!-- ═════════════ S06 (was S07) ═════════════ -->
+<section id="s06"><h2>Full CronJob YAML — Every Field Explained</h2>
+<pre><code><span class="k">apiVersion:</span> <span class="v">batch/v1</span>
+<span class="k">kind:</span> <span class="v">CronJob</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">nightly-backup</span>
+  <span class="k">namespace:</span> <span class="s">production</span>
+<span class="k">spec:</span>
+  <span class="k">schedule:</span> <span class="s">"30 2 * * *"</span>              <span class="cm"># When — daily at 2:30 AM</span>
+  <span class="k">timeZone:</span> <span class="s">"UTC"</span>                     <span class="cm"># Timezone (default: controller's TZ)</span>
+  <span class="k">concurrencyPolicy:</span> <span class="v">Forbid</span>           <span class="cm"># What if previous still running?</span>
+  <span class="k">startingDeadlineSeconds:</span> <span class="nm">200</span>        <span class="cm"># Max seconds late to still start</span>
+  <span class="k">suspend:</span> <span class="v">false</span>                      <span class="cm"># true = pause scheduling</span>
+  <span class="k">successfulJobsHistoryLimit:</span> <span class="nm">3</span>       <span class="cm"># Keep last 3 successful Jobs</span>
+  <span class="k">failedJobsHistoryLimit:</span> <span class="nm">1</span>           <span class="cm"># Keep last 1 failed Job</span>
+
+  <span class="k">jobTemplate:</span>                          <span class="cm"># Job spec — same as a regular Job</span>
+    <span class="k">spec:</span>
+      <span class="k">backoffLimit:</span> <span class="nm">3</span>                  <span class="cm"># Retries per Job run</span>
+      <span class="k">activeDeadlineSeconds:</span> <span class="nm">1800</span>      <span class="cm"># Max 30 min per Job run</span>
+      <span class="k">ttlSecondsAfterFinished:</span> <span class="nm">86400</span>  <span class="cm"># Auto-delete Job 24h after finish</span>
+      <span class="k">template:</span>                        <span class="cm"># Pod spec — same as always</span>
+        <span class="k">spec:</span>
+          <span class="k">restartPolicy:</span> <span class="v">Never</span>        <span class="cm"># Never or OnFailure (not Always!)</span>
+          <span class="k">containers:</span>
+          - <span class="k">name:</span> <span class="s">backup</span>
+            <span class="k">image:</span> <span class="s">postgres:16</span>
+            <span class="k">command:</span> [<span class="s">"sh"</span>,<span class="s">"-c"</span>,<span class="s">"pg_dump mydb > /backup/dump.sql"</span>]
+            <span class="k">resources:</span>
+              <span class="k">requests:</span> { <span class="k">cpu:</span> <span class="s">"200m"</span>, <span class="k">memory:</span> <span class="s">"256Mi"</span> }
+              <span class="k">limits:</span> { <span class="k">cpu:</span> <span class="s">"500m"</span>, <span class="k">memory:</span> <span class="s">"512Mi"</span> }</code></pre>
+
+<div class="def"><b>Key Structure</b>CronJob has a <code>jobTemplate</code> (not <code>template</code>). Inside <code>jobTemplate.spec</code> you put all Job fields (backoffLimit, completions, parallelism, etc.). Inside <code>jobTemplate.spec.template</code> you put the Pod spec. It's <strong>three levels deep</strong>: CronJob → jobTemplate → template.</div>
+</section>
+<div class="grp">2.2 Property by Property</div>
+
+<div class="prop" id="p1"><span class="n">1</span> <code>schedule</code></div>
+<!-- ═════════════ S07 (was S04) ═════════════ -->
+<section id="s07"><h2><span class="n">1.1</span> Cron Schedule Syntax ▶</h2>
+<div class="def"><b>Definition — Cron Expression</b>A string with 5 fields separated by spaces: <code>minute hour day-of-month month day-of-week</code>. Each field can be a number, <code>*</code> (any), <code>*/N</code> (every N), <code>N-M</code> (range), or <code>N,M</code> (list). Uses the same syntax as Linux crontab.</div>
+<div class="pp">
+<div class="pp-r"><span class="pp-k w">What</span><div class="pp-b">The cron expression that tells the CronJob controller <strong>when to create a Job</strong>. It is the only scheduling input — every other field decides what happens <em>around</em> that moment.</div></div>
+<div class="pp-r"><span class="pp-k y">Why</span><div class="pp-b"><div class="pp-s">Needs</div><ul><li>Recurring work that must run without a human or an always-on process</li><li>Timing that follows the business rhythm — after the dinner peak, before the working day, at month-end</li><li>A declarative, reviewable schedule that lives in Git with the rest of the manifest</li></ul><div class="pp-s pr">Problems it prevents</div><ul><li>A Deployment running <code>while true; sleep</code> burns CPU/RAM 24/7 and fails silently when the loop dies</li><li>A too-frequent schedule floods the cluster with Jobs and Pods (every minute = 1,440 Jobs/day)</li><li>Heavy jobs firing during peak traffic compete with customer-facing services</li><li>"Thundering herd" — many CronJobs all set to minute <code>0</code> start at the same second</li></ul><div class="pp-g"><span class="pp-gt">◆ Goals &amp; Principles</span><div class="pp-gg"><div><div class="pp-gh go">🎯 Goals</div><ul class="pp-gl"><li>Run work exactly as often as the business needs — no more, no less</li><li>Keep batch load away from customer-facing peak hours</li><li>Make timing obvious to anyone reading the manifest</li></ul></div><div><div class="pp-gh pr">⚖ Principles</div><ol class="pp-pl"><li>Choose the <strong>slowest schedule</strong> that still meets the freshness need</li><li>Run heavy work <strong>off-peak</strong>, after traffic has cleared</li><li>Stagger minutes (<code>7</code>, <code>23</code>, <code>41</code>) instead of stacking every job on <code>:00</code></li><li>Use explicit expressions when the exact time matters — <code>@daily</code> always means midnight</li><li>Read the expression back in plain words before applying it</li></ol></div></div></div></div></div>
+<div class="pp-r"><span class="pp-k h">How</span><div class="pp-b"><div class="pp-t"><table><tr><th>Value</th><th>Behavior</th><th>Use when</th></tr><tr><td><code>"*/5 * * * *"</code></td><td>Every 5 minutes</td><td>Near-real-time sync, cache refresh</td></tr><tr><td><code>"0 * * * *"</code> / <code>@hourly</code></td><td>Top of every hour</td><td>Aggregations, log roll-ups</td></tr><tr><td><code>"15 3 * * *"</code></td><td>Daily at a fixed time</td><td>Backups, settlements — off-peak</td></tr><tr><td><code>"0 9 * * 0-4"</code></td><td>9 AM Sunday–Thursday</td><td>Business-day reports (KSA work week)</td></tr><tr><td><code>"0 0 1 * *"</code> / <code>@monthly</code></td><td>1st of every month</td><td>Billing, invoices, archives</td></tr></table></div></div></div>
+<div class="pp-f"><div><span class="pp-tag jz">Jahez scenario</span>A restaurant settlement report runs at <code>"15 3 * * *"</code> — after the late-night order peak has cleared and before restaurants open — rather than at midnight when delivery traffic is still high.</div></div>
+</div>
+
+
+<div class="W" id="w-cron"><div class="bar"><div class="tab on" data-i="0">5 Fields</div><div class="tab" data-i="1">Special Characters</div><div class="tab" data-i="2">Visual Diagram</div><div class="tab" data-i="3">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">The 5 Fields</div>
+<pre><code><span class="k">schedule:</span> <span class="s">"* * * * *"</span>   <span class="cm"># minute hour day-of-month month day-of-week</span></code></pre>
+<pre><code>┌───────────── minute (0-59)
+│ ┌───────────── hour (0-23)
+│ │ ┌───────────── day of month (1-31)
+│ │ │ ┌───────────── month (1-12)
+│ │ │ │ ┌───────────── day of week (0-6, 0=Sunday)
+│ │ │ │ │
+* * * * *</code></pre>
+<table>
+<tr><th>Field</th><th>Range</th><th>Example</th></tr>
+<tr><td>Minute</td><td>0-59</td><td><code>30</code> = at minute 30</td></tr>
+<tr><td>Hour</td><td>0-23</td><td><code>14</code> = 2 PM</td></tr>
+<tr><td>Day of Month</td><td>1-31</td><td><code>1</code> = 1st of month</td></tr>
+<tr><td>Month</td><td>1-12</td><td><code>6</code> = June</td></tr>
+<tr><td>Day of Week</td><td>0-6 (0=Sun)</td><td><code>1</code> = Monday</td></tr>
+</table></div>
+
+<div class="pnl" data-i="1"><div class="tl">Special Characters</div>
+<pre><code><span class="k">schedule:</span> <span class="s">"* * * * *"</span>         <span class="cm"># *    any value</span>
+<span class="k">schedule:</span> <span class="s">"*/15 * * * *"</span>      <span class="cm"># */N  every N units</span>
+<span class="k">schedule:</span> <span class="s">"0 9-17 * * *"</span>      <span class="cm"># N-M  range</span>
+<span class="k">schedule:</span> <span class="s">"0 6,12,18 * * *"</span>   <span class="cm"># N,M  list</span>
+<span class="k">schedule:</span> <span class="s">"30 2 * * *"</span>        <span class="cm"># N    specific value</span></code></pre>
+<table>
+<tr><th>Character</th><th>Meaning</th><th>Example</th></tr>
+<tr><td><code>*</code></td><td>Any value</td><td><code>* * * * *</code> = every minute</td></tr>
+<tr><td><code>*/N</code></td><td>Every N units</td><td><code>*/15 * * * *</code> = every 15 min</td></tr>
+<tr><td><code>N-M</code></td><td>Range</td><td><code>0 9-17 * * *</code> = hourly 9 AM to 5 PM</td></tr>
+<tr><td><code>N,M</code></td><td>List</td><td><code>0 6,12,18 * * *</code> = 6 AM, noon, 6 PM</td></tr>
+<tr><td><code>N</code></td><td>Specific value</td><td><code>30 2 * * *</code> = 2:30 AM daily</td></tr>
+</table></div>
+
+<div class="pnl" data-i="2"><div class="tl">Visual — Reading a Cron Expression</div>
+<pre><code><span class="k">schedule:</span> <span class="s">"30 2 * * 1-5"</span>   <span class="cm"># At 2:30 AM, Monday through Friday</span></code></pre>
+<div class="vis">
+<strong>Example:</strong> <code>30 2 * * 1-5</code><br><br>
+<code>30</code> → at minute 30<br>
+<code>2</code> → of hour 2 (2 AM)<br>
+<code>*</code> → every day of month<br>
+<code>*</code> → every month<br>
+<code>1-5</code> → Monday through Friday<br><br>
+<strong>English:</strong> "At 2:30 AM, Monday through Friday"
+</div></div>
+<div class="pnl" data-i="3"><div class="tl">Comparison</div>
+<div style="overflow-x:auto"><table>
+<tr><th>schedule value</th><th>Character used</th><th>Reads as</th><th>Jobs created</th></tr>
+<tr><td><code>"* * * * *"</code></td><td><code>*</code></td><td>Every minute</td><td><span class="bg rd">1,440 / day</span></td></tr><tr><td><code>"*/15 * * * *"</code></td><td><code>*/N</code></td><td>Every 15 minutes</td><td><span class="bg og">96 / day</span></td></tr><tr><td><code>"0 9-17 * * *"</code></td><td><code>N-M</code></td><td>Hourly, 9 AM to 5 PM</td><td><span class="bg yl">9 / day</span></td></tr><tr><td><code>"0 6,12,18 * * *"</code></td><td><code>N,M</code></td><td>6 AM, noon, 6 PM</td><td><span class="bg bl">3 / day</span></td></tr><tr><td><code>"30 2 * * *"</code></td><td><code>N</code></td><td>2:30 AM daily</td><td><span class="bg gn">1 / day</span></td></tr><tr><td><code>"30 2 * * 1-5"</code></td><td><code>N</code> + <code>N-M</code></td><td>2:30 AM, Monday–Friday</td><td><span class="bg gn">5 / week</span></td></tr>
+</table></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S08 (was S05) ═════════════ -->
+<section id="s08"><h2><span class="n">1.2</span> Common Schedule Examples</h2>
+<table>
+<tr><th>Schedule</th><th>Cron Expression</th><th>Use Case</th></tr>
+<tr><td>Every minute</td><td><code>* * * * *</code></td><td>Health check, monitoring ping</td></tr>
+<tr><td>Every 5 minutes</td><td><code>*/5 * * * *</code></td><td>Metrics collection, sync</td></tr>
+<tr><td>Every 15 minutes</td><td><code>*/15 * * * *</code></td><td>Cache refresh</td></tr>
+<tr><td>Every hour</td><td><code>0 * * * *</code></td><td>Log aggregation</td></tr>
+<tr><td>Every 6 hours</td><td><code>0 */6 * * *</code></td><td>Report generation</td></tr>
+<tr><td>Daily at midnight</td><td><code>0 0 * * *</code></td><td>Nightly cleanup</td></tr>
+<tr><td>Daily at 2:30 AM</td><td><code>30 2 * * *</code></td><td>Database backup</td></tr>
+<tr><td>Weekdays at 9 AM</td><td><code>0 9 * * 1-5</code></td><td>Business report</td></tr>
+<tr><td>Every Monday at midnight</td><td><code>0 0 * * 1</code></td><td>Weekly summary</td></tr>
+<tr><td>1st of month at midnight</td><td><code>0 0 1 * *</code></td><td>Monthly billing, invoice</td></tr>
+<tr><td>Every Jan 1st at midnight</td><td><code>0 0 1 1 *</code></td><td>Yearly archive</td></tr>
+</table>
+<div class="c o"><div class="l">Common Mistake</div><p style="margin:0"><code>* * * * *</code> runs <strong>every minute</strong> (60 Jobs/hour, 1440 Jobs/day!). Make sure you actually need that frequency. For testing, use <code>*/5 * * * *</code> (every 5 min) instead.</p></div>
+</section>
+
+<!-- ═════════════ S09 (was S06) ═════════════ -->
+<section id="s09"><h2><span class="n">2</span> <span class="pn"><code>timeZone</code></span> — Timezone</h2>
+<div class="def"><b>Definition — timeZone</b>(v1.27+ stable) By default, CronJobs use the kube-controller-manager's timezone (usually UTC). You can specify a timezone using the <code>timeZone</code> field with an IANA timezone name.</div>
+<div class="pp">
+<div class="pp-r"><span class="pp-k w">What</span><div class="pp-b">The IANA time-zone name the <code>schedule</code> is read in. Without it the schedule follows the kube-controller-manager's local zone, which is almost always UTC.</div></div>
+<div class="pp-r"><span class="pp-k y">Why</span><div class="pp-b"><div class="pp-s">Needs</div><ul><li>Business schedules are written in local wall-clock time, not UTC</li><li>Teams across regions need the manifest itself to state the intended zone</li><li>Readers of the YAML should not have to do time-zone arithmetic</li></ul><div class="pp-s pr">Problems it prevents</div><ul><li>A "9 AM" report runs at 12:00 noon in Riyadh when the cluster is on UTC</li><li>Moving to a cluster with a different controller time zone silently shifts every schedule</li><li>In zones with daylight saving, runs in the switch-over hour can be skipped or run twice</li><li>Putting <code>CRON_TZ=</code> / <code>TZ=</code> inside <code>schedule</code> is not supported — use the field</li></ul><div class="pp-g"><span class="pp-gt">◆ Goals &amp; Principles</span><div class="pp-gg"><div><div class="pp-gh go">🎯 Goals</div><ul class="pp-gl"><li>A schedule means the same thing to every reader and on every cluster</li><li>Business-hour jobs land at local business time</li></ul></div><div><div class="pp-gh pr">⚖ Principles</div><ol class="pp-pl"><li><strong>Interval schedules don't need a zone; wall-clock schedules always do</strong></li><li>Use IANA names (<code>Asia/Riyadh</code>), never offsets or abbreviations</li><li>Never put <code>CRON_TZ=</code> / <code>TZ=</code> inside <code>schedule</code> — use the field</li><li>In daylight-saving zones, avoid scheduling in the switch-over hour</li><li>When you mean UTC, write <code>"Etc/UTC"</code> so it is explicit</li></ol></div></div></div></div></div>
+<div class="pp-r"><span class="pp-k h">How</span><div class="pp-b"><div class="pp-t"><table><tr><th>Value</th><th>Behavior</th><th>Use when</th></tr><tr><td>(not set)</td><td>Controller's zone (usually UTC)</td><td>Interval jobs (<code>*/5</code>) where wall-clock time is irrelevant</td></tr><tr><td><code>"Etc/UTC"</code></td><td>Explicit UTC</td><td>System jobs where you still want the zone visible in the YAML</td></tr><tr><td><code>"Asia/Riyadh"</code></td><td>Saudi local time, UTC+3, no daylight saving</td><td>Anything tied to KSA business hours</td></tr><tr><td><code>"Europe/London"</code></td><td>Local time with daylight saving</td><td>Only if needed — avoid scheduling in the switch-over hour</td></tr></table></div></div></div>
+<div class="pp-f"><div><span class="pp-tag jz">Jahez scenario</span>A daily ops summary for KSA city managers uses <code>schedule: "0 8 * * 0-4"</code> with <code>timeZone: "Asia/Riyadh"</code>, so it lands at 8 AM local time no matter where the cluster runs.</div></div>
+</div>
+
+<pre><code><span class="k">spec:</span>
+  <span class="k">schedule:</span> <span class="s">"0 9 * * 1-5"</span>
+  <span class="k">timeZone:</span> <span class="s">"America/New_York"</span>   <span class="cm"># Runs at 9 AM Eastern</span></code></pre>
+<div class="sre"><div class="tag">SRE Principle</div><p style="margin:0">Always specify <code>timeZone</code> explicitly. Without it, your CronJob uses the cluster's timezone (usually UTC), which may not match your business hours. A "daily 9 AM" report could run at 9 AM UTC = 4 AM Eastern if you forget.</p></div>
+</section>
+
+<div class="prop" id="p3"><span class="n">3</span> <code>concurrencyPolicy</code></div>
+<!-- ═════════════ S10 (was S09) ═════════════ -->
+<section id="s10"><h2><span class="n">3.1</span> Allow / Forbid / Replace ▶</h2>
+<div class="def"><b>Definition — concurrencyPolicy</b>Controls what happens when a new schedule fires but the previous Job is still running. Three options: Allow, Forbid, Replace.</div>
+<div class="pp">
+<div class="pp-r"><span class="pp-k w">What</span><div class="pp-b">The rule the controller applies when a new schedule fires <strong>while the previous Job from this CronJob is still running</strong>.</div></div>
+<div class="pp-r"><span class="pp-k y">Why</span><div class="pp-b"><div class="pp-s">Needs</div><ul><li>Run time is not constant — it grows with data volume (e.g., Ramadan nights, big promo days)</li><li>Some jobs must have a single writer at any moment</li><li>Some jobs only care about the most recent result</li></ul><div class="pp-s pr">Problems it prevents</div><ul><li>Overlapping runs double CPU, memory and database load</li><li>Two runs process the same records — duplicate notifications, double payouts, double exports</li><li>Lock contention or deadlocks between two copies of the same job</li><li>A backlog of overlapping runs that never catches up</li></ul><div class="pp-g"><span class="pp-gt">◆ Goals &amp; Principles</span><div class="pp-gg"><div><div class="pp-gh go">🎯 Goals</div><ul class="pp-gl"><li>Two runs never fight over the same data</li><li>Cluster load stays predictable when runs slow down</li><li>Each job's overlap behavior matches what a late result is worth</li></ul></div><div><div class="pp-gh pr">⚖ Principles</div><ol class="pp-pl"><li>Keep <code>Allow</code> only when runs are <strong>independent and idempotent</strong></li><li>Use <code>Forbid</code> for anything that writes money, messages or shared state</li><li>Use <code>Replace</code> only when the newest result fully supersedes the old one <em>and</em> the job is safe to kill mid-way</li><li>The policy prevents <em>overlap</em>, not <em>duplication</em> — retries and manual runs can still repeat work, so make jobs <strong>idempotent</strong></li><li>Pair <code>Forbid</code> with <code>activeDeadlineSeconds</code> so a hung run can't block every future run</li></ol></div></div></div></div></div>
+<div class="pp-r"><span class="pp-k h">How</span><div class="pp-b"><div class="pp-t"><table><tr><th>Value</th><th>Behavior</th><th>Use when</th></tr><tr><td><code>Allow</code> (default)</td><td>New Job starts alongside the old one</td><td>Independent, idempotent, cheap runs</td></tr><tr><td><code>Forbid</code></td><td>New run is not started while the old one is active</td><td>Single-writer work: backups, settlements, payouts</td></tr><tr><td><code>Replace</code></td><td>Old Job is deleted, new one starts</td><td>Only the newest result matters: rankings, cache rebuilds</td></tr></table></div></div></div>
+<div class="pp-f"><div><span class="pp-tag jz">Jahez scenario</span>Restaurant payout settlement → <code>Forbid</code> (two copies could pay twice). "Top restaurants near you" ranking refresh → <code>Replace</code> (a stale ranking is worthless). Per-city metrics export → <code>Allow</code> (cities are independent).</div></div>
+</div>
+
+
+<div class="W" id="w-conc"><div class="bar"><div class="tab on" data-i="0">Allow</div><div class="tab" data-i="1">Forbid</div><div class="tab" data-i="2">Replace</div><div class="tab" data-i="3">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Allow (default) — Run concurrently</div>
+<pre><code><span class="k">concurrencyPolicy:</span> <span class="v">Allow</span></code></pre>
+<div class="vis"><strong>02:00</strong> → <span class="bx job">Job-1 starts</span> (takes 90 min)<br>
+<strong>03:00</strong> → <span class="bx job">Job-2 starts</span> (Job-1 still running!)<br>
+<strong>03:30</strong> → <span class="bx ok">Job-1 finishes</span><br>
+<strong>04:00</strong> → <span class="bx job">Job-3 starts</span> (Job-2 may still be running)<br><br>
+<span style="color:var(--yl);font-size:10px">⚠ Multiple Jobs can run simultaneously. Can overload cluster or cause data conflicts.</span></div></div>
+
+<div class="pnl" data-i="1"><div class="tl">Forbid — Skip new run if previous is active</div>
+<pre><code><span class="k">concurrencyPolicy:</span> <span class="v">Forbid</span></code></pre>
+<div class="vis"><strong>02:00</strong> → <span class="bx job">Job-1 starts</span> (takes 90 min)<br>
+<strong>03:00</strong> → <span class="bx pen">SKIPPED!</span> Job-1 still running → new run is skipped<br>
+<strong>03:30</strong> → <span class="bx ok">Job-1 finishes</span><br>
+<strong>04:00</strong> → <span class="bx job">Job-2 starts</span> (Job-1 done now)<br><br>
+<span style="color:var(--gn);font-size:10px">✓ Safe. Never more than 1 Job running. Skipped runs are lost — they don't queue up.</span></div></div>
+
+<div class="pnl" data-i="2"><div class="tl">Replace — Kill running Job, start new one</div>
+<pre><code><span class="k">concurrencyPolicy:</span> <span class="v">Replace</span></code></pre>
+<div class="vis"><strong>02:00</strong> → <span class="bx job">Job-1 starts</span> (takes 90 min)<br>
+<strong>03:00</strong> → <span class="bx ded">Job-1 KILLED!</span> → <span class="bx job">Job-2 starts</span><br>
+<strong>04:00</strong> → <span class="bx ded">Job-2 KILLED!</span> (if still running) → <span class="bx job">Job-3 starts</span><br><br>
+<span style="color:var(--rd);font-size:10px">⚠ Aggressive. Running Job is terminated mid-execution. Data may be lost. Use only when latest run is always more important than completing the previous one.</span></div></div>
+
+<div class="pnl" data-i="3">
+<table>
+<tr><th>Policy</th><th>Previous still running?</th><th>Risk</th><th>Use when</th></tr>
+<tr><td><code>Allow</code></td><td>Both run simultaneously</td><td><span class="bg yl">Resource overload, conflicts</span></td><td>Independent tasks, stateless</td></tr>
+<tr><td><code>Forbid</code></td><td>New run is skipped</td><td><span class="bg gn">Safest</span></td><td>DB backup, any task that shouldn't overlap</td></tr>
+<tr><td><code>Replace</code></td><td>Old Job killed, new starts</td><td><span class="bg rd">Data loss</span></td><td>Latest data always more important</td></tr>
+</table></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S11 (was S10) ═════════════ -->
+<section id="s11"><h2><span class="n">3.2</span> Overlapping Runs Scenario ▶</h2>
+<div class="W" id="w-over"><div class="bar"><div class="tab on" data-i="0">Problem</div><div class="tab" data-i="1">Allow result</div><div class="tab" data-i="2">Forbid result</div><div class="tab" data-i="3">Replace result</div><div class="tab" data-i="4">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Scenario: CronJob runs every hour, but Job takes 90 minutes</div>
+<pre><code><span class="k">schedule:</span> <span class="s">"0 * * * *"</span>     <span class="cm"># fires every hour</span>
+<span class="k">concurrencyPolicy:</span> <span class="v">???</span>      <span class="cm"># decides what happens at 02:00</span>
+<span class="cm"># Job duration ≈ 90 min → every run overlaps the next one</span></code></pre>
+<div class="vis"><span class="bx cron">CronJob: report (schedule: 0 * * * *, Job takes 90 min)</span><br><br>
+<strong>Problem:</strong> Schedule fires at 01:00, 02:00, 03:00<br>
+But each Job takes 90 min to complete.<br>
+At 02:00, the 01:00 Job is still running (only 60 min in).<br><br>
+<span style="color:var(--yl)">What should happen?</span> → depends on concurrencyPolicy</div></div>
+<div class="pnl" data-i="1"><div class="tl">With Allow — Jobs stack up</div>
+<pre><code><span class="k">concurrencyPolicy:</span> <span class="v">Allow</span></code></pre>
+<div class="vis">01:00 → <span class="bx run">Job-1 (running)</span><br>
+02:00 → <span class="bx run">Job-1 (still)</span> + <span class="bx run">Job-2 (new)</span><br>
+02:30 → <span class="bx ok">Job-1 done</span> + <span class="bx run">Job-2 (still)</span><br>
+03:00 → <span class="bx run">Job-2 (still)</span> + <span class="bx run">Job-3 (new)</span><br><br>
+<span style="color:var(--rd)">2 Jobs running simultaneously! Double resource usage.</span></div></div>
+<div class="pnl" data-i="2"><div class="tl">With Forbid — Missed run is skipped</div>
+<pre><code><span class="k">concurrencyPolicy:</span> <span class="v">Forbid</span></code></pre>
+<div class="vis">01:00 → <span class="bx run">Job-1 (running)</span><br>
+02:00 → <span class="bx pen">SKIP (Job-1 still active)</span><br>
+02:30 → <span class="bx ok">Job-1 done</span><br>
+03:00 → <span class="bx run">Job-2 (starts normally)</span><br><br>
+<span style="color:var(--gn)">Safe. 02:00 run lost but no overlap.</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">With Replace — Old killed, new starts</div>
+<pre><code><span class="k">concurrencyPolicy:</span> <span class="v">Replace</span></code></pre>
+<div class="vis">01:00 → <span class="bx run">Job-1 (running)</span><br>
+02:00 → <span class="bx ded">Job-1 KILLED</span> → <span class="bx run">Job-2 (starts)</span><br>
+03:00 → <span class="bx ded">Job-2 KILLED</span> → <span class="bx run">Job-3 (starts)</span><br><br>
+<span style="color:var(--rd)">Job-1 never completed! 60 min of work wasted.</span></div></div>
+<div class="pnl" data-i="4"><div class="tl">Comparison</div>
+<div style="overflow-x:auto"><table>
+<tr><th>concurrencyPolicy</th><th>At 02:00</th><th>Max Jobs at once</th><th>Outcome</th><th>Risk</th></tr>
+<tr><td><code>Allow</code></td><td>Job-2 starts beside Job-1</td><td>2</td><td>Every run completes</td><td><span class="bg yl">Double resources</span></td></tr><tr><td><code>Forbid</code></td><td>02:00 run skipped</td><td>1</td><td>Job-1 completes, Job-2 at 03:00</td><td><span class="bg gn">02:00 run lost</span></td></tr><tr><td><code>Replace</code></td><td>Job-1 killed, Job-2 starts</td><td>1</td><td>No run ever completes</td><td><span class="bg rd">60 min wasted per run</span></td></tr>
+</table></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 5</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<div class="prop" id="p4"><span class="n">4</span> <code>startingDeadlineSeconds</code></div>
+<!-- ═════════════ S12 (was S11) ═════════════ -->
+<section id="s12"><h2><span class="n">4.1</span> How the Deadline Works ▶</h2>
+<div class="def"><b>Definition — startingDeadlineSeconds</b>The maximum number of seconds past the scheduled time that the CronJob controller will still create a Job. If the controller can't create the Job within this window (e.g., controller was down), the run is considered missed.</div>
+<div class="pp">
+<div class="pp-r"><span class="pp-k w">What</span><div class="pp-b">How many seconds <strong>after its scheduled time</strong> a run may still be started. Past that window the run counts as missed and is not started.</div></div>
+<div class="pp-r"><span class="pp-k y">Why</span><div class="pp-b"><div class="pp-s">Needs</div><ul><li>Runs do get delayed: controller restarts, cluster upgrades, a <code>Forbid</code> block, a suspension</li><li>Some jobs are worthless if late; others are better late than never</li><li>The controller needs a bound on how far back it looks for missed runs</li></ul><div class="pp-s pr">Problems it prevents</div><ul><li>A time-sensitive job fires hours late — a lunch promo push at 3 PM</li><li>Without a bound the controller counts every missed time since the last run and reports "too many missed start times"</li><li>Catch-up runs land in peak hours instead of their off-peak slot</li></ul><div class="pp-g"><span class="pp-gt">◆ Goals &amp; Principles</span><div class="pp-gg"><div><div class="pp-gh go">🎯 Goals</div><ul class="pp-gl"><li>A late run starts only while it is still useful</li><li>Catch-up work after an outage is bounded and predictable</li></ul></div><div><div class="pp-gh pr">⚖ Principles</div><ol class="pp-pl"><li>Ask: <strong>"If this run starts X seconds late, is it still useful?"</strong> — the largest X you would accept is your deadline</li><li>Never set it below <code>10</code> seconds</li><li>Time-sensitive jobs → minutes; jobs worth catching up → about one schedule interval</li><li>With <code>Forbid</code>, a blocked run can still start after the previous one ends — but only inside this window</li><li>Set it explicitly on every production CronJob</li></ol></div></div></div></div></div>
+<div class="pp-r"><span class="pp-k h">How</span><div class="pp-b"><div class="pp-t"><table><tr><th>Value</th><th>Behavior</th><th>Use when</th></tr><tr><td>(not set)</td><td>No limit — a late run still starts however late</td><td>Late is always better than never (e.g., backups)</td></tr><tr><td><code>60</code> – <code>300</code></td><td>Only start close to the intended time</td><td>Time-sensitive: notifications, promo pushes</td></tr><tr><td>≈ schedule interval (e.g. <code>3600</code> for hourly)</td><td>Tolerate a long delay, but never more than one interval</td><td>Hourly/daily jobs that should catch up once</td></tr><tr><td><code>&lt; 10</code></td><td>May never start — the controller can miss the window</td><td>Avoid</td></tr></table></div></div></div>
+<div class="pp-f"><div><span class="pp-tag jz">Jahez scenario</span>The 12:00 lunch-offers push uses <code>startingDeadlineSeconds: 300</code> — a push at 14:00 would be noise. The nightly order-archive backup uses <code>7200</code> so a controller restart at 03:00 still produces that night's backup.</div></div>
+</div>
+
+
+<div class="W" id="w-dead"><div class="bar"><div class="tab on" data-i="0">How it works</div><div class="tab" data-i="1">Without deadline</div><div class="tab" data-i="2">With deadline</div><div class="tab" data-i="3">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">startingDeadlineSeconds: 200</div>
+<pre><code><span class="k">startingDeadlineSeconds:</span> <span class="nm">200</span>   <span class="cm"># window: 02:00:00 → 02:03:20</span></code></pre>
+<div class="vis"><strong>Scheduled time:</strong> 02:00:00<br>
+<strong>Acceptable start window:</strong> 02:00:00 to 02:03:20 (200 seconds)<br><br>
+If Job is created at 02:01:30 → <span class="bx ok">OK ✓ (within 200s)</span><br>
+If Job is created at 02:05:00 → <span class="bx ded">TOO LATE ✗ (300s > 200s limit)</span> → run skipped</div></div>
+<div class="pnl" data-i="1"><div class="tl">Without startingDeadlineSeconds (default)</div>
+<pre><code><span class="cm"># startingDeadlineSeconds: (not set)   → no deadline</span></code></pre>
+<div class="vis">If the controller was down from 02:00 to 04:00:<br><br>
+<span style="color:var(--yl)">Controller checks: "How many runs did I miss?"</span><br>
+Missed: 02:00, 03:00 = 2 missed runs.<br><br>
+<span style="color:var(--dm)">If missed &lt; 100 → create Job now for the last missed schedule</span><br>
+<span style="color:var(--rd)">If missed ≥ 100 → do NOT create Job. Log error. CronJob is stuck.</span></div>
+<div class="c r"><div class="l">The 100 Missed Schedules Rule</div><p style="margin:0">If the CronJob misses 100 or more consecutive schedules, the controller stops trying and logs: <code>"Cannot determine if job needs to be started. Too many missed start time"</code>. You must fix the issue manually. This prevents a flood of catch-up Jobs.</p></div></div>
+<div class="pnl" data-i="2"><div class="tl">With startingDeadlineSeconds: 200</div>
+<pre><code><span class="k">startingDeadlineSeconds:</span> <span class="nm">200</span></code></pre>
+<div class="vis">Controller was down from 02:00 to 04:00:<br><br>
+<span style="color:var(--dm)">Controller wakes up at 04:00. Checks missed runs within the 200s window:</span><br>
+02:00 → 04:00 - 02:00 = 7200s > 200s → <span class="bx ded">missed, too late</span><br>
+03:00 → 04:00 - 03:00 = 3600s > 200s → <span class="bx ded">missed, too late</span><br><br>
+<span style="color:var(--dm)">No Jobs created. Waits for next scheduled time (05:00).</span><br><br>
+<span style="color:var(--gn);font-size:10px">With startingDeadlineSeconds, the "100 missed" rule is less likely to trigger because the controller only counts misses within the deadline window.</span></div></div>
+<div class="pnl" data-i="3"><div class="tl">Comparison</div>
+<div style="overflow-x:auto"><table>
+<tr><th>startingDeadlineSeconds</th><th>Late start allowed</th><th>Controller down 02:00 → 04:00</th><th>Missed runs counted</th></tr>
+<tr><td><code>(not set)</code></td><td>No limit</td><td>Missed &lt; 100 → one Job for the last missed schedule; ≥ 100 → no Job, error</td><td><span class="bg rd">All since last schedule</span></td></tr><tr><td><code>200</code></td><td>Up to 200 s</td><td>No Job created; waits for 05:00</td><td><span class="bg gn">Only within 200 s window</span></td></tr>
+</table></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S13 (was S12) ═════════════ -->
+<section id="s13"><h2><span class="n">4.2</span> Missed Schedules ▶</h2>
+<div class="W" id="w-miss"><div class="bar"><div class="tab on" data-i="0">Why they happen</div><div class="tab" data-i="1">What K8s does</div><div class="tab" data-i="2">100-miss limit</div><div class="tab" data-i="3">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Why schedules can be missed</div>
+<pre><code><span class="k">suspend:</span> <span class="v">true</span>                 <span class="cm"># suspended → schedules not run</span>
+<span class="k">concurrencyPolicy:</span> <span class="v">Forbid</span>     <span class="cm"># previous Job active → run skipped</span>
+<span class="cm"># controller down / cluster overload → not a field, cluster-side cause</span></code></pre>
+<table>
+<tr><th>Cause</th><th>Example</th></tr>
+<tr><td>Controller manager was down</td><td>kube-controller-manager Pod crashed or restarting</td></tr>
+<tr><td>CronJob was suspended</td><td><code>suspend: true</code> was set, then later removed</td></tr>
+<tr><td>concurrencyPolicy: Forbid</td><td>Previous Job still running → new run skipped</td></tr>
+<tr><td>Cluster overload</td><td>Too many objects → controller fell behind</td></tr>
+</table></div>
+<div class="pnl" data-i="1"><div class="tl">What Kubernetes does about missed schedules</div>
+<pre><code><span class="cm"># startingDeadlineSeconds: (not set)</span>
+<span class="cm">#   missed < 100  → ONE Job for the latest missed schedule</span>
+<span class="cm">#   missed ≥ 100  → no Job, error logged</span></code></pre>
+<div class="vis"><strong>Missed < 100 runs:</strong><br>
+→ Controller creates ONE Job immediately for the latest missed schedule<br>
+→ Only the LAST missed run is executed (not all of them)<br><br>
+<strong>Missed ≥ 100 runs:</strong><br>
+→ Controller gives up. Logs error. No Jobs created.<br>
+→ Must manually fix: delete CronJob, recreate, or unsuspend.</div></div>
+<div class="pnl" data-i="2"><div class="tl">The 100-Miss Rule in Detail</div>
+<pre><code><span class="k">schedule:</span> <span class="s">"* * * * *"</span>         <span class="cm"># 2h outage = 120 missed → stops</span>
+<span class="k">startingDeadlineSeconds:</span> <span class="nm">300</span>    <span class="cm"># fix: only the last 300 s are counted</span></code></pre>
+<div class="vis"><span class="bx cron">CronJob: every minute (* * * * *)</span><br><br>
+Controller down for 2 hours = 120 missed schedules<br><br>
+<span class="bx ded">120 ≥ 100 → "Too many missed start times"</span><br>
+<span style="color:var(--rd)">CronJob STOPS creating Jobs entirely!</span><br><br>
+<strong>Fix:</strong> Set <code>startingDeadlineSeconds</code> (e.g., 300). This limits the miss count to the deadline window, making 100 misses much harder to reach.</div>
+<div class="sre"><div class="tag">SRE Principle</div><p style="margin:0">Always set <code>startingDeadlineSeconds</code> on production CronJobs. Without it, a controller outage can permanently stall your CronJob with the 100-miss limit. A value of 200-600 is reasonable for most schedules.</p></div></div>
+<div class="pnl" data-i="3"><div class="tl">Comparison</div>
+<div style="overflow-x:auto"><table>
+<tr><th>Configuration</th><th>2 h controller outage → missed counted</th><th>Outcome</th></tr>
+<tr><td><code>schedule: "* * * * *"</code><br><code>startingDeadlineSeconds: (not set)</code></td><td>120</td><td><span class="bg rd">≥ 100 → CronJob stops creating Jobs</span></td></tr><tr><td><code>schedule: "* * * * *"</code><br><code>startingDeadlineSeconds: 300</code></td><td>≤ 5</td><td><span class="bg gn">&lt; 100 → one Job for the latest missed</span></td></tr><tr><td><code>schedule: "0 * * * *"</code><br><code>startingDeadlineSeconds: (not set)</code></td><td>2</td><td><span class="bg gn">&lt; 100 → one Job for the latest missed</span></td></tr>
+</table></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S14 (was S16) ═════════════ -->
+<section id="s14"><h2><span class="n">5</span> <span class="pn"><code>suspend</code></span> — Suspend &amp; Resume ▶</h2>
+<div class="def"><b>Definition — suspend</b>When set to <code>true</code>, the CronJob controller stops creating new Jobs on schedule. Already-running Jobs are NOT affected — they continue to completion. When set back to <code>false</code>, scheduling resumes from the next schedule time (missed runs during suspension are lost).</div>
+<div class="pp">
+<div class="pp-r"><span class="pp-k w">What</span><div class="pp-b">A boolean switch that <strong>pauses scheduling</strong> while keeping the CronJob, its spec and its history intact.</div></div>
+<div class="pp-r"><span class="pp-k y">Why</span><div class="pp-b"><div class="pp-s">Needs</div><ul><li>Maintenance windows — a database migration the job depends on</li><li>Incidents — the job itself is causing load or bad data</li><li>Downstream outages — e.g., a payment or SMS provider is down</li><li>Peak freezes — high-traffic periods where batch work should wait</li></ul><div class="pp-s pr">Problems it prevents</div><ul><li>Deleting the CronJob to stop it loses its config and history and causes drift from Git</li><li>Editing the schedule to a fake date as a "pause" is error-prone and easy to forget</li><li>There is no replicas count to scale a CronJob to zero</li></ul><div class="pp-g"><span class="pp-gt">◆ Goals &amp; Principles</span><div class="pp-gg"><div><div class="pp-gh go">🎯 Goals</div><ul class="pp-gl"><li>Pause safely without losing config or history</li><li>Keep the paused state visible and easy to reverse</li></ul></div><div><div class="pp-gh pr">⚖ Principles</div><ol class="pp-pl"><li><strong>Suspend, don't delete</strong></li><li>Suspend stops <em>new</em> Jobs only — delete the active Job to stop the current run</li><li>Change it where the source of truth lives — in Git when the CronJob is managed by GitOps</li><li>Resume deliberately: without <code>startingDeadlineSeconds</code> the last missed run may start immediately</li><li>Alert on long suspensions (<code>kube_cronjob_spec_suspend</code>) so a pause is never forgotten</li></ol></div></div></div></div></div>
+<div class="pp-r"><span class="pp-k h">How</span><div class="pp-b"><div class="pp-t"><table><tr><th>Value</th><th>Behavior</th><th>Use when</th></tr><tr><td><code>false</code> (default)</td><td>Schedules create Jobs normally</td><td>Normal operation</td></tr><tr><td><code>true</code></td><td>No new Jobs; already-running Jobs keep going</td><td>Pause during maintenance or incidents</td></tr><tr><td><code>true</code> + delete active Job</td><td>Pause and stop the current run</td><td>Stop immediately (e.g., runaway job)</td></tr><tr><td><code>false</code> after a pause</td><td>Scheduling resumes; runs missed while paused count as missed</td><td>Resume — pair with <code>startingDeadlineSeconds</code> to avoid an immediate catch-up run</td></tr></table></div></div></div>
+<div class="pp-f"><div><span class="pp-tag jz">Jahez scenario</span>During a catalog-database migration, the menu-sync CronJob is suspended so it doesn't write to a half-migrated schema, then resumed once the migration is verified.</div></div>
+</div>
+
+
+<div class="W" id="w-susp"><div class="bar"><div class="tab on" data-i="0">Suspend</div><div class="tab" data-i="1">Resume</div><div class="tab" data-i="2">Commands</div><div class="tab" data-i="3">YAML</div><div class="tab" data-i="4">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Suspend — Stop scheduling</div>
+<pre><code><span class="k">suspend:</span> <span class="v">true</span></code></pre>
+<div class="vis"><span class="bx cron">CronJob (schedule: 0 * * * *)</span><br><br>
+<strong>01:00</strong> → <span class="bx job">Job-1 created ✓</span><br>
+<strong>01:30</strong> → <code>kubectl patch cronjob X -p '{"spec":{"suspend":true}}'</code><br>
+<strong>02:00</strong> → <span class="bx pen">SKIPPED (suspended)</span><br>
+<strong>03:00</strong> → <span class="bx pen">SKIPPED (suspended)</span><br><br>
+<span style="color:var(--dm);font-size:10px">Job-1 (if still running) continues normally. Only NEW Jobs are suppressed.</span></div></div>
+<div class="pnl" data-i="1"><div class="tl">Resume — Restart scheduling</div>
+<pre><code><span class="k">suspend:</span> <span class="v">false</span></code></pre>
+<div class="vis"><strong>04:30</strong> → <code>kubectl patch cronjob X -p '{"spec":{"suspend":false}}'</code><br>
+<strong>05:00</strong> → <span class="bx job">Job-2 created ✓</span> (scheduling resumed!)<br><br>
+<span style="color:var(--yl);font-size:10px">02:00 and 03:00 runs are lost — NOT retroactively created.</span></div></div>
+<div class="pnl" data-i="2"><pre><code><span class="k">suspend:</span> <span class="v">true</span>    <span class="cm"># ← set by the Suspend patch below</span>
+<span class="k">suspend:</span> <span class="v">false</span>   <span class="cm"># ← set by the Resume patch below</span></code></pre>
+
+<pre><code><span class="cm"># Suspend</span>
+kubectl patch cronjob my-cron -p '{"spec":{"suspend":true}}'
+
+<span class="cm"># Resume</span>
+kubectl patch cronjob my-cron -p '{"spec":{"suspend":false}}'
+
+<span class="cm"># Check status</span>
+kubectl get cronjob my-cron
+<span class="cm"># SUSPEND column shows True or False</span></code></pre></div>
+<div class="pnl" data-i="3">
+<pre><code><span class="k">spec:</span>
+  <span class="k">suspend:</span> <span class="v">true</span>    <span class="cm"># Paused — no new Jobs created</span>
+  <span class="cm"># Change to false to resume</span></code></pre></div>
+<div class="pnl" data-i="4"><div class="tl">Comparison</div>
+<div style="overflow-x:auto"><table>
+<tr><th>suspend</th><th>New Jobs</th><th>Already-running Jobs</th><th>Schedules during pause</th><th>SUSPEND column</th></tr>
+<tr><td><code>true</code></td><td><span class="bg og">Not created</span></td><td>Continue to completion</td><td>Skipped</td><td>True</td></tr><tr><td><code>false</code></td><td><span class="bg gn">Created on schedule</span></td><td>Normal</td><td>Lost — not created retroactively</td><td>False</td></tr>
+</table></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 5</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S15 (was S14) ═════════════ -->
+<section id="s15"><h2><span class="n">6</span> <span class="pn"><code>successfulJobsHistoryLimit</code> / <code>failedJobsHistoryLimit</code></span> — History Limits ▶</h2>
+<div class="def"><b>Definition</b><code>successfulJobsHistoryLimit</code> and <code>failedJobsHistoryLimit</code> control how many completed/failed Jobs are kept. Default: successful=3, failed=1. Set to 0 to keep none (auto-delete immediately).</div>
+<div class="pp">
+<div class="pp-r"><span class="pp-k w">What</span><div class="pp-b">How many <strong>finished Jobs (with their Pods)</strong> the CronJob keeps — counted separately for successful and failed runs. Older ones are deleted by the controller.</div></div>
+<div class="pp-r"><span class="pp-k y">Why</span><div class="pp-b"><div class="pp-s">Needs</div><ul><li>Logs and status of recent runs for debugging and post-mortems</li><li>Visibility in <code>kubectl get jobs</code> and dashboards</li><li>Failure signals that monitoring (kube-state-metrics) can still see</li></ul><div class="pp-s pr">Problems it prevents</div><ul><li>Too many kept → thousands of Job and Pod objects, etcd and API-server bloat, slow <code>kubectl</code></li><li>Too few kept → the evidence of a failure is gone before anyone looks</li><li>Keeping 0 failed Jobs hides failures from Job-based alerts</li></ul><div class="pp-g"><span class="pp-gt">◆ Goals &amp; Principles</span><div class="pp-gg"><div><div class="pp-gh go">🎯 Goals</div><ul class="pp-gl"><li>Enough recent evidence to debug any run</li><li>A bounded, predictable number of Job and Pod objects</li></ul></div><div><div class="pp-gh pr">⚖ Principles</div><ol class="pp-pl"><li>Always keep <strong>at least one failed Job</strong></li><li>Lower the limits as the schedule gets more frequent</li><li>History is a <strong>short-term buffer</strong> — long-term logs belong in central logging</li><li>Raise limits temporarily while debugging, then lower them again</li></ol></div></div></div></div></div>
+<div class="pp-r"><span class="pp-k h">How</span><div class="pp-b"><div class="pp-t"><table><tr><th>Value</th><th>Behavior</th><th>Use when</th></tr><tr><td><code>0</code> / <code>0</code></td><td>Keep nothing</td><td>Logs are fully shipped elsewhere and alerts don't rely on Job objects</td></tr><tr><td><code>1</code> / <code>1</code></td><td>Keep last success + last failure</td><td>Every-minute / every-5-minute jobs</td></tr><tr><td><code>3</code> / <code>1</code> (default)</td><td>Keep 3 successes, 1 failure</td><td>Hourly or daily jobs</td></tr><tr><td><code>3</code> / <code>3</code></td><td>Keep more failures</td><td>Production jobs where failures need diagnosis</td></tr><tr><td><code>10</code> / <code>5</code></td><td>Long history</td><td>Temporary, while debugging a flaky job</td></tr></table></div></div></div>
+<div class="pp-f"><div><span class="pp-tag jz">Jahez scenario</span>Job Pod logs are shipped to Elasticsearch, so the every-5-minute cache-refresh job keeps only <code>1</code> / <code>1</code>; the daily settlement job keeps <code>3</code> / <code>3</code> so finance can compare recent runs.</div></div>
+</div>
+
+
+<div class="W" id="w-hist"><div class="bar"><div class="tab on" data-i="0">Defaults</div><div class="tab" data-i="1">Without limits</div><div class="tab" data-i="2">YAML examples</div><div class="tab" data-i="3">Comparison</div></div><div class="body">
+<div class="pnl on" data-i="0"><div class="tl">Default: Keep 3 successful, 1 failed</div>
+<pre><code><span class="k">successfulJobsHistoryLimit:</span> <span class="nm">3</span>   <span class="cm"># default</span>
+<span class="k">failedJobsHistoryLimit:</span> <span class="nm">1</span>       <span class="cm"># default</span></code></pre>
+<div class="vis"><span class="bx cron">CronJob runs hourly for 10 hours → 10 Jobs created</span><br><br>
+<span class="bx ok">Job-08 ✓</span> <span class="bx ok">Job-09 ✓</span> <span class="bx ok">Job-10 ✓</span> ← 3 kept<br>
+<span style="color:var(--dm);text-decoration:line-through">Job-01 through Job-07</span> ← auto-deleted by controller<br><br>
+If Job-05 failed:<br>
+<span class="bx ded">Job-05 ✗</span> ← 1 failed kept (failedJobsHistoryLimit: 1)</div></div>
+<div class="pnl" data-i="1"><div class="tl">Without limits (not set or very high) — Problem!</div>
+<pre><code><span class="k">successfulJobsHistoryLimit:</span> <span class="nm">100000</span>   <span class="cm"># very high → effectively no cleanup</span>
+<span class="k">failedJobsHistoryLimit:</span> <span class="nm">100000</span></code></pre>
+<div class="vis"><span class="bx cron">CronJob: every minute for 1 week</span><br>
+= 7 × 24 × 60 = <strong>10,080 Jobs</strong> + <strong>10,080 Pods</strong> accumulated!<br><br>
+<span style="color:var(--rd)">etcd storage bloat. kubectl output unusable. Controller slows down.</span></div></div>
+<div class="pnl" data-i="2">
+<pre><code><span class="cm"># Keep more history (for debugging)</span>
+<span class="k">successfulJobsHistoryLimit:</span> <span class="nm">10</span>
+<span class="k">failedJobsHistoryLimit:</span> <span class="nm">5</span>
+
+<span class="cm"># Keep none (auto-delete immediately — saves resources)</span>
+<span class="k">successfulJobsHistoryLimit:</span> <span class="nm">0</span>
+<span class="k">failedJobsHistoryLimit:</span> <span class="nm">0</span>
+
+<span class="cm"># Production recommendation:</span>
+<span class="k">successfulJobsHistoryLimit:</span> <span class="nm">3</span>   <span class="cm"># enough to check last 3 runs</span>
+<span class="k">failedJobsHistoryLimit:</span> <span class="nm">3</span>      <span class="cm"># enough to diagnose failures</span></code></pre></div>
+<div class="pnl" data-i="3"><div class="tl">Comparison</div>
+<div style="overflow-x:auto"><table>
+<tr><th>Profile</th><th>successfulJobsHistoryLimit</th><th>failedJobsHistoryLimit</th><th>Max Jobs kept</th><th>Trade-off</th></tr>
+<tr><td>Keep none</td><td><code>0</code></td><td><code>0</code></td><td>0</td><td><span class="bg yl">No logs to inspect</span></td></tr><tr><td>Every-minute CronJob</td><td><code>1</code></td><td><code>1</code></td><td>2</td><td><span class="bg gn">Minimal footprint</span></td></tr><tr><td>Default</td><td><code>3</code></td><td><code>1</code></td><td>4</td><td><span class="bg gn">Fine for hourly</span></td></tr><tr><td>Production</td><td><code>3</code></td><td><code>3</code></td><td>6</td><td><span class="bg gn">Diagnose failures</span></td></tr><tr><td>Debugging</td><td><code>10</code></td><td><code>5</code></td><td>15</td><td><span class="bg bl">More history</span></td></tr><tr><td>Very high</td><td><code>100000</code></td><td><code>100000</code></td><td>Unbounded</td><td><span class="bg rd">etcd bloat</span></td></tr>
+</table></div></div>
+<div class="nav"><button class="btn" data-dir="prev" disabled>← Prev</button><span class="cnt">1 / 4</span><button class="btn" data-dir="next">Next →</button></div></div></div>
+</section>
+
+<!-- ═════════════ S16 (was S13) ═════════════ -->
+<section id="s16"><h2><span class="n">7</span> <span class="pn"><code>backoffLimit</code> / <code>activeDeadlineSeconds</code></span> — Job Failure Inside a CronJob</h2>
+<div class="def"><b>Key Rule</b>When a Job created by a CronJob fails (backoffLimit exceeded or activeDeadlineSeconds reached), the Job is marked Failed. The CronJob does NOT retry it — it waits for the next scheduled time and creates a fresh Job. The failed Job is kept (up to <code>failedJobsHistoryLimit</code>).</div>
+<div class="pp">
+<div class="pp-r"><span class="pp-k w">What</span><div class="pp-b"><code>backoffLimit</code> = how many times a failed Pod is retried within <strong>one</strong> run (default 6). <code>activeDeadlineSeconds</code> = the maximum wall-clock time for that run (no default). They live in <code>jobTemplate.spec</code>.</div></div>
+<div class="pp-r"><span class="pp-k y">Why</span><div class="pp-b"><div class="pp-s">Needs</div><ul><li>Transient failures (DB failover, network blip, rate limit) deserve a retry</li><li>A hung run needs a hard stop</li><li>A run must finish before the next schedule fires</li></ul><div class="pp-s pr">Problems it prevents</div><ul><li>No time cap → a hung run lives forever, and with <code>Forbid</code> it blocks every future run</li><li>Too many retries → exponential back-off (10 s, 20 s, 40 s … up to 6 min) delays the failure signal</li><li>Retrying non-idempotent work repeats its side effects</li><li>With <code>restartPolicy: OnFailure</code>, failed attempts restart in place and their logs are lost</li></ul><div class="pp-g"><span class="pp-gt">◆ Goals &amp; Principles</span><div class="pp-gg"><div><div class="pp-gh go">🎯 Goals</div><ul class="pp-gl"><li>Recover from transient failures automatically</li><li>Guarantee that every run ends</li><li>Surface real failures quickly instead of hiding them behind retries</li></ul></div><div><div class="pp-gh pr">⚖ Principles</div><ol class="pp-pl"><li>Retry only <strong>idempotent</strong> work — use <code>backoffLimit: 0</code> for side effects</li><li>Keep retries small (<code>2</code>–<code>3</code>); the default <code>6</code> is usually too many</li><li>Always set <code>activeDeadlineSeconds</code> <strong>below the schedule interval</strong></li><li><code>activeDeadlineSeconds</code> wins over <code>backoffLimit</code> — once it passes, the Job fails regardless of retries left</li><li>Prefer <code>restartPolicy: Never</code> when you need the logs of every attempt</li></ol></div></div></div></div></div>
+<div class="pp-r"><span class="pp-k h">How</span><div class="pp-b"><div class="pp-t"><table><tr><th>Value</th><th>Behavior</th><th>Use when</th></tr><tr><td><code>backoffLimit: 0</code></td><td>Fail on the first error</td><td>Non-idempotent work (sending messages, payments)</td></tr><tr><td><code>backoffLimit: 2</code> – <code>3</code></td><td>A few retries with back-off</td><td>Most production jobs</td></tr><tr><td>(not set) = <code>6</code></td><td>Up to 6 retries</td><td>Rarely ideal — usually too many</td></tr><tr><td><code>activeDeadlineSeconds</code> &lt; interval</td><td>Run is killed before the next schedule</td><td>Any job using <code>Forbid</code></td></tr><tr><td><code>restartPolicy: Never</code></td><td>New Pod per retry — old Pods kept for logs</td><td>When you need each attempt's logs</td></tr></table></div></div></div>
+<div class="pp-f"><div><span class="pp-tag jz">Jahez scenario</span>The hourly order-aggregation job uses <code>backoffLimit: 3</code> and <code>activeDeadlineSeconds: 3000</code> (50 min), so a stuck run is killed before the next hour's run is due.</div></div>
+</div>
+
+
+<div class="vis">
+<span class="bx cron">CronJob (schedule: 0 * * * *)</span><br><br>
+<strong>01:00</strong> → <span class="bx job">Job-1</span> → <span class="bx ded">FAILED (backoffLimit exceeded)</span><br>
+<span style="color:var(--dm)">CronJob does NOT retry Job-1. It's done.</span><br><br>
+<strong>02:00</strong> → <span class="bx job">Job-2</span> → <span class="bx ok">Complete ✓</span> (fresh start, new Job)<br>
+<strong>03:00</strong> → <span class="bx job">Job-3</span> → <span class="bx ok">Complete ✓</span>
+</div>
+
+<pre><code><span class="cm"># Configure retry behavior INSIDE the Job template:</span>
+<span class="k">jobTemplate:</span>
+  <span class="k">spec:</span>
+    <span class="k">backoffLimit:</span> <span class="nm">3</span>                <span class="cm"># Retry failed Pod 3 times within this Job run</span>
+    <span class="k">activeDeadlineSeconds:</span> <span class="nm">1800</span>  <span class="cm"># Kill Job if not done in 30 min</span></code></pre>
+</section>
+
+<!-- ═════════════ S17 (was S15) ═════════════ -->
+<section id="s17"><h2><span class="n">8</span> <span class="pn"><code>ttlSecondsAfterFinished</code></span> — TTL &amp; Cleanup</h2>
+<div class="def"><b>Two cleanup mechanisms</b>(1) <strong>History limits</strong> (CronJob-level) — keeps N latest Jobs, deletes older ones. (2) <strong>ttlSecondsAfterFinished</strong> (Job-level) — auto-deletes each Job N seconds after it finishes. Use both together for thorough cleanup.</div>
+<div class="pp">
+<div class="pp-r"><span class="pp-k w">What</span><div class="pp-b">The TTL controller deletes a Job — and its Pods — <strong>N seconds after it finishes</strong>, whether it completed or failed. It sits in <code>jobTemplate.spec</code>.</div></div>
+<div class="pp-r"><span class="pp-k y">Why</span><div class="pp-b"><div class="pp-s">Needs</div><ul><li>A time-based cleanup guarantee, independent of how many runs happened</li><li>Short-lived evidence for frequent jobs without manual cleanup</li><li>Predictable object counts in busy namespaces</li></ul><div class="pp-s pr">Problems it prevents</div><ul><li>No cleanup → completed Jobs and Pods accumulate</li><li>Too short → the Job vanishes before anyone reads its logs</li><li>Too short → a failed Job is deleted before the failure alert evaluates, so the alert never fires</li></ul><div class="pp-g"><span class="pp-gt">◆ Goals &amp; Principles</span><div class="pp-gg"><div><div class="pp-gh go">🎯 Goals</div><ul class="pp-gl"><li>Finished Jobs clean themselves up on a time basis</li><li>Failed Jobs live long enough to be noticed, alerted on and inspected</li></ul></div><div><div class="pp-gh pr">⚖ Principles</div><ol class="pp-pl"><li>History limits keep the <strong>last N</strong>; TTL keeps the <strong>last N seconds</strong> — whichever removes a Job first wins</li><li>Set TTL longer than your alert window plus the time it takes a human to look</li><li>Use a short TTL only when logs are shipped to central logging</li><li>Use it mainly for frequent jobs; daily jobs are usually fine with history limits alone</li></ol></div></div></div></div></div>
+<div class="pp-r"><span class="pp-k h">How</span><div class="pp-b"><div class="pp-t"><table><tr><th>Value</th><th>Behavior</th><th>Use when</th></tr><tr><td>(not set)</td><td>Only history limits clean up</td><td>Default; fine for most daily/hourly jobs</td></tr><tr><td><code>0</code></td><td>Deleted as soon as it finishes</td><td>Logs shipped elsewhere and no Job-based alerts</td></tr><tr><td><code>300</code></td><td>Deleted after 5 minutes</td><td>Every-minute / every-5-minute jobs</td></tr><tr><td><code>3600</code> – <code>86400</code></td><td>Kept 1 – 24 hours</td><td>Daily jobs someone checks the next morning</td></tr></table></div></div></div>
+<div class="pp-f"><div><span class="pp-tag jz">Jahez scenario</span>The nightly settlement job keeps <code>ttlSecondsAfterFinished: 86400</code>, so the on-call engineer can inspect the 03:15 run during the next working morning.</div></div>
+</div>
+
+<pre><code><span class="k">spec:</span>
+  <span class="k">successfulJobsHistoryLimit:</span> <span class="nm">3</span>       <span class="cm"># CronJob-level: keep 3 latest</span>
+  <span class="k">failedJobsHistoryLimit:</span> <span class="nm">1</span>           <span class="cm"># CronJob-level: keep 1 failed</span>
+  <span class="k">jobTemplate:</span>
+    <span class="k">spec:</span>
+      <span class="k">ttlSecondsAfterFinished:</span> <span class="nm">3600</span>  <span class="cm"># Job-level: delete 1h after finish</span></code></pre>
+<div class="sre"><div class="tag">SRE Rule</div><p style="margin:0">For CronJobs that run frequently (every minute/5 min), set <code>successfulJobsHistoryLimit: 1</code> and <code>ttlSecondsAfterFinished: 300</code>. Without this, you'll have thousands of completed Jobs and Pods in a week.</p></div>
+</section>
+<div class="grp">2.3 Operations &amp; Reference</div>
+
+<!-- ═════════════ S18 (was S17) ═════════════ -->
+<section id="s18"><h2>Manual Trigger — Run CronJob Now</h2>
+<div class="def"><b>Definition</b>Create a one-time Job FROM a CronJob's template. Doesn't wait for the schedule. The Job uses the exact same spec as the CronJob would produce. The CronJob's schedule is unaffected.</div>
+<pre><code><span class="cm"># Create a Job immediately using the CronJob's template</span>
+kubectl create job manual-backup --from=cronjob/nightly-backup
+
+<span class="cm"># Check it</span>
+kubectl get jobs
+kubectl logs job/manual-backup</code></pre>
+<div class="sre"><div class="tag">Use Cases</div><p style="margin:0">(1) Test a new CronJob without waiting. (2) Re-run a failed schedule. (3) Emergency manual execution of a nightly task during an incident. (4) Verify the CronJob template produces working Pods before the first schedule fires.</p></div>
+</section>
+
+<!-- ═════════════ S19 (was S19) ═════════════ -->
+<section id="s19"><h2>Monitoring &amp; Best Practices</h2>
+<table>
+<tr><th>Metric / Check</th><th>Alert When</th></tr>
+<tr><td><code>kube_cronjob_status_active</code></td><td>active > 0 for > expected Job duration</td></tr>
+<tr><td><code>kube_cronjob_next_schedule_time</code></td><td>next schedule is in the past (stuck)</td></tr>
+<tr><td><code>kube_job_status_failed</code> (child Jobs)</td><td>Any child Job failed</td></tr>
+<tr><td><code>lastScheduleTime</code></td><td>No schedule fired in expected window</td></tr>
+</table>
+
+<div class="c g"><div class="l">Always set concurrencyPolicy: Forbid</div><p style="margin:0">Unless you explicitly need concurrent runs. Forbid prevents resource overload and data conflicts from overlapping Jobs.</p></div>
+<div class="c b"><div class="l">Always set startingDeadlineSeconds</div><p style="margin:0">Prevents the 100-missed-schedules stall. Set to 2× your schedule interval (e.g., schedule every hour → deadline 7200s).</p></div>
+<div class="c p"><div class="l">Always set history limits</div><p style="margin:0">Default 3/1 is fine for hourly. For every-minute CronJobs, use 1/1 or 0/1 to prevent thousands of accumulated Jobs.</p></div>
+<div class="c o"><div class="l">Always set activeDeadlineSeconds on the Job template</div><p style="margin:0">A stuck Job without a deadline runs forever, blocking <code>Forbid</code> policy from starting the next run. The deadline is your safety net.</p></div>
+<div class="c r"><div class="l">Test with manual trigger before relying on schedule</div><p style="margin:0"><code>kubectl create job test --from=cronjob/NAME</code> verifies the template works before the first real schedule fires.</p></div>
+<div class="sre"><div class="tag">SRE Wisdom</div><p style="margin:0">CronJobs are the most common source of "silent failures" in production. A CronJob can fail every night for a week and nobody notices unless you have alerts on <code>kube_job_status_failed</code>. Monitor them like you monitor your main services.</p></div>
+</section>
+
+<!-- ═════════════ S20 (was S20) ═════════════ -->
+<section id="s20"><h2>Command Reference</h2>
+<pre><code><span class="cm"># ══ CREATE ══</span>
+kubectl create cronjob my-cron --image=busybox --schedule="*/5 * * * *" -- echo hi
+kubectl create cronjob my-cron --image=busybox --schedule="0 2 * * *" --dry-run=client -o yaml > cron.yaml
+kubectl apply -f cron.yaml
+
+<span class="cm"># ══ INSPECT ══</span>
+kubectl get cronjobs                          <span class="cm"># List all CronJobs</span>
+kubectl get cronjob my-cron -o wide           <span class="cm"># Details</span>
+kubectl describe cronjob my-cron              <span class="cm"># Full + events</span>
+kubectl get jobs -l app=my-cron               <span class="cm"># Jobs created by CronJob</span>
+kubectl get cronjob my-cron -o jsonpath='{.status.lastScheduleTime}'
+
+<span class="cm"># ══ MANUAL TRIGGER ══</span>
+kubectl create job manual-run --from=cronjob/my-cron
+
+<span class="cm"># ══ SUSPEND / RESUME ══</span>
+kubectl patch cronjob my-cron -p '{"spec":{"suspend":true}}'   <span class="cm"># Pause</span>
+kubectl patch cronjob my-cron -p '{"spec":{"suspend":false}}'  <span class="cm"># Resume</span>
+
+<span class="cm"># ══ DELETE ══</span>
+kubectl delete cronjob my-cron                <span class="cm"># Deletes CronJob + all child Jobs + Pods</span>
+
+<span class="cm"># ══ LOGS FROM LATEST RUN ══</span>
+kubectl logs job/$(kubectl get jobs -l app=my-cron --sort-by=.metadata.creationTimestamp -o name | tail -1 | cut -d/ -f2)</code></pre>
+</section>
+
+</main>
+<script>
+document.querySelectorAll('.W').forEach(w=>{
+const tabs=w.querySelectorAll('.tab'),panels=w.querySelectorAll('.pnl'),prev=w.querySelector('[data-dir="prev"]'),next=w.querySelector('[data-dir="next"]'),cnt=w.querySelector('.cnt');
+let c=0;const t=tabs.length;
+function go(i){if(i<0||i>=t)return;c=i;tabs.forEach((x,j)=>x.classList.toggle('on',j===i));panels.forEach((x,j)=>x.classList.toggle('on',j===i));if(prev)prev.disabled=i===0;if(next)next.disabled=i===t-1;if(cnt)cnt.textContent=`${i+1} / ${t}`}
+tabs.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));
+if(prev)prev.addEventListener('click',()=>go(c-1));if(next)next.addEventListener('click',()=>go(c+1));
+w.setAttribute('tabindex','0');w.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(c+1);if(e.key==='ArrowLeft')go(c-1)})
+});
+</script>
+<script>
+(function(){
+var b=document.body,btn=document.getElementById('mb'),ov=document.getElementById('ov');
+function set(o){b.classList.toggle('open',o);btn.textContent=o?'✕':'☰';btn.setAttribute('aria-expanded',o)}
+btn.addEventListener('click',function(){set(!b.classList.contains('open'))});
+ov.addEventListener('click',function(){set(false)});
+document.querySelectorAll('#sb a').forEach(function(a){a.addEventListener('click',function(){if(window.innerWidth<=960)set(false)})});
+var links={};document.querySelectorAll('#sb ul a').forEach(function(a){links[a.getAttribute('href').slice(1)]=a});
+if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){Object.values(links).forEach(function(l){l.classList.remove('on')});var l=links[e.target.id];if(l){l.classList.add('on');l.scrollIntoView({block:'nearest'})}}})},{rootMargin:'-20% 0px -70% 0px'});
+document.querySelectorAll('main section, main .prop').forEach(function(s){io.observe(s)})}
+})();
+</script>
+</body>
+</html>

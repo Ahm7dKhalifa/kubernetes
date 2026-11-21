@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K8s Workloads Mental Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c2129;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--dim:#6e7681;
+  --blue:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#d29922;--red:#f85149;--pink:#f778ba;--cyan:#39c5cf;
+  --c1:#58a6ff;--c2:#3fb950;--c3:#d29922;--c4:#bc8cff;--c5:#f85149;--c6:#39c5cf;
+  --sidebar:280px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,sans-serif;font-size:15.5px;line-height:1.65}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+a{color:var(--blue);text-decoration:none}
+/* sidebar */
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar);background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:22px 16px 40px;z-index:50;transition:transform .25s ease}
+.brand{font-weight:800;font-size:17px;letter-spacing:-.01em;margin-bottom:4px}
+.brand span{color:var(--blue)}
+.sub{color:var(--muted);font-size:12.5px;margin-bottom:20px}
+.nav a{display:flex;align-items:center;gap:10px;color:var(--muted);padding:7px 10px;border-radius:7px;font-size:14px;font-weight:500}
+.nav a:hover,.nav a.active{background:var(--panel2);color:var(--text)}
+.nav .n{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:11.5px;font-weight:700;color:#0d1117;flex:none}
+.nav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:18px 10px 6px;font-weight:600}
+.topbar{display:none;position:sticky;top:0;z-index:40;background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 16px;align-items:center;gap:12px}
+.burger{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:8px;width:38px;height:38px;font-size:18px;cursor:pointer}
+.scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45}
+main{margin-left:var(--sidebar);max-width:1060px;padding:36px 44px 120px}
+@media (max-width:900px){
+  .sidebar{transform:translateX(-100%)} body.open .sidebar{transform:none} body.open .scrim{display:block}
+  .topbar{display:flex} main{margin-left:0;padding:20px 16px 100px}
+}
+/* typography */
+h1{font-size:34px;line-height:1.15;letter-spacing:-.02em;margin:6px 0 10px;font-weight:800}
+h2{font-size:25px;letter-spacing:-.01em;margin:0 0 6px;font-weight:800}
+h3{font-size:18px;margin:28px 0 10px;font-weight:700}
+h4{font-size:15px;margin:18px 0 8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+p{margin:10px 0}
+.lead{color:var(--muted);font-size:16.5px}
+section{padding-top:28px;margin-top:28px;border-top:1px solid var(--border);scroll-margin-top:70px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.q{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--accent,var(--blue));border-radius:10px;padding:12px 16px;margin:14px 0;font-weight:600}
+.q small{display:block;color:var(--muted);font-weight:500;font-size:13px}
+:not(pre)>code{background:var(--panel2);border:1px solid var(--border);padding:1px 6px;border-radius:5px;font-size:.86em;color:var(--pink)}
+/* cards / grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.card h5{margin:0 0 4px;font-size:15px}
+.card p{margin:4px 0;color:var(--muted);font-size:14px}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);margin-right:4px}
+/* tables */
+.tw{overflow-x:auto;border:1px solid var(--border);border-radius:10px;margin:14px 0}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--panel);color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+tr:last-child td{border-bottom:none}
+td:first-child{font-weight:600;white-space:nowrap}
+/* callouts */
+.call{border-radius:10px;padding:12px 16px;margin:16px 0;border:1px solid;font-size:14.5px}
+.call b{display:block;margin-bottom:2px}
+.call.review{background:rgba(210,153,34,.08);border-color:rgba(210,153,34,.4)}
+.call.review b{color:var(--orange)}
+.call.tip{background:rgba(63,185,80,.08);border-color:rgba(63,185,80,.4)}
+.call.tip b{color:var(--green)}
+.call.warn{background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.4)}
+.call.warn b{color:var(--red)}
+.call.jz{background:rgba(88,166,255,.08);border-color:rgba(88,166,255,.4)}
+.call.jz b{color:var(--blue)}
+/* details / code */
+details{background:var(--panel);border:1px solid var(--border);border-radius:10px;margin:12px 0;overflow:hidden}
+summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none;display:flex;align-items:center;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸";color:var(--muted);transition:transform .2s}
+details[open] summary::before{transform:rotate(90deg)}
+summary .tag{margin-left:auto}
+details .body{padding:0 16px 14px}
+.code{position:relative;margin:10px 0}
+pre{background:#010409;border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:12.8px;line-height:1.6;margin:0;color:#c9d1d9}
+.copy{position:absolute;top:8px;right:8px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);font:600 11.5px Inter,sans-serif;padding:4px 10px;border-radius:6px;cursor:pointer}
+.copy:hover{color:var(--text)}
+.k{color:#7ee787}.s{color:#a5d6ff}.c{color:#8b949e;font-style:italic}.v{color:#79c0ff}
+/* svg */
+.fig{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin:16px 0}
+.fig svg{width:100%;height:auto;display:block}
+.fig .cap{color:var(--muted);font-size:13px;margin:8px 4px 0}
+/* stepper */
+.stepper{background:var(--panel);border:1px solid var(--border);border-radius:14px;margin:18px 0;overflow:hidden;touch-action:pan-y}
+.st-head{display:flex;gap:6px;padding:12px;border-bottom:1px solid var(--border);overflow-x:auto}
+.st-dot{flex:none;border:1px solid var(--border);background:var(--panel2);color:var(--muted);border-radius:8px;padding:6px 10px;font:600 12.5px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.st-dot.on{color:#0d1117;border-color:transparent}
+.st-body{padding:18px 20px;min-height:230px}
+.st-body h4{margin:0 0 6px;color:var(--text);text-transform:none;letter-spacing:0;font-size:18px}
+.st-foot{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-top:1px solid var(--border)}
+.st-foot button{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font:600 13px Inter,sans-serif;cursor:pointer}
+.st-foot button:disabled{opacity:.35;cursor:default}
+.st-foot .hint{color:var(--dim);font-size:12px}
+.hero-qs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:18px 0}
+.hq{border-radius:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-top:3px solid}
+.hq .t{font-weight:700;font-size:13.5px}.hq .d{color:var(--muted);font-size:12.5px}
+ul.tight{margin:8px 0;padding-left:20px}ul.tight li{margin:4px 0}
+.foot{color:var(--dim);font-size:13px;margin-top:60px;border-top:1px solid var(--border);padding-top:16px}
+
+/* ---------- numbered headings ---------- */
+.h2n{display:flex;align-items:center;gap:12px}
+.h2num{flex:none;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:18px;font-weight:800;color:#0d1117;background:var(--accent,var(--blue));box-shadow:0 0 0 4px color-mix(in srgb,var(--accent,var(--blue)) 18%,transparent)}
+h3.sub,h4.sub{display:flex;align-items:center;gap:10px;scroll-margin-top:78px;margin:34px 0 12px}
+h3.sub{font-size:19px;padding-bottom:8px;border-bottom:1px dashed var(--border)}
+h3.sub.group{font-size:20px;border-bottom:1px solid color-mix(in srgb,var(--accent,var(--blue)) 45%,transparent);color:var(--accent,var(--text))}
+h4.sub2{font-size:16px;color:var(--text);text-transform:none;letter-spacing:0;margin:26px 0 10px 4px}
+.num{flex:none;font:700 12.5px "JetBrains Mono",monospace;padding:3px 8px;border-radius:7px;color:var(--accent,var(--blue));background:color-mix(in srgb,var(--accent,var(--blue)) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent,var(--blue)) 40%,transparent)}
+h4.sub2 .num{font-size:11.5px;padding:2px 7px;opacity:.9}
+.ttl{flex:1;min-width:0}
+.up{margin-left:auto;flex:none;font:600 11.5px Inter,sans-serif;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:3px 10px;background:var(--panel)}
+.up:hover{color:var(--text);border-color:var(--muted)}
+details.sub-det{scroll-margin-top:78px}
+details.sub-det summary .num{font-size:11.5px;padding:2px 7px}
+.flash{animation:flash 1.6s ease}
+@keyframes flash{0%,30%{box-shadow:0 0 0 2px var(--accent,var(--blue)),0 0 24px color-mix(in srgb,var(--accent,var(--blue)) 35%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
+/* ---------- section index card ---------- */
+.ix{position:relative;margin:18px 0 26px;border-radius:14px;padding:1px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent,var(--blue)) 70%,transparent),var(--border) 45%,var(--border));scroll-margin-top:78px}
+.ix>*{position:relative}
+.ix::before{content:"";position:absolute;inset:1px;border-radius:13px;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--accent,var(--blue)) 10%,var(--panel)) 0%,var(--panel) 55%)}
+.ix-h{display:flex;align-items:center;gap:10px;padding:12px 16px 10px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+.ix-badge{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:#0d1117;background:var(--accent,var(--blue));font-size:12px;letter-spacing:0}
+.ix-c{margin-left:auto;font:600 11.5px "JetBrains Mono",monospace;letter-spacing:0;text-transform:none;color:var(--dim)}
+.ix-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:2px 10px;padding:8px}
+.ix-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--text);font-size:14px;font-weight:500;line-height:1.35;transition:background .15s,transform .15s}
+.ix-item:hover{background:var(--panel2);transform:translateX(3px)}
+.ix-item:hover .ix-num{background:var(--accent,var(--blue));color:#0d1117}
+.ix-num{font:700 12px "JetBrains Mono",monospace;color:var(--accent,var(--blue));background:color-mix(in srgb,var(--accent,var(--blue)) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent,var(--blue)) 35%,transparent);border-radius:6px;padding:2px 7px;min-width:42px;text-align:center;transition:background .15s,color .15s}
+.ix-k{font:600 10.5px Inter,sans-serif;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.ix-item.lvl2{padding-left:26px;font-size:13.5px;color:#c9d1d9}
+.ix-item.lvl2 .ix-num{font-size:11px;min-width:48px}
+.ix-item.ix-group{grid-column:1/-1;font-weight:700;margin-top:4px;border-bottom:1px solid var(--border);border-radius:9px 9px 0 0}
+.ix-item.ix-group .ix-k{display:none}
+.ix-list:has(.ix-group) .ix-item.lvl1:not(.ix-group){grid-column:1/-1;margin-top:6px;border-top:1px solid var(--border);border-radius:0 0 9px 9px}
+@media (max-width:600px){.ix-list{grid-template-columns:1fr}.ix-k{display:none}.up{display:none}summary .tag{display:none}.h2num{width:32px;height:32px;font-size:16px}}
+</style>
+</head>
+<body>
+<div class="scrim" onclick="document.body.classList.remove('open')"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand">K8s <span>Workloads</span></div>
+  <div class="sub">Mental model · Jahez production edition</div>
+  <nav class="nav">
+    <div class="grp">Overview</div>
+    <a href="#model"><span class="n" style="background:#8b949e">◎</span>The Mental Model</a>
+    <a href="#walk"><span class="n" style="background:#8b949e">▶</span>order-api Walkthrough</a>
+    <div class="grp">The six layers</div>
+    <a href="#workloads"><span class="n" style="background:var(--c1)">1</span>Workload Types</a>
+    <a href="#release"><span class="n" style="background:var(--c2)">2</span>Deployment &amp; Release Strategies</a>
+    <a href="#resources"><span class="n" style="background:var(--c3)">3</span>Resource Management</a>
+    <a href="#placement"><span class="n" style="background:var(--c4)">4</span>Placement</a>
+    <a href="#priority"><span class="n" style="background:var(--c5)">5</span>Prioritization</a>
+    <a href="#disruptions"><span class="n" style="background:var(--c6)">6</span>Disruptions</a>
+    <div class="grp">Synthesis</div>
+    <a href="#capstone"><span class="n" style="background:var(--pink)">7</span>Full Manifest</a>
+    <a href="#review"><span class="n" style="background:var(--orange)">8</span>Model Review</a>
+    <a href="#cheat"><span class="n" style="background:var(--green)">9</span>Cheat Sheet</a>
+  </nav>
+</aside>
+
+<div class="topbar">
+  <button class="burger" aria-label="Menu" onclick="document.body.classList.toggle('open')">☰</button>
+  <strong>K8s Workloads Mental Model</strong>
+</div>
+
+<main>
+<!-- ============ HERO / MODEL ============ -->
+<div id="model" style="scroll-margin-top:70px">
+  <div class="eyebrow" style="color:var(--blue)">Kubernetes reference · Workloads</div>
+  <h1>Six questions that organize every workload decision</h1>
+  <p class="lead">Every field you set on a workload answers one of six questions. Read them in order and you follow the operating lifecycle: <b>What → How to deploy → How much → Where → How important → What happens when it's interrupted</b>. This guide expands each layer with the primitives, the decision rules, and apply-ready YAML from the <code>jahez-prod</code> cluster.</p>
+
+  <div class="hero-qs">
+    <div class="hq" style="border-top-color:var(--c1)"><div class="t">1 · Workload Types</div><div class="d">What am I running?</div></div>
+    <div class="hq" style="border-top-color:var(--c2)"><div class="t">2 · Deployment &amp; Release Strategies</div><div class="d">How do I ship new versions safely?</div></div>
+    <div class="hq" style="border-top-color:var(--c3)"><div class="t">3 · Resources</div><div class="d">How much, and how does it scale?</div></div>
+    <div class="hq" style="border-top-color:var(--c4)"><div class="t">4 · Placement</div><div class="d">Where should it run?</div></div>
+    <div class="hq" style="border-top-color:var(--c5)"><div class="t">5 · Prioritization</div><div class="d">Which workloads matter most?</div></div>
+    <div class="hq" style="border-top-color:var(--c6)"><div class="t">6 · Disruptions</div><div class="d">What happens on interruption?</div></div>
+  </div>
+
+  <div class="fig">
+    <svg viewBox="0 0 800 470" xmlns="http://www.w3.org/2000/svg" font-family="Inter, sans-serif">
+      <defs>
+        <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6e7681"/></marker>
+      </defs>
+      <g font-size="13">
+        <!-- row 1 -->
+        <rect x="20" y="40" width="230" height="140" rx="12" fill="#161b22" stroke="#58a6ff" stroke-width="2"/>
+        <text x="40" y="72" fill="#58a6ff" font-weight="800" font-size="22">1</text>
+        <text x="66" y="72" fill="#e6edf3" font-weight="700" font-size="16">Workload Types</text>
+        <text x="40" y="98" fill="#8b949e">What am I running?</text>
+        <text x="40" y="130" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">Deployment · StatefulSet</text>
+        <text x="40" y="150" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">DaemonSet · Job · CronJob</text>
+
+        <rect x="285" y="40" width="230" height="140" rx="12" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+        <text x="305" y="72" fill="#3fb950" font-weight="800" font-size="22">2</text>
+        <text x="331" y="66" fill="#e6edf3" font-weight="700" font-size="15">Deployment &amp;</text>
+        <text x="331" y="85" fill="#e6edf3" font-weight="700" font-size="15">Release Strategies</text>
+        <text x="305" y="108" fill="#8b949e">How do I ship safely?</text>
+        <text x="305" y="130" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">Recreate · RollingUpdate</text>
+        <text x="305" y="150" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">Blue/Green · Canary · A/B</text>
+
+        <rect x="550" y="40" width="230" height="140" rx="12" fill="#161b22" stroke="#d29922" stroke-width="2"/>
+        <text x="570" y="72" fill="#d29922" font-weight="800" font-size="22">3</text>
+        <text x="596" y="72" fill="#e6edf3" font-weight="700" font-size="16">Resources</text>
+        <text x="570" y="98" fill="#8b949e">How much &amp; how it scales</text>
+        <text x="570" y="130" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">requests · limits · QoS</text>
+        <text x="570" y="150" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">HPA · VPA · CA · KEDA</text>
+
+        <!-- row 2 -->
+        <rect x="550" y="270" width="230" height="140" rx="12" fill="#161b22" stroke="#bc8cff" stroke-width="2"/>
+        <text x="570" y="302" fill="#bc8cff" font-weight="800" font-size="22">4</text>
+        <text x="596" y="302" fill="#e6edf3" font-weight="700" font-size="16">Placement</text>
+        <text x="570" y="328" fill="#8b949e">Where should it run?</text>
+        <text x="570" y="360" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">affinity · taints</text>
+        <text x="570" y="380" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">topologySpread</text>
+
+        <rect x="285" y="270" width="230" height="140" rx="12" fill="#161b22" stroke="#f85149" stroke-width="2"/>
+        <text x="305" y="302" fill="#f85149" font-weight="800" font-size="22">5</text>
+        <text x="331" y="302" fill="#e6edf3" font-weight="700" font-size="16">Prioritization</text>
+        <text x="305" y="328" fill="#8b949e">Which matters most?</text>
+        <text x="305" y="360" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">PriorityClass</text>
+        <text x="305" y="380" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">Preemption</text>
+
+        <rect x="20" y="270" width="230" height="140" rx="12" fill="#161b22" stroke="#39c5cf" stroke-width="2"/>
+        <text x="40" y="302" fill="#39c5cf" font-weight="800" font-size="22">6</text>
+        <text x="66" y="302" fill="#e6edf3" font-weight="700" font-size="16">Disruptions</text>
+        <text x="40" y="328" fill="#8b949e">What if it's interrupted?</text>
+        <text x="40" y="360" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">PDB · drain · eviction</text>
+        <text x="40" y="380" fill="#c9d1d9" font-family="JetBrains Mono" font-size="11.5">graceful termination</text>
+      </g>
+      <g stroke="#6e7681" stroke-width="2" fill="none" marker-end="url(#ar)">
+        <line x1="252" y1="110" x2="281" y2="110"/>
+        <line x1="517" y1="110" x2="546" y2="110"/>
+        <line x1="665" y1="182" x2="665" y2="266"/>
+        <line x1="548" y1="340" x2="519" y2="340"/>
+        <line x1="283" y1="340" x2="254" y2="340"/>
+      </g>
+      <text x="400" y="22" fill="#8b949e" font-size="12" text-anchor="middle" font-weight="600" letter-spacing="1.5">DESIGN-TIME  →  RUN-TIME  →  FAILURE-TIME</text>
+      <text x="400" y="450" fill="#6e7681" font-size="12" text-anchor="middle">Layers 1–2 are authored once per service · 3–5 are enforced continuously · 6 is exercised during maintenance &amp; failure</text>
+    </svg>
+    <div class="cap">The lifecycle snake. Each layer narrows the space the next one operates in: the workload type decides which release strategies are even possible; resource requests are the input the scheduler uses for placement; priority decides who loses when placement fails; disruption rules decide how gracefully anything leaves.</div>
+  </div>
+
+  <div class="call tip"><b>How to use this model</b>When reviewing any manifest (yours or a teammate's), walk the six questions top to bottom. A missing answer is usually a production incident waiting for a trigger: no requests → noisy-neighbor; no spread → zone outage takes the service; no PDB → a node upgrade drains every replica at once; no preStop → 502s on every deploy.</div>
+</div>
+
+<!-- ============ WALKTHROUGH ============ -->
+<section id="walk">
+  <div class="eyebrow" style="color:var(--muted)">Interactive walkthrough</div>
+  <h2>One service through all six layers</h2>
+  <p class="lead">Follow <code>order-api</code> — the service on the critical path of every Jahez checkout — as each question gets answered. Use the arrows, keyboard ← →, or swipe.</p>
+
+  <div class="stepper" id="stepper">
+    <div class="st-head" id="stHead"></div>
+    <div class="st-body" id="stBody"></div>
+    <div class="st-foot">
+      <button id="stPrev">← Prev</button>
+      <span class="hint" id="stCount"></span>
+      <button id="stNext">Next →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 1. WORKLOAD TYPES ============ -->
+<section id="workloads" style="--accent:var(--c1)">
+  <div class="eyebrow" style="color:var(--c1)">Layer 1</div>
+  <h2 class="h2n"><span class="h2num">1</span><span>Workload Types</span></h2>
+  <div class="q">What am I running?<small>Defines the type of application or task Kubernetes should manage — and therefore which controller owns your Pods.</small></div>
+  <nav class="ix" aria-label="Section 1 index">
+    <div class="ix-h"><span class="ix-badge">1</span><span>In this section</span><span class="ix-c">7 topics</span></div>
+    <div class="ix-list" id="ix-workloads">
+      <a class="ix-item lvl1" href="#s1-1"><span class="ix-num">1.1</span><span class="ix-t">Primitives at a glance</span><span class="ix-k" title="Table">▦ Table</span></a>
+      <a class="ix-item lvl1" href="#s1-2"><span class="ix-num">1.2</span><span class="ix-t">Decision rule</span><span class="ix-k" title="Guide">➜ Guide</span></a>
+      <a class="ix-item lvl1" href="#s1-3"><span class="ix-num">1.3</span><span class="ix-t">Deployment — stateless API (menu-api)</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s1-4"><span class="ix-num">1.4</span><span class="ix-t">StatefulSet — Redis with per-Pod storage</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s1-5"><span class="ix-num">1.5</span><span class="ix-t">DaemonSet — log shipper on every node</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s1-6"><span class="ix-num">1.6</span><span class="ix-t">Job + CronJob — migration &amp; nightly settlement</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s1-7"><span class="ix-num">1.7</span><span class="ix-t">Model review</span><span class="ix-k" title="Review">! Review</span></a>
+    </div>
+  </nav>
+
+  <h3 class="sub" id="s1-1"><span class="num">1.1</span><span class="ttl">Primitives at a glance</span></h3>
+  <div class="tw"><table>
+    <tr><th>Primitive</th><th>What it guarantees</th><th>Identity</th><th>Jahez example</th></tr>
+    <tr><td><code>Pod</code></td><td>One or more containers sharing network + volumes. No self-healing on its own.</td><td>Ephemeral</td><td>Debug pod: <code>kubectl run netshoot</code></td></tr>
+    <tr><td><code>ReplicaSet</code></td><td>N matching Pods exist at all times.</td><td>Interchangeable</td><td>Never authored directly — created by Deployments</td></tr>
+    <tr><td><code>Deployment</code></td><td>Desired replica count + versioned rollouts/rollbacks via ReplicaSets.</td><td>Interchangeable</td><td><code>order-api</code>, <code>menu-api</code>, <code>cms-service</code>, <code>gateway</code></td></tr>
+    <tr><td><code>StatefulSet</code></td><td>Ordered start/stop, stable name (<code>-0</code>, <code>-1</code>), per-Pod PVC.</td><td>Sticky</td><td><code>redis</code>, <code>elasticsearch</code>, self-managed <code>postgres</code></td></tr>
+    <tr><td><code>DaemonSet</code></td><td>One Pod per (selected) node, auto-added to new nodes.</td><td>Per node</td><td><code>datadog-agent</code>, <code>fluent-bit</code>, node-local DNS</td></tr>
+    <tr><td><code>Job</code></td><td>Run to successful completion, with retries (<code>backoffLimit</code>).</td><td>Per run</td><td>EF Core DB migration before an <code>order-api</code> release</td></tr>
+    <tr><td><code>CronJob</code></td><td>Creates Jobs on a cron schedule.</td><td>Per run</td><td>Nightly restaurant settlement report, branch-availability precompute</td></tr>
+  </table></div>
+
+  <h3 class="sub" id="s1-2"><span class="num">1.2</span><span class="ttl">Decision rule</span></h3>
+  <ul class="tight">
+    <li><b>Does it finish?</b> Yes → <code>Job</code> (once) or <code>CronJob</code> (repeating). No → keep going.</li>
+    <li><b>Must it run on every node?</b> Yes → <code>DaemonSet</code>.</li>
+    <li><b>Does each replica own data or need a stable network identity?</b> Yes → <code>StatefulSet</code>. No → <code>Deployment</code>.</li>
+  </ul>
+
+  <details class="sub-det" id="s1-3"><summary><span class="num">1.3</span>Deployment — stateless API (<code>menu-api</code>)<span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: menu-api
+  namespace: jahez-prod
+  labels:
+    app.kubernetes.io/name: menu-api
+    app.kubernetes.io/part-of: jahez-platform
+spec:
+  replicas: 4
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: menu-api
+  template:
+    metadata:
+      labels:
+        app: menu-api
+        app.kubernetes.io/name: menu-api
+    spec:
+      containers:
+        - name: menu-api
+          image: ghcr.io/jahez/menu-api:3.8.2
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://+:8080"
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+          resources:
+            requests:
+              cpu: "300m"
+              memory: "384Mi"
+            limits:
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3</pre></div></div></details>
+
+  <details class="sub-det" id="s1-4"><summary><span class="num">1.4</span>StatefulSet — Redis with per-Pod storage<span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  namespace: jahez-prod
+spec:
+  clusterIP: None
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: jahez-prod
+spec:
+  serviceName: redis-headless
+  replicas: 3
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          args: ["--appendonly", "yes", "--maxmemory", "1536mb", "--maxmemory-policy", "allkeys-lru"]
+          ports:
+            - name: redis
+              containerPort: 6379
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              cpu: "500m"
+              memory: "2Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi</pre></div>
+  <p style="color:var(--muted);font-size:13.5px">Pods become <code>redis-0</code>, <code>redis-1</code>, <code>redis-2</code>, each reachable at <code>redis-N.redis-headless.jahez-prod.svc.cluster.local</code> and each bound to its own <code>data-redis-N</code> PVC that survives rescheduling.</p></div></details>
+
+  <details class="sub-det" id="s1-5"><summary><span class="num">1.5</span>DaemonSet — log shipper on every node<span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluent-bit
+  namespace: observability
+spec:
+  selector:
+    matchLabels:
+      app: fluent-bit
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: fluent-bit
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists          # run even on tainted/dedicated nodes
+      containers:
+        - name: fluent-bit
+          image: fluent/fluent-bit:3.1
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log</pre></div></div></details>
+
+  <details class="sub-det" id="s1-6"><summary><span class="num">1.6</span>Job + CronJob — migration and nightly settlement<span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: batch/v1
+kind: Job
+metadata:
+  name: order-db-migrate-2-14-0
+  namespace: jahez-prod
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/jahez/order-api-migrations:2.14.0
+          args: ["--connection-env", "ORDERS_DB"]
+          envFrom:
+            - secretRef:
+                name: order-db-credentials
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restaurant-settlement-nightly
+  namespace: jahez-prod
+spec:
+  schedule: "30 3 * * *"
+  timeZone: "Asia/Riyadh"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          restartPolicy: OnFailure
+          priorityClassName: jahez-batch
+          containers:
+            - name: settlement
+              image: ghcr.io/jahez/settlement-worker:1.6.0
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "1Gi"
+                limits:
+                  memory: "2Gi"</pre></div></div></details>
+
+  <h3 class="sub" id="s1-7"><span class="num">1.7</span><span class="ttl">Model review</span></h3>
+  <div class="call review"><b>Model review</b>ReplicaSet belongs in the list for understanding, not for authoring — it's the mechanism behind Deployment rollouts (old RS scales down, new RS scales up). If you ever see a hand-written ReplicaSet in a repo, it's a smell.</div>
+</section>
+
+<!-- ============ 2. RELEASE ============ -->
+<section id="release" style="--accent:var(--c2)">
+  <div class="eyebrow" style="color:var(--c2)">Layer 2</div>
+  <h2 class="h2n"><span class="h2num">2</span><span>Deployment &amp; Release Strategies</span></h2>
+  <div class="q">How do I release new versions safely?<small>Defines how application changes reach users — and how fast you can take them back.</small></div>
+  <nav class="ix" aria-label="Section 2 index">
+    <div class="ix-h"><span class="ix-badge">2</span><span>In this section</span><span class="ix-c">6 topics</span></div>
+    <div class="ix-list" id="ix-release">
+      <a class="ix-item lvl1" href="#s2-1"><span class="ix-num">2.1</span><span class="ix-t">Strategies compared</span><span class="ix-k" title="Table">▦ Table</span></a>
+      <a class="ix-item lvl1" href="#s2-2"><span class="ix-num">2.2</span><span class="ix-t">Rolling update tuning</span><span class="ix-k" title="Note">i Note</span></a>
+      <a class="ix-item lvl1" href="#s2-3"><span class="ix-num">2.3</span><span class="ix-t">Rolling update + Recreate blocks</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s2-4"><span class="ix-num">2.4</span><span class="ix-t">Blue/Green — selector flip</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s2-5"><span class="ix-num">2.5</span><span class="ix-t">Canary + A/B with NGINX Ingress</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s2-6"><span class="ix-num">2.6</span><span class="ix-t">Model review</span><span class="ix-k" title="Review">! Review</span></a>
+    </div>
+  </nav>
+
+  <h3 class="sub" id="s2-1"><span class="num">2.1</span><span class="ttl">Strategies compared</span></h3>
+  <div class="tw"><table>
+    <tr><th>Strategy</th><th>How</th><th>Native?</th><th>Cost / risk</th><th>Use at Jahez for</th></tr>
+    <tr><td>Recreate</td><td>Kill all old, then start new</td><td>Yes — <code>strategy.type</code></td><td>Downtime; zero version overlap</td><td>Single-consumer workers that can't run two schema versions</td></tr>
+    <tr><td>Rolling Update</td><td>Replace Pods in batches (<code>maxSurge</code> / <code>maxUnavailable</code>)</td><td>Yes — default</td><td>Old + new serve together briefly</td><td>Default for every stateless API</td></tr>
+    <tr><td>Blue/Green</td><td>Two full stacks, flip Service selector</td><td>No — two Deployments + Service</td><td>2× capacity during switch; instant rollback</td><td><code>gateway</code> major upgrades</td></tr>
+    <tr><td>Canary</td><td>Small % of traffic to new version</td><td>No — Ingress / mesh / Argo Rollouts</td><td>Needs good metrics to judge</td><td><code>order-api</code> risky changes, checkout flow</td></tr>
+    <tr><td>A/B Testing</td><td>Route by user attribute (header, cookie)</td><td>No — Ingress / mesh</td><td>Product experiment, not a safety net</td><td>New home-page layout for a user segment</td></tr>
+  </table></div>
+
+  <h3 class="sub" id="s2-2"><span class="num">2.2</span><span class="ttl">Rolling update tuning</span></h3>
+  <div class="call jz"><b>Rolling update tuning for an API on the order path</b><code>maxUnavailable: 0</code> + <code>maxSurge: 25%</code> means capacity never drops during a rollout. Pair it with a real <code>readinessProbe</code> and <code>minReadySeconds</code> — otherwise "ready" just means "process started", and a broken build rolls through the fleet in seconds.</div>
+
+  <details class="sub-det" id="s2-3"><summary><span class="num">2.3</span>Rolling update + Recreate strategy blocks<span class="tag">snippet in context</span></summary><div class="body"><div class="code"><pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-api
+  namespace: jahez-prod
+spec:
+  replicas: 6
+  minReadySeconds: 10              # must stay ready 10s before counted available
+  progressDeadlineSeconds: 300     # mark rollout failed after 5 min without progress
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: order-api
+  template:
+    metadata:
+      labels:
+        app: order-api
+    spec:
+      containers:
+        - name: order-api
+          image: ghcr.io/jahez/order-api:2.14.0
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: settlement-consumer
+  namespace: jahez-prod
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate                 # never two versions consuming the same queue
+  selector:
+    matchLabels:
+      app: settlement-consumer
+  template:
+    metadata:
+      labels:
+        app: settlement-consumer
+    spec:
+      containers:
+        - name: consumer
+          image: ghcr.io/jahez/settlement-consumer:1.6.0</pre></div></div></details>
+
+  <details class="sub-det" id="s2-4"><summary><span class="num">2.4</span>Blue/Green — selector flip<span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-blue
+  namespace: jahez-prod
+spec:
+  replicas: 6
+  selector:
+    matchLabels: { app: gateway, slot: blue }
+  template:
+    metadata:
+      labels: { app: gateway, slot: blue }
+    spec:
+      containers:
+        - name: gateway
+          image: ghcr.io/jahez/gateway:4.2.0
+          ports: [{ containerPort: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-green
+  namespace: jahez-prod
+spec:
+  replicas: 6
+  selector:
+    matchLabels: { app: gateway, slot: green }
+  template:
+    metadata:
+      labels: { app: gateway, slot: green }
+    spec:
+      containers:
+        - name: gateway
+          image: ghcr.io/jahez/gateway:5.0.0
+          ports: [{ containerPort: 8080 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: jahez-prod
+spec:
+  selector:
+    app: gateway
+    slot: blue          # flip to "green" to cut over; flip back to roll back
+  ports:
+    - port: 80
+      targetPort: 8080</pre></div>
+  <p style="color:var(--muted);font-size:13.5px">Cut over: <code>kubectl -n jahez-prod patch svc gateway -p '{"spec":{"selector":{"app":"gateway","slot":"green"}}}'</code></p></div></details>
+
+  <details class="sub-det" id="s2-5"><summary><span class="num">2.5</span>Canary + A/B with NGINX Ingress<span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: order-api
+  namespace: jahez-prod
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.jahez.net
+      http:
+        paths:
+          - path: /orders
+            pathType: Prefix
+            backend:
+              service:
+                name: order-api-stable
+                port: { number: 80 }
+---
+# Canary: 10% of traffic to the new version
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: order-api-canary
+  namespace: jahez-prod
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10"
+    # A/B instead of %: route a segment by header (header wins over weight)
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Jahez-Segment"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "new-checkout"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.jahez.net
+      http:
+        paths:
+          - path: /orders
+            pathType: Prefix
+            backend:
+              service:
+                name: order-api-canary
+                port: { number: 80 }</pre></div></div></details>
+
+  <h3 class="sub" id="s2-6"><span class="num">2.6</span><span class="ttl">Model review</span></h3>
+  <div class="call review"><b>Model review</b>Only <b>Recreate</b> and <b>RollingUpdate</b> are Kubernetes-native. Blue/Green, Canary and A/B are traffic-routing patterns you assemble from Services, Ingress annotations, a service mesh (Istio <code>VirtualService</code> weights), or a progressive-delivery controller (Argo Rollouts, Flagger) that automates promotion based on metrics. Also: Canary answers "is the new version safe?", A/B answers "is the new version better?" — same plumbing, different question.</div>
+</section>
+
+<!-- ============ 3. RESOURCES ============ -->
+<section id="resources" style="--accent:var(--c3)">
+  <div class="eyebrow" style="color:var(--c3)">Layer 3</div>
+  <h2 class="h2n"><span class="h2num">3</span><span>Resource Management</span></h2>
+  <div class="q">How much infrastructure do I need and how should it be allocated?<small>Two sub-questions: <b>Planning &amp; Design</b> (how much per Pod) and <b>Scalability</b> (how many, and how many nodes).</small></div>
+  <nav class="ix" aria-label="Section 3 index">
+    <div class="ix-h"><span class="ix-badge">3</span><span>In this section</span><span class="ix-c">12 topics</span></div>
+    <div class="ix-list" id="ix-resources">
+      <a class="ix-item lvl1 ix-group" href="#s3-1"><span class="ix-num">3.1</span><span class="ix-t">Planning &amp; Design</span><span class="ix-k" title="Group">◆ Group</span></a>
+      <a class="ix-item lvl2" href="#s3-1-1"><span class="ix-num">3.1.1</span><span class="ix-t">Requests, limits &amp; namespace policy</span><span class="ix-k" title="Table">▦ Table</span></a>
+      <a class="ix-item lvl2" href="#s3-1-2"><span class="ix-num">3.1.2</span><span class="ix-t">QoS classes</span><span class="ix-k" title="Table">▦ Table</span></a>
+      <a class="ix-item lvl2" href="#s3-1-3"><span class="ix-num">3.1.3</span><span class="ix-t">.NET sizing note</span><span class="ix-k" title="Note">i Note</span></a>
+      <a class="ix-item lvl2" href="#s3-1-4"><span class="ix-num">3.1.4</span><span class="ix-t">ResourceQuota + LimitRange</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1 ix-group" href="#s3-2"><span class="ix-num">3.2</span><span class="ix-t">Scalability</span><span class="ix-k" title="Group">◆ Group</span></a>
+      <a class="ix-item lvl2" href="#s3-2-1"><span class="ix-num">3.2.1</span><span class="ix-t">Scalers compared</span><span class="ix-k" title="Table">▦ Table</span></a>
+      <a class="ix-item lvl2" href="#s3-2-2"><span class="ix-num">3.2.2</span><span class="ix-t">HPA v2 with scaling behavior</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl2" href="#s3-2-3"><span class="ix-num">3.2.3</span><span class="ix-t">VPA in recommendation mode</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl2" href="#s3-2-4"><span class="ix-num">3.2.4</span><span class="ix-t">KEDA — iftar pre-scale + order rate</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl2" href="#s3-2-5"><span class="ix-num">3.2.5</span><span class="ix-t">Don't stack scalers</span><span class="ix-k" title="Warning">⚠ Warning</span></a>
+      <a class="ix-item lvl1" href="#s3-3"><span class="ix-num">3.3</span><span class="ix-t">Model review</span><span class="ix-k" title="Review">! Review</span></a>
+    </div>
+  </nav>
+
+  <h3 class="sub group" id="s3-1"><span class="num">3.1</span><span class="ttl">Planning &amp; Design</span></h3>
+  <h4 class="sub sub2" id="s3-1-1"><span class="num">3.1.1</span><span class="ttl">Requests, limits &amp; namespace policy</span></h4>
+  <div class="tw"><table>
+    <tr><th>Primitive</th><th>Scope</th><th>What it really does</th></tr>
+    <tr><td><code>requests</code></td><td>Container</td><td>What the scheduler reserves on a node. Also sets CPU weight under contention. Not a usage floor — just a reservation.</td></tr>
+    <tr><td><code>limits</code></td><td>Container</td><td>CPU over limit → <b>throttled</b>. Memory over limit → <b>OOMKilled</b>.</td></tr>
+    <tr><td>QoS Class</td><td>Pod (derived)</td><td>Computed from requests/limits — you never set it. Decides eviction order under node pressure.</td></tr>
+    <tr><td><code>ResourceQuota</code></td><td>Namespace</td><td>Caps the total requests/limits/object counts in a namespace.</td></tr>
+    <tr><td><code>LimitRange</code></td><td>Namespace</td><td>Injects default requests/limits and enforces per-container min/max.</td></tr>
+  </table></div>
+
+  <h4 class="sub sub2" id="s3-1-2"><span class="num">3.1.2</span><span class="ttl">QoS classes</span></h4>
+  <div class="tw"><table>
+    <tr><th>QoS class</th><th>Condition</th><th>Evicted</th><th>Fits</th></tr>
+    <tr><td style="color:var(--green)">Guaranteed</td><td>Every container: requests = limits for CPU <i>and</i> memory</td><td>Last</td><td>Redis, Elasticsearch, Postgres</td></tr>
+    <tr><td style="color:var(--orange)">Burstable</td><td>At least one request or limit set, not Guaranteed</td><td>Middle (those over requests first)</td><td>Most .NET APIs (memory limit, no CPU limit)</td></tr>
+    <tr><td style="color:var(--red)">BestEffort</td><td>No requests or limits at all</td><td>First</td><td>Nothing in <code>jahez-prod</code> — block it with LimitRange</td></tr>
+  </table></div>
+
+  <h4 class="sub sub2" id="s3-1-3"><span class="num">3.1.3</span><span class="ttl">.NET sizing note</span></h4>
+  <div class="call jz"><b>.NET sizing note</b>The .NET GC reads the container memory limit and sizes its heap from it, so the memory limit is load-bearing for ASP.NET Core services. Leave ~25% headroom above steady-state working set. For CPU, many teams set a request but no limit on latency-sensitive APIs to avoid CFS throttling during GC pauses and burst traffic — that keeps them Burstable, which is acceptable as long as the memory request reflects reality.</div>
+
+  <details class="sub-det" id="s3-1-4"><summary><span class="num">3.1.4</span>ResourceQuota + LimitRange for <code>jahez-prod</code><span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: jahez-prod-quota
+  namespace: jahez-prod
+spec:
+  hard:
+    requests.cpu: "120"
+    requests.memory: 240Gi
+    limits.memory: 320Gi
+    pods: "600"
+    persistentvolumeclaims: "40"
+    services.loadbalancers: "2"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: jahez-prod-defaults
+  namespace: jahez-prod
+spec:
+  limits:
+    - type: Container
+      defaultRequest:         # applied when a container omits requests
+        cpu: "100m"
+        memory: "128Mi"
+      default:                # applied when a container omits limits
+        memory: "256Mi"
+      min:
+        cpu: "10m"
+        memory: "32Mi"
+      max:
+        cpu: "4"
+        memory: "8Gi"
+      maxLimitRequestRatio:
+        memory: "2"           # limit may be at most 2× request</pre></div></div></details>
+
+  <h3 class="sub group" id="s3-2"><span class="num">3.2</span><span class="ttl">Scalability</span></h3>
+  <h4 class="sub sub2" id="s3-2-1"><span class="num">3.2.1</span><span class="ttl">Scalers compared</span></h4>
+  <div class="tw"><table>
+    <tr><th>Scaler</th><th>Scales</th><th>Signal</th><th>Jahez use</th></tr>
+    <tr><td>HPA</td><td>Pod count</td><td>CPU, memory, custom / external metrics</td><td>All stateless APIs</td></tr>
+    <tr><td>VPA</td><td>Pod requests/limits</td><td>Historical usage</td><td>Recommendation mode for right-sizing</td></tr>
+    <tr><td>Cluster Autoscaler</td><td>Node count</td><td>Pending Pods that can't fit</td><td>Node groups per zone in <code>me-central-1</code></td></tr>
+    <tr><td>KEDA</td><td>Pod count (incl. to zero)</td><td>Events: queue lag, Prometheus, cron…</td><td>Pre-scaling before lunch &amp; iftar peaks</td></tr>
+  </table></div>
+
+  <details class="sub-det" id="s3-2-2"><summary><span class="num">3.2.2</span>HPA v2 with scale-up/scale-down behavior<span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-api
+  namespace: jahez-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-api
+  minReplicas: 6
+  maxReplicas: 40
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65      # % of the CPU *request*
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100                  # may double every 30s
+          periodSeconds: 30
+        - type: Pods
+          value: 6
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300 # wait 5 min of low load before shrinking
+      policies:
+        - type: Percent
+          value: 20
+          periodSeconds: 60</pre></div></div></details>
+
+  <details class="sub-det" id="s3-2-3"><summary><span class="num">3.2.3</span>VPA in recommendation-only mode<span class="tag">apply-ready · needs VPA installed</span></summary><div class="body"><div class="code"><pre>apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: cms-service
+  namespace: jahez-prod
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cms-service
+  updatePolicy:
+    updateMode: "Off"          # recommend only; read with: kubectl describe vpa cms-service
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        minAllowed:
+          cpu: "100m"
+          memory: "128Mi"
+        maxAllowed:
+          cpu: "2"
+          memory: "2Gi"</pre></div></div></details>
+
+  <details class="sub-det" id="s3-2-4"><summary><span class="num">3.2.4</span>KEDA — Ramadan iftar pre-scale + live order-rate trigger<span class="tag">apply-ready · needs KEDA</span></summary><div class="body"><div class="code"><pre>apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: order-api
+  namespace: jahez-prod
+spec:
+  scaleTargetRef:
+    name: order-api
+  minReplicaCount: 6
+  maxReplicaCount: 40
+  cooldownPeriod: 300
+  triggers:
+    # Pre-warm before the lunch peak, every day
+    - type: cron
+      metadata:
+        timezone: Asia/Riyadh
+        start: "0 12 * * *"
+        end: "0 15 * * *"
+        desiredReplicas: "18"
+    # Pre-warm ahead of iftar (adjust window during Ramadan)
+    - type: cron
+      metadata:
+        timezone: Asia/Riyadh
+        start: "15 17 * * *"
+        end: "30 20 * * *"
+        desiredReplicas: "28"
+    # React to real demand on top of the floor
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.observability.svc:9090
+        query: sum(rate(http_requests_total{service="order-api",route="/orders",method="POST"}[1m]))
+        threshold: "40"           # target ~40 order POSTs/sec per replica</pre></div>
+  <p style="color:var(--muted);font-size:13.5px">KEDA takes the highest desired count across triggers, so cron sets a floor before the rush arrives and Prometheus handles anything above it.</p></div></details>
+
+  <h4 class="sub sub2" id="s3-2-5"><span class="num">3.2.5</span><span class="ttl">Don't stack scalers</span></h4>
+  <div class="call warn"><b>Don't stack scalers on the same signal</b>KEDA creates and manages an HPA for its target — delete your hand-written HPA for <code>order-api</code> before applying the ScaledObject. Likewise, never run VPA in <code>Auto</code> mode and HPA on CPU/memory against the same Deployment: they fight (VPA raises requests → utilization % drops → HPA scales in).</div>
+
+  <h3 class="sub" id="s3-3"><span class="num">3.3</span><span class="ttl">Model review</span></h3>
+  <div class="call review"><b>Model review</b>"Requests = minimum guaranteed" is close but slightly off. Requests are a <i>scheduling reservation</i> plus a CPU-share weight. A Pod can use less than its request (wasting reserved capacity) and, for memory, can be killed anywhere above its request if the node is under pressure. QoS is an <i>output</i> of requests/limits, not an input — worth drawing it as derived in your mental model.</div>
+</section>
+
+<!-- ============ 4. PLACEMENT ============ -->
+<section id="placement" style="--accent:var(--c4)">
+  <div class="eyebrow" style="color:var(--c4)">Layer 4</div>
+  <h2 class="h2n"><span class="h2num">4</span><span>Placement</span></h2>
+  <div class="q">Where should workloads run?<small>Every primitive here is an input to one scheduler cycle: <b>filter</b> nodes that can't run the Pod, <b>score</b> the rest, <b>bind</b> to the winner.</small></div>
+  <nav class="ix" aria-label="Section 4 index">
+    <div class="ix-h"><span class="ix-badge">4</span><span>In this section</span><span class="ix-c">5 topics</span></div>
+    <div class="ix-list" id="ix-placement">
+      <a class="ix-item lvl1" href="#s4-1"><span class="ix-num">4.1</span><span class="ix-t">One scheduling cycle</span><span class="ix-k" title="Diagram">◇ Diagram</span></a>
+      <a class="ix-item lvl1" href="#s4-2"><span class="ix-num">4.2</span><span class="ix-t">Primitives at a glance</span><span class="ix-k" title="Table">▦ Table</span></a>
+      <a class="ix-item lvl1" href="#s4-3"><span class="ix-num">4.3</span><span class="ix-t">The attract / repel pairing</span><span class="ix-k" title="Note">i Note</span></a>
+      <a class="ix-item lvl1" href="#s4-4"><span class="ix-num">4.4</span><span class="ix-t">Elasticsearch on a dedicated, tainted pool</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s4-5"><span class="ix-num">4.5</span><span class="ix-t">Model review</span><span class="ix-k" title="Review">! Review</span></a>
+    </div>
+  </nav>
+
+  <h3 class="sub" id="s4-1"><span class="num">4.1</span><span class="ttl">One scheduling cycle</span></h3>
+  <div class="fig">
+    <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" font-family="Inter, sans-serif" font-size="12.5">
+      <defs><marker id="ar2" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6e7681"/></marker></defs>
+      <rect x="10" y="40" width="130" height="80" rx="10" fill="#161b22" stroke="#30363d"/>
+      <text x="75" y="72" fill="#e6edf3" text-anchor="middle" font-weight="700">Pending Pod</text>
+      <text x="75" y="94" fill="#8b949e" text-anchor="middle">order-api-7c9f…</text>
+
+      <rect x="170" y="40" width="130" height="80" rx="10" fill="#161b22" stroke="#f85149"/>
+      <text x="235" y="72" fill="#f85149" text-anchor="middle" font-weight="700">Queue</text>
+      <text x="235" y="94" fill="#8b949e" text-anchor="middle">sorted by priority</text>
+
+      <rect x="330" y="20" width="170" height="120" rx="10" fill="#161b22" stroke="#bc8cff"/>
+      <text x="415" y="44" fill="#bc8cff" text-anchor="middle" font-weight="700">Filter (hard)</text>
+      <text x="345" y="66" fill="#c9d1d9" font-size="11.5">• resources fit requests</text>
+      <text x="345" y="84" fill="#c9d1d9" font-size="11.5">• nodeSelector / required aff.</text>
+      <text x="345" y="102" fill="#c9d1d9" font-size="11.5">• taints vs tolerations</text>
+      <text x="345" y="120" fill="#c9d1d9" font-size="11.5">• spread: DoNotSchedule</text>
+
+      <rect x="530" y="20" width="150" height="120" rx="10" fill="#161b22" stroke="#bc8cff"/>
+      <text x="605" y="44" fill="#bc8cff" text-anchor="middle" font-weight="700">Score (soft)</text>
+      <text x="543" y="66" fill="#c9d1d9" font-size="11.5">• preferred affinity</text>
+      <text x="543" y="84" fill="#c9d1d9" font-size="11.5">• spread: ScheduleAnyway</text>
+      <text x="543" y="102" fill="#c9d1d9" font-size="11.5">• balanced allocation</text>
+      <text x="543" y="120" fill="#c9d1d9" font-size="11.5">• image locality</text>
+
+      <rect x="705" y="40" width="85" height="80" rx="10" fill="#161b22" stroke="#3fb950"/>
+      <text x="747" y="78" fill="#3fb950" text-anchor="middle" font-weight="700">Bind</text>
+      <text x="747" y="98" fill="#8b949e" text-anchor="middle" font-size="11">→ kubelet</text>
+
+      <g stroke="#6e7681" stroke-width="2" fill="none" marker-end="url(#ar2)">
+        <line x1="142" y1="80" x2="166" y2="80"/>
+        <line x1="302" y1="80" x2="326" y2="80"/>
+        <line x1="502" y1="80" x2="526" y2="80"/>
+        <line x1="682" y1="80" x2="701" y2="80"/>
+        <path d="M415,142 L415,190"/>
+      </g>
+      <text x="425" y="172" fill="#8b949e" font-size="11.5">0 nodes pass</text>
+
+      <rect x="300" y="194" width="230" height="80" rx="10" fill="#161b22" stroke="#f85149" stroke-dasharray="5 4"/>
+      <text x="415" y="222" fill="#f85149" text-anchor="middle" font-weight="700">Preemption (Layer 5)</text>
+      <text x="415" y="244" fill="#8b949e" text-anchor="middle" font-size="11.5">evict lower-priority Pods</text>
+      <text x="415" y="262" fill="#8b949e" text-anchor="middle" font-size="11.5">to make room</text>
+
+      <rect x="560" y="194" width="220" height="80" rx="10" fill="#161b22" stroke="#d29922" stroke-dasharray="5 4"/>
+      <text x="670" y="222" fill="#d29922" text-anchor="middle" font-weight="700">Cluster Autoscaler (L3)</text>
+      <text x="670" y="244" fill="#8b949e" text-anchor="middle" font-size="11.5">still Pending → add a node</text>
+      <text x="670" y="262" fill="#8b949e" text-anchor="middle" font-size="11.5">in the right zone/group</text>
+      <line x1="532" y1="234" x2="556" y2="234" stroke="#6e7681" stroke-width="2" marker-end="url(#ar2)"/>
+    </svg>
+    <div class="cap">One scheduling cycle. Notice that layers 3 and 5 plug into layer 4 at run-time: requests feed the filter, priority orders the queue and triggers preemption, and Cluster Autoscaler reacts to Pods that remain Pending.</div>
+  </div>
+
+  <h3 class="sub" id="s4-2"><span class="num">4.2</span><span class="ttl">Primitives at a glance</span></h3>
+  <div class="tw"><table>
+    <tr><th>Primitive</th><th>Who it constrains</th><th>Hard / soft</th><th>Jahez example</th></tr>
+    <tr><td>Node Selector</td><td>Pod → node labels</td><td>Hard</td><td>Elasticsearch only on <code>jahez.io/nodepool: search</code></td></tr>
+    <tr><td>Node Affinity</td><td>Pod → node labels (expressions)</td><td>Both</td><td>APIs required on <code>general</code>, preferring Graviton/ARM if available</td></tr>
+    <tr><td>Pod Affinity</td><td>Pod → other Pods</td><td>Both</td><td>Prefer <code>order-api</code> in same zone as <code>redis</code> to cut cross-AZ latency/cost</td></tr>
+    <tr><td>Pod Anti-Affinity</td><td>Pod ↔ other Pods</td><td>Both</td><td>Never two <code>elasticsearch</code> data nodes on one host</td></tr>
+    <tr><td>Taints &amp; Tolerations</td><td>Node repels Pods</td><td>Hard (<code>NoSchedule</code>)</td><td><code>dedicated=search:NoSchedule</code> keeps APIs off ES nodes</td></tr>
+    <tr><td>Topology Spread</td><td>Pod group across domains</td><td>Both</td><td><code>order-api</code> evenly across <code>me-central-1a/b/c</code></td></tr>
+  </table></div>
+
+  <h3 class="sub" id="s4-3"><span class="num">4.3</span><span class="ttl">The attract / repel pairing</span></h3>
+  <div class="call tip"><b>The attract / repel pairing</b>Taints <i>repel</i> everything except tolerating Pods; affinity / nodeSelector <i>attract</i> specific Pods. A dedicated node pool needs both: a taint so nothing else lands there, and a nodeSelector so the dedicated workload doesn't land elsewhere. A toleration alone only <i>permits</i> — it doesn't attract.</div>
+
+  <details class="sub-det" id="s4-4"><summary><span class="num">4.4</span>Elasticsearch on a dedicated, tainted pool with hard anti-affinity<span class="tag">snippet in context</span></summary><div class="body"><div class="code"><pre># One-time node setup (or via node-group config):
+#   kubectl taint nodes -l jahez.io/nodepool=search dedicated=search:NoSchedule
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch-data
+  namespace: jahez-prod
+spec:
+  serviceName: elasticsearch-data
+  replicas: 3
+  selector:
+    matchLabels:
+      app: elasticsearch-data
+  template:
+    metadata:
+      labels:
+        app: elasticsearch-data
+    spec:
+      nodeSelector:
+        jahez.io/nodepool: search          # attract
+      tolerations:
+        - key: dedicated                   # permit
+          operator: Equal
+          value: search
+          effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: elasticsearch-data
+              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: elasticsearch-data
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+          resources:
+            requests: { cpu: "2", memory: "8Gi" }
+            limits:   { cpu: "2", memory: "8Gi" }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 200Gi</pre></div></div></details>
+
+  <h3 class="sub" id="s4-5"><span class="num">4.5</span><span class="ttl">Model review</span></h3>
+  <div class="call review"><b>Model review</b>All the <code>…IgnoredDuringExecution</code> rules are evaluated <i>only at scheduling time</i>. If node labels change or the zones drift out of balance after scale-down, nothing moves Pods back. Rebalancing needs a rollout or the <b>Descheduler</b> — a useful addition to the Placement layer.</div>
+</section>
+
+<!-- ============ 5. PRIORITY ============ -->
+<section id="priority" style="--accent:var(--c5)">
+  <div class="eyebrow" style="color:var(--c5)">Layer 5</div>
+  <h2 class="h2n"><span class="h2num">5</span><span>Prioritization</span></h2>
+  <div class="q">Which workloads are most important?<small>Determines behavior when the cluster can't fit everything — who waits, and who gets pushed out.</small></div>
+  <nav class="ix" aria-label="Section 5 index">
+    <div class="ix-h"><span class="ix-badge">5</span><span>In this section</span><span class="ix-c">4 topics</span></div>
+    <div class="ix-list" id="ix-priority">
+      <a class="ix-item lvl1" href="#s5-1"><span class="ix-num">5.1</span><span class="ix-t">PriorityClass tiers</span><span class="ix-k" title="Table">▦ Table</span></a>
+      <a class="ix-item lvl1" href="#s5-2"><span class="ix-num">5.2</span><span class="ix-t">PriorityClass set for jahez-prod</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s5-3"><span class="ix-num">5.3</span><span class="ix-t">Iftar scenario</span><span class="ix-k" title="Note">i Note</span></a>
+      <a class="ix-item lvl1" href="#s5-4"><span class="ix-num">5.4</span><span class="ix-t">Model review</span><span class="ix-k" title="Review">! Review</span></a>
+    </div>
+  </nav>
+
+  <h3 class="sub" id="s5-1"><span class="num">5.1</span><span class="ttl">PriorityClass tiers</span></h3>
+  <div class="tw"><table>
+    <tr><th>PriorityClass</th><th>Value</th><th>Preempts?</th><th>Members</th></tr>
+    <tr><td><code>system-node-critical</code></td><td>2000001000</td><td>Yes</td><td>Built-in: kube-proxy, CNI, log/metrics agents</td></tr>
+    <tr><td><code>system-cluster-critical</code></td><td>2000000000</td><td>Yes</td><td>Built-in: CoreDNS, metrics-server</td></tr>
+    <tr><td><code>jahez-critical</code></td><td>1000000</td><td>Yes</td><td><code>gateway</code>, <code>order-api</code>, <code>payment-api</code></td></tr>
+    <tr><td><code>jahez-standard</code></td><td>100000</td><td>Yes</td><td><code>menu-api</code>, <code>cms-service</code>, search</td></tr>
+    <tr><td><code>jahez-batch</code></td><td>1000</td><td><b>No</b> (<code>Never</code>)</td><td>CronJobs, reports, reindexing</td></tr>
+  </table></div>
+
+  <details class="sub-det" id="s5-2"><summary><span class="num">5.2</span>PriorityClass set for <code>jahez-prod</code><span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: jahez-critical
+value: 1000000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Customer-facing checkout path: gateway, order-api, payment-api"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: jahez-standard
+value: 100000
+globalDefault: true
+preemptionPolicy: PreemptLowerPriority
+description: "Default for jahez services not on the checkout path"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: jahez-batch
+value: 1000
+globalDefault: false
+preemptionPolicy: Never
+description: "Batch and scheduled jobs; queue ahead of lower Pods but never evict anyone"</pre></div></div></details>
+
+  <h3 class="sub" id="s5-3"><span class="num">5.3</span><span class="ttl">Iftar scenario</span></h3>
+  <div class="call jz"><b>Iftar scenario</b>At 18:05 KEDA asks for 28 <code>order-api</code> replicas, but the nodes are full and Cluster Autoscaler needs ~2 minutes for new nodes. Without priority, new <code>order-api</code> Pods sit Pending behind a reindex job. With <code>jahez-critical</code>, the scheduler preempts <code>jahez-batch</code> Pods immediately; the batch work resumes once the new nodes arrive. That two-minute window is exactly when orders peak.</div>
+
+  <h3 class="sub" id="s5-4"><span class="num">5.4</span><span class="ttl">Model review</span></h3>
+  <div class="call review"><b>Model review</b>Prioritization isn't only an "insufficient resources" layer. Priority also (1) <b>orders the scheduling queue</b> for every Pod, and (2) is a <b>tiebreaker in node-pressure eviction</b> among Pods exceeding requests. And preemption honours PDBs only on a best-effort basis — it may violate one if there's no other way to fit a higher-priority Pod.</div>
+</section>
+
+<!-- ============ 6. DISRUPTIONS ============ -->
+<section id="disruptions" style="--accent:var(--c6)">
+  <div class="eyebrow" style="color:var(--c6)">Layer 6</div>
+  <h2 class="h2n"><span class="h2num">6</span><span>Disruptions</span></h2>
+  <div class="q">What happens when workloads must be stopped, moved, or interrupted?<small>Split every disruption into <b>voluntary</b> (someone chose it) and <b>involuntary</b> (something broke). Your protections differ.</small></div>
+  <nav class="ix" aria-label="Section 6 index">
+    <div class="ix-h"><span class="ix-badge">6</span><span>In this section</span><span class="ix-c">6 topics</span></div>
+    <div class="ix-list" id="ix-disruptions">
+      <a class="ix-item lvl1" href="#s6-1"><span class="ix-num">6.1</span><span class="ix-t">Voluntary vs involuntary disruptions</span><span class="ix-k" title="Table">▦ Table</span></a>
+      <a class="ix-item lvl1" href="#s6-2"><span class="ix-num">6.2</span><span class="ix-t">Graceful termination timeline</span><span class="ix-k" title="Diagram">◇ Diagram</span></a>
+      <a class="ix-item lvl1" href="#s6-3"><span class="ix-num">6.3</span><span class="ix-t">PDB + graceful shutdown for order-api</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s6-4"><span class="ix-num">6.4</span><span class="ix-t">Node drain runbook</span><span class="ix-k" title="Commands">$ Commands</span></a>
+      <a class="ix-item lvl1" href="#s6-5"><span class="ix-num">6.5</span><span class="ix-t">Node pressure eviction order</span><span class="ix-k" title="Guide">➜ Guide</span></a>
+      <a class="ix-item lvl1" href="#s6-6"><span class="ix-num">6.6</span><span class="ix-t">Model review</span><span class="ix-k" title="Review">! Review</span></a>
+    </div>
+  </nav>
+
+  <h3 class="sub" id="s6-1"><span class="num">6.1</span><span class="ttl">Voluntary vs involuntary disruptions</span></h3>
+  <div class="tw"><table>
+    <tr><th>Event</th><th>Type</th><th>Respects PDB?</th><th>Respects grace period?</th></tr>
+    <tr><td>Node Drain / upgrade</td><td>Voluntary</td><td>Yes (Eviction API)</td><td>Yes</td></tr>
+    <tr><td>Cluster Autoscaler scale-down</td><td>Voluntary</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Rolling update</td><td>Voluntary</td><td>No — governed by <code>maxUnavailable</code></td><td>Yes</td></tr>
+    <tr><td>Preemption</td><td>Voluntary-ish</td><td>Best effort</td><td>Yes</td></tr>
+    <tr><td>Node Pressure Eviction</td><td>Involuntary</td><td><b>No</b></td><td>Soft thresholds: up to <code>eviction-max-pod-grace-period</code>; hard: no</td></tr>
+    <tr><td>Node / AZ failure</td><td>Involuntary</td><td>No</td><td>No</td></tr>
+    <tr><td><code>kubectl delete pod</code></td><td>Voluntary</td><td><b>No</b> — bypasses Eviction API</td><td>Yes</td></tr>
+  </table></div>
+
+  <div class="call warn"><b>A PDB is not an availability guarantee</b>It only gates the Eviction API. Involuntary failures are handled by Layer 4 (spread across <code>me-central-1a/b/c</code>) and enough replicas — a PDB of <code>minAvailable: 80%</code> means nothing if all Pods sit in one zone.</div>
+
+  <h3 class="sub" id="s6-2"><span class="num">6.2</span><span class="ttl">Graceful termination timeline</span></h3>
+  <div class="fig">
+    <svg viewBox="0 0 800 270" xmlns="http://www.w3.org/2000/svg" font-family="Inter, sans-serif" font-size="12">
+      <defs><marker id="ar3" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6e7681"/></marker></defs>
+      <line x1="60" y1="235" x2="770" y2="235" stroke="#30363d" stroke-width="2" marker-end="url(#ar3)"/>
+      <g fill="#8b949e" font-family="JetBrains Mono" font-size="11" text-anchor="middle">
+        <text x="80" y="255">0s</text><text x="230" y="255">10s</text><text x="530" y="255">≤40s</text><text x="680" y="255">45s</text>
+      </g>
+      <g stroke="#30363d" stroke-dasharray="3 3"><line x1="80" y1="30" x2="80" y2="235"/><line x1="230" y1="30" x2="230" y2="235"/><line x1="680" y1="30" x2="680" y2="235"/></g>
+
+      <text x="8" y="68" fill="#8b949e" font-weight="600">Network</text>
+      <rect x="80" y="50" width="120" height="30" rx="6" fill="rgba(57,197,207,.18)" stroke="#39c5cf"/>
+      <text x="140" y="70" fill="#39c5cf" text-anchor="middle" font-weight="600">EndpointSlice → removed</text>
+      <text x="210" y="98" fill="#6e7681" font-size="11">kube-proxy / ingress catch up in ~1–5s</text>
+
+      <text x="8" y="140" fill="#8b949e" font-weight="600">Kubelet</text>
+      <rect x="80" y="122" width="150" height="30" rx="6" fill="rgba(210,153,34,.18)" stroke="#d29922"/>
+      <text x="155" y="142" fill="#d29922" text-anchor="middle" font-weight="600">preStop sleep 10s</text>
+      <rect x="230" y="122" width="300" height="30" rx="6" fill="rgba(63,185,80,.18)" stroke="#3fb950"/>
+      <text x="380" y="142" fill="#3fb950" text-anchor="middle" font-weight="600">SIGTERM → ASP.NET drains in-flight requests</text>
+      <rect x="680" y="122" width="90" height="30" rx="6" fill="rgba(248,81,73,.18)" stroke="#f85149"/>
+      <text x="725" y="142" fill="#f85149" text-anchor="middle" font-weight="600">SIGKILL</text>
+
+      <text x="8" y="196" fill="#8b949e" font-weight="600">Budget</text>
+      <rect x="80" y="180" width="600" height="26" rx="6" fill="none" stroke="#6e7681" stroke-dasharray="4 3"/>
+      <text x="380" y="198" fill="#8b949e" text-anchor="middle">terminationGracePeriodSeconds: 45  (preStop + app shutdown must fit inside)</text>
+      <text x="80" y="22" fill="#e6edf3" font-weight="700">t=0  Pod marked Terminating (drain, scale-in, rollout)</text>
+    </svg>
+    <div class="cap">Endpoint removal and preStop start in parallel. The preStop sleep exists purely to let load balancers stop sending traffic <i>before</i> the app receives SIGTERM — without it, rollouts produce a burst of 502s.</div>
+  </div>
+
+  <details class="sub-det" id="s6-3"><summary><span class="num">6.3</span>PDB + graceful shutdown for <code>order-api</code><span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-api
+  namespace: jahez-prod
+spec:
+  maxUnavailable: 20%             # scales with HPA; drains stay fast at 40 replicas
+  unhealthyPodEvictionPolicy: AlwaysAllow   # don't let crash-looping Pods block a drain
+  selector:
+    matchLabels:
+      app: order-api
+---
+# Termination fields inside the Deployment Pod template:
+#   spec:
+#     terminationGracePeriodSeconds: 45
+#     containers:
+#       - name: order-api
+#         lifecycle:
+#           preStop:
+#             sleep:
+#               seconds: 10       # native sleep action (K8s 1.30+); no shell needed in chiseled images</pre></div>
+  <p style="color:var(--muted);font-size:13.5px">Make the app's own shutdown fit the remaining budget (45 − 10 = 35s):</p>
+  <div class="code"><pre>// Program.cs — ASP.NET Core
+builder.Services.Configure&lt;HostOptions&gt;(o =&gt;
+{
+    o.ShutdownTimeout = TimeSpan.FromSeconds(30);
+});</pre></div></div></details>
+
+  <details class="sub-det" id="s6-4"><summary><span class="num">6.4</span>Node drain runbook<span class="tag">commands</span></summary><div class="body"><div class="code"><pre># 1. Stop new Pods landing on the node
+kubectl cordon ip-10-20-3-41.me-central-1.compute.internal
+
+# 2. Evict via the Eviction API (honours PDBs and grace periods)
+kubectl drain ip-10-20-3-41.me-central-1.compute.internal \
+  --ignore-daemonsets \
+  --delete-emptydir-data \
+  --timeout=10m
+
+# 3. If drain hangs, find the PDB that's blocking it
+kubectl get pdb -A
+kubectl -n jahez-prod describe pdb order-api   # check "Allowed disruptions: 0"
+
+# 4. After maintenance
+kubectl uncordon ip-10-20-3-41.me-central-1.compute.internal</pre></div></div></details>
+
+  <h3 class="sub" id="s6-5"><span class="num">6.5</span><span class="ttl">Node pressure eviction order</span></h3>
+  <ul class="tight">
+    <li>Kubelet watches signals like <code>memory.available</code>, <code>nodefs.available</code>, <code>pid.available</code> against thresholds (default hard: <code>memory.available&lt;100Mi</code>).</li>
+    <li>Ranks Pods by: <b>usage above requests</b> first → then <b>priority</b> → then <b>usage relative to requests</b>. BestEffort Pods (no requests) are therefore always first.</li>
+    <li>Guaranteed Pods within their requests are only evicted when system components need the memory.</li>
+  </ul>
+
+  <h3 class="sub" id="s6-6"><span class="num">6.6</span><span class="ttl">Model review</span></h3>
+  <div class="call review"><b>Model review</b>"Eviction" in the list mixes two different mechanisms: <b>API-initiated eviction</b> (drain, autoscaler — PDB-aware) and <b>node-pressure eviction</b> (kubelet — not PDB-aware). Splitting them in your model clarifies which protections apply. Also, Graceful Termination depends on readiness: a Pod should start failing readiness on SIGTERM so it leaves every load balancer, not just the Service.</div>
+</section>
+
+<!-- ============ CAPSTONE ============ -->
+<section id="capstone" style="--accent:var(--pink)">
+  <div class="eyebrow" style="color:var(--pink)">Synthesis</div>
+  <h2 class="h2n"><span class="h2num">7</span><span>Full manifest: <code>order-api</code> answering all six questions</span></h2>
+  <p class="lead">Every layer in one apply-ready file. Comments mark which question each block answers. Assumes the PriorityClasses above exist and nodes carry <code>jahez.io/nodepool=general</code>.</p>
+  <nav class="ix" aria-label="Section 7 index">
+    <div class="ix-h"><span class="ix-badge">7</span><span>In this section</span><span class="ix-c">2 topics</span></div>
+    <div class="ix-list" id="ix-capstone">
+      <a class="ix-item lvl1" href="#s7-1"><span class="ix-num">7.1</span><span class="ix-t">order-api.yaml — all six layers</span><span class="ix-k" title="YAML">{ } YAML</span></a>
+      <a class="ix-item lvl1" href="#s7-2"><span class="ix-num">7.2</span><span class="ix-t">Why replicas: 6 with three zones</span><span class="ix-k" title="Note">i Note</span></a>
+    </div>
+  </nav>
+
+  <details open class="sub-det" id="s7-1"><summary><span class="num">7.1</span>order-api.yaml<span class="tag">apply-ready</span></summary><div class="body"><div class="code"><pre>apiVersion: v1
+kind: Service
+metadata:
+  name: order-api
+  namespace: jahez-prod
+  labels:
+    app: order-api
+spec:
+  selector:
+    app: order-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment                          # [1] WHAT: stateless API
+metadata:
+  name: order-api
+  namespace: jahez-prod
+  labels:
+    app: order-api
+    app.kubernetes.io/name: order-api
+    app.kubernetes.io/part-of: jahez-platform
+spec:
+  replicas: 6
+  revisionHistoryLimit: 5
+  minReadySeconds: 10                     # [2] HOW TO RELEASE
+  progressDeadlineSeconds: 300
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: order-api
+  template:
+    metadata:
+      labels:
+        app: order-api
+        app.kubernetes.io/name: order-api
+    spec:
+      priorityClassName: jahez-critical   # [5] IMPORTANCE
+      terminationGracePeriodSeconds: 45   # [6] DISRUPTIONS
+      affinity:                           # [4] WHERE
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: jahez.io/nodepool
+                    operator: In
+                    values: ["general"]
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: order-api
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: order-api
+          matchLabelKeys:
+            - pod-template-hash           # spread each ReplicaSet independently during rollouts
+        - maxSkew: 2
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: order-api
+      containers:
+        - name: order-api
+          image: ghcr.io/jahez/order-api:2.14.0
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://+:8080"
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+          resources:                      # [3] HOW MUCH (Burstable: no CPU limit)
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              memory: "768Mi"
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 3
+            failureThreshold: 20
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:                      # [6] graceful termination
+            preStop:
+              sleep:
+                seconds: 10
+---
+apiVersion: autoscaling/v2                # [3] SCALABILITY
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-api
+  namespace: jahez-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-api
+  minReplicas: 6
+  maxReplicas: 40
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 20
+          periodSeconds: 60
+---
+apiVersion: policy/v1                     # [6] VOLUNTARY DISRUPTIONS
+kind: PodDisruptionBudget
+metadata:
+  name: order-api
+  namespace: jahez-prod
+spec:
+  maxUnavailable: 20%
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      app: order-api</pre></div></div></details>
+
+  <h3 class="sub" id="s7-2"><span class="num">7.2</span><span class="ttl">Why replicas: 6 with three zones</span></h3>
+  <div class="call tip"><b>Why <code>replicas: 6</code> with 3 zones</b>Two per zone. Lose a whole AZ and 4 remain (67% capacity) — HPA scales the survivors while Cluster Autoscaler adds nodes in the two healthy zones. With <code>DoNotSchedule</code> zone spread, though, a dead zone can block new Pods once skew exceeds 1; if that bites you during an AZ outage, switch the zone constraint to <code>ScheduleAnyway</code> and rely on the hostname spread.</div>
+</section>
+
+<!-- ============ REVIEW ============ -->
+<section id="review" style="--accent:var(--orange)">
+  <div class="eyebrow" style="color:var(--orange)">Validating the model</div>
+  <h2 class="h2n"><span class="h2num">8</span><span>Model review: what's solid, what to refine</span></h2>
+  <p class="lead">The six-question framing is strong — it maps cleanly onto how manifests are actually reviewed. These refinements make it more precise.</p>
+  <nav class="ix" aria-label="Section 8 index">
+    <div class="ix-h"><span class="ix-badge">8</span><span>In this section</span><span class="ix-c">3 topics</span></div>
+    <div class="ix-list" id="ix-review">
+      <a class="ix-item lvl1" href="#s8-1"><span class="ix-num">8.1</span><span class="ix-t">What's solid</span><span class="ix-k" title="Review">! Review</span></a>
+      <a class="ix-item lvl1" href="#s8-2"><span class="ix-num">8.2</span><span class="ix-t">Refinements</span><span class="ix-k" title="Review">! Review</span></a>
+      <a class="ix-item lvl1" href="#s8-3"><span class="ix-num">8.3</span><span class="ix-t">Gaps &amp; scope</span><span class="ix-k" title="Review">! Review</span></a>
+    </div>
+  </nav>
+
+  <h3 class="sub" id="s8-1"><span class="num">8.1</span><span class="ttl">What's solid</span></h3>
+  <div class="grid">
+    <div class="card"><h5 style="color:var(--green)">✓ Solid</h5><p>Question-first structure; the What → Deployment &amp; Release → Resources → Where → Importance → Interruption order mirrors how you author and then operate a service.</p></div>
+  </div>
+  <h3 class="sub" id="s8-2"><span class="num">8.2</span><span class="ttl">Refinements</span></h3>
+  <div class="grid">
+    <div class="card"><h5 style="color:var(--orange)">Refine: native vs. assembled</h5><p>Mark Blue/Green, Canary, A/B as patterns built on Ingress/mesh/Argo Rollouts — only Recreate and RollingUpdate are built in.</p></div>
+    <div class="card"><h5 style="color:var(--orange)">Refine: derived things</h5><p>QoS class is computed from requests/limits; KEDA drives an HPA rather than replacing it. Draw them as outputs, not knobs.</p></div>
+    <div class="card"><h5 style="color:var(--orange)">Refine: the order is conceptual</h5><p>At run-time, layers 3, 4 and 5 fire in the same scheduling cycle: requests filter nodes, priority orders the queue and triggers preemption.</p></div>
+    <div class="card"><h5 style="color:var(--orange)">Refine: split eviction</h5><p>API-initiated eviction (PDB-aware) vs. node-pressure eviction (not PDB-aware) are different mechanisms with different defenses.</p></div>
+  </div>
+  <h3 class="sub" id="s8-3"><span class="num">8.3</span><span class="ttl">Gaps &amp; scope</span></h3>
+  <div class="grid">
+    <div class="card"><h5 style="color:var(--blue)">Gap: Health</h5><p>Startup / readiness / liveness probes aren't in any layer, yet they gate rollouts (L2), HPA readiness (L3) and graceful drains (L6). Consider a 7th question: <i>"How does Kubernetes know it's working?"</i></p></div>
+    <div class="card"><h5 style="color:var(--blue)">Gap: Rebalancing</h5><p>Placement is decided once. Descheduler (or periodic rollouts) is the missing "re-place" step after scale-down or node changes.</p></div>
+    <div class="card"><h5 style="color:var(--blue)">Scope note</h5><p>Networking, configuration and security are separate pillars that wrap workloads — this model deliberately covers only the workload itself.</p></div>
+  </div>
+</section>
+
+<!-- ============ CHEAT SHEET ============ -->
+<section id="cheat" style="--accent:var(--green)">
+  <div class="eyebrow" style="color:var(--green)">Quick reference</div>
+  <h2 class="h2n"><span class="h2num">9</span><span>Cheat sheet — one command per question</span></h2>
+  <nav class="ix" aria-label="Section 9 index">
+    <div class="ix-h"><span class="ix-badge">9</span><span>In this section</span><span class="ix-c">2 topics</span></div>
+    <div class="ix-list" id="ix-cheat">
+      <a class="ix-item lvl1" href="#s9-1"><span class="ix-num">9.1</span><span class="ix-t">One command per question</span><span class="ix-k" title="Commands">$ Commands</span></a>
+      <a class="ix-item lvl1" href="#s9-2"><span class="ix-num">9.2</span><span class="ix-t">Symptom → layer → cause</span><span class="ix-k" title="Table">▦ Table</span></a>
+    </div>
+  </nav>
+  <h3 class="sub" id="s9-1"><span class="num">9.1</span><span class="ttl">One command per question</span></h3>
+  <div class="code"><pre><span class="c"># 1 · What am I running?</span>
+kubectl -n jahez-prod get deploy,sts,ds,job,cronjob
+
+<span class="c"># 2 · How is it being released?</span>
+kubectl -n jahez-prod rollout status deploy/order-api
+kubectl -n jahez-prod rollout history deploy/order-api
+kubectl -n jahez-prod rollout undo deploy/order-api --to-revision=41
+
+<span class="c"># 3 · How much does it use / how is it scaling?</span>
+kubectl -n jahez-prod top pods -l app=order-api
+kubectl -n jahez-prod get pod -l app=order-api -o custom-columns=NAME:.metadata.name,QOS:.status.qosClass
+kubectl -n jahez-prod get hpa order-api -w
+kubectl -n jahez-prod describe resourcequota jahez-prod-quota
+
+<span class="c"># 4 · Where is it running?</span>
+kubectl -n jahez-prod get pod -l app=order-api -o wide
+kubectl get nodes -L topology.kubernetes.io/zone,jahez.io/nodepool
+kubectl -n jahez-prod describe pod &lt;pending-pod&gt; | sed -n '/Events/,$p'
+
+<span class="c"># 5 · How important is it?</span>
+kubectl get priorityclass
+kubectl -n jahez-prod get pod -o custom-columns=NAME:.metadata.name,PRIO:.spec.priorityClassName
+
+<span class="c"># 6 · How is it protected from disruption?</span>
+kubectl -n jahez-prod get pdb
+kubectl get events -A --field-selector reason=Evicted
+kubectl get events -A --field-selector reason=Preempted</pre></div>
+
+  <h3 class="sub" id="s9-2"><span class="num">9.2</span><span class="ttl">Symptom → layer → cause</span></h3>
+  <div class="tw"><table>
+    <tr><th>Symptom</th><th>Layer</th><th>Usual cause</th></tr>
+    <tr><td><code>Pending</code> forever</td><td>4 / 3</td><td>No node passes filter: requests too big, taint without toleration, DoNotSchedule spread</td></tr>
+    <tr><td><code>OOMKilled</code></td><td>3</td><td>Memory limit below real working set</td></tr>
+    <tr><td>High p99, low CPU %</td><td>3</td><td>CPU limit throttling (check <code>container_cpu_cfs_throttled_periods_total</code>)</td></tr>
+    <tr><td>502s during deploys</td><td>6 / 2</td><td>No preStop sleep or readiness not failing on shutdown</td></tr>
+    <tr><td>Drain hangs</td><td>6</td><td>PDB with 0 allowed disruptions (e.g. 1 replica + <code>minAvailable: 1</code>)</td></tr>
+    <tr><td>All replicas in one AZ</td><td>4</td><td>No topology spread; scale-down skew not rebalanced</td></tr>
+    <tr><td>Batch job killed at peak</td><td>5</td><td>Preempted by <code>jahez-critical</code> — working as designed</td></tr>
+  </table></div>
+
+  <div class="foot">Kubernetes Workloads Mental Model · Jahez production edition · Single-file reference, works offline (fonts load when online).</div>
+</section>
+</main>
+
+<script>
+// ---------- stepper ----------
+const steps = [
+  {c:'var(--c1)', t:'1 · What', h:'A Deployment, not a StatefulSet',
+   b:'<p><code>order-api</code> keeps no local state — orders live in PostgreSQL, sessions/carts in Redis. Any replica can serve any request, so replicas are interchangeable → <b>Deployment</b>.</p><p>Its schema migration runs separately as a <b>Job</b> before the rollout, and the nightly restaurant settlement that reads its data is a <b>CronJob</b> at 03:30 Asia/Riyadh.</p>'},
+  {c:'var(--c2)', t:'2 · Deployment & Release Strategies', h:'Rolling update, canary for risky changes',
+   b:'<p>Default: <code>maxSurge: 25%</code>, <code>maxUnavailable: 0</code>, <code>minReadySeconds: 10</code> — capacity never dips during a lunch-time deploy.</p><p>For checkout or payment changes: an NGINX canary ingress at <b>10%</b> weight, watched in Datadog APM for error rate and p99 before promoting.</p>'},
+  {c:'var(--c3)', t:'3 · How much', h:'500m / 512Mi, scaling 6 → 40',
+   b:'<p>Requests <code>cpu 500m, memory 512Mi</code>, memory limit <code>768Mi</code>, no CPU limit → <b>Burstable</b> QoS, no throttling during bursts.</p><p>HPA targets 65% CPU. KEDA cron triggers pre-warm before the lunch peak and ahead of iftar, so capacity is there <i>before</i> the spike rather than 2 minutes after it.</p>'},
+  {c:'var(--c4)', t:'4 · Where', h:'General pool, evenly across three zones',
+   b:'<p>Required node affinity to <code>jahez.io/nodepool=general</code> (never on the tainted Elasticsearch pool).</p><p>Topology spread <code>maxSkew: 1</code> across <code>me-central-1a/b/c</code>, plus soft anti-affinity per host. Six replicas = two per zone.</p>'},
+  {c:'var(--c5)', t:'5 · Importance', h:'jahez-critical: preempts batch work',
+   b:'<p><code>priorityClassName: jahez-critical</code> (1,000,000). When KEDA scales up at iftar and nodes are full, the scheduler preempts <code>jahez-batch</code> reindex Pods instead of leaving checkout Pods Pending while Cluster Autoscaler provisions nodes.</p>'},
+  {c:'var(--c6)', t:'6 · Interruptions', h:'PDB 20% + 45s graceful shutdown',
+   b:'<p>PDB <code>maxUnavailable: 20%</code> keeps node upgrades from draining too many replicas at once.</p><p>On termination: <code>preStop</code> sleeps 10s while endpoints are removed, then SIGTERM; ASP.NET Core has 30s to drain in-flight orders inside a 45s grace period. No dropped checkouts during deploys or drains.</p>'}
+];
+let cur = 0;
+const head = document.getElementById('stHead'), body = document.getElementById('stBody'),
+      prev = document.getElementById('stPrev'), next = document.getElementById('stNext'),
+      count = document.getElementById('stCount');
+steps.forEach((s,i)=>{const b=document.createElement('button');b.className='st-dot';b.textContent=s.t;b.onclick=()=>go(i);head.appendChild(b);});
+function go(i){
+  cur = Math.max(0, Math.min(steps.length-1, i));
+  const s = steps[cur];
+  [...head.children].forEach((d,j)=>{d.classList.toggle('on',j===cur);d.style.background=j===cur?s.c:'';});
+  head.children[cur].scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
+  body.innerHTML = '<h4 style="color:'+s.c+'">'+s.h+'</h4>'+s.b;
+  prev.disabled = cur===0; next.disabled = cur===steps.length-1;
+  count.textContent = (cur+1)+' / '+steps.length;
+}
+prev.onclick=()=>go(cur-1); next.onclick=()=>go(cur+1);
+document.addEventListener('keydown',e=>{
+  const r=document.getElementById('stepper').getBoundingClientRect();
+  if(r.top<innerHeight && r.bottom>0){ if(e.key==='ArrowRight')go(cur+1); if(e.key==='ArrowLeft')go(cur-1); }
+});
+let sx=null; const st=document.getElementById('stepper');
+st.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});
+st.addEventListener('touchend',e=>{if(sx===null)return;const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50)go(cur+(dx<0?1:-1));sx=null;});
+go(0);
+
+// ---------- copy buttons ----------
+document.querySelectorAll('.code').forEach(w=>{
+  const btn=document.createElement('button');btn.className='copy';btn.textContent='Copy';
+  btn.onclick=()=>{const t=w.querySelector('pre').innerText;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{btn.textContent='Copied';setTimeout(()=>btn.textContent='Copy',1400);})
+    .catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');btn.textContent='Copied';}catch(e){}ta.remove();setTimeout(()=>btn.textContent='Copy',1400);});};
+  w.appendChild(btn);
+});
+
+// ---------- nav: close drawer + active section ----------
+document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',()=>document.body.classList.remove('open')));
+const links=[...document.querySelectorAll('.nav a')];
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+e.target.id));}});},{rootMargin:'-40% 0px -55% 0px'});
+document.querySelectorAll('main section, #model').forEach(s=>io.observe(s));
+
+// ---------- numbered sub-topics: back-to-index links, open details, highlight ----------
+document.querySelectorAll('h3.sub, h4.sub').forEach(h=>{
+  const sec=h.closest('section'); const ix=sec&&sec.querySelector('.ix'); if(!ix) return;
+  if(!ix.id) ix.id='ix-card-'+sec.id;
+  const a=document.createElement('a'); a.className='up'; a.href='#'+ix.id; a.textContent='↑ Index'; h.appendChild(a);
+});
+function reveal(id){
+  const el=document.getElementById(id); if(!el) return;
+  if(el.tagName==='DETAILS') el.open=true;
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+}
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[href^="#s"], a.up'); if(!a) return;
+  const id=a.getAttribute('href').slice(1); if(!document.getElementById(id)) return;
+  e.preventDefault(); history.replaceState(null,'','#'+id); reveal(id);
+});
+if(location.hash) setTimeout(()=>reveal(location.hash.slice(1)),150);
+</script>
+</body>
+</html>
