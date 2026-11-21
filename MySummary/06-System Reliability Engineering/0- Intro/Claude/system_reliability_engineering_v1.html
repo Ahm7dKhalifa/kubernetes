@@ -1,0 +1,952 @@
+<title>System Reliability Engineering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: fixed left sidebar (drawer on mobile) + single reading column; GitHub-dark series system */
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c2330;--line:#30363d;--fg:#e6edf3;--muted:#8b949e;
+  --accent:#58a6ff;--good:#3fb950;--warn:#d29922;--bad:#f85149;--purple:#bc8cff;--teal:#39c5cf;
+  --code-bg:#0b0f14;--shadow:0 8px 24px rgba(0,0,0,.35);
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#ffffff;--panel:#f6f8fa;--panel2:#eef1f5;--line:#d0d7de;--fg:#1f2328;--muted:#59636e;
+  --accent:#0969da;--good:#1a7f37;--warn:#9a6700;--bad:#cf222e;--purple:#8250df;--teal:#1b7c83;
+  --code-bg:#f6f8fa;--shadow:0 8px 24px rgba(140,149,159,.2);color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#ffffff;--panel:#f6f8fa;--panel2:#eef1f5;--line:#d0d7de;--fg:#1f2328;--muted:#59636e;
+  --accent:#0969da;--good:#1a7f37;--warn:#9a6700;--bad:#cf222e;--purple:#8250df;--teal:#1b7c83;
+  --code-bg:#f6f8fa;--shadow:0 8px 24px rgba(140,149,159,.2);color-scheme:light}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel2);border:1px solid var(--line);padding:.08em .38em;border-radius:5px}
+h1,h2,h3{text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:clamp(1.7rem,4.5vw,2.4rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.45rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.6rem}
+h3{font-size:1.05rem;font-weight:650;margin-block:1.4rem .5rem}
+p{margin:0 0 .9rem;max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+
+/* top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:12px;
+  padding:10px 16px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar .brand{font-weight:700;font-size:.95rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .brand span{color:var(--muted);font-weight:500}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--fg);border-radius:8px;height:34px;min-width:34px;padding:0 10px;
+  font:500 .8rem var(--sans);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.iconbtn:hover{border-color:var(--accent)}
+.iconbtn:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#menuBtn{display:none}
+
+/* shell */
+.shell{display:grid;grid-template-columns:270px minmax(0,1fr)}
+nav.side{position:sticky;top:calc(55px + env(safe-area-inset-top,0px));height:calc(100vh - 55px - env(safe-area-inset-top,0px));overflow-y:auto;
+  border-right:1px solid var(--line);padding:18px 12px 40px}
+nav.side .grp{font-family:var(--mono);font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:16px 10px 6px}
+nav.side a{display:flex;gap:10px;align-items:baseline;padding:6px 10px;border-radius:7px;color:var(--fg);text-decoration:none;font-size:.86rem}
+nav.side a .n{font-family:var(--mono);font-size:.72rem;color:var(--muted);min-width:1.4em}
+nav.side a:hover{background:var(--panel)}
+nav.side a.active{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+nav.side a.active .n{color:var(--accent)}
+main{padding-inline:16px;padding-block:28px 80px;min-width:0}
+.col{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+section{scroll-margin-top:72px;min-width:0}
+.scrim{display:none}
+
+@media (max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  #menuBtn{display:inline-flex}
+  nav.side{position:fixed;top:0;left:0;bottom:0;height:auto;width:min(290px,84vw);background:var(--bg);z-index:50;transform:translateX(-102%);
+    transition:transform .22s ease;padding-top:calc(18px + env(safe-area-inset-top,0px));box-shadow:var(--shadow)}
+  body.nav-open nav.side{transform:none}
+  body.nav-open .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40}
+}
+
+/* hero */
+.hero{display:flex;flex-direction:column;gap:14px;padding-bottom:8px}
+.hero p.lead{font-size:1.06rem;color:var(--muted);max-width:62ch}
+.defbox{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:16px 18px}
+.defbox .q{font-size:1.08rem;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:.74rem;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+
+/* concept grid */
+.concepts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.concepts{grid-template-columns:minmax(0,1fr)}}
+.concept{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--panel);display:flex;flex-direction:column;gap:6px;min-width:0}
+.concept .tag{font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase}
+.concept .qq{font-weight:650}
+.concept .ex{font-size:.86rem;color:var(--muted)}
+.c-av .tag{color:var(--accent)} .c-re .tag{color:var(--good)} .c-rs .tag{color:var(--purple)} .c-ft .tag{color:var(--warn)}
+.concept.wide{grid-column:1/-1;border-style:dashed}
+
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.88rem}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--panel);font-weight:600;font-size:.8rem}
+tr:last-child td{border-bottom:0}
+td:first-child{color:var(--muted);font-weight:500;white-space:nowrap}
+
+/* callouts */
+.callout{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--panel);border-radius:8px;padding:12px 16px;font-size:.92rem}
+.callout.warn{border-left-color:var(--warn)} .callout.bad{border-left-color:var(--bad)} .callout.good{border-left-color:var(--good)}
+.callout b.h{display:block;margin-bottom:4px}
+.callout p:last-child{margin-bottom:0}
+
+/* figures */
+figure{margin:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:14px;overflow-x:auto}
+figure svg{display:block;width:100%;min-width:560px;height:auto}
+figcaption{font-size:.8rem;color:var(--muted);margin-top:8px}
+svg text{font-family:var(--sans)}
+svg .mono{font-family:var(--mono)}
+
+/* calculator */
+.calc{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:14px}
+.calc .inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.calc .inputs{grid-template-columns:minmax(0,1fr)}}
+.calc label{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted)}
+.calc input{font:500 .95rem var(--mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:7px 9px;width:100%}
+.meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.meters{grid-template-columns:minmax(0,1fr)}}
+.meter{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.meter .k{font-size:.74rem;color:var(--muted)}
+.meter .v{font:600 1.35rem var(--mono);font-variant-numeric:tabular-nums}
+.meter .bar{height:6px;border-radius:4px;background:var(--panel2);margin-top:6px;overflow:hidden}
+.meter .bar i{display:block;height:100%;border-radius:4px}
+.calc .verdict{font-size:.9rem}
+
+/* matrix */
+.matrix{display:grid;grid-template-columns:auto repeat(2,minmax(0,1fr));gap:8px;font-size:.86rem}
+.matrix .ax{font-family:var(--mono);font-size:.7rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center;padding:4px}
+.matrix .cell{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel);min-width:0}
+.matrix .cell b{display:block;margin-bottom:3px}
+.matrix .cell.best{border-color:var(--good)} .matrix .cell.worst{border-color:var(--bad)}
+
+/* stepper */
+.stepper{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+.stepper .stage{padding:16px;min-height:150px}
+.stepper .stage .t{font-weight:650;margin-bottom:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stepper .badge{font-family:var(--mono);font-size:.68rem;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.stepper .term{font-family:var(--mono);font-size:.8rem;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:10px;white-space:pre-wrap;overflow-x:auto;color:var(--fg)}
+.stepper .ctrl{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);background:var(--bg)}
+.stepper .dots{display:flex;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
+.stepper .dots button{width:9px;height:9px;border-radius:50%;border:0;background:var(--line);padding:0;cursor:pointer}
+.stepper .dots button.on{background:var(--accent);width:22px;border-radius:5px}
+.stepper .count{font:500 .75rem var(--mono);color:var(--muted);min-width:3.2em;text-align:right}
+
+/* tree */
+.tree{font-family:var(--mono);font-size:.82rem;line-height:1.75;background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--fg)}
+.tree .h{color:var(--accent);font-weight:600} .tree .m{color:var(--muted)} .tree .g{color:var(--good)} .tree .p{color:var(--purple)} .tree .w{color:var(--warn)} .tree .t{color:var(--teal)}
+
+/* code */
+.code{position:relative;border:1px solid var(--line);border-radius:10px;background:var(--code-bg);min-width:0}
+.code .hd{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--line);font:500 .74rem var(--mono);color:var(--muted)}
+.code .hd span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.code pre{margin:0;padding:12px 14px;overflow-x:auto;font:400 .78rem/1.6 var(--mono);color:var(--fg)}
+.code .copy{font:500 .7rem var(--sans);padding:3px 9px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+.k1{color:var(--purple)} .k2{color:var(--accent)} .k3{color:var(--good)} .k4{color:var(--warn)} .cm{color:var(--muted);font-style:italic}
+
+/* details */
+details{border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+details>summary{cursor:pointer;padding:11px 14px;font-weight:600;font-size:.92rem;list-style:none;display:flex;gap:8px;align-items:center}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:'▸';color:var(--muted);transition:transform .15s}
+details[open]>summary::before{transform:rotate(90deg)}
+details .body{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px}
+
+.stack{display:flex;flex-direction:column;gap:14px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.two{grid-template-columns:minmax(0,1fr)}}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel);min-width:0}
+.card b{display:block;margin-bottom:4px}
+.card ul{margin:0;padding-left:1.1em;font-size:.88rem}
+.mem{display:grid;gap:8px}
+.mem div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:.9rem}
+@media (max-width:520px){.mem div{grid-template-columns:minmax(0,1fr);gap:2px}}
+.mem b{font-weight:600}
+footer{color:var(--muted);font-size:.8rem;border-top:1px solid var(--line);padding-top:18px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="topbar">
+  <button class="iconbtn" id="menuBtn" aria-label="Open contents">☰</button>
+  <div class="brand">System Reliability Engineering <span>· K8s workload series</span></div>
+  <button class="iconbtn" id="themeBtn" aria-label="Toggle theme">◐ Theme</button>
+</div>
+<div class="scrim" id="scrim"></div>
+
+<div class="shell">
+<nav class="side" id="side" aria-label="Contents">
+  <div class="grp">Concepts</div>
+  <a href="#overview"><span class="n">00</span>Overview</a>
+  <a href="#four"><span class="n">01</span>The four properties</a>
+  <a href="#avail-rel"><span class="n">02</span>Available ≠ reliable</a>
+  <a href="#rel-ft"><span class="n">03</span>Reliability vs fault tolerance</a>
+  <a href="#relationship"><span class="n">04</span>How they connect</a>
+  <div class="grp">Kubernetes mechanics</div>
+  <a href="#selfheal"><span class="n">05</span>Self-healing</a>
+  <a href="#reconcile"><span class="n">06</span>Reconciliation loop</a>
+  <a href="#sh-vs-res"><span class="n">07</span>Self-healing vs resilience</a>
+  <div class="grp">Jahez case study</div>
+  <a href="#scenario"><span class="n">08</span>Search aggregator failure</a>
+  <a href="#correction"><span class="n">09</span>Mental-model correction</a>
+  <a href="#dotnet"><span class="n">10</span>Resilience in ASP.NET Core</a>
+  <a href="#yaml"><span class="n">11</span>Apply-ready manifests</a>
+  <div class="grp">Roadmap</div>
+  <a href="#roadmap"><span class="n">12</span>Reliability Engineering tree</a>
+  <a href="#workload-map"><span class="n">13</span>Full workload map</a>
+  <a href="#cheats"><span class="n">14</span>Memory tricks</a>
+</nav>
+
+<main>
+<div class="col">
+
+<!-- 00 -->
+<section id="overview" class="hero">
+  <div class="eyebrow">Volume · Reliability Engineering · jahez-prod</div>
+  <h1>System Reliability Engineering</h1>
+  <p class="lead">Also called dependability engineering. Five words get used interchangeably in incident reviews: availability, reliability, resilience, fault tolerance, self-healing. They answer different questions, sit at different layers, and run on different clocks. This guide separates them, then puts them back together on a real Jahez request path.</p>
+  <div class="defbox">
+    <div class="eyebrow" style="margin-bottom:6px">Definition</div>
+    <div class="q">Reliability is the ability of a system to consistently perform its intended function correctly over time, even when failures occur.</div>
+    <p style="margin:.6rem 0 0;color:var(--muted)">In plain terms: can customers keep ordering when things go wrong?</p>
+  </div>
+  <div class="chips"><span class="chip">namespace: jahez-prod</span><span class="chip">zones: me-central-1a/b/c</span><span class="chip">ASP.NET Core 9</span><span class="chip">kubectl 1.30+</span></div>
+</section>
+
+<!-- 01 -->
+<section id="four">
+  <div class="eyebrow">01 · Vocabulary</div>
+  <h2>The four properties, one question each</h2>
+  <p>Each term is a question you ask about the system. If you can name the question, you can name the property.</p>
+  <div class="concepts">
+    <div class="concept c-av"><span class="tag">Availability</span><span class="qq">Is the system reachable right now?</span><span class="ex">The Jahez app opens and the API gateway answers. Measured as uptime: 99.99%.</span></div>
+    <div class="concept c-re"><span class="tag">Reliability</span><span class="qq">Does it keep working correctly over time?</span><span class="ex">Of 1,000 checkout attempts, 998 become real orders. Measured as success rate.</span></div>
+    <div class="concept c-rs"><span class="tag">Resilience</span><span class="qq">Can it recover from failures?</span><span class="ex">The orders primary in PostgreSQL fails → failover → recovery → service restored.</span></div>
+    <div class="concept c-ft"><span class="tag">Fault tolerance</span><span class="qq">Can it keep operating during a failure with no interruption?</span><span class="ex">Node in me-central-1a dies, replicas in 1b and 1c keep serving. Customers notice nothing.</span></div>
+    <div class="concept wide"><span class="tag" style="color:var(--teal)">Dependability</span><span class="qq">Availability + Reliability + Resilience + Fault Tolerance</span><span class="ex">The umbrella property. When leadership asks "can we trust the platform during Ramadan iftar peak?", they are asking about dependability.</span></div>
+  </div>
+</section>
+
+<!-- 02 -->
+<section id="avail-rel" class="stack">
+  <div>
+    <div class="eyebrow">02 · The classic trap</div>
+    <h2>A service can be available but unreliable</h2>
+    <p>Uptime only says the front door opens. It says nothing about whether checkout succeeds behind it. A pod that returns <code>200 OK</code> on <code>/health</code> while every <code>POST /orders</code> fails with a payment timeout is 100% available and badly unreliable.</p>
+  </div>
+  <div class="calc" aria-label="Availability and reliability calculator">
+    <div class="eyebrow">Try it · example numbers, not production data</div>
+    <div class="inputs">
+      <label for="uptime">Uptime (%)<input id="uptime" type="number" value="99.99" step="0.01" min="0" max="100"></label>
+      <label for="orders">Checkout attempts<input id="orders" type="number" value="1000" min="1" step="1"></label>
+      <label for="failed">Failed orders<input id="failed" type="number" value="2" min="0" step="1"></label>
+    </div>
+    <div class="meters">
+      <div class="meter"><div class="k">Availability</div><div class="v" id="mAv">99.99%</div><div class="bar"><i id="bAv" style="background:var(--accent)"></i></div></div>
+      <div class="meter"><div class="k">Reliability (success rate)</div><div class="v" id="mRe">99.80%</div><div class="bar"><i id="bRe" style="background:var(--good)"></i></div></div>
+      <div class="meter"><div class="k">Error budget used (SLO 99.9%)</div><div class="v" id="mEb">200%</div><div class="bar"><i id="bEb" style="background:var(--bad)"></i></div></div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+  <div class="callout"><b class="h">Why the error budget matters</b><p>An SLO of 99.9% on checkout allows 1 failure per 1,000 attempts. Two failures means the budget is spent twice over, even though uptime looks perfect. SRE practice is to freeze risky releases when the budget is gone. That is a reliability decision, not an availability one.</p></div>
+</section>
+
+<!-- 03 -->
+<section id="rel-ft" class="stack">
+  <div>
+    <div class="eyebrow">03 · The pair people confuse most</div>
+    <h2>Reliability vs fault tolerance</h2>
+    <p>Reliability is about <b>how often</b> things go wrong. Fault tolerance is about <b>what happens when</b> they go wrong.</p>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Aspect</th><th>Reliability</th><th>Fault tolerance</th></tr>
+    <tr><td>Focus</td><td>Correct operation over time</td><td>Surviving component failures</td></tr>
+    <tr><td>Question</td><td>"How often does it fail?"</td><td>"What happens when it fails?"</td></tr>
+    <tr><td>Measured by</td><td>Error rate, success rate, MTBF</td><td>Continuity during failure, zero user impact</td></tr>
+    <tr><td>Goal</td><td>Minimize failures</td><td>Hide failures</td></tr>
+    <tr><td>Payment service</td><td>9,990 of 10,000 succeed (99.9%)</td><td>Node A fails, Node B takes over, nobody notices</td></tr>
+    <tr><td>In Kubernetes</td><td>Pods rarely crash, readiness keeps traffic off unready pods</td><td>Replicas across zones, Service shifts traffic away from dead endpoints</td></tr>
+  </table></div>
+  <h3>The two are independent axes</h3>
+  <div class="matrix">
+    <div></div><div class="ax">Not fault tolerant</div><div class="ax">Fault tolerant</div>
+    <div class="ax">Reliable</div>
+    <div class="cell"><b>Reliable but fragile</b>Works correctly almost all the time. A single node loss takes it down. Example: one-replica <code>promo-engine</code> with perfect code.</div>
+    <div class="cell best"><b>Dependable</b>Low error rate and survives node or zone loss. Target for <code>order-service</code>.</div>
+    <div class="ax">Unreliable</div>
+    <div class="cell worst"><b>Neither</b>Buggy and single-point. Fails often, fails hard.</div>
+    <div class="cell"><b>Survives, still flaky</b>Three replicas across zones, but a race condition fails 1% of requests. Redundancy cannot fix bad logic.</div>
+  </div>
+  <div class="callout good"><b class="h">Key relationship</b><p>Fault tolerance is one of the main ways to achieve reliability. Reliability is the broader outcome: faults happen, fault tolerance absorbs them, the system keeps running, and over time fewer failures become visible.</p></div>
+</section>
+
+<!-- 04 -->
+<section id="relationship" class="stack">
+  <div>
+    <div class="eyebrow">04 · Putting it together</div>
+    <h2>Two paths after a fault</h2>
+    <p>When a fault occurs, either fault tolerance hides it completely, or it leaks into service impact and resilience brings you back. Both paths feed reliability over time.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 300" role="img" aria-label="Fault leads to either fault tolerance with no impact, or service impact then resilience then recovery">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+      <rect x="20" y="120" width="130" height="56" rx="10" fill="var(--panel2)" stroke="var(--bad)"/>
+      <text x="85" y="145" text-anchor="middle" fill="var(--fg)" font-size="14" font-weight="600">Fault occurs</text>
+      <text x="85" y="164" text-anchor="middle" fill="var(--muted)" font-size="11">node / pod / DB</text>
+      <path d="M150 140 C 200 140, 200 70, 240 70" fill="none" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+      <path d="M150 158 C 200 158, 200 228, 240 228" fill="none" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+      <rect x="242" y="42" width="170" height="56" rx="10" fill="var(--panel2)" stroke="var(--warn)"/>
+      <text x="327" y="67" text-anchor="middle" fill="var(--fg)" font-size="14" font-weight="600">Fault tolerance</text>
+      <text x="327" y="86" text-anchor="middle" fill="var(--muted)" font-size="11">redundant replica serves</text>
+      <path d="M412 70 L 470 70" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+      <rect x="472" y="42" width="150" height="56" rx="10" fill="var(--panel2)" stroke="var(--good)"/>
+      <text x="547" y="67" text-anchor="middle" fill="var(--fg)" font-size="14" font-weight="600">No user impact</text>
+      <text x="547" y="86" text-anchor="middle" fill="var(--muted)" font-size="11">orders keep flowing</text>
+      <rect x="242" y="200" width="130" height="56" rx="10" fill="var(--panel2)" stroke="var(--bad)"/>
+      <text x="307" y="225" text-anchor="middle" fill="var(--fg)" font-size="14" font-weight="600">Service impact</text>
+      <text x="307" y="244" text-anchor="middle" fill="var(--muted)" font-size="11">errors / degraded</text>
+      <path d="M372 228 L 410 228" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+      <rect x="412" y="200" width="120" height="56" rx="10" fill="var(--panel2)" stroke="var(--purple)"/>
+      <text x="472" y="225" text-anchor="middle" fill="var(--fg)" font-size="14" font-weight="600">Resilience</text>
+      <text x="472" y="244" text-anchor="middle" fill="var(--muted)" font-size="11">failover, retry</text>
+      <path d="M532 228 L 570 228" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+      <rect x="572" y="200" width="110" height="56" rx="10" fill="var(--panel2)" stroke="var(--good)"/>
+      <text x="627" y="225" text-anchor="middle" fill="var(--fg)" font-size="14" font-weight="600">Recovery</text>
+      <text x="627" y="244" text-anchor="middle" fill="var(--muted)" font-size="11">restored</text>
+      <path d="M622 98 C 690 110, 720 130, 720 150" fill="none" stroke="var(--teal)" stroke-dasharray="4 4" stroke-width="1.4"/>
+      <path d="M682 228 C 720 220, 720 190, 720 168" fill="none" stroke="var(--teal)" stroke-dasharray="4 4" stroke-width="1.4"/>
+      <text x="720" y="163" text-anchor="middle" fill="var(--teal)" font-size="12" font-weight="600">Reliability</text>
+      <text x="720" y="180" text-anchor="middle" fill="var(--muted)" font-size="10">over time</text>
+    </svg>
+    <figcaption>Top path: the fault never reaches a customer. Bottom path: it does, and resilience limits how long it lasts. Both raise long-run reliability.</figcaption>
+  </figure>
+</section>
+
+<!-- 05 -->
+<section id="selfheal" class="stack">
+  <div>
+    <div class="eyebrow">05 · Kubernetes mechanism</div>
+    <h2>Self-healing</h2>
+    <p>Self-healing is the platform's ability to detect failures and restore the desired state without a human. Kubernetes constantly checks your workloads and fixes them when something breaks.</p>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Failure</th><th>Who detects</th><th>Action</th><th>Typical time</th></tr>
+    <tr><td>Container process exits</td><td>kubelet</td><td>Restart container per <code>restartPolicy</code>, with CrashLoop backoff (10s → 5m cap)</td><td>Seconds</td></tr>
+    <tr><td>App deadlocked, process alive</td><td>kubelet via liveness probe</td><td>Kill and restart container after <code>failureThreshold</code></td><td>periodSeconds × failureThreshold</td></tr>
+    <tr><td>App up but not ready</td><td>kubelet via readiness probe</td><td>Remove pod IP from EndpointSlice. No restart.</td><td>Seconds</td></tr>
+    <tr><td>Pod deleted or evicted</td><td>ReplicaSet / StatefulSet / DaemonSet controller</td><td>Create a replacement pod; scheduler places it</td><td>Seconds</td></tr>
+    <tr><td>Node unreachable</td><td>node-lifecycle controller</td><td>Taint node, evict pods after toleration expires, controllers create replacements elsewhere</td><td>~40s detect + 300s default toleration</td></tr>
+    <tr><td>Node resource pressure</td><td>kubelet eviction manager</td><td>Evict pods by QoS class and priority</td><td>Seconds</td></tr>
+  </table></div>
+  <div class="callout warn"><b class="h">Precision note on "rescheduling"</b><p>Kubernetes never moves a pod. A pod is bound to its node for life. On node failure the pod is evicted, and its controller creates a <i>new</i> pod with a new name and IP that the scheduler places elsewhere. A bare pod with no controller is simply gone. Also, eviction waits for the default <code>tolerationSeconds: 300</code> on <code>node.kubernetes.io/unreachable</code>. For latency-sensitive services you can shorten it (see section 11).</p></div>
+  <div class="callout bad"><b class="h">Liveness probe pitfall</b><p>Never check PostgreSQL, Redis or Elasticsearch from a liveness probe. If Redis blips, every <code>menu-service</code> pod restarts at once and turns a dependency hiccup into a full outage. Dependencies belong in readiness at most, and often not even there.</p></div>
+</section>
+
+<!-- 06 -->
+<section id="reconcile" class="stack">
+  <div>
+    <div class="eyebrow">06 · The core idea</div>
+    <h2>Desired state reconciliation, step by step</h2>
+    <p>Every controller runs the same loop: observe actual state, compare with desired state, act on the difference. Walk through a node loss on <code>order-service</code>. Use the arrow keys or swipe.</p>
+  </div>
+  <div class="stepper" data-stepper="reconcile" tabindex="0" aria-label="Reconciliation stepper"></div>
+</section>
+
+<!-- 07 -->
+<section id="sh-vs-res" class="stack">
+  <div>
+    <div class="eyebrow">07 · Different levels of concept</div>
+    <h2>Self-healing vs resilience</h2>
+    <p>Self-healing is a <b>mechanism</b> inside the platform. Resilience is a <b>property</b> of the whole system, apps plus infrastructure. Self-healing is one building block of resilience, and resilience is much bigger.</p>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Aspect</th><th>Self-healing</th><th>Resilience</th></tr>
+    <tr><td>Level</td><td>Mechanism: how the system fixes itself</td><td>Property: how the system behaves under failure</td></tr>
+    <tr><td>Scope</td><td>Kubernetes / infrastructure</td><td>Entire system (apps + infra)</td></tr>
+    <tr><td>Focus</td><td>Recovery actions</td><td>End-to-end behavior</td></tr>
+    <tr><td>Question</td><td>"Can it fix itself?"</td><td>"Can it survive and keep working?"</td></tr>
+    <tr><td>Clock</td><td>System time: seconds to minutes</td><td>Request time: milliseconds</td></tr>
+    <tr><td>Owner at Jahez</td><td>Platform team (manifests, probes, PDBs)</td><td>Service team (timeouts, fallbacks) + platform</td></tr>
+  </table></div>
+  <div class="two">
+    <div class="card"><b>Self-healing without resilience fails when…</b><ul><li>Recovery is slower than customer patience (pod takes 90s to warm up)</li><li>The service collapses under load before a replacement is ready</li><li>A dependency fails and nothing restarts it, because it is outside the cluster</li></ul></div>
+    <div class="card"><b>Resilience patterns</b><ul><li>Timeouts per dependency</li><li>Bounded retries with jittered backoff</li><li>Circuit breakers</li><li>Fallback and graceful degradation (cache, empty section)</li><li>Failover to replica</li></ul></div>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 210" role="img" aria-label="Timeline showing resilience acting at request time and self-healing acting at system time">
+      <text x="20" y="28" fill="var(--muted)" font-size="11" class="mono">t = 0</text>
+      <line x1="120" y1="40" x2="740" y2="40" stroke="var(--line)"/>
+      <line x1="120" y1="40" x2="120" y2="190" stroke="var(--bad)" stroke-dasharray="3 3"/>
+      <text x="124" y="32" fill="var(--bad)" font-size="11" font-weight="600">ads-service pod crashes</text>
+      <text x="20" y="85" fill="var(--purple)" font-size="13" font-weight="600">Resilience</text>
+      <text x="20" y="102" fill="var(--muted)" font-size="10">request time</text>
+      <rect x="122" y="70" width="70" height="30" rx="6" fill="var(--purple)" opacity=".25" stroke="var(--purple)"/>
+      <text x="157" y="90" text-anchor="middle" fill="var(--fg)" font-size="11">300ms timeout</text>
+      <rect x="196" y="70" width="80" height="30" rx="6" fill="var(--purple)" opacity=".25" stroke="var(--purple)"/>
+      <text x="236" y="90" text-anchor="middle" fill="var(--fg)" font-size="11">ads = [ ]</text>
+      <rect x="280" y="70" width="110" height="30" rx="6" fill="var(--good)" opacity=".2" stroke="var(--good)"/>
+      <text x="335" y="90" text-anchor="middle" fill="var(--fg)" font-size="11">200 partial</text>
+      <text x="20" y="150" fill="var(--accent)" font-size="13" font-weight="600">Self-healing</text>
+      <text x="20" y="167" fill="var(--muted)" font-size="10">system time</text>
+      <rect x="122" y="135" width="150" height="30" rx="6" fill="var(--accent)" opacity=".2" stroke="var(--accent)"/>
+      <text x="197" y="155" text-anchor="middle" fill="var(--fg)" font-size="11">kubelet restarts container</text>
+      <rect x="276" y="135" width="190" height="30" rx="6" fill="var(--accent)" opacity=".2" stroke="var(--accent)"/>
+      <text x="371" y="155" text-anchor="middle" fill="var(--fg)" font-size="11">startup + readiness pass</text>
+      <rect x="470" y="135" width="200" height="30" rx="6" fill="var(--good)" opacity=".2" stroke="var(--good)"/>
+      <text x="570" y="155" text-anchor="middle" fill="var(--fg)" font-size="11">back in EndpointSlice → ads return</text>
+      <text x="740" y="200" text-anchor="end" fill="var(--muted)" font-size="10" class="mono">ms → seconds → minutes</text>
+    </svg>
+    <figcaption>Resilience protects the customer in the first few hundred milliseconds. Self-healing restores capacity over the next seconds to minutes. You need both.</figcaption>
+  </figure>
+</section>
+
+<!-- 08 -->
+<section id="scenario" class="stack">
+  <div>
+    <div class="eyebrow">08 · Jahez case study</div>
+    <h2>Search aggregator: one failure, two responses</h2>
+    <p><code>search-aggregator</code> in <code>jahez-prod</code> fans out to three services, merges the results and returns the restaurant search page: <code>personalization-service</code>, <code>recommendation-service</code> and <code>ads-service</code> (sponsored restaurant slots). Walk through what happens when ads fails.</p>
+  </div>
+  <div class="stepper" data-stepper="scenario" tabindex="0" aria-label="Search aggregator scenario stepper"></div>
+</section>
+
+<!-- 09 -->
+<section id="correction" class="stack">
+  <div>
+    <div class="eyebrow">09 · Validate the model</div>
+    <h2>Mental-model correction</h2>
+  </div>
+  <div class="callout bad">
+    <b class="h">Incorrect statement</b>
+    <p>"Self-healing only means the user will receive a totally crashed response because one service failed."</p>
+  </div>
+  <div class="callout good">
+    <b class="h">Corrected</b>
+    <p>Self-healing says nothing about what the user receives during the failure. It is about how the platform restores broken components to a healthy state afterwards. What the user receives is decided by resilience in the calling service. With no timeouts or fallbacks, the user gets an error <i>and</i> Kubernetes still self-heals the ads pod. With them, the user gets a page without ads <i>and</i> Kubernetes self-heals the ads pod. Self-healing happens in both cases.</p>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Aggregator design</th><th>User sees during failure</th><th>Self-healing happens?</th><th>Resilient?</th></tr>
+    <tr><td>No timeout, await all</td><td>Spinner, then 504 after gateway timeout</td><td>Yes</td><td style="color:var(--bad)">No</td></tr>
+    <tr><td>Timeout, no fallback</td><td>Fast 500 error</td><td>Yes</td><td style="color:var(--warn)">Partly (fails fast)</td></tr>
+    <tr><td>Timeout + fallback per call</td><td>Restaurants without sponsored slots</td><td>Yes</td><td style="color:var(--good)">Yes, degrades gracefully</td></tr>
+  </table></div>
+</section>
+
+<!-- 10 -->
+<section id="dotnet" class="stack">
+  <div>
+    <div class="eyebrow">10 · Application layer</div>
+    <h2>Resilience in ASP.NET Core</h2>
+    <p>The platform cannot add fallbacks for you. This is the full <code>Program.cs</code> for <code>search-aggregator</code> using <code>Microsoft.Extensions.Http.Resilience</code>. It wires timeouts, retries and circuit breakers per dependency, splits liveness from readiness, and returns a partial response when a non-critical dependency fails.</p>
+  </div>
+  <div class="code"><div class="hd"><span>search-aggregator/SearchAggregator.csproj</span><button class="copy">Copy</button></div><pre>&lt;Project Sdk="Microsoft.NET.Sdk.Web"&gt;
+  &lt;PropertyGroup&gt;
+    &lt;TargetFramework&gt;net9.0&lt;/TargetFramework&gt;
+    &lt;Nullable&gt;enable&lt;/Nullable&gt;
+    &lt;ImplicitUsings&gt;enable&lt;/ImplicitUsings&gt;
+  &lt;/PropertyGroup&gt;
+  &lt;ItemGroup&gt;
+    &lt;PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" /&gt;
+  &lt;/ItemGroup&gt;
+&lt;/Project&gt;</pre></div>
+  <div class="code"><div class="hd"><span>search-aggregator/Program.cs</span><button class="copy">Copy</button></div><pre><span class="k1">using</span> Microsoft.AspNetCore.Diagnostics.HealthChecks;
+<span class="k1">using</span> Microsoft.Extensions.Diagnostics.HealthChecks;
+<span class="k1">using</span> Microsoft.Extensions.Http.Resilience;
+
+<span class="k1">var</span> builder = WebApplication.CreateBuilder(args);
+
+<span class="cm">// Graceful shutdown: finish in-flight searches after SIGTERM.
+// Must be lower than terminationGracePeriodSeconds minus the preStop sleep.</span>
+builder.Services.Configure&lt;HostOptions&gt;(o =&gt; o.ShutdownTimeout = TimeSpan.FromSeconds(<span class="k4">20</span>));
+
+<span class="cm">// One resilience profile per dependency. Critical deps get more patience.</span>
+<span class="k1">static void</span> Critical(HttpStandardResilienceOptions o)
+{
+    o.AttemptTimeout.Timeout = TimeSpan.FromMilliseconds(<span class="k4">600</span>);
+    o.TotalRequestTimeout.Timeout = TimeSpan.FromMilliseconds(<span class="k4">1500</span>);
+    o.Retry.MaxRetryAttempts = <span class="k4">2</span>;
+    o.Retry.UseJitter = <span class="k1">true</span>;
+    o.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(<span class="k4">15</span>);
+    o.CircuitBreaker.FailureRatio = <span class="k4">0.5</span>;
+    o.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(<span class="k4">10</span>);
+}
+
+<span class="k1">static void</span> Optional(HttpStandardResilienceOptions o)
+{
+    o.AttemptTimeout.Timeout = TimeSpan.FromMilliseconds(<span class="k4">300</span>);
+    o.TotalRequestTimeout.Timeout = TimeSpan.FromMilliseconds(<span class="k4">400</span>);
+    o.Retry.MaxRetryAttempts = <span class="k4">1</span>;
+    o.Retry.UseJitter = <span class="k1">true</span>;
+    o.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(<span class="k4">10</span>);
+    o.CircuitBreaker.FailureRatio = <span class="k4">0.3</span>;
+    o.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(<span class="k4">30</span>);
+}
+
+builder.Services.AddHttpClient(<span class="k3">"personalization"</span>, c =&gt;
+        c.BaseAddress = <span class="k1">new</span>(<span class="k3">"http://personalization-service.jahez-prod.svc.cluster.local"</span>))
+    .AddStandardResilienceHandler(Critical);
+
+builder.Services.AddHttpClient(<span class="k3">"recommendation"</span>, c =&gt;
+        c.BaseAddress = <span class="k1">new</span>(<span class="k3">"http://recommendation-service.jahez-prod.svc.cluster.local"</span>))
+    .AddStandardResilienceHandler(Optional);
+
+builder.Services.AddHttpClient(<span class="k3">"ads"</span>, c =&gt;
+        c.BaseAddress = <span class="k1">new</span>(<span class="k3">"http://ads-service.jahez-prod.svc.cluster.local"</span>))
+    .AddStandardResilienceHandler(Optional);
+
+<span class="cm">// Liveness checks only the process itself. Readiness can include warm-up state.</span>
+builder.Services.AddSingleton&lt;WarmupState&gt;();
+builder.Services.AddHealthChecks()
+    .AddCheck(<span class="k3">"self"</span>, () =&gt; HealthCheckResult.Healthy(), tags: [<span class="k3">"live"</span>])
+    .AddCheck&lt;WarmupCheck&gt;(<span class="k3">"warmup"</span>, tags: [<span class="k3">"ready"</span>]);
+
+<span class="k1">var</span> app = builder.Build();
+
+app.Lifetime.ApplicationStarted.Register(() =&gt;
+    app.Services.GetRequiredService&lt;WarmupState&gt;().Ready = <span class="k1">true</span>);
+
+app.MapHealthChecks(<span class="k3">"/health/live"</span>,  <span class="k1">new</span> HealthCheckOptions { Predicate = r =&gt; r.Tags.Contains(<span class="k3">"live"</span>) });
+app.MapHealthChecks(<span class="k3">"/health/ready"</span>, <span class="k1">new</span> HealthCheckOptions { Predicate = r =&gt; r.Tags.Contains(<span class="k3">"ready"</span>) });
+
+app.MapGet(<span class="k3">"/v1/search"</span>, <span class="k1">async</span> (<span class="k2">string</span> q, <span class="k2">string</span> city, IHttpClientFactory http, ILogger&lt;Program&gt; log, CancellationToken ct) =&gt;
+{
+    <span class="k1">var</span> personalization = http.CreateClient(<span class="k3">"personalization"</span>);
+    <span class="k1">var</span> recommendation  = http.CreateClient(<span class="k3">"recommendation"</span>);
+    <span class="k1">var</span> ads             = http.CreateClient(<span class="k3">"ads"</span>);
+    <span class="k1">var</span> qs = <span class="k3">$"?q={Uri.EscapeDataString(q)}&amp;city={Uri.EscapeDataString(city)}"</span>;
+
+    <span class="cm">// Fan out in parallel. Each optional call has its own fallback.</span>
+    <span class="k1">var</span> resultsTask = personalization.GetFromJsonAsync&lt;List&lt;Restaurant&gt;&gt;(<span class="k3">"/v1/rank"</span> + qs, ct);
+    <span class="k1">var</span> recsTask    = SafeAsync(() =&gt; recommendation.GetFromJsonAsync&lt;List&lt;Restaurant&gt;&gt;(<span class="k3">"/v1/recs"</span> + qs, ct), <span class="k3">"recommendation"</span>, log);
+    <span class="k1">var</span> adsTask     = SafeAsync(() =&gt; ads.GetFromJsonAsync&lt;List&lt;SponsoredSlot&gt;&gt;(<span class="k3">"/v1/slots"</span> + qs, ct), <span class="k3">"ads"</span>, log);
+
+    List&lt;Restaurant&gt;? results;
+    <span class="k1">try</span> { results = <span class="k1">await</span> resultsTask; }
+    <span class="k1">catch</span> (Exception ex) <span class="k1">when</span> (ex <span class="k1">is</span> HttpRequestException <span class="k1">or</span> TimeoutException <span class="k1">or</span> Polly.CircuitBreaker.BrokenCircuitException)
+    {
+        <span class="cm">// Search results are the core function. Without them, fail fast and honestly.</span>
+        log.LogError(ex, <span class="k3">"personalization unavailable"</span>);
+        <span class="k1">return</span> Results.Problem(<span class="k3">"Search is temporarily unavailable"</span>, statusCode: <span class="k4">503</span>);
+    }
+
+    <span class="k1">var</span> recs = <span class="k1">await</span> recsTask;
+    <span class="k1">var</span> slots = <span class="k1">await</span> adsTask;
+
+    <span class="k1">return</span> Results.Ok(<span class="k1">new</span> SearchResponse(
+        SearchResults: results ?? [],
+        Recommendations: recs ?? [],
+        Ads: slots ?? [],
+        Degraded: recs <span class="k1">is null</span> || slots <span class="k1">is null</span>));
+});
+
+app.Run();
+
+<span class="cm">// Returns null instead of throwing, so one optional dependency never sinks the page.</span>
+<span class="k1">static async</span> Task&lt;T?&gt; SafeAsync&lt;T&gt;(Func&lt;Task&lt;T?&gt;&gt; call, <span class="k2">string</span> dep, ILogger log) <span class="k1">where</span> T : <span class="k1">class</span>
+{
+    <span class="k1">try</span> { <span class="k1">return await</span> call(); }
+    <span class="k1">catch</span> (Exception ex) <span class="k1">when</span> (ex <span class="k1">is not</span> OperationCanceledException { CancellationToken.IsCancellationRequested: <span class="k1">true</span> })
+    {
+        log.LogWarning(ex, <span class="k3">"{Dependency} failed, serving degraded response"</span>, dep);
+        <span class="k1">return null</span>;
+    }
+}
+
+<span class="k1">public record</span> Restaurant(<span class="k2">string</span> Id, <span class="k2">string</span> Name, <span class="k2">double</span> Rating, <span class="k2">int</span> EtaMinutes);
+<span class="k1">public record</span> SponsoredSlot(<span class="k2">string</span> RestaurantId, <span class="k2">int</span> Position, <span class="k2">string</span> CampaignId);
+<span class="k1">public record</span> SearchResponse(List&lt;Restaurant&gt; SearchResults, List&lt;Restaurant&gt; Recommendations, List&lt;SponsoredSlot&gt; Ads, <span class="k2">bool</span> Degraded);
+
+<span class="k1">public class</span> WarmupState { <span class="k1">public volatile bool</span> Ready; }
+
+<span class="k1">public class</span> WarmupCheck(WarmupState state) : IHealthCheck
+{
+    <span class="k1">public</span> Task&lt;HealthCheckResult&gt; CheckHealthAsync(HealthCheckContext context, CancellationToken ct = <span class="k1">default</span>) =&gt;
+        Task.FromResult(state.Ready ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy(<span class="k3">"warming up"</span>));
+}</pre></div>
+  <div class="callout"><b class="h">Design decisions in this code</b><p>Personalization is critical, so it gets two retries and a longer budget, and its failure returns 503. Recommendation and ads are optional, so they get one retry, a 400ms ceiling and a null fallback. The <code>Degraded</code> flag lets the mobile app hide empty sections and lets you count degraded responses as a separate SLI. The circuit breaker sampling window must be at least twice the attempt timeout, which both profiles satisfy.</p></div>
+</section>
+
+<!-- 11 -->
+<section id="yaml" class="stack">
+  <div>
+    <div class="eyebrow">11 · Platform layer</div>
+    <h2>Apply-ready manifests</h2>
+    <p>Every branch of the Reliability Engineering tree as real YAML for <code>search-aggregator</code>. Apply with <code>kubectl apply -f search-aggregator-reliability.yaml</code>.</p>
+  </div>
+  <div class="code"><div class="hd"><span>search-aggregator-reliability.yaml</span><button class="copy">Copy</button></div><pre><span class="cm"># ── Deployment: health checks, availability, fault tolerance, graceful shutdown ──</span>
+<span class="k2">apiVersion</span>: apps/v1
+<span class="k2">kind</span>: Deployment
+<span class="k2">metadata</span>:
+  <span class="k2">name</span>: search-aggregator
+  <span class="k2">namespace</span>: jahez-prod
+  <span class="k2">labels</span>:
+    <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+    <span class="k2">app.kubernetes.io/part-of</span>: search
+<span class="k2">spec</span>:
+  <span class="k2">replicas</span>: <span class="k4">6</span>                          <span class="cm"># availability: 2 per zone</span>
+  <span class="k2">revisionHistoryLimit</span>: <span class="k4">5</span>
+  <span class="k2">strategy</span>:
+    <span class="k2">type</span>: RollingUpdate
+    <span class="k2">rollingUpdate</span>:
+      <span class="k2">maxSurge</span>: <span class="k4">25%</span>
+      <span class="k2">maxUnavailable</span>: <span class="k4">0</span>                 <span class="cm"># never drop below desired during rollout</span>
+  <span class="k2">selector</span>:
+    <span class="k2">matchLabels</span>:
+      <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+  <span class="k2">template</span>:
+    <span class="k2">metadata</span>:
+      <span class="k2">labels</span>:
+        <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+        <span class="k2">app.kubernetes.io/part-of</span>: search
+    <span class="k2">spec</span>:
+      <span class="k2">priorityClassName</span>: jahez-customer-critical
+      <span class="k2">terminationGracePeriodSeconds</span>: <span class="k4">35</span>  <span class="cm"># preStop 10s + ShutdownTimeout 20s + 5s slack</span>
+      <span class="k2">restartPolicy</span>: Always              <span class="cm"># reliability: kubelet restarts crashed containers</span>
+
+      <span class="cm"># Fault tolerance: spread evenly across me-central-1a/b/c</span>
+      <span class="k2">topologySpreadConstraints</span>:
+        - <span class="k2">maxSkew</span>: <span class="k4">1</span>
+          <span class="k2">topologyKey</span>: topology.kubernetes.io/zone
+          <span class="k2">whenUnsatisfiable</span>: DoNotSchedule
+          <span class="k2">labelSelector</span>:
+            <span class="k2">matchLabels</span>:
+              <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+        - <span class="k2">maxSkew</span>: <span class="k4">1</span>
+          <span class="k2">topologyKey</span>: kubernetes.io/hostname
+          <span class="k2">whenUnsatisfiable</span>: ScheduleAnyway
+          <span class="k2">labelSelector</span>:
+            <span class="k2">matchLabels</span>:
+              <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+
+      <span class="cm"># Fault tolerance: avoid two replicas on one node</span>
+      <span class="k2">affinity</span>:
+        <span class="k2">podAntiAffinity</span>:
+          <span class="k2">preferredDuringSchedulingIgnoredDuringExecution</span>:
+            - <span class="k2">weight</span>: <span class="k4">100</span>
+              <span class="k2">podAffinityTerm</span>:
+                <span class="k2">topologyKey</span>: kubernetes.io/hostname
+                <span class="k2">labelSelector</span>:
+                  <span class="k2">matchLabels</span>:
+                    <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+
+      <span class="cm"># Self-healing speed: evict from a dead node after 60s instead of the default 300s</span>
+      <span class="k2">tolerations</span>:
+        - <span class="k2">key</span>: node.kubernetes.io/unreachable
+          <span class="k2">operator</span>: Exists
+          <span class="k2">effect</span>: NoExecute
+          <span class="k2">tolerationSeconds</span>: <span class="k4">60</span>
+        - <span class="k2">key</span>: node.kubernetes.io/not-ready
+          <span class="k2">operator</span>: Exists
+          <span class="k2">effect</span>: NoExecute
+          <span class="k2">tolerationSeconds</span>: <span class="k4">60</span>
+
+      <span class="k2">containers</span>:
+        - <span class="k2">name</span>: search-aggregator
+          <span class="k2">image</span>: ghcr.io/jahez/search-aggregator:1.14.2
+          <span class="k2">imagePullPolicy</span>: IfNotPresent
+          <span class="k2">ports</span>:
+            - <span class="k2">name</span>: http
+              <span class="k2">containerPort</span>: <span class="k4">8080</span>
+          <span class="k2">env</span>:
+            - <span class="k2">name</span>: ASPNETCORE_URLS
+              <span class="k2">value</span>: <span class="k3">"http://+:8080"</span>
+            - <span class="k2">name</span>: DOTNET_gcServer
+              <span class="k2">value</span>: <span class="k3">"1"</span>
+          <span class="k2">resources</span>:
+            <span class="k2">requests</span>:
+              <span class="k2">cpu</span>: <span class="k3">"500m"</span>
+              <span class="k2">memory</span>: <span class="k3">"512Mi"</span>
+            <span class="k2">limits</span>:
+              <span class="k2">memory</span>: <span class="k3">"768Mi"</span>
+
+          <span class="cm"># Health checks: startup guards slow JIT/warm-up, then hands off</span>
+          <span class="k2">startupProbe</span>:
+            <span class="k2">httpGet</span>: { <span class="k2">path</span>: /health/live, <span class="k2">port</span>: http }
+            <span class="k2">periodSeconds</span>: <span class="k4">3</span>
+            <span class="k2">failureThreshold</span>: <span class="k4">20</span>            <span class="cm"># up to 60s to start</span>
+          <span class="k2">livenessProbe</span>:                   <span class="cm"># process only, never dependencies</span>
+            <span class="k2">httpGet</span>: { <span class="k2">path</span>: /health/live, <span class="k2">port</span>: http }
+            <span class="k2">periodSeconds</span>: <span class="k4">10</span>
+            <span class="k2">timeoutSeconds</span>: <span class="k4">2</span>
+            <span class="k2">failureThreshold</span>: <span class="k4">3</span>
+          <span class="k2">readinessProbe</span>:                  <span class="cm"># controls EndpointSlice membership</span>
+            <span class="k2">httpGet</span>: { <span class="k2">path</span>: /health/ready, <span class="k2">port</span>: http }
+            <span class="k2">periodSeconds</span>: <span class="k4">5</span>
+            <span class="k2">timeoutSeconds</span>: <span class="k4">2</span>
+            <span class="k2">failureThreshold</span>: <span class="k4">2</span>
+            <span class="k2">successThreshold</span>: <span class="k4">1</span>
+
+          <span class="cm"># Graceful shutdown: let kube-proxy/ingress drop this endpoint before SIGTERM</span>
+          <span class="k2">lifecycle</span>:
+            <span class="k2">preStop</span>:
+              <span class="k2">sleep</span>:
+                <span class="k2">seconds</span>: <span class="k4">10</span>                 <span class="cm"># native sleep action, K8s 1.30+</span>
+---
+<span class="cm"># ── Service: load balancing across ready endpoints only ──</span>
+<span class="k2">apiVersion</span>: v1
+<span class="k2">kind</span>: Service
+<span class="k2">metadata</span>:
+  <span class="k2">name</span>: search-aggregator
+  <span class="k2">namespace</span>: jahez-prod
+  <span class="k2">labels</span>:
+    <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+<span class="k2">spec</span>:
+  <span class="k2">type</span>: ClusterIP
+  <span class="k2">selector</span>:
+    <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+  <span class="k2">ports</span>:
+    - <span class="k2">name</span>: http
+      <span class="k2">port</span>: <span class="k4">80</span>
+      <span class="k2">targetPort</span>: http
+  <span class="k2">trafficDistribution</span>: PreferClose      <span class="cm"># keep traffic in-zone when healthy (K8s 1.31+)</span>
+---
+<span class="cm"># ── PodDisruptionBudget: survive voluntary disruptions (node drains, upgrades) ──</span>
+<span class="k2">apiVersion</span>: policy/v1
+<span class="k2">kind</span>: PodDisruptionBudget
+<span class="k2">metadata</span>:
+  <span class="k2">name</span>: search-aggregator
+  <span class="k2">namespace</span>: jahez-prod
+<span class="k2">spec</span>:
+  <span class="k2">minAvailable</span>: <span class="k4">4</span>                      <span class="cm"># one full zone (2 pods) can be drained at a time</span>
+  <span class="k2">unhealthyPodEvictionPolicy</span>: AlwaysAllow
+  <span class="k2">selector</span>:
+    <span class="k2">matchLabels</span>:
+      <span class="k2">app.kubernetes.io/name</span>: search-aggregator
+---
+<span class="cm"># ── HPA: keep headroom so a zone loss doesn't overload the survivors ──</span>
+<span class="k2">apiVersion</span>: autoscaling/v2
+<span class="k2">kind</span>: HorizontalPodAutoscaler
+<span class="k2">metadata</span>:
+  <span class="k2">name</span>: search-aggregator
+  <span class="k2">namespace</span>: jahez-prod
+<span class="k2">spec</span>:
+  <span class="k2">scaleTargetRef</span>:
+    <span class="k2">apiVersion</span>: apps/v1
+    <span class="k2">kind</span>: Deployment
+    <span class="k2">name</span>: search-aggregator
+  <span class="k2">minReplicas</span>: <span class="k4">6</span>
+  <span class="k2">maxReplicas</span>: <span class="k4">30</span>
+  <span class="k2">metrics</span>:
+    - <span class="k2">type</span>: Resource
+      <span class="k2">resource</span>:
+        <span class="k2">name</span>: cpu
+        <span class="k2">target</span>:
+          <span class="k2">type</span>: Utilization
+          <span class="k2">averageUtilization</span>: <span class="k4">60</span>     <span class="cm"># ~66% capacity left after losing 1 of 3 zones</span>
+  <span class="k2">behavior</span>:
+    <span class="k2">scaleUp</span>:
+      <span class="k2">stabilizationWindowSeconds</span>: <span class="k4">0</span>
+      <span class="k2">policies</span>:
+        - { <span class="k2">type</span>: Percent, <span class="k2">value</span>: <span class="k4">100</span>, <span class="k2">periodSeconds</span>: <span class="k4">30</span> }
+    <span class="k2">scaleDown</span>:
+      <span class="k2">stabilizationWindowSeconds</span>: <span class="k4">300</span></pre></div>
+  <details>
+    <summary>Verify each property with kubectl</summary>
+    <div class="body">
+      <div class="code"><div class="hd"><span>verify.sh</span><button class="copy">Copy</button></div><pre><span class="cm"># Fault tolerance: 2 pods per zone?</span>
+kubectl get pods -n jahez-prod -l app.kubernetes.io/name=search-aggregator \
+  -o custom-columns=POD:.metadata.name,NODE:.spec.nodeName --no-headers \
+  | while read pod node; do
+      echo "$pod $(kubectl get node "$node" -o jsonpath='{.metadata.labels.topology\.kubernetes\.io/zone}')"
+    done | sort -k2
+
+<span class="cm"># Self-healing: kill a pod and watch the ReplicaSet replace it</span>
+kubectl delete pod -n jahez-prod $(kubectl get pod -n jahez-prod \
+  -l app.kubernetes.io/name=search-aggregator -o jsonpath='{.items[0].metadata.name}')
+kubectl get pods -n jahez-prod -l app.kubernetes.io/name=search-aggregator -w
+
+<span class="cm"># Health checks: only ready pods are endpoints</span>
+kubectl get endpointslices -n jahez-prod -l kubernetes.io/service-name=search-aggregator -o wide
+
+<span class="cm"># Disruptions: how many pods can be drained now?</span>
+kubectl get pdb search-aggregator -n jahez-prod
+
+<span class="cm"># Reliability signal: restarts per pod</span>
+kubectl get pods -n jahez-prod -l app.kubernetes.io/name=search-aggregator \
+  -o custom-columns=POD:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount</pre></div>
+    </div>
+  </details>
+</section>
+
+<!-- 12 -->
+<section id="roadmap" class="stack">
+  <div>
+    <div class="eyebrow">12 · Roadmap change</div>
+    <h2>Rename "Reliability &amp; Health" to Reliability Engineering</h2>
+    <p>Organizing question: <b>How do workloads remain healthy and operational despite failures?</b> Each branch maps to a manifest field you just saw.</p>
+  </div>
+<div class="tree"><span class="h">7. Reliability Engineering</span>
+<span class="m">│</span>
+<span class="m">├──</span> <span class="t">Health Checks</span>          <span class="m"># startupProbe, livenessProbe, readinessProbe</span>
+<span class="m">│   ├──</span> Liveness Probe
+<span class="m">│   ├──</span> Readiness Probe
+<span class="m">│   └──</span> Startup Probe
+<span class="m">│</span>
+<span class="m">├──</span> <span class="h">Availability</span>           <span class="m"># replicas, Service, trafficDistribution</span>
+<span class="m">│   ├──</span> Replicas
+<span class="m">│   ├──</span> Multi-Zone Deployment
+<span class="m">│   └──</span> Load Balancing
+<span class="m">│</span>
+<span class="m">├──</span> <span class="g">Reliability</span>            <span class="m"># restartPolicy, controllers</span>
+<span class="m">│   ├──</span> Self-Healing
+<span class="m">│   ├──</span> Restart Policies
+<span class="m">│   └──</span> Controller Reconciliation
+<span class="m">│</span>
+<span class="m">├──</span> <span class="p">Resilience</span>             <span class="m"># app code + mesh (Istio retries/outlier detection)</span>
+<span class="m">│   ├──</span> Retries
+<span class="m">│   ├──</span> Timeouts
+<span class="m">│   ├──</span> Failover
+<span class="m">│   └──</span> Circuit Breakers
+<span class="m">│</span>
+<span class="m">├──</span> <span class="w">Fault Tolerance</span>        <span class="m"># topologySpreadConstraints, podAntiAffinity</span>
+<span class="m">│   ├──</span> Redundancy
+<span class="m">│   ├──</span> Active-Active
+<span class="m">│   ├──</span> Multi-AZ
+<span class="m">│   └──</span> Anti-Affinity
+<span class="m">│</span>
+<span class="m">└──</span> <span class="t">Graceful Shutdown</span>      <span class="m"># preStop, terminationGracePeriodSeconds, HostOptions</span></div>
+  <div class="callout warn"><b class="h">Two small refinements</b><p>"Multi-Zone Deployment" under Availability and "Multi-AZ" under Fault Tolerance are the same mechanism. Keep it in one place, or label the first as "replica count" and the second as "zone spreading". Also, Resilience patterns mostly live in application code or a service mesh, not in core Kubernetes objects. It helps to mark that branch "app + mesh" so the roadmap stays honest about what <code>kubectl apply</code> can give you.</p></div>
+</section>
+
+<!-- 13 -->
+<section id="workload-map" class="stack">
+  <div>
+    <div class="eyebrow">13 · The complete picture</div>
+    <h2>Full workload management map</h2>
+    <p>The only major category missing from the earlier roadmap was Observability: <b>how do I know the workload is healthy and performing correctly?</b> Without it you cannot measure any of the properties above.</p>
+  </div>
+<div class="tree"><span class="m"> 1.</span> Workload Types                <span class="m"># Deployment, StatefulSet, DaemonSet, Job, CronJob</span>
+<span class="m"> 2.</span> Deployment &amp; Release          <span class="m"># rolling, blue/green, canary, A/B</span>
+<span class="m"> 3.</span> Resource Management           <span class="m"># requests/limits, HPA, VPA, QoS</span>
+<span class="m"> 4.</span> Placement                     <span class="m"># nodeSelector, affinity, taints, spread</span>
+<span class="m"> 5.</span> Prioritization                <span class="m"># PriorityClass, preemption</span>
+<span class="m"> 6.</span> Disruptions                   <span class="m"># PDB, drains, eviction</span>
+<span class="h"> 7. Reliability Engineering</span>       <span class="m"># this guide</span>
+<span class="m"> 8.</span> Configuration &amp; Secrets       <span class="m"># ConfigMap, Secret, env</span>
+<span class="m"> 9.</span> Storage                       <span class="m"># PV, PVC, StorageClass</span>
+<span class="m">10.</span> Networking                    <span class="m"># Service, Ingress, NetworkPolicy</span>
+<span class="g">11. Observability</span>
+<span class="m">    ├──</span> Logging                   <span class="m"># structured logs, Degraded=true events</span>
+<span class="m">    ├──</span> Metrics                   <span class="m"># success rate SLI, restarts, p99 latency</span>
+<span class="m">    ├──</span> Tracing                   <span class="m"># fan-out spans: aggregator → ads</span>
+<span class="m">    ├──</span> Alerting                  <span class="m"># error-budget burn rate</span>
+<span class="m">    └──</span> Monitoring                <span class="m"># dashboards per service</span></div>
+  <div class="callout"><b class="h">How observability measures each property</b><p>Availability: probe success from outside the cluster. Reliability: ratio of successful to total checkout requests. Resilience: time to recover (MTTR) and the share of responses with <code>Degraded=true</code>. Fault tolerance: user-facing error rate during a zone-loss game day, which should stay flat.</p></div>
+</section>
+
+<!-- 14 -->
+<section id="cheats" class="stack">
+  <div>
+    <div class="eyebrow">14 · Keep these</div>
+    <h2>Memory tricks</h2>
+  </div>
+  <div class="mem">
+    <div><b style="color:var(--accent)">Availability</b><span>"Can I reach it?"</span></div>
+    <div><b style="color:var(--good)">Reliability</b><span>"Does it usually work?"</span></div>
+    <div><b style="color:var(--warn)">Fault tolerance</b><span>"Does it still work when something breaks?"</span></div>
+    <div><b style="color:var(--purple)">Resilience</b><span>"The system keeps working, maybe degraded, even when parts break." What the user experiences during failure.</span></div>
+    <div><b style="color:var(--teal)">Self-healing</b><span>"Kubernetes fixes broken parts." How the system fixes itself after failure.</span></div>
+    <div><b>Dependability</b><span>All four together.</span></div>
+  </div>
+  <footer>Part of the Kubernetes workload reference series. Examples use the <code>jahez-prod</code> namespace and illustrative numbers.</footer>
+</section>
+
+</div>
+</main>
+</div>
+
+<script>
+(function(){
+  // theme toggle
+  var root=document.documentElement,tb=document.getElementById('themeBtn');
+  try{var s=localStorage.getItem('sre-theme');if(s)root.setAttribute('data-theme',s);}catch(e){}
+  tb.addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+    var nx=cur==='dark'?'light':'dark';root.setAttribute('data-theme',nx);
+    try{localStorage.setItem('sre-theme',nx);}catch(e){}
+  });
+  // drawer
+  var b=document.body;
+  document.getElementById('menuBtn').addEventListener('click',function(){b.classList.add('nav-open');});
+  document.getElementById('scrim').addEventListener('click',function(){b.classList.remove('nav-open');});
+  document.querySelectorAll('nav.side a').forEach(function(a){a.addEventListener('click',function(){b.classList.remove('nav-open');});});
+  // active link
+  var links=[].slice.call(document.querySelectorAll('nav.side a'));
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(l){l.classList.toggle('active',l.getAttribute('href')==='#'+e.target.id);});}});},{rootMargin:'-30% 0px -65% 0px'});
+  document.querySelectorAll('main section').forEach(function(s){io.observe(s);});
+  // copy
+  document.querySelectorAll('.code .copy').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var pre=btn.closest('.code').querySelector('pre');var txt=pre.innerText;
+      var done=function(){btn.textContent='Copied';setTimeout(function(){btn.textContent='Copy';},1400);};
+      var sel=function(){var r=document.createRange();r.selectNodeContents(pre);var s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent='Selected';setTimeout(function(){btn.textContent='Copy';},1400);};
+      try{navigator.clipboard.writeText(txt).then(done,sel);}catch(e){sel();}
+    });
+  });
+  // calculator
+  var u=document.getElementById('uptime'),o=document.getElementById('orders'),f=document.getElementById('failed');
+  function pct(x){return (Math.round(x*100)/100).toFixed(2)+'%';}
+  function calc(){
+    var up=Math.min(100,Math.max(0,parseFloat(u.value)||0)),tot=Math.max(1,parseInt(o.value)||1),fl=Math.min(tot,Math.max(0,parseInt(f.value)||0));
+    var rel=(tot-fl)/tot*100,budget=tot*0.001,used=budget>0?fl/budget*100:0;
+    document.getElementById('mAv').textContent=pct(up);document.getElementById('bAv').style.width=up+'%';
+    document.getElementById('mRe').textContent=pct(rel);document.getElementById('bRe').style.width=rel+'%';
+    document.getElementById('mEb').textContent=Math.round(used)+'%';
+    var eb=document.getElementById('bEb');eb.style.width=Math.min(100,used)+'%';eb.style.background=used>=100?'var(--bad)':used>=75?'var(--warn)':'var(--good)';
+    var v=document.getElementById('verdict');
+    if(up>=99.9&&rel<99.9)v.innerHTML='<b style="color:var(--warn)">Available but unreliable.</b> The app opens, but checkout misses a 99.9% SLO. Look at dependencies (payments, inventory), not at pod counts.';
+    else if(up<99.9&&rel>=99.9)v.innerHTML='<b style="color:var(--warn)">Reliable when reachable, but not available enough.</b> Requests that arrive succeed. Invest in replicas, zones and faster self-healing.';
+    else if(up<99.9)v.innerHTML='<b style="color:var(--bad)">Neither target met.</b> Fix availability first, then the success rate.';
+    else v.innerHTML='<b style="color:var(--good)">Both targets met.</b> Spend the remaining error budget on releases.';
+  }
+  [u,o,f].forEach(function(i){i.addEventListener('input',calc);});calc();
+
+  // steppers
+  var data={
+    reconcile:[
+      {t:'Desired state recorded',b:['var(--accent)','spec'],d:'You applied the Deployment. etcd now holds the intent: 6 replicas of order-service, spread across three zones.',term:'$ kubectl get deploy order-service -n jahez-prod\nNAME            READY   UP-TO-DATE   AVAILABLE\norder-service   6/6     6            6'},
+      {t:'Node in me-central-1a stops heartbeating',b:['var(--bad)','fault'],d:'The kubelet on ip-10-0-12-44 stops renewing its Lease. After about 40 seconds the node-lifecycle controller marks it NotReady and adds the unreachable taint.',term:'$ kubectl get nodes\nNAME           STATUS     ZONE\nip-10-0-12-44  NotReady   me-central-1a\nip-10-0-21-17  Ready      me-central-1b\nip-10-0-33-90  Ready      me-central-1c'},
+      {t:'Fault tolerance absorbs the hit',b:['var(--warn)','fault tolerance'],d:'The two pods on the dead node fail readiness and drop out of the EndpointSlice. Four pods in 1b and 1c keep serving. Customers keep ordering with no visible impact, provided the survivors have CPU headroom.',term:'endpoints ready: 4/6\nerror rate: flat'},
+      {t:'Eviction after toleration expires',b:['var(--accent)','self-healing'],d:'Once tolerationSeconds passes (300s default, 60s in our manifest) the taint manager evicts the pods on the dead node. They become Terminating and stay bound to that node.',term:'order-service-7d9f-x2k4p   Terminating   ip-10-0-12-44\norder-service-7d9f-m8q1r   Terminating   ip-10-0-12-44'},
+      {t:'Controller sees actual < desired',b:['var(--accent)','reconcile'],d:'The ReplicaSet controller counts active pods: desired 6, actual 4. It creates 2 new pods. These are new objects with new names and IPs.',term:'desired = 6\nactual  = 4\n→ create 2 pods'},
+      {t:'Scheduler places replacements',b:['var(--accent)','reconcile'],d:'The topology spread constraint wants 2 per zone, but 1a has no ready nodes. DoNotSchedule would leave them Pending, so either keep a spare node in 1a or let the cluster autoscaler add one. When 1a has capacity again, they land there.',term:'order-service-7d9f-p3n7c   Pending → Running   me-central-1a'},
+      {t:'Readiness passes, loop goes quiet',b:['var(--good)','restored'],d:'New pods pass the startup probe, then readiness, and join the EndpointSlice. Actual equals desired. The loop keeps watching and does nothing until the next drift.',term:'$ kubectl get deploy order-service -n jahez-prod\nNAME            READY   UP-TO-DATE   AVAILABLE\norder-service   6/6     6            6'}
+    ],
+    scenario:[
+      {t:'Normal request path',b:['var(--good)','healthy'],d:'A customer in Riyadh searches "shawarma". search-aggregator calls personalization, recommendation and ads in parallel and merges the results in about 120ms.',term:'GET /v1/search?q=shawarma&city=riyadh\n  personalization-service  ✓  48ms\n  recommendation-service   ✓  61ms\n  ads-service              ✓  37ms'},
+      {t:'ads-service pod crashes',b:['var(--bad)','fault'],d:'A bad campaign payload triggers a NullReferenceException in ads-service. Its only ready pod in that zone exits; the others are slow under the extra load.',term:'ads-service-5c8b-zk2lq   0/1   Error   1 (2s ago)'},
+      {t:'Resilience: timeout fires',b:['var(--purple)','request time'],d:'The aggregator\'s ads client hits its 300ms attempt timeout, retries once with jitter, then gives up at the 400ms ceiling. The circuit breaker records the failures.',term:'ads-service  ✗  timeout after 300ms (attempt 1)\nads-service  ✗  timeout (attempt 2) → total 400ms'},
+      {t:'Resilience: graceful degradation',b:['var(--purple)','request time'],d:'SafeAsync returns null for ads. The customer gets restaurants and recommendations, just without sponsored slots. The response is marked Degraded so the app hides the empty carousel.',term:'{\n  "searchResults": [ … 24 restaurants … ],\n  "recommendations": [ … ],\n  "ads": [],\n  "degraded": true\n}'},
+      {t:'Resilience: circuit opens',b:['var(--purple)','request time'],d:'After 30% failures in the 10s window the breaker opens. For 30 seconds the aggregator skips ads entirely, so searches stay fast and ads-service gets room to recover.',term:'circuit[ads] state=Open  break=30s\nsearch p99: 140ms (no waiting on ads)'},
+      {t:'Self-healing: kubelet restarts the container',b:['var(--accent)','system time'],d:'Independently, the kubelet restarts the crashed ads container. If it keeps crashing, backoff grows (CrashLoopBackOff). If the pod were deleted, the ReplicaSet would create a new one.',term:'ads-service-5c8b-zk2lq   0/1   Running   2   startup probe…'},
+      {t:'Self-healing: back in rotation',b:['var(--good)','restored'],d:'Readiness passes, the pod rejoins the EndpointSlice, the breaker half-opens, a probe call succeeds, and it closes. Sponsored slots return. No human was paged for the recovery itself, but the crash is still a bug to fix.',term:'circuit[ads] state=Closed\nads-service  ✓  35ms\n"degraded": false'}
+    ]
+  };
+  document.querySelectorAll('[data-stepper]').forEach(function(el){
+    var steps=data[el.getAttribute('data-stepper')],i=0;
+    el.innerHTML='<div class="stage" aria-live="polite"></div><div class="ctrl"><button class="iconbtn prev" aria-label="Previous step">←</button><div class="dots"></div><span class="count"></span><button class="iconbtn next" aria-label="Next step">Next →</button></div>';
+    var stage=el.querySelector('.stage'),dots=el.querySelector('.dots'),count=el.querySelector('.count');
+    steps.forEach(function(_,k){var d=document.createElement('button');d.setAttribute('aria-label','Step '+(k+1));d.addEventListener('click',function(){go(k);});dots.appendChild(d);});
+    function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    function go(k){
+      i=Math.max(0,Math.min(steps.length-1,k));var s=steps[i];
+      stage.innerHTML='<div class="t"><span class="badge" style="color:'+s.b[0]+'">'+s.b[1]+'</span>'+esc(s.t)+'</div><p style="margin:0">'+esc(s.d)+'</p>'+(s.term?'<div class="term">'+esc(s.term)+'</div>':'');
+      [].forEach.call(dots.children,function(d,n){d.classList.toggle('on',n===i);});
+      count.textContent=(i+1)+' / '+steps.length;
+      el.querySelector('.prev').disabled=i===0;el.querySelector('.next').disabled=i===steps.length-1;
+    }
+    el.querySelector('.prev').addEventListener('click',function(){go(i-1);});
+    el.querySelector('.next').addEventListener('click',function(){go(i+1);});
+    el.addEventListener('keydown',function(e){if(e.key==='ArrowRight'){go(i+1);e.preventDefault();}if(e.key==='ArrowLeft'){go(i-1);e.preventDefault();}});
+    var sx=null;el.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;},{passive:true});
+    el.addEventListener('touchend',function(e){if(sx===null)return;var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>45)go(i+(dx<0?1:-1));sx=null;});
+    go(0);
+  });
+})();
+</script>
